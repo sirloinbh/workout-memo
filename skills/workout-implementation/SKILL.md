@@ -25,6 +25,7 @@ description: Follow the user's issue, numbered branch, implementation with docs,
 
 ## 3. 구현과 커밋별 docs 기록
 
+- 구현·수정 시 프로젝트의 `skills/workout-testing/SKILL.md`를 읽고 관련 테스트를 함께 작성·수정한다. 버그 수정은 회귀 테스트를 추가한다. 구현·테스트·docs는 같은 작업 커밋에 포함하며 커밋 전에 관련 테스트를 실행한다.
 - 요청한 범위만 구현한다. 개발 기반 정리 작업은 `workout-foundation`을 함께 읽는다.
 - `docs/changes/<number>-<slug>.md`를 만들고 이슈 링크, 목적, 변경 내용, 검증, 제한·후속 작업을 기록한다.
 - **각 작업 커밋에 그 커밋에서 수행한 변경과 검증을 docs에 함께 기록한다.** 하나의 이슈 문서에 항목을 누적해도 된다. 문서만 수정한 커밋도 해당 작업 기록을 갱신한다.
@@ -34,7 +35,7 @@ description: Follow the user's issue, numbered branch, implementation with docs,
 
 ## 4. 테스트 후 PR 생성
 
-- PR을 만들기 전에 최종 변경에 적합한 검증을 실행한다. 필수 명령과 DB 통합 테스트 조건은 프로젝트 `AGENTS.md`를 따른다. 단순 문서·스킬 수정에 불필요한 앱 테스트를 추가하지 않는다.
+- PR을 생성하거나 갱신하기 전에 최종 변경의 관련 테스트와 필수 검사를 실행한다. 추가·수정한 테스트 코드, 검증한 동작, 실제 실행 명령과 pass/fail/skip을 docs와 PR에 남긴다. 필수 명령과 DB 통합 테스트 조건은 프로젝트 `AGENTS.md`를 따른다. 단순 문서·스킬 수정에 불필요한 앱 테스트를 추가하지 않는다.
 - 실패를 수정하고, 실행하지 못한 검사·건너뛴 DB 테스트·미완료 브라우저 검증을 구분해 docs와 PR에 기록한다. 필요한 검증이 막히면 PR은 draft로 만든다.
 - 작업 브랜치만 푸시한다. PR 대상은 `sirloinbh/workout-memo`의 `main`이다. subtree 동기화 스크립트는 main과 하위 저장소를 푸시하므로 이 단계에서 사용하지 않는다.
 - 같은 head 브랜치의 PR이 있으면 업데이트하고 중복 생성하지 않는다.

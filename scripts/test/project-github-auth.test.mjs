@@ -128,6 +128,7 @@ test(
       assert.equal(got.pinned, true);
       assert.equal(got.githubToken, false);
       assert.equal(got.codex, join(f.env.LOCALAPPDATA, 'Codex-Account-B'));
+      assert.equal(got.args[1], join(f.env.LOCALAPPDATA, 'VSCode-Account-B-workout-memo'));
       assert.equal(got.args.at(-1), process.cwd());
     } finally {
       f.cleanup();
@@ -153,6 +154,7 @@ test(
       assert.equal(got.ghToken, true);
       assert.equal(got.githubToken, true);
       assert.equal(got.args.at(-1), other);
+      assert.equal(got.args[1], join(f.env.LOCALAPPDATA, 'VSCode-Account-B'));
     } finally {
       f.cleanup();
     }

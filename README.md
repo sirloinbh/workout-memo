@@ -2,6 +2,12 @@
 
 나 한 명의 운동 일지를 기록하고, 기간별 훈련량과 점진적 과부하 목표를 확인하는 서비스입니다. 로그인 없이 로컬에서 사용합니다.
 
+## 개발 작업 절차와 Codex 스킬
+
+변경 작업은 **GitHub 이슈 등록 → 이슈 번호 기반 브랜치 → 구현 및 커밋별 docs 기록 → 테스트 후 PR → 사용자 직접 병합** 순서로 진행합니다. 상세 규칙은 [AGENTS.md](AGENTS.md)와 [구현 절차 스킬](skills/workout-implementation/SKILL.md)에 있습니다.
+
+앞서 정리한 기술 구성·코드 규칙·API·디자인·검증·운영 추천은 [개발 기반 스킬](skills/workout-foundation/SKILL.md)에 보관합니다. 스킬 원본은 이 저장소의 `skills/`이며, Codex 스킬 경로에 설치하면 `$workout-implementation`, `$workout-foundation`으로 사용할 수 있습니다. 로컬 설치본을 수정하기보다 저장소 원본을 갱신한 뒤 다시 설치하세요. 새 세션에서 스킬 목록이 갱신됩니다. PR 병합은 사용자가 수행합니다.
+
 ## 실행
 
 ```powershell

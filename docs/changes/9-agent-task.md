@@ -19,6 +19,7 @@
   ```
 
   결과: **예상 실패**, 종료 코드 1. 템플릿 문서가 아직 없으므로 본문·내부 링크 검증은 구현 후 수행해야 한다. 앱 테스트 실패를 재현한 결과가 아니다.
+
 - 실제 명령: `git status --short` → `fatal: detected dubious ownership`로 실패. 저장소 소유자와 샌드박스 실행 사용자가 달라 Git 상태·변경 범위 확인이 제한되었다. `safe.directory`나 전역 설정을 변경하지 않았다.
 - `npm run check`는 이 단계에서 실행하지 않았다. 이슈에 따라 호스트가 회귀 검사하며, 이 단계는 문서 산출물 검증만 담당한다. DB에 접근하지 않았다.
 - 스킬 파일을 변경하지 않았으므로 `quick_validate.py`의 변경 스킬 검증 대상은 없다.
@@ -46,7 +47,7 @@
 
 작업 디렉터리는 이슈 전용 작업 트리 루트다. 다음 PowerShell 검사를 실행했다.
 
-```powershell
+`````powershell
 $ErrorActionPreference = 'Stop'
 $docPath = Join-Path (Get-Location) 'docs/agent-issue-template.md'
 $body = Get-Content -Raw -Encoding UTF8 $docPath
@@ -56,7 +57,7 @@ if ($body -notmatch '(?s)````markdown\r?\n.*## 완료 기준.*\r?\n````') { thro
 $links = [regex]::Matches($body, '\[[^\]]+\]\(([^)]+)\)')
 foreach ($link in $links) { $target = Join-Path (Split-Path $docPath) $link.Groups[1].Value; if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { throw "Broken link: $target" } }
 Write-Output "PASS: required content, copyable body, $($links.Count) relative file links"
-```
+`````
 
 - 결과: PASS, 종료 코드 0。필수 내용·복사 가능한 본문·상대 파일 링크 4개를 확인했다. 링크에 앵커는 사용하지 않았다. 본문을 검토해 관찰 가능한 완료 기준, 변경 요청 예시, 사용자의 최종 병합 설명을 확인했다.
 - `npm run check`: PASS, 종료 코드 0. frontend TypeScript·Vite 빌드와 backend TypeScript 빌드 성공. 기존 backend 테스트 4개 통과, 실패 0, skip 0. 단위 테스트 3개 및 PostgreSQL CRUD·날짜 범위·롤백·목표 판정·연쇄 삭제 통합 테스트 1개가 실행됐다. 기존 통합 테스트는 제공된 `TEST_DATABASE_URL`만 사용하며 연결값은 열람·출력·기록하지 않았다.

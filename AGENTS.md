@@ -6,8 +6,8 @@
 
 1. `sirloinbh/workout-memo`에 이슈를 등록한다. 사용자가 지정한 기존 이슈가 있으면 재사용한다.
 2. 이슈 번호를 포함한 작업 브랜치를 만든다: `<type>/<issue-number>-<slug>`.
-3. 해당 브랜치에서 구현하고, 각 작업 커밋에 `docs/changes/<issue-number>-<slug>.md`의 관련 변경 기록을 함께 포함한다.
-4. PR을 올리기 전에 변경에 적합한 검증을 실행하고 결과를 PR에 기록한다.
+3. 해당 브랜치에서 구현·수정과 관련 테스트 코드를 함께 작성하고, 각 작업 커밋에 `docs/changes/<issue-number>-<slug>.md`의 관련 변경 기록을 함께 포함한다.
+4. 커밋 전과 PR 생성·갱신 전에 관련 테스트를 실행하고 결과를 docs와 PR에 기록한다. 구현·테스트·docs를 함께 커밋한다.
 5. **PR 병합은 사용자만 수행한다. 에이전트는 병합·자동 병합·승인으로 병합을 대신하지 않는다.**
 
 질문 답변·추천·읽기 전용 조사는 이슈나 브랜치를 만들지 않는다. 실행 권한 제한이나 외부 인증이 막히면 정확한 차단 사유를 알리고 완료한 단계와 남은 단계를 구분한다.
@@ -25,6 +25,7 @@
 
 ## 스킬과 문서
 
+- 구현·수정 테스트: [workout-testing](skills/workout-testing/SKILL.md). 새 기능은 관련 테스트, 버그 수정은 회귀 테스트를 함께 작성한다.
 - 작업 절차: [workout-implementation](skills/workout-implementation/SKILL.md).
 - 개발 기반 구축·정리: [workout-foundation](skills/workout-foundation/SKILL.md). 적용 시 위 구현 절차도 함께 따른다.
 - 실행·운영: [README.md](README.md).

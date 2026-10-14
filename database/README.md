@@ -1,0 +1,11 @@
+# Workout PostgreSQL
+
+PostgreSQL 17. 초기 테이블은 `migrations/001_initial.sql`. Docker의 빈 데이터 볼륨에 최초 실행 시 적용됩니다. 후속 마이그레이션은 별도로 적용해야 하며, 기존 볼륨에 SQL 파일 추가만으로 자동 적용되지는 않습니다.
+
+중량은 kg 단위 총중량(머신 기본중량 포함), 반복 수는 양의 정수입니다. 기본중량 미확인은 NULL로 유지합니다. 일지 삭제 시 세트는 CASCADE 삭제됩니다. 목표 달성은 같은 운동명의 한 세트가 설정 기간 내 중량·횟수를 모두 충족한 경우입니다.
+
+백업은 우산 저장소 `scripts/backup.ps1`, 복원은 아래 명령으로 수행합니다. 복원 대상은 비어 있는 별도 데이터베이스로 준비하세요.
+
+```powershell
+Get-Content -Raw backups/FILE.sql | docker compose exec -T db psql -U workout -d workout_restore -v ON_ERROR_STOP=1
+```

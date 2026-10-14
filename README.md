@@ -40,3 +40,7 @@ http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세�
 `docker compose logs --tail 100 api`로 오류 확인, `./scripts/backup.ps1`로 SQL 백업. 백업은 PC 외부의 별도 안전한 저장소에도 보관하고 정기적으로 복원 확인을 하세요. AWS 초안·비용 관리는 `infrastructure/README.md`를 참고하세요. 자동 운영 배포는 아직 연결되지 않았습니다.
 
 실제 AWS 배포에는 계정, 실행 환경, 도메인, 비용 한도 결정이 필요합니다. 이 앱의 포트는 localhost에만 바인딩됩니다.
+
+## 프로젝트 전용 GitHub 계정
+
+이 프로젝트의 gh와 Git 인증은 sirloinbh 전용 설정을 사용합니다. VS Code 계정B 실행·환경변수·래퍼 명령·검증 방법은 [인증 설정 문서](docs/project-github-auth.md)를 참고하세요.

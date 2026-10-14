@@ -1,7 +1,8 @@
-FROM node:22-alpine AS build
+FROM node:24.21.0-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --global npm@11.19.0
+RUN npm ci
 COPY . .
 RUN npm run build
 FROM nginx:1.27-alpine

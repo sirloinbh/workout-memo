@@ -56,7 +56,7 @@ export function acquireLock(directory) {
     if (error.code !== 'EEXIST') throw error;
     const owner = Number(fs.readFileSync(file, 'utf8'));
     if (!Number.isSafeInteger(owner) || owner < 1)
-      throw new Error('Invalid worker lock; inspect it manually.');
+      throw new Error('Invalid worker lock; inspect it manually.', { cause: error });
     try {
       process.kill(owner, 0);
     } catch (lookupError) {
@@ -75,7 +75,7 @@ export function acquireLock(directory) {
       }
       return acquireLock(directory);
     }
-    throw new Error(`Worker already running (PID ${owner}).`);
+    throw new Error(`Worker already running (PID ${owner}).`, { cause: error });
   }
   return () => {
     if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === String(process.pid))

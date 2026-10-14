@@ -13,17 +13,18 @@
 
 ## 명령
 
-| 명령                 | 역할                                  |
-| -------------------- | ------------------------------------- |
-| npm ci               | 잠금 파일대로 설치                    |
-| npm run dev          | 프론트엔드·API 개발 서버              |
-| npm run format       | 지원 파일의 포맷 수정                 |
-| npm run format:check | 포맷 차이 검사                        |
-| npm run lint         | ESLint 검사, 경고도 실패 처리         |
-| npm run typecheck    | 프론트·백엔드·백엔드 테스트 타입 검사 |
-| npm test             | 기존 단위·DB 통합 테스트              |
-| npm run build        | 프로덕션 빌드                         |
-| npm run check        | 포맷 → lint → 타입 → 테스트 → 빌드    |
+| 명령                 | 역할                                                    |
+| -------------------- | ------------------------------------------------------- |
+| npm ci               | 잠금 파일대로 설치                                      |
+| npm run dev          | 프론트엔드·API 개발 서버                                |
+| npm run format       | 지원 파일의 포맷 수정                                   |
+| npm run format:check | 포맷 차이 검사                                          |
+| npm run lint         | ESLint 검사, 경고도 실패 처리                           |
+| npm run typecheck    | 프론트·백엔드·백엔드 테스트 타입 검사                   |
+| npm test             | 기존 단위·DB 통합 테스트                                |
+| npm run test:agents  | 로컬 에이전트 워커 동작 테스트                          |
+| npm run build        | 프로덕션 빌드                                           |
+| npm run check        | 포맷 → lint → 타입 → 앱 테스트 → 에이전트 테스트 → 빌드 |
 
 DB 테스트는 준비한 전용 DB의 TEST_DATABASE_URL이 필요하다. 미설정 시 통합 테스트를 건너뛰므로 전체 DB 검증 완료로 간주하지 않는다. CI는 별도 PostgreSQL 서비스를 준비하고 실제 통합 테스트를 실행한다.
 

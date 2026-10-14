@@ -1,1 +1,18 @@
-{"name":"workout-memo","private":true,"workspaces":["frontend","backend"],"scripts":{"dev":"concurrently -k \"npm run dev -w backend\" \"npm run dev -w frontend\"","build":"npm run build -w frontend && npm run build -w backend","test":"npm run test -w backend","check":"npm run build && npm test"},"devDependencies":{"concurrently":"^9.2.0"}}
+{
+  "name": "workout-memo",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w frontend && npm run build -w backend",
+    "test": "npm run test -w backend",
+    "test:agents": "node --test scripts/test/agent-workflow.test.mjs scripts/test/agent-runtime.test.mjs",
+    "check": "npm run build && npm test && npm run test:agents"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

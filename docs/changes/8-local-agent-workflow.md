@@ -47,3 +47,9 @@
 - 개발 기준 문서의 명령 표에 에이전트 테스트와 통합된 검사 순서를 반영했다.
 - 새 ESLint의 preserve-caught-error 규칙으로 발견한 잠금 오류 두 곳에 원래 예외를 cause로 연결했다. 기존 잠금·실패 동작 테스트를 유지하며 별도 중복 테스트는 추가하지 않았다.
 - 고정 Node 24.21.0·npm 11.19.0 환경에서 npm ci 및 npm run check 통과. 포맷·lint·타입·앱 테스트 4개·자동화 테스트 34개·프론트/백엔드 빌드 성공, skip 0. DB 검증은 기존 전용 workout_test_4를 사용했다.
+
+## 작업 커밋: fix: 새 main 문서와 통합 CI 포맷 정리 (#8)
+
+- 최초 충돌 해결 후 PR #11이 main에 추가 병합되어, 브랜치 push 검사는 성공했지만 PR 통합 검사의 Prettier가 새 문서 두 개에서 실패했다.
+- 최신 main을 다시 반영하고 docs/agent-issue-template.md와 docs/changes/9-agent-task.md를 기존 Prettier 기준으로 포맷했다. 문서 내용과 검증 기준을 유지했다.
+- 최신 main 포함 npm run check 재실행 통과: 포맷·lint·타입·앱 테스트 4개·자동화 테스트 34개·빌드, skip 0. 포맷된 템플릿의 복사 가능한 코드 블록과 상대 링크 4개도 확인했다. 작업 기록에 남은 과거 검증 명령은 당시 실행 내용으로 보존했다.

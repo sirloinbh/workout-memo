@@ -8,6 +8,17 @@
 
 앞서 정리한 기술 구성·코드 규칙·API·디자인·검증·운영 추천은 [개발 기반 스킬](skills/workout-foundation/SKILL.md)에 보관합니다. 스킬 원본은 이 저장소의 `skills/`이며, Codex 스킬 경로에 설치하면 `$workout-implementation`, `$workout-foundation`으로 사용할 수 있습니다. 로컬 설치본을 수정하기보다 저장소 원본을 갱신한 뒤 다시 설치하세요. 새 세션에서 스킬 목록이 갱신됩니다. 구현·수정 시 테스트 코드도 함께 작성하고 커밋 전과 PR 생성·갱신 전에 실행합니다. [테스트 스킬](skills/workout-testing/SKILL.md)은 `$workout-testing`으로 사용할 수 있습니다. PR 병합은 사용자가 수행합니다.
 
+## 로컬 AI 작업 자동화
+
+요구사항 대화는 주 에이전트와 진행하고, 확정한 이슈는 PC에서 테스트 → 구현 → 독립 검토 → 검사 → PR 순서로 처리합니다. 시작·중지·이슈 등록·복구 방법은 [로컬 에이전트 운영 문서](docs/local-agent-workflow.md)를 참고하세요.
+
+```powershell
+./scripts/agents.ps1 start
+./scripts/agents.ps1 enqueue -Issue 12
+./scripts/agents.ps1 status
+./scripts/agents.ps1 stop
+```
+
 ## 실행
 
 ```powershell

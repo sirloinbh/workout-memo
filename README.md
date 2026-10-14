@@ -5,6 +5,7 @@
 ## 개발 기준
 
 Node.js **24.21.0**, npm **11.19.0**을 사용합니다. 설치는 `npm ci`, 포맷은 `npm run format`, 전체 검증은 `npm run check`입니다. 상세 명령과 잠금 파일 정책은 [개발 기준 문서](docs/development-baseline.md)를 참고하세요.
+
 ## 개발 작업 절차와 Codex 스킬
 
 변경 작업은 **GitHub 이슈 등록 → 이슈 번호 기반 브랜치 → 구현 및 커밋별 docs 기록 → 테스트 후 PR → 사용자 직접 병합** 순서로 진행합니다. 상세 규칙은 [AGENTS.md](AGENTS.md)와 [구현 절차 스킬](skills/workout-implementation/SKILL.md)에 있습니다.

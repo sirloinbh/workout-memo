@@ -29,3 +29,12 @@ Node.js·npm, 설치·잠금 파일, 포맷·정적 검사·타입 검사·테�
 ## 범위
 
 API 계약·디자인·상태 관리·추가 테스트 도구·AWS 배포는 상위 로드맵의 후속 단계다. PR 병합은 사용자가 수행한다.
+
+## 작업 커밋: fix: 통합된 문서의 CI 포맷 오류 수정 (#4)
+
+- 실패 실행: https://github.com/sirloinbh/workout-memo/actions/runs/38523494441. `npm run check`의 첫 단계인 Prettier 검사에서 README.md와 skills/workout-foundation/references/stack.md가 실패해 이후 검사가 실행되지 않았다.
+- README의 제목 앞 빈 줄과 기술 추천 표 정렬을 기존 Prettier 기준으로 수정했다. 검사 규칙과 앱 동작 변경은 없으며, 기존 `format:check`가 재발을 검출하므로 별도 앱 테스트를 추가하지 않았다.
+- 수정 전 두 파일의 `prettier --check` 실패를 로컬에서 재현했고, 수정 후 전체 포맷 검사가 통과했다.
+- 고정 Node 24.21.0·npm 11.19.0 환경의 `npm run check` 통과: 포맷·lint·타입 검사, 테스트 4개(pass 4, skip 0), 프론트·백엔드 빌드. DB 검증은 기존 전용 workout_test_4 DB를 사용했다.
+- 최초 로컬 빌드는 샌드박스 디렉터리 접근 제한으로 실패했으며, 권한 승인 후 전체 검사를 재실행해 통과했다.
+- 스킬 검증기 `quick_validate.py skills/workout-foundation`는 로컬 Python의 PyYAML 부재로 실행되지 않았다. SKILL.md 변경은 없으며 참조 문서는 표 공백만 변경했다. README의 개발 기준 링크 대상 존재를 확인했다.

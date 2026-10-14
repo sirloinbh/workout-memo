@@ -21,8 +21,8 @@ if not defined GH_TOKEN (
 )
 
 if "%~1"=="" (
-    call code --user-data-dir "%LOCALAPPDATA%\VSCode-Account-B" --new-window "%WORKOUT_PROJECT_ROOT%"
+    call code --user-data-dir "%LOCALAPPDATA%\VSCode-Account-B-workout-memo" --new-window "%WORKOUT_PROJECT_ROOT%"
 ) else (
-    call code --user-data-dir "%LOCALAPPDATA%\VSCode-Account-B" --new-window %*
+    call code --user-data-dir "%LOCALAPPDATA%\VSCode-Account-B-workout-memo" --new-window %*
 )
 exit /b %errorlevel%

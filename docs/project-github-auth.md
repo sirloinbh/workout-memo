@@ -12,9 +12,9 @@
 
 ## VSCode-계정B.cmd
 
-바탕화면 실행 파일에는 scripts/open-vscode-account-b.cmd의 로컬 경로 적용 사본을 설치한다. 저장소 브랜치를 바꿔도 실행 파일 자체는 동작한다. 인자 없이 실행하면 이 프로젝트를 열며 계정B의 CODEX_HOME·VS Code 사용자 데이터와 전용 GH_CONFIG_DIR를 적용한다. sirloinbh 인증도 프로세스 메모리에 전달하므로 확장 프로그램의 gh 실행에 적용된다. 다른 폴더를 첫 인자로 주면 해당 폴더를 열고 프로젝트 전용 gh 환경을 새로 적용하지 않는다.
+바탕화면 실행 파일에는 scripts/open-vscode-account-b.cmd의 로컬 경로 적용 사본을 설치한다. 저장소 브랜치를 바꿔도 실행 파일 자체는 동작한다. 인자 없이 실행하면 이 프로젝트를 열며 계정B의 CODEX_HOME과 프로젝트 전용 VS Code 사용자 데이터 폴더 %LOCALAPPDATA%/VSCode-Account-B-workout-memo 및 GH_CONFIG_DIR를 적용한다. 다른 프로젝트의 계정B 창은 기존 VSCode-Account-B 폴더를 사용하므로 VS Code 프로세스 환경도 분리된다. sirloinbh 인증도 프로세스 메모리에 전달하므로 확장 프로그램의 gh 실행에 적용된다. 다른 폴더를 첫 인자로 주면 해당 폴더를 열고 프로젝트 전용 gh 환경을 새로 적용하지 않는다.
 
-같은 계정B 사용자 데이터로 이미 실행 중인 VS Code는 기존 프로세스 환경을 재사용할 수 있다. 계정B 창을 모두 종료한 뒤 다시 실행해야 확장 프로그램까지 변경된 환경을 받는다. VS Code 통합 터미널은 새로 열어야 한다.
+VSCode-계정B.cmd를 다시 실행해 프로젝트 전용 창에서 작업한다. 기존 계정B 창의 설정과 로그인 UI 상태는 별도 데이터에 남으며, 새 프로젝트 창의 에디터 개인 설정은 필요 시 다시 적용한다. Codex 인증 경로 CODEX_HOME은 계정B 그대로 유지한다. VS Code 통합 터미널은 새로 열어야 한다.
 
 현재 로컬 .git/config의 helper는 %LOCALAPPDATA%/gh-workout-memo/gh-project.ps1의 설치본을 사용한다. 브랜치를 바꿔도 Git 인증 경로는 유지된다. 재클론 시 로컬 helper를 다시 설정하고, 래퍼를 수정하면 설치본도 갱신한다. 프로젝트를 옮기면 바탕화면 실행 파일의 WORKOUT_PROJECT_ROOT를 갱신한다. gh 전용 폴더 분리는 계정 선택을 분리하며 Windows 사용자 자체를 보안 격리하는 기능은 아니다.
 

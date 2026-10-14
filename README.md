@@ -1,0 +1,42 @@
+# FORM · 나의 운동 기록
+
+나 한 명의 운동 일지를 기록하고, 기간별 훈련량과 점진적 과부하 목표를 확인하는 서비스입니다. 로그인 없이 로컬에서 사용합니다.
+
+## 실행
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build -d
+```
+
+접속: http://localhost:8080 . `.env`의 비밀번호를 변경한 후 실행하세요. 데이터는 `workout-data` 볼륨에 저장됩니다. `docker compose down` 후에도 유지되며, `down -v`는 데이터를 삭제합니다.
+
+개발 실행:
+
+```powershell
+docker compose up -d db
+npm ci
+npm run dev
+```
+
+http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세요. 비밀번호에 URL 예약문자가 있으면 DATABASE_URL에 URL 인코딩이 필요합니다.
+
+## 기능과 규칙
+
+- 일지 입력·조회·수정·삭제, 세트별 운동명·총중량·반복 수·머신·메모.
+- 1일, 월요일 기준 1주, 달력 1달, 기준일까지 4주/12주 조회. 기간별 일수·볼륨·세트 수와 그래프. 기간 일지는 날짜별 기록을 모아 확인하고 각각 편집하는 방식입니다.
+- 목표 시작일·종료일, 목표 총중량·반복 수. 같은 운동명(앞뒤 공백·영문 대소문자 무시)으로 한 세트에서 두 조건을 모두 충족하면 달성. 미래 기록은 목표 판정에서 제외합니다.
+- 브랜드 선택, Arsenal Strength 등 머신 기본중량 입력·수정. 미확인 값은 NULL이며 샘플 중량을 사실처럼 제공하지 않습니다.
+- 중량은 기본중량을 포함한 총중량입니다. 좌우/편측 장비도 동일한 기준으로 입력하세요.
+
+## 저장소 구성
+
+이 저장소는 전체 소스를 포함하는 우산 모노레포입니다. `frontend`, `backend`, `database`, `infrastructure`는 `git subtree split`으로 각 비공개 저장소에 배포합니다. 루트에 Docker Compose, 통합 CI, 운영 스크립트를 둡니다. 일반 `git clone URL`로 전체 구성을 받을 수 있습니다. 변경은 이 모노레포에서 커밋하고 `scripts/push-repositories.ps1`로 각 저장소에 반영합니다. 하위 저장소에서 직접 변경한 경우에는 먼저 `git subtree pull --prefix=frontend URL main --squash`처럼 동기화하세요.
+
+## 검증·운영
+
+`npm run check`는 TypeScript 빌드와 테스트입니다. 실제 DB 테스트는 `TEST_DATABASE_URL`을 설정하세요. GitHub 통합 CI는 전용 PostgreSQL 서비스에서 전체 빌드와 DB 통합 테스트를 수행합니다. 프론트엔드·백엔드 저장소에서는 개별 빌드 및 Docker 이미지 빌드도 검사합니다.
+
+`docker compose logs --tail 100 api`로 오류 확인, `./scripts/backup.ps1`로 SQL 백업. 백업은 PC 외부의 별도 안전한 저장소에도 보관하고 정기적으로 복원 확인을 하세요. AWS 초안·비용 관리는 `infrastructure/README.md`를 참고하세요. 자동 운영 배포는 아직 연결되지 않았습니다.
+
+실제 AWS 배포에는 계정, 실행 환경, 도메인, 비용 한도 결정이 필요합니다. 이 앱의 포트는 localhost에만 바인딩됩니다.

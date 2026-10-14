@@ -9,7 +9,7 @@ Copy-Item .env.example .env
 docker compose up --build -d
 ```
 
-접속: http://localhost:8080 . `.env`의 비밀번호를 변경한 후 실행하세요. 데이터는 `workout-data` 볼륨에 저장됩니다. `docker compose down` 후에도 유지되며, `down -v`는 데이터를 삭제합니다.
+접속: http://localhost:8088 . `.env`의 비밀번호를 변경한 후 실행하세요. 데이터는 `workout-data` 볼륨에 저장됩니다. `docker compose down` 후에도 유지되며, `down -v`는 데이터를 삭제합니다.
 
 개발 실행:
 

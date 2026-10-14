@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
   web:
     build: ./frontend
-    ports: ["127.0.0.1:8080:80"]
+    ports: ["127.0.0.1:8088:80"]
     depends_on: [api]
     restart: unless-stopped
 volumes:

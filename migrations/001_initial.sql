@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS brands (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name text NOT NULL UNIQUE);
+INSERT INTO brands(name) VALUES ('Arsenal Strength'), ('Hammer Strength'), ('Life Fitness'), ('기타') ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS machines (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, brand_id integer NOT NULL REFERENCES brands(id), name text NOT NULL, base_weight numeric(7,2) CHECK(base_weight >= 0), notes text NOT NULL DEFAULT '', UNIQUE(brand_id,name));
+CREATE TABLE IF NOT EXISTS workouts (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, date date NOT NULL, title text NOT NULL, notes text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS sets (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, workout_id integer NOT NULL REFERENCES workouts(id) ON DELETE CASCADE, exercise text NOT NULL, machine_id integer REFERENCES machines(id), weight numeric(7,2) NOT NULL CHECK(weight >= 0), reps integer NOT NULL CHECK(reps > 0), position integer NOT NULL);
+CREATE INDEX IF NOT EXISTS workouts_date_idx ON workouts(date);
+CREATE TABLE IF NOT EXISTS goals (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, exercise text NOT NULL, target_weight numeric(7,2) NOT NULL CHECK(target_weight >= 0), target_reps integer NOT NULL CHECK(target_reps > 0), start_date date NOT NULL, deadline date NOT NULL CHECK(deadline >= start_date));

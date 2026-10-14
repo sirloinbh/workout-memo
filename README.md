@@ -5,6 +5,11 @@
 ## 개발 기준
 
 Node.js **24.21.0**, npm **11.19.0**을 사용합니다. 설치는 `npm ci`, 포맷은 `npm run format`, 전체 검증은 `npm run check`입니다. 상세 명령과 잠금 파일 정책은 [개발 기준 문서](docs/development-baseline.md)를 참고하세요.
+## 개발 작업 절차와 Codex 스킬
+
+변경 작업은 **GitHub 이슈 등록 → 이슈 번호 기반 브랜치 → 구현 및 커밋별 docs 기록 → 테스트 후 PR → 사용자 직접 병합** 순서로 진행합니다. 상세 규칙은 [AGENTS.md](AGENTS.md)와 [구현 절차 스킬](skills/workout-implementation/SKILL.md)에 있습니다.
+
+앞서 정리한 기술 구성·코드 규칙·API·디자인·검증·운영 추천은 [개발 기반 스킬](skills/workout-foundation/SKILL.md)에 보관합니다. 스킬 원본은 이 저장소의 `skills/`이며, Codex 스킬 경로에 설치하면 `$workout-implementation`, `$workout-foundation`으로 사용할 수 있습니다. 로컬 설치본을 수정하기보다 저장소 원본을 갱신한 뒤 다시 설치하세요. 새 세션에서 스킬 목록이 갱신됩니다. 구현·수정 시 테스트 코드도 함께 작성하고 커밋 전과 PR 생성·갱신 전에 실행합니다. [테스트 스킬](skills/workout-testing/SKILL.md)은 `$workout-testing`으로 사용할 수 있습니다. PR 병합은 사용자가 수행합니다.
 
 ## 실행
 
@@ -44,3 +49,7 @@ http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세�
 `docker compose logs --tail 100 api`로 오류 확인, `./scripts/backup.ps1`로 SQL 백업. 백업은 PC 외부의 별도 안전한 저장소에도 보관하고 정기적으로 복원 확인을 하세요. AWS 초안·비용 관리는 `infrastructure/README.md`를 참고하세요. 자동 운영 배포는 아직 연결되지 않았습니다.
 
 실제 AWS 배포에는 계정, 실행 환경, 도메인, 비용 한도 결정이 필요합니다. 이 앱의 포트는 localhost에만 바인딩됩니다.
+
+## 프로젝트 전용 GitHub 계정
+
+이 프로젝트의 gh와 Git 인증은 sirloinbh 전용 설정을 사용합니다. VS Code 계정B 실행·환경변수·래퍼 명령·검증 방법은 [인증 설정 문서](docs/project-github-auth.md)를 참고하세요.

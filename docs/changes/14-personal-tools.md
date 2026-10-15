@@ -20,3 +20,15 @@ VS Code 터미널 설정과 초기화, 프로젝트 실행기는 회사 `GH_CONF
 ## CI startup allowance
 
 The first Windows CI test appears to have exceeded the previous 20-second subprocess timeout. The timeout is now 60 seconds, with existing behavior assertions preserved and direct spawn-error diagnostics added. All 14 local authentication tests and the full check passed again. The hosted delay was not reproduced locally; remote CI must still be rerun. See the linked work notes for evidence and commands.
+
+## PR #15 충돌 해결 (2026-10-15)
+
+최신 `origin/main`의 #12 변경을 기존 `feat/14-agent-task` 브랜치에 통합했다. `.vscode/settings.json`, `scripts/open-vscode-account-b.cmd`, `docs/project-github-auth.md`, `scripts/test/project-github-auth.test.mjs`의 충돌은 #14의 회사 `gh`·개인 `ghp` 분리와 개인 Codex 프로필 선택을 유지하도록 해결했다. main의 인증 안내와 #12 작업 기록도 보존했다.
+
+인증 테스트는 main의 임시 HOME/USERPROFILE 격리, 부모 인증 환경변수가 없는 경우의 복원, 다른 프로젝트의 GH_CONFIG_DIR 미설정/개인 설정 보존 검사를 함께 유지했다. 기존 PR의 실패 경로·인자 전달·회사/개인 계정 분리 검사를 유지하여 총 17개를 실행했다.
+
+- `node --test scripts/test/project-github-auth.test.mjs`: 17 pass, 0 fail, 0 skip.
+- `npm run check`: 통과. 포맷·lint·타입 검사·빌드 통과, backend 3 pass / 1 skip, 워커 34 pass / 0 fail.
+- DB 통합 검사 1개는 `TEST_DATABASE_URL` 미설정으로 skip했으며 로컬 DB 검증 완료로 계산하지 않는다.
+- 충돌 표시 잔존 검사 및 `git diff --check`: 통과.
+- 앱 기능이나 UI 변경은 없으며 PR 병합은 사용자가 수행한다.

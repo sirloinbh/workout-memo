@@ -82,3 +82,57 @@ PowerShell 실행기는 프로젝트의 `.local/node-v24.21.0-win-x64/node.exe`�
 테스트는 `npm run test:agents`이며 Linux와 Windows CI에서 실행한다. `npm run check`에도 포함한다. 이는 상태 전이와 프로세스 경계를 검증하며, 실제 기능 이슈의 모든 요구사항이 자동 충족된다는 보장은 아니다. 사용자 코드 검토와 최종 병합 절차를 유지한다.
 
 참고: [Codex 비대화형 실행](https://learn.chatgpt.com/docs/non-interactive-mode), [하위 에이전트](https://learn.chatgpt.com/docs/agent-configuration/subagents).
+
+## 역할별 모델과 명시적인 라우팅
+
+`scripts/agents/models.mjs`가 승인된 배정의 단일 원본이다. 각 호출은 배열 인자로 `--model <모델> -c model_reasoning_effort="<수준>"`을 전달한다. 사용자/전역 모델 설정을 바꾸지 않으며, 현재 채팅의 모델을 소급 변경하지 않는다. CLI 인자는 [공식 Codex CLI 문서](https://learn.chatgpt.com/docs/developer-commands?surface=cli)를 참고했다. 아래 모델 이름은 이슈 #24에서 사용자가 지정한 값이며, 계정의 실제 접근 가능 여부는 별도의 smoke 결과로 확인한다.
+
+| 역할           | 모델        | reasoning effort | 사용 경로                                              |
+| -------------- | ----------- | ---------------- | ------------------------------------------------------ |
+| planning       | gpt-6-astra | high             | 역할 smoke로 선택 가능; 자동 설계 단계는 추가하지 않음 |
+| debugging      | gpt-6-astra | high             | 명시적인 diagnose                                      |
+| highRiskReview | gpt-6-astra | high             | 명시적인 검토 옵션                                     |
+| tests          | gpt-6.1-sol | medium           | 테스트 단계                                            |
+| implementation | gpt-6.1-sol | medium           | 일반 구현 단계                                         |
+| review         | gpt-6.1-sol | medium           | 기본 검토 단계                                         |
+| research       | gpt-6-luna  | medium           | 역할 smoke로 선택 가능; 자동 검색 단계는 추가하지 않음 |
+| documentation  | gpt-6-luna  | medium           | 명시적인 문서 작업의 구현 단계                         |
+
+기존 job에 선택 필드가 없으면 `taskKind=code`, `reviewRole=review`로 동작한다. 문서 제목이나 본문 키워드로 Luna를 선택하지 않는다. 문서 작업도 테스트 단계는 Sol, 검토 단계는 선택한 검토 역할을 사용한다. 알 수 없는 역할/작업 종류/모델 옵션을 거부하며 모델 접근 실패 시 다른 모델로 재시도하지 않는다. 모델 변경은 사용자의 명시 요청을 반영한 설정 변경으로만 허용한다.
+
+```powershell
+./scripts/agents.ps1 enqueue -Issue 21 -TaskKind documentation
+./scripts/agents.ps1 enqueue -Issue 24 -ReviewRole highRiskReview
+# 이미 등록된 #21에는 enqueue를 반복하지 않는다.
+./scripts/agents.ps1 stop
+./scripts/agents.ps1 status
+# worker.running=false 확인 후 (현재 역할 호출이 끝날 때까지 기다린다)
+./scripts/agents.ps1 configure -Issue 21 -TaskKind documentation
+./scripts/agents.ps1 start
+```
+
+`configure`는 워커 잠금 아래에서 queued 또는 blocked이며 실행 단계가 없는 job만 갱신한다. 기존 worktree, 이슈, 단계, 시도 횟수, 결과는 보존한다. blocked 작업은 설정 변경 후 원인 해결 여부를 확인하고 `retry`를 따로 실행한다. 실행 중 job JSON을 수동 변경하지 않는다. `-TaskKind code`와 `-ReviewRole review`로 기본 배정을 명시할 수 있다. `status`의 `roles`에는 단계별 선택 역할/모델/추론 수준/실제 thread ID가 표시된다. 프로세스가 세션 시작 전에 실패하면 thread ID는 null이다.
+
+실제 모델 접근 확인은 주 대화가 검증 후 작은 read-only 호출로 수행한다. 모든 역할을 반복 호출할 필요 없이 세 모델의 대표 역할을 선택한다.
+
+```powershell
+./scripts/agents.ps1 smoke -Role implementation
+./scripts/agents.ps1 smoke -Role debugging
+./scripts/agents.ps1 smoke -Role documentation
+```
+
+`smoke` 기본 역할은 implementation이다. smoke도 모델 사용량을 소비하며 동일 home의 동시 smoke는 별도 잠금으로 배제한다. 가짜 Codex 테스트 통과는 실제 모델 접근 성공의 증거가 아니다. Astra high 및 반복 진단은 사용량을 더 소비할 수 있으므로 필요할 때 명시적으로 호출한다. 단순 입력·네트워크·권한 실패에 대한 자동 Astra escalation은 없다.
+
+## 읽기 전용 Astra 진단
+
+```powershell
+./scripts/agents.ps1 diagnose -Issue 24
+```
+
+등록된 이슈와 기존 worktree가 필요하다. 진단은 `--sandbox read-only`, `-a never`로 실행되며 소스·테스트·job·커밋 변경을 허용하지 않는다. 작업 오류/단계/이전 검증 결과를 모델에 전달하고 소스·테스트를 읽어 원인·증거·회복 제안을 JSON으로 반환하도록 요청한다. 인증 파일, .env, 백업, Terraform state, 연결 문자열과 환경 전체는 읽거나 출력하지 않는다. 전용 `TEST_DATABASE_URL`은 기존 npm/Codex 자식 프로세스에 그대로 상속하며 프로세스 출력에 포함되면 로그/오류에서 가린다.
+
+결과는 `.local/agent-workflow/diagnostics/<번호>/<시각>-<PID>/diagnostic-result.json`, 선택 모델·thread ID·분석 시점·파일/job 해시는 같은 폴더의 `diagnostic-metadata.json`, 실행 기록은 `diagnostic.log`에 저장된다. 스키마도 같은 폴더에 별도로 저장한다. 진단 잠금은 `.local/agent-workflow/diagnostics/<번호>/worker.lock`으로 기존 worker 잠금·스키마·결과와 분리된다. 같은 이슈의 진단끼리는 동시 실행을 거부하고 완료·실패 후 잠금을 해제한다. 모델 실패는 호출 1회와 실패 기록으로 종료하며 job을 재시도하거나 변경하지 않는다.
+
+구현 워커와 동시에 실행할 수 있지만 결과는 시점 스냅샷이다. 실행 전후 Git 추적 파일 및 ignore되지 않은 파일의 내용·이름과 job JSON 해시를 비교해 변경되면 `stale=true`로 표시한다. 민감 경로는 파일 해시 읽기에서도 제외한다. 스냅샷은 원자적 파일시스템 복제가 아니므로 동시 편집이 있었거나 결과 작성 이후 편집했다면 다시 확인한다. stale 결과를 그대로 적용하거나 자동 회복하지 않는다.
+
+이 변경은 현재 이슈 worktree에서만 구현한다. 별도 설치본/외부 root 지정/실행 중 워커 교체 경로는 도입하지 않았다. 검증 후 코디네이터가 배포·활성화를 담당하며 기존 큐·home·개인 계정 설정을 유지해야 한다. main 덮어쓰기나 자동 병합은 하지 않는다.

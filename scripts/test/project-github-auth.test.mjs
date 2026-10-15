@@ -13,6 +13,8 @@ function fixture() {
   const dir = mkdtempSync(join(tmpdir(), 'workout-gh-test-'));
   const bin = join(dir, 'bin');
   mkdirSync(bin);
+  const home = join(dir, 'home');
+  mkdirSync(home);
   const capture = join(bin, 'capture.mjs');
   writeFileSync(
     capture,
@@ -27,10 +29,11 @@ function fixture() {
     dir,
     env: {
       ...process.env,
+      HOME: home,
       PATH: bin + delimiter + process.env.PATH,
       LOCALAPPDATA: join(dir, 'appdata'),
       APPDATA: join(dir, 'roaming'),
-      USERPROFILE: join(dir, 'user'),
+      USERPROFILE: home,
       CODEX_HOME: join(dir, 'original-codex'),
       GH_CONFIG_DIR: join(dir, 'original-gh'),
       GH_TOKEN: 'dummy-gh-token',
@@ -349,7 +352,7 @@ test(
   },
 );
 
-for (const mode of ['command failure', 'missing personal account']) {
+for (const mode of ['command failure', 'missing personal account', 'unset parent']) {
   test(`project wrapper restores parent environment after ${mode}`, { skip: !windows }, () => {
     const f = fixture();
     try {
@@ -373,7 +376,11 @@ try { $result=& '${wrapper}' api user; $status=$LASTEXITCODE } catch { $failed=$
         {
           env: {
             ...f.env,
-            ...(mode === 'command failure' ? { TEST_EXIT: '17' } : { TEST_TOKEN_FAIL: '1' }),
+            ...(mode === 'command failure'
+              ? { TEST_EXIT: '17' }
+              : mode === 'missing personal account'
+                ? { TEST_TOKEN_FAIL: '1' }
+                : { GH_CONFIG_DIR: undefined, GH_TOKEN: undefined, GITHUB_TOKEN: undefined }),
           },
           encoding: 'utf8',
           timeout: processTimeoutMs,
@@ -383,7 +390,10 @@ try { $result=& '${wrapper}' api user; $status=$LASTEXITCODE } catch { $failed=$
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.restored, true);
-      assert.equal(got.status, mode === 'command failure' ? 17 : 1);
+      assert.equal(
+        got.status,
+        mode === 'command failure' ? 17 : mode === 'missing personal account' ? 1 : 0,
+      );
       assert.equal(got.failed, mode === 'missing personal account');
     } finally {
       f.cleanup();
@@ -438,3 +448,39 @@ $status=$LASTEXITCODE
     }
   },
 );
+
+for (const config of ['absent', 'personal']) {
+  test(
+    'account B launcher preserves another project with ' + config + ' configuration',
+    { skip: !windows },
+    () => {
+      const f = fixture();
+      try {
+        const other = join(f.dir, 'another-project');
+        mkdirSync(other);
+        const env = { ...f.env };
+        if (config === 'absent') delete env.GH_CONFIG_DIR;
+        else env.GH_CONFIG_DIR = join(f.env.USERPROFILE, '.config', 'gh-personal');
+        const r = spawnSync(
+          'cmd.exe',
+          ['/d', '/c', resolve('scripts/open-vscode-account-b.cmd'), other],
+          {
+            env,
+            encoding: 'utf8',
+            timeout: processTimeoutMs,
+          },
+        );
+        assert.ifError(r.error);
+        assert.equal(r.status, 0, r.stderr);
+        const got = JSON.parse(r.stdout.trim());
+        assert.equal(got.config, env.GH_CONFIG_DIR ?? null);
+        assert.equal(got.pinned, false);
+        assert.equal(got.ghToken, true);
+        assert.equal(got.githubToken, true);
+        assert.equal(got.args.at(-1), other);
+      } finally {
+        f.cleanup();
+      }
+    },
+  );
+}

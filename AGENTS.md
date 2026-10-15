@@ -51,4 +51,14 @@
 - 워커는 이슈별 worktree에서 테스트 → 구현 → 독립 검토를 별도 Codex 실행으로 처리한다. 이미 등록한 이슈와 준비한 브랜치를 재사용하며 하위 에이전트가 이슈·브랜치를 중복 생성하지 않는다.
 - 워커가 지시한 테스트·구현 역할은 파일 변경과 검증 기록만 수행한다. 검토 역할은 읽기 전용이다. 커밋·푸시·PR은 검증 후 워커가 담당한다. PR 병합은 사용자만 수행한다.
 - 워커 변경은 `npm run test:agents`로 상태 전이·잠금·실행 경계 동작을 검증한다. 전체 `npm run check`에도 포함한다.
+- 워커 모델은 `scripts/agents/models.mjs`에서 역할별로 고정하고 모든 `codex exec`에 모델·추론 수준을 명시한다. 사용자 명시 요청 전 모델 변경 및 임의 fallback을 금지한다. 접근 실패는 blocked로 기록한다. 현재 채팅이나 사용자/전역 Codex 설정은 변경하지 않는다.
+
+| 역할                                | 모델        | reasoning effort |
+| ----------------------------------- | ----------- | ---------------- |
+| planning, debugging, highRiskReview | gpt-6-astra | high             |
+| tests, implementation, review       | gpt-6.1-sol | medium           |
+| research, documentation             | gpt-6-luna  | medium           |
+
+- 일반 작업은 Sol이며 문서 구현은 `enqueue -Issue <번호> -TaskKind documentation`, 고위험 검토는 `-ReviewRole highRiskReview`로 명시한다. 제목/본문으로 자동 분류하지 않는다. 기존 #21 변경은 워커 종료 후 `configure -Issue 21 -TaskKind documentation`을 사용한다.
+- 어려운 디버깅은 `./scripts/agents.ps1 diagnose -Issue <번호>`를 사용한다. Astra 진단은 읽기 전용이며 별도 잠금·스키마·결과를 ignored `.local/agent-workflow/diagnostics/`에 기록한다. 동시 구현 중에는 시점 스냅샷이며 stale 여부를 확인한다. 자동 escalation은 없다. Astra high와 반복 smoke/진단은 사용량을 소비하므로 명시적 필요가 있을 때만 호출한다. 상세 절차는 [운영 문서](docs/local-agent-workflow.md)를 따른다.
 - 큐·로그·로컬 실행 설정은 무시되는 `.local/agent-workflow/`에 저장한다. 진행 확인은 `./scripts/agents.ps1 status`, 중지는 `./scripts/agents.ps1 stop`이다. 채팅 메시지가 없을 때 워커 상태를 이 대화에 자동으로 보내는 기능은 없다.

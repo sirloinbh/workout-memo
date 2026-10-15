@@ -10,6 +10,8 @@ function fixture() {
   const dir = mkdtempSync(join(tmpdir(), 'workout-gh-test-'));
   const bin = join(dir, 'bin');
   mkdirSync(bin);
+  const home = join(dir, 'home');
+  mkdirSync(home);
   const capture = join(bin, 'capture.mjs');
   writeFileSync(
     capture,
@@ -24,6 +26,8 @@ function fixture() {
     dir,
     env: {
       ...process.env,
+      HOME: home,
+      USERPROFILE: home,
       PATH: bin + delimiter + process.env.PATH,
       LOCALAPPDATA: join(dir, 'appdata'),
       GH_CONFIG_DIR: join(dir, 'original-gh'),
@@ -56,7 +60,7 @@ test(
       const r = runGh(f, ['api', 'user', '--jq', '.login']);
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
-      assert.equal(got.config, join(f.env.LOCALAPPDATA, 'gh-workout-memo'));
+      assert.equal(got.config, join(f.env.USERPROFILE, '.config', 'gh-personal'));
       assert.equal(got.ghToken, true);
       assert.equal(got.pinned, true);
       assert.equal(got.githubToken, false);
@@ -123,7 +127,7 @@ test(
       });
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
-      assert.equal(got.config, join(f.env.LOCALAPPDATA, 'gh-workout-memo'));
+      assert.equal(got.config, join(f.env.USERPROFILE, '.config', 'gh-personal'));
       assert.equal(got.ghToken, true);
       assert.equal(got.pinned, true);
       assert.equal(got.githubToken, false);
@@ -230,8 +234,136 @@ test('project terminal gh command uses the installed account wrapper', { skip: !
     assert.equal(r.status, 0, r.stderr);
     const got = JSON.parse(r.stdout.trim());
     assert.equal(got.pinned, true);
+    assert.equal(got.config, join(f.env.USERPROFILE, '.config', 'gh-personal'));
     assert.deepEqual(got.args, ['api', 'user', '--jq', '.login']);
   } finally {
     f.cleanup();
   }
 });
+
+// VS Code expands these environment placeholders when opening a project terminal.
+test('project terminal uses personal authentication and keeps scripts in their install directory', () => {
+  const settings = JSON.parse(readFileSync(resolve('.vscode/settings.json'), 'utf8'));
+  const env = settings['terminal.integrated.env.windows'];
+  assert.equal(
+    env.GH_CONFIG_DIR.replaceAll('\\', '/'),
+    '$' + '{env:USERPROFILE}/.config/gh-personal',
+  );
+  assert.equal(env.GH_TOKEN, null);
+  assert.equal(env.GITHUB_TOKEN, null);
+  const profile = settings['terminal.integrated.profiles.windows']['Workout Memo PowerShell'];
+  assert.equal(
+    profile.args.at(-1).replaceAll('\\', '/'),
+    '$' + '{env:LOCALAPPDATA}/gh-workout-memo/project-terminal.ps1',
+  );
+});
+
+test(
+  'account B launcher selects personal authentication for an explicit project path',
+  { skip: !windows },
+  () => {
+    const f = fixture();
+    try {
+      const r = spawnSync(
+        'cmd.exe',
+        ['/d', '/c', resolve('scripts/open-vscode-account-b.cmd'), process.cwd()],
+        {
+          env: f.env,
+          encoding: 'utf8',
+          timeout: 20000,
+        },
+      );
+      assert.equal(r.status, 0, r.stderr);
+      const got = JSON.parse(r.stdout.trim());
+      assert.equal(got.config, join(f.env.USERPROFILE, '.config', 'gh-personal'));
+      assert.equal(got.pinned, true);
+      assert.equal(got.githubToken, false);
+      assert.equal(got.args.at(-1), process.cwd());
+    } finally {
+      f.cleanup();
+    }
+  },
+);
+
+for (const config of ['absent', 'personal']) {
+  test(
+    'account B launcher preserves another project with ' + config + ' configuration',
+    { skip: !windows },
+    () => {
+      const f = fixture();
+      try {
+        const other = join(f.dir, 'another-project');
+        mkdirSync(other);
+        const env = { ...f.env };
+        if (config === 'absent') delete env.GH_CONFIG_DIR;
+        else env.GH_CONFIG_DIR = join(f.env.USERPROFILE, '.config', 'gh-personal');
+        const r = spawnSync(
+          'cmd.exe',
+          ['/d', '/c', resolve('scripts/open-vscode-account-b.cmd'), other],
+          {
+            env,
+            encoding: 'utf8',
+            timeout: 20000,
+          },
+        );
+        assert.equal(r.status, 0, r.stderr);
+        const got = JSON.parse(r.stdout.trim());
+        assert.equal(got.config, env.GH_CONFIG_DIR ?? null);
+        assert.equal(got.pinned, false);
+        assert.equal(got.ghToken, true);
+        assert.equal(got.githubToken, true);
+        assert.equal(got.args.at(-1), other);
+      } finally {
+        f.cleanup();
+      }
+    },
+  );
+}
+
+for (const scenario of ['command-failure', 'missing-account', 'unset-parent']) {
+  test('project gh restores its caller after ' + scenario, { skip: !windows }, () => {
+    const f = fixture();
+    try {
+      const env = { ...f.env };
+      if (scenario === 'command-failure') env.TEST_EXIT = '17';
+      if (scenario === 'missing-account') env.TEST_TOKEN_FAIL = '1';
+      if (scenario === 'unset-parent') {
+        delete env.GH_CONFIG_DIR;
+        delete env.GH_TOKEN;
+        delete env.GITHUB_TOKEN;
+      }
+      const wrapper = resolve('scripts/gh-project.ps1').replaceAll("'", "''");
+      const harness = join(f.dir, 'restore-failure.ps1');
+      writeFileSync(
+        harness,
+        `
+$beforeConfig=$env:GH_CONFIG_DIR
+$beforeGh=$env:GH_TOKEN
+$beforeGithub=$env:GITHUB_TOKEN
+$failed=$false
+try { $null=& '${wrapper}' api user; $status=$LASTEXITCODE } catch { $failed=$true; $status=1 }
+@{status=$status;failed=$failed;restored=($env:GH_CONFIG_DIR -eq $beforeConfig -and $env:GH_TOKEN -eq $beforeGh -and $env:GITHUB_TOKEN -eq $beforeGithub)} | ConvertTo-Json
+`,
+      );
+      const r = spawnSync(
+        'powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', harness],
+        {
+          env,
+          encoding: 'utf8',
+          timeout: 20000,
+        },
+      );
+      assert.equal(r.status, 0, r.stderr);
+      const got = JSON.parse(r.stdout.trim());
+      assert.equal(got.restored, true);
+      assert.equal(
+        got.status,
+        scenario === 'command-failure' ? 17 : scenario === 'missing-account' ? 1 : 0,
+      );
+      assert.equal(got.failed, scenario === 'missing-account');
+    } finally {
+      f.cleanup();
+    }
+  });
+}

@@ -14,6 +14,8 @@
 
 ## 프로젝트 기준
 
+- GitHub 개인 작업은 `ghp`를 우선 사용하며, 함수가 없는 비대화형 워커·Git helper는 `scripts/gh-project.ps1`을 명시적으로 호출한다. 개인 설정은 `%USERPROFILE%/.config/gh-personal`, 기대 계정은 `sirloinbh`이다. 기본 `gh`는 회사 계정 `byunghKim`용으로 유지하며 프로젝트 원격 변경에 사용하지 않는다.
+- Codex는 `CODEX_HOME=%LOCALAPPDATA%/Codex-Account-B`로 기존 개인 계정B 프로필을 선택한다. 실행 중인 회사 계정 대화의 자동 전환을 전제하지 않는다. 인증 및 실행기 적용 절차는 [인증 문서](docs/project-github-auth.md)를 따른다.
 - 개발 기준 저장소: `sirloinbh/workout-memo`. 코드 원본은 이 우산 모노레포에서 관리한다.
 - 이 저장소의 GitHub 작업은 개인 계정 `sirloinbh`의 `ghp` 또는 `scripts/gh-project.ps1` 프로젝트 래퍼를 사용한다. 기본 회사 계정 `gh`로 원격 변경을 수행하지 않는다. 개인 인증 설정은 `%USERPROFILE%/.config/gh-personal`을 재사용하며, 설치 스크립트 위치 `%LOCALAPPDATA%/gh-workout-memo`와 구분한다.
 - `frontend`, `backend`, `database`, `infrastructure`의 별도 저장소는 subtree 배포 대상이다. 일상적인 PR 작업 중 별도 저장소나 `main`에 직접 푸시하지 않는다. `scripts/push-repositories.ps1`은 별도 동기화 요청 시에만 사용한다.

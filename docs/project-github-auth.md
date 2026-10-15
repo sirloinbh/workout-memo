@@ -1,29 +1,33 @@
-# 프로젝트 전용 GitHub 계정
+# 프로젝트 GitHub와 Codex 계정
 
-이 프로젝트는 개인 계정 sirloinbh와 기존 개인 GitHub CLI 설정 폴더 %USERPROFILE%/.config/gh-personal을 사용한다. 기본 gh는 회사 계정 byunghKim, ghp는 개인 계정 sirloinbh로 분리되어 있다. 이 저장소의 원격 변경에는 ghp 또는 프로젝트 래퍼를 사용한다. 인증 설정은 저장소 외부에 있으며 인증 정보는 커밋하지 않는다. Windows 키체인의 공유 활성 토큰에 의존하지 않도록 래퍼는 명령마다 auth token --user sirloinbh로 계정을 명시해 해당 자식 프로세스의 GH_TOKEN에만 주입한다. 앱 .env는 gh가 자동으로 읽지 않으므로 GitHub 설정은 앱 .env에 넣지 않는다.
+이 프로젝트에서도 기본 `gh`는 회사 계정 `byunghKim`용으로 유지한다. 프로젝트의 개인 GitHub 작업은 `ghp`를 우선 사용한다. `ghp`는 `scripts/gh-project.ps1` 래퍼를 호출하며 개인 설정 `%USERPROFILE%/.config/gh-personal`과 계정 `sirloinbh`를 명시한다. 설치 스크립트 경로 `%LOCALAPPDATA%/gh-workout-memo`는 인증 설정 경로와 별개다.
 
-## 사용
+## GitHub 사용
 
-- VS Code의 새 프로젝트 터미널: .vscode/settings.json이 GH_CONFIG_DIR를 %USERPROFILE%/.config/gh-personal로 지정하고 상속 토큰을 제거한다. 프로젝트 PowerShell 프로필의 gh 함수가 명시적 계정 래퍼를 사용한다.
-- Codex·외부 PowerShell: ./scripts/gh-project.ps1 api user --jq .login 처럼 래퍼를 사용한다. 이 래퍼는 전용 환경을 설정하고 실행 후 기존 환경을 복원한다.
-- Git push/fetch: 이 저장소의 로컬 credential helper를 같은 래퍼로 설정한다. 전역 Git credential manager는 바꾸지 않는다.
-- 기존 ghp의 개인 인증을 그대로 재사용한다. 인증이 없거나 sirloinbh 토큰을 조회할 수 없으면 다른 계정으로 대체하지 않고 실패한다. 이 연결 작업에서 전역 gh/ghp, 회사 설정, hosts.yml, 자격 증명 저장소나 브라우저 로그인을 변경하거나 auth logout/auth switch를 실행하지 않는다.
-- 상속받은 토큰 환경변수는 프로젝트 프로세스에서만 제거하고, 필요한 명령에는 sirloinbh 인증을 메모리로 주입한다. 토큰 값을 문서·로그·테스트 출력에 기록하지 않는다.
+- VS Code의 새 프로젝트 터미널은 회사 설정 `GH_CONFIG_DIR=%APPDATA%/GitHub CLI`를 사용하고 상속받은 `GH_TOKEN`/`GITHUB_TOKEN`을 제거한다. `project-terminal.ps1`은 `gh`를 재정의하지 않고 `ghp` 함수만 제공하므로 PowerShell 사용자 프로필 없이도 사용할 수 있다. 초기화 스크립트도 회사 설정과 개인 `CODEX_HOME`을 지정하여 이전 브랜치의 VS Code 설정으로 열어도 설치본 갱신 후에는 같은 조합을 적용한다.
+- 개인 계정 확인: `ghp api user --jq .login`. 기대 계정은 `sirloinbh`이다. 기본 회사 `gh`로 이 프로젝트의 이슈·푸시·PR 등 원격 변경을 수행하지 않는다.
+- 함수가 없는 비대화형 워커·외부 PowerShell: `./scripts/gh-project.ps1 api user --jq .login`처럼 래퍼를 명시적으로 사용한다.
+- Git push/fetch: 이 저장소의 로컬 credential helper는 `%LOCALAPPDATA%/gh-workout-memo/gh-project.ps1` 설치본을 사용한다. 전역 helper와 회사 기본 인증은 변경하지 않는다. 재클론 시 로컬 helper 설정은 별도로 필요하다.
+- 개인 폴더에 처음 인증해야 한다면 `ghp auth login --hostname github.com --git-protocol https --web` 또는 같은 인자의 명시적 래퍼를 사용한다. 기존 개인 로그인은 그대로 사용하며 이 변경 자체는 로그인을 실행하거나 토큰 저장소를 옮기지 않는다.
 
-## VSCode-계정B.cmd
+래퍼는 상속 토큰을 제거한 뒤 `auth token --hostname github.com --user sirloinbh`로 계정을 명시해 해당 호출의 `GH_TOKEN`에만 적용한다. 계정이 없으면 다른 계정으로 대체하지 않고 실패한다. 성공·실패 후 부모 환경을 복원하고 인자·종료 코드·Git credential 요청의 stdin을 전달한다. 토큰 값을 문서·로그에 기록하지 않는다. 앱 환경 파일에 GitHub 인증을 넣지 않는다.
 
-바탕화면 실행 파일에는 scripts/open-vscode-account-b.cmd의 로컬 경로 적용 사본을 설치한다. 저장소 브랜치를 바꿔도 실행 파일 자체는 동작한다. 인자 없이 실행하거나 이 프로젝트 경로를 첫 인자로 지정하면 이 프로젝트를 열며 계정B의 CODEX_HOME과 프로젝트 전용 VS Code 사용자 데이터 폴더 %LOCALAPPDATA%/VSCode-Account-B-workout-memo 및 GH_CONFIG_DIR=%USERPROFILE%/.config/gh-personal을 적용한다. 다른 프로젝트의 계정B 창은 기존 VSCode-Account-B 폴더를 사용하므로 VS Code 프로세스 환경도 분리된다. sirloinbh 인증도 프로세스 메모리에 전달하므로 확장 프로그램의 gh 실행에 적용된다. 다른 폴더를 첫 인자로 주면 해당 폴더를 열고 기존 GitHub 환경을 보존하며 개인 설정을 새로 주입하지 않는다. 실행기의 setlocal 범위 밖 부모 환경도 유지된다.
+## 개인 Codex 프로필
 
-VSCode-계정B.cmd를 다시 실행해 프로젝트 전용 창에서 작업한다. 기존 계정B 창의 설정과 로그인 UI 상태는 별도 데이터에 남으며, 새 프로젝트 창의 에디터 개인 설정은 필요 시 다시 적용한다. Codex 인증 경로 CODEX_HOME은 계정B 그대로 유지한다. VS Code 통합 터미널은 새로 열어야 한다.
+공식 환경변수 `CODEX_HOME`으로 Codex의 로컬 설정·상태 저장 위치를 선택한다. 이 프로젝트는 `%LOCALAPPDATA%/Codex-Account-B`의 기존 개인 계정B 프로필을 사용한다. 여기서 계정B 프로필은 기존 홈 폴더를 가리키며 `--profile` 설정 프리셋과 구분한다. [OpenAI 공식 구성 문서](https://learn.chatgpt.com/docs/config-file/config-advanced#config-and-state-locations)는 `CODEX_HOME` 아래에 설정과 로컬 상태를 저장한다고 설명한다.
 
-로컬 Git credential helper와 터미널 프로필이 사용하는 설치 스크립트는 %LOCALAPPDATA%/gh-workout-memo/gh-project.ps1 및 project-terminal.ps1에 둔다. 이 위치는 스크립트 보관용이며 인증 설정 폴더가 아니다. 브랜치를 바꿔도 설치 경로는 유지된다. 재클론 시 로컬 helper를 다시 설정하고, 래퍼를 수정하면 설치본도 갱신한다. 프로젝트를 옮기면 바탕화면 실행 파일의 WORKOUT_PROJECT_ROOT를 갱신한다. 워커는 worktree의 버전 관리 파일만 수정하며 실제 사용자 설치본 갱신과 최종 Git 인증 확인은 주 대화에서 담당한다. gh 설정 폴더 분리는 계정 선택을 분리하며 Windows 사용자 자체를 보안 격리하는 기능은 아니다.
+실행기는 이 홈을 선택할 뿐 실제 로그인이나 인증 저장 방식을 변경하지 않는다. 이미 실행 중인 회사 계정 Codex 대화가 자동 전환되는 것은 아니다. 새 프로젝트 창과 새 터미널에서 개인 프로필을 사용해야 한다. ChatGPT 앱 계정은 별도이며 앱에서 개인 계정을 선택해야 한다. 이메일이나 인증 파일은 저장소에 기록하지 않는다.
+
+## VSCode-계정B.cmd와 설치본
+
+바탕화면 실행 파일은 `scripts/open-vscode-account-b.cmd`의 로컬 경로 적용 사본이다. 인자 없이 실행하거나 프로젝트 루트를 첫 인자로 전달하면 개인 `CODEX_HOME`, 회사 `GH_CONFIG_DIR`, 프로젝트 전용 사용자 데이터 폴더 `%LOCALAPPDATA%/VSCode-Account-B-workout-memo`로 연다. 상속 토큰을 제거하며 개인 GitHub 토큰을 조회하거나 VS Code 프로세스 전체에 주입하지 않는다. 다른 폴더를 첫 인자로 전달하면 기존 GitHub 환경을 보존하고 `%LOCALAPPDATA%/VSCode-Account-B` 사용자 데이터 폴더를 사용한다. 배치 실행기의 `setlocal`은 호출자의 환경을 보존한다.
+
+워커는 버전 관리 파일만 수정한다. 래퍼·터미널 초기화 설치본과 바탕화면 실행기 갱신은 주 대화에서 별도로 진행한다. 설치 경로는 그대로 유지하며 전역 `gh`/`ghp`, 회사 Codex 프로필과 회사 인증은 변경하지 않는다. 갱신 후 실행기를 다시 실행하고 통합 터미널을 새로 열어야 한다. 브랜치를 바꿔도 설치본 경로는 유지된다. 프로젝트 이동 시 바탕화면 실행 파일의 `WORKOUT_PROJECT_ROOT`도 갱신한다.
 
 ## 검증
 
-node --test scripts/test/project-github-auth.test.mjs
+`node --test scripts/test/project-github-auth.test.mjs`
 
-Windows 테스트는 가짜 gh·code 프로그램과 임시 HOME/USERPROFILE/LOCALAPPDATA를 사용하므로 실제 인증·VS Code 실행·기본 설정을 변경하지 않는다. 개인 인증 경로, 기본·명시적 프로젝트 선택, 다른 프로젝트 환경 보존, 호출자 환경 복원, 계정 지정, 인자·종료 코드·stdin 전달을 검증한다. 다른 운영체제에서는 Windows 전용 검사를 skip한다. 실사용 확인은 주 대화에서 래퍼 api user와 실제 Git credential helper를 토큰 출력 없이 수행한다.
+Windows 테스트는 가짜 `gh`·`code`, 임시 `USERPROFILE`/`APPDATA`/`LOCALAPPDATA`와 합성 토큰만 사용한다. 회사 gh와 개인 ghp 분리, 부모 환경 복원, CODEX_HOME 초기화, 실행기 조합과 다른 프로젝트 보존, 인자·종료 코드·stdin 전달을 검증한다. 실제 인증·설치본·VS Code는 사용하지 않는다. 다른 운영체제에서는 Windows 전용 검사를 skip한다. 실제 계정과 Git helper 확인은 설치본 갱신 후 주 대화에서 토큰 출력 없이 수행한다.
 
-공식 참고: https://cli.github.com/manual/gh_help_environment , https://code.visualstudio.com/docs/terminal/profiles
-
-Git credential helper가 표시하는 username은 x-access-token일 수 있다. 토큰을 출력하지 않고 API로 확인한 실제 소유자는 sirloinbh이다.
+참고: [GitHub CLI 환경변수](https://cli.github.com/manual/gh_help_environment), [VS Code 터미널 프로필](https://code.visualstudio.com/docs/terminal/profiles).

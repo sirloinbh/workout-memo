@@ -1,0 +1,18 @@
+# #14 회사 gh와 개인 ghp·Codex 분리
+
+- 이슈: https://github.com/sirloinbh/workout-memo/issues/14
+- 상세 작업·명령·결과: [14-agent-task.md](14-agent-task.md)
+
+## 변경
+
+`project-terminal.ps1`은 회사 `gh`를 유지하고 개인 `ghp`만 정의한다. 래퍼는 `%USERPROFILE%/.config/gh-personal`에서 `sirloinbh`를 명시하며 상속 토큰 차단과 부모 환경 복원, 인자·종료 코드·stdin 전달을 유지한다. 스크립트 설치 경로 `%LOCALAPPDATA%/gh-workout-memo`는 그대로다.
+
+VS Code 터미널 설정과 초기화, 프로젝트 실행기는 회사 `GH_CONFIG_DIR=%APPDATA%/GitHub CLI`와 개인 `CODEX_HOME=%LOCALAPPDATA%/Codex-Account-B`를 선택하고 상속 토큰을 제거한다. 실행기의 개인 GitHub 토큰 조회·프로세스 전체 주입과 Codex 설정 파일 자동 생성을 제거했다. 다른 프로젝트의 기존 GitHub 환경은 보존한다.
+
+이 변경은 #12 및 PR #13의 gh 재정의와 프로세스 전체 개인 GitHub 환경 주입을 대체한다. 코디네이터가 PR 설명에도 이 관계를 명시해야 한다. 기존 PR 병합·종료는 수행하지 않는다.
+
+## 검증 및 후속 작업
+
+`node --test scripts/test/project-github-auth.test.mjs`는 14 pass / 0 fail / 0 skip, `npm run check`는 종료 코드 0으로 통과했다. 전체 검사에서 backend 4개(제공된 전용 DB 통합 검사 포함)와 워커 34개 테스트 및 빌드가 통과했다. 상세 명령은 작업 기록에 남겼다. 테스트 단계가 준비한 assertion을 유지했다.
+
+실제 설치본·바탕화면 실행기 갱신과 계정 확인은 주 대화에서 진행하며 워커는 로그인·토큰 저장소·전역 명령·회사 Codex 홈을 변경하지 않는다. ChatGPT 앱은 별도 계정 선택이 필요하고 실행 중인 회사 계정 대화는 자동 전환되지 않는다.

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { redact } from './security.mjs';
 
 export function fingerprintFiles(directory, names) {
   const hash = createHash('sha256');
@@ -24,12 +25,12 @@ export function fingerprintFiles(directory, names) {
 export function saveJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
+  fs.writeFileSync(temporary, JSON.stringify(redact(value), null, 2) + '\n', { mode: 0o600 });
   fs.renameSync(temporary, file);
 }
 
 export function readJson(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+  return redact(JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')));
 }
 
 export function listJobs(directory) {

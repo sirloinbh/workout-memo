@@ -1,9 +1,14 @@
 param(
-    [ValidateSet('start', 'stop', 'status', 'doctor', 'smoke', 'enqueue', 'retry', 'accept-requirements', 'cancel')]
+    [ValidateSet('start', 'stop', 'status', 'doctor', 'smoke', 'enqueue', 'configure', 'diagnose', 'retry', 'accept-requirements', 'cancel')]
     [string]$Action = 'status',
-    [int]$Issue = 0
+    [int]$Issue = 0,
+    [ValidateSet('code', 'documentation')][string]$TaskKind,
+    [ValidateSet('review', 'highRiskReview')][string]$ReviewRole,
+    [ValidateSet('planning', 'debugging', 'highRiskReview', 'tests', 'implementation', 'review', 'research', 'documentation')][string]$Role
 )
 $ErrorActionPreference = 'Stop'
+if (($TaskKind -or $ReviewRole) -and $Action -notin @('enqueue', 'configure')) { throw 'Routing options require enqueue or configure.' }
+if ($Role -and $Action -ne 'smoke') { throw '-Role requires smoke.' }
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $localRoot = Join-Path $projectRoot '.local/agent-workflow'
 $cliPath = Join-Path $projectRoot 'scripts/agents/cli.mjs'
@@ -23,11 +28,16 @@ if ($Action -eq 'start') {
     if (Test-Path -LiteralPath $stopPath) { Remove-Item -LiteralPath $stopPath }
     $workerProcess = Start-Process -FilePath $nodeExecutable -ArgumentList @('"' + $cliPath + '"', 'work') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $localRoot 'worker.stdout.log') -RedirectStandardError (Join-Path $localRoot 'worker.stderr.log')
     Write-Output "Worker launched (PID $($workerProcess.Id)). Use scripts/agents.ps1 status to inspect jobs."
-} elseif ($Action -in @('enqueue', 'retry', 'accept-requirements', 'cancel')) {
+} elseif ($Action -in @('enqueue', 'configure', 'diagnose', 'retry', 'accept-requirements', 'cancel')) {
     if ($Issue -lt 1) { throw '-Issue must be a positive GitHub issue number.' }
-    & $nodeExecutable $cliPath $Action $Issue
+    $cliArguments = @($Action, "$Issue")
+    if ($TaskKind) { $cliArguments += @('--task-kind', $TaskKind) }
+    if ($ReviewRole) { $cliArguments += @('--review-role', $ReviewRole) }
+    & $nodeExecutable $cliPath @cliArguments
     if ($LASTEXITCODE -ne 0) { throw "$Action failed." }
 } else {
-    & $nodeExecutable $cliPath $Action
+    $cliArguments = @($Action)
+    if ($Role) { $cliArguments += @('--role', $Role) }
+    & $nodeExecutable $cliPath @cliArguments
     if ($LASTEXITCODE -ne 0) { throw "$Action failed." }
 }

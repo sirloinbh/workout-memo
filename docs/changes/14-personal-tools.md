@@ -13,6 +13,10 @@ VS Code 터미널 설정과 초기화, 프로젝트 실행기는 회사 `GH_CONF
 
 ## 검증 및 후속 작업
 
-`node --test scripts/test/project-github-auth.test.mjs`는 14 pass / 0 fail / 0 skip, `npm run check`는 종료 코드 0으로 통과했다. 전체 검사에서 backend 4개(제공된 전용 DB 통합 검사 포함)와 워커 34개 테스트 및 빌드가 통과했다. 상세 명령은 작업 기록에 남겼다. 테스트 단계가 준비한 assertion을 유지했다.
+`node --test scripts/test/project-github-auth.test.mjs`는 14 pass / 0 fail / 0 skip, `npm run check`는 종료 코드 0으로 통과했다. 최초 구현 검증에서는 제공된 전용 DB 통합 검사까지 통과했다. 최신 CI 보완 재검증에서는 전용 DB 환경이 없어 backend 3 pass / 1 skip이며 워커 34개 테스트 및 빌드가 통과했다. 최신 실행을 DB 검증 완료로 보고하지 않는다. 상세 명령은 작업 기록에 남겼다. 테스트 단계가 준비한 assertion을 유지했다.
 
 실제 설치본·바탕화면 실행기 갱신과 계정 확인은 주 대화에서 진행하며 워커는 로그인·토큰 저장소·전역 명령·회사 Codex 홈을 변경하지 않는다. ChatGPT 앱은 별도 계정 선택이 필요하고 실행 중인 회사 계정 대화는 자동 전환되지 않는다.
+
+## CI startup allowance
+
+The first Windows CI test appears to have exceeded the previous 20-second subprocess timeout. The timeout is now 60 seconds, with existing behavior assertions preserved and direct spawn-error diagnostics added. All 14 local authentication tests and the full check passed again. The hosted delay was not reproduced locally; remote CI must still be rerun. See the linked work notes for evidence and commands.

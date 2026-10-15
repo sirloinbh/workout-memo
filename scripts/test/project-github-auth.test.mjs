@@ -6,6 +6,9 @@ import { join, resolve, delimiter } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const windows = process.platform === 'win32';
+// Hosted Windows runners can take over 20 seconds to start the first PowerShell process.
+// Keep a bounded startup allowance without retrying or changing behavior assertions.
+const processTimeoutMs = 60000;
 function fixture() {
   const dir = mkdtempSync(join(tmpdir(), 'workout-gh-test-'));
   const bin = join(dir, 'bin');
@@ -47,7 +50,7 @@ function runGh(f, args = [], extra = {}) {
       resolve('scripts/gh-project.ps1'),
       ...args,
     ],
-    { env: { ...f.env, ...extra }, encoding: 'utf8', timeout: 20000 },
+    { env: { ...f.env, ...extra }, encoding: 'utf8', timeout: processTimeoutMs },
   );
 }
 test(
@@ -57,6 +60,7 @@ test(
     const f = fixture();
     try {
       const r = runGh(f, ['api', 'user', '--jq', '.login']);
+      assert.ifError(r.error);
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.config, join(f.env.USERPROFILE, '.config', 'gh-personal'));
@@ -74,6 +78,7 @@ test('project gh propagates command failures', { skip: !windows }, () => {
   const f = fixture();
   try {
     const r = runGh(f, ['api', 'user'], { TEST_EXIT: '17' });
+    assert.ifError(r.error);
     assert.equal(r.status, 17, r.stderr);
   } finally {
     f.cleanup();
@@ -102,9 +107,10 @@ test('project gh forwards Git credential requests through stdin', { skip: !windo
         env: f.env,
         input: 'protocol=https\nhost=github.com\n\n',
         encoding: 'utf8',
-        timeout: 20000,
+        timeout: processTimeoutMs,
       },
     );
+    assert.ifError(r.error);
     assert.equal(r.status, 0, r.stderr);
     const got = JSON.parse(r.stdout.trim());
     assert.match(got.input, /host=github.com/);
@@ -122,8 +128,9 @@ test(
       const r = spawnSync('cmd.exe', ['/d', '/c', resolve('scripts/open-vscode-account-b.cmd')], {
         env: f.env,
         encoding: 'utf8',
-        timeout: 20000,
+        timeout: processTimeoutMs,
       });
+      assert.ifError(r.error);
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.config, join(f.env.APPDATA, 'GitHub CLI'));
@@ -149,8 +156,9 @@ test(
       const r = spawnSync(
         'cmd.exe',
         ['/d', '/c', resolve('scripts/open-vscode-account-b.cmd'), other],
-        { env: f.env, encoding: 'utf8', timeout: 20000 },
+        { env: f.env, encoding: 'utf8', timeout: processTimeoutMs },
       );
+      assert.ifError(r.error);
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.config, f.env.GH_CONFIG_DIR);
@@ -183,8 +191,9 @@ $status=$LASTEXITCODE
     const r = spawnSync(
       'powershell.exe',
       ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', harness],
-      { env: f.env, encoding: 'utf8', timeout: 20000 },
+      { env: f.env, encoding: 'utf8', timeout: processTimeoutMs },
     );
+    assert.ifError(r.error);
     assert.equal(r.status, 0, r.stderr);
     const got = JSON.parse(r.stdout.trim());
     assert.equal(got.status, 0);
@@ -204,6 +213,7 @@ test(
     const f = fixture();
     try {
       const r = runGh(f, ['api', 'user'], { TEST_TOKEN_FAIL: '1' });
+      assert.ifError(r.error);
       assert.notEqual(r.status, 0);
       assert.equal(r.stdout.trim(), '');
       assert.match(r.stderr, /sirloinbh/);
@@ -240,8 +250,9 @@ $after = gh api user --jq .login | ConvertFrom-Json
       const r = spawnSync(
         'powershell.exe',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', harness],
-        { env: f.env, encoding: 'utf8', timeout: 20000 },
+        { env: f.env, encoding: 'utf8', timeout: processTimeoutMs },
       );
+      assert.ifError(r.error);
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.ghFunction, false);
@@ -289,9 +300,10 @@ test(
         {
           env: { ...f.env, TEST_TOKEN_FAIL: '1', TEST_EXIT: '17' },
           encoding: 'utf8',
-          timeout: 20000,
+          timeout: processTimeoutMs,
         },
       );
+      assert.ifError(r.error);
       assert.equal(r.status, 17, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.config, join(f.env.APPDATA, 'GitHub CLI'));
@@ -322,8 +334,9 @@ test(
       const r = spawnSync('cmd.exe', ['/d', '/c', harness], {
         env: { ...f.env, GH_CONFIG_DIR: config },
         encoding: 'utf8',
-        timeout: 20000,
+        timeout: processTimeoutMs,
       });
+      assert.ifError(r.error);
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.config, config);
@@ -363,9 +376,10 @@ try { $result=& '${wrapper}' api user; $status=$LASTEXITCODE } catch { $failed=$
             ...(mode === 'command failure' ? { TEST_EXIT: '17' } : { TEST_TOKEN_FAIL: '1' }),
           },
           encoding: 'utf8',
-          timeout: 20000,
+          timeout: processTimeoutMs,
         },
       );
+      assert.ifError(r.error);
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.restored, true);
@@ -407,9 +421,10 @@ $status=$LASTEXITCODE
         {
           env: { ...f.env, TEST_EXIT: '17' },
           encoding: 'utf8',
-          timeout: 20000,
+          timeout: processTimeoutMs,
         },
       );
+      assert.ifError(r.error);
       assert.equal(r.status, 0, r.stderr);
       const got = JSON.parse(r.stdout.trim());
       assert.equal(got.status, 17);

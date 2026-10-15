@@ -55,3 +55,36 @@
 
 - 변경은 이 worktree에 미커밋 상태로 남긴다. 이슈 생성, 브랜치 전환, 커밋·푸시·PR·승인·병합이나 추가 에이전트 실행은 수행하지 않았다.
 - 실제 인증 저장소·설치본·바탕화면 실행기는 접근하거나 변경하지 않았다. 설치본과 실행기 갱신, 실제 계정 확인은 주 대화에서 진행해야 한다. 코디네이터가 독립 검토와 PR 설명에 #12/#13 대체 관계를 반영한다.
+
+## CI failure repair
+
+- The supplied windows-auth log shows the first test finishing after 20,362ms with status null; the other 13 tests passed. This matches the original 20,000ms subprocess timeout and suggests initial Windows process startup exceeded the allowance. The original log did not include the spawn error, so the exact cause of the delay remains unconfirmed.
+- All subprocesses now use a shared, bounded 60,000ms timeout. All existing assertions, skip conditions and 14 scenarios remain intact; no retries were added.
+- Added assert.ifError(r.error) before every subprocess status assertion to expose errors such as ETIMEDOUT directly. Authentication rejection must also be a real command result rather than a spawn error. Product scripts and installed copies are unchanged.
+
+### Actual commands and results
+
+- Before repair: `node --test scripts/test/project-github-auth.test.mjs`: exit 0, 14 pass / 0 fail / 0 skip, about 5.2 seconds. The CI timeout did not reproduce locally.
+- After repair: `node --test scripts/test/project-github-auth.test.mjs`: exit 0, 14 pass / 0 fail / 0 skip, about 6.2 seconds, using temporary environments and fake gh/code only.
+- `npm run check`: exit 0. Formatting, lint, type checks, backend 4 pass / 0 skip (including the provided dedicated test DB integration test), worker 34 pass / 0 skip, and frontend/backend builds passed. Authentication tests were run separately.
+- `npx prettier --check scripts/test/project-github-auth.test.mjs docs/changes/14-agent-task.md docs/changes/14-personal-tools.md`: exit 0.
+- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/14 diff --check`: exit 0.
+- Changes remain uncommitted. No remote operations, installed-copy updates or additional agents were used. The coordinator must review and deliver the changes, then rerun Windows CI; remote CI success has not yet been verified.
+
+## 테스트 단계 재확인 (CI 실패 후)
+
+- 시작 시 기존 미커밋 변경으로 테스트의 60초 제한 시간, subprocess 오류 진단 및 위 CI 수정 기록이 이미 있었다. 해당 변경과 기존 14개 동작 검증을 보존했으며 이번 단계에서 구현 파일을 수정하지 않았다.
+- 제공된 CI 로그의 첫 검사 실패는 20,362ms 후 `status=null`로, 기존 20,000ms 제한 시간 초과와 부합한다. 원래 로그에는 subprocess 오류가 없어 지연 원인은 확정하지 않았으며 로컬에서는 재현되지 않았다. 요구사항에 대한 구현 전 7개 예상 실패 기록은 위 최초 테스트 단계에 보존했다.
+- `node --test scripts/test/project-github-auth.test.mjs`: 종료 코드 0, 14 pass / 0 fail / 0 skip, 약 5.5초. 임시 환경과 가짜 gh/code만 사용했다.
+- `npm run check`: 종료 코드 0. 포맷, lint, 타입 검사, backend 3 pass / 1 skip, 워커 34 pass / 0 skip, frontend/backend 빌드 통과. 이번 실행에는 전용 `TEST_DATABASE_URL`이 제공되지 않아 DB 통합 검사는 건너뛰었으며 DB 검증 완료로 보고하지 않는다. 인증 테스트는 별도 명령으로 검증했다.
+- 원격 CI 재실행과 성공 확인은 코디네이터 후속 작업이다. 이 단계에서는 커밋·원격 작업·설치본 변경·추가 에이전트 실행을 수행하지 않았다.
+- `npx prettier --check scripts/test/project-github-auth.test.mjs docs/changes/14-agent-task.md docs/changes/14-personal-tools.md` 및 `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/14 diff --check`: 모두 종료 코드 0.
+
+## 구현 단계 재확인 (CI 실패 후)
+
+- 기존 미커밋 CI 보완을 검토하고 유지했다. 모든 subprocess에 60초 제한 시간과 `assert.ifError(r.error)`가 적용되어 있으며 기존 동작 assertion과 14개 시나리오는 그대로다. 추가 제품 코드 변경은 필요하지 않았다. 이전 독립 검토에서 수정 요청은 없었다.
+- 회사 gh / 개인 ghp 분리, 래퍼의 개인 설정 및 부모 환경 복원, 실행기와 VS Code 설정을 다시 확인했다. 설치본이나 실제 인증 정보는 접근하지 않았다.
+- `node --test scripts/test/project-github-auth.test.mjs`: 종료 코드 0, 14 pass / 0 fail / 0 skip, 약 5.5초. 임시 환경과 가짜 gh/code만 사용했으며 원격의 20초 지연은 로컬에서 재현되지 않았다.
+- `npm run check`: 종료 코드 0. 포맷, lint, 타입 검사, backend 3 pass / 1 skip, 워커 34 pass / 0 skip, frontend/backend 빌드 통과. 전용 `TEST_DATABASE_URL`이 제공되지 않아 DB 통합 검사는 건너뛰었다. 이번 변경은 인증 테스트 실행 제한 시간과 진단 보완으로 DB 검증을 요구하지 않는다.
+- 변경은 미커밋 상태로 남겼다. 커밋·푸시·PR·승인·병합 및 추가 에이전트 실행은 수행하지 않았다. 코디네이터의 독립 검토와 Windows CI 재실행이 남아 있으며 원격 CI 통과로 보고하지 않는다.
+- 기록 갱신 후 `npx prettier --check scripts/test/project-github-auth.test.mjs docs/changes/14-agent-task.md docs/changes/14-personal-tools.md`와 `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/14 diff --check`: 모두 종료 코드 0.

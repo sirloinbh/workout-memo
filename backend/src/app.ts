@@ -107,7 +107,7 @@ export function createApp(pool: Pool) {
     res.json(
       (
         await pool.query(
-          `SELECT g.*, EXISTS(SELECT 1 FROM sets s JOIN workouts w ON w.id=s.workout_id WHERE lower(trim(s.exercise))=lower(trim(g.exercise)) AND s.weight>=g.target_weight AND s.reps>=g.target_reps AND w.date BETWEEN g.start_date AND LEAST(g.deadline,CURRENT_DATE)) achieved FROM goals g ORDER BY g.deadline,g.id DESC`,
+          `SELECT g.*, EXISTS(SELECT 1 FROM sets s JOIN workouts w ON w.id=s.workout_id WHERE lower(trim(s.exercise))=lower(trim(g.exercise)) AND s.weight>=g.target_weight AND s.reps>=g.target_reps AND w.date BETWEEN g.start_date AND LEAST(g.deadline,(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date)) achieved FROM goals g ORDER BY g.deadline,g.id DESC`,
         )
       ).rows,
     ),

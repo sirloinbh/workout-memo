@@ -17,6 +17,7 @@ export const workoutSchema = z.object({
         machine_id: z.number().int().positive().nullable().default(null),
         weight: z.number().min(0).max(99999),
         reps: z.number().int().min(1).max(1000),
+        notes: z.string().max(4000).default(''),
       }),
     )
     .min(1)

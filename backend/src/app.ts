@@ -85,8 +85,8 @@ export function createApp(pool: Pool) {
         }
         for (const [i, s] of w.sets.entries())
           await client.query(
-            'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position) VALUES($1,$2,$3,$4,$5,$6)',
-            [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i],
+            'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes) VALUES($1,$2,$3,$4,$5,$6,$7)',
+            [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes],
           );
         await client.query('COMMIT');
         res.status(method === 'post' ? 201 : 200).json({ id: workoutId });

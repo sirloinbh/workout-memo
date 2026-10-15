@@ -797,6 +797,14 @@ footer > span:last-child {
 .set-editor label {
   font-size: 9px;
 }
+.set-editor .set-notes {
+  grid-column: 2 / -2;
+  grid-row: 2;
+}
+.set-editor > button {
+  grid-column: -2;
+  grid-row: 1;
+}
 .set-editor input,
 .set-editor select {
   padding: 9px 7px;
@@ -1008,6 +1016,10 @@ footer > span:last-child {
   .set-editor button {
     grid-column: 4;
     grid-row: 1 / 3;
+  }
+  .set-editor .set-notes {
+    grid-column: 2 / -1;
+    grid-row: 3;
   }
   .set-number {
     grid-row: 1 / 3;

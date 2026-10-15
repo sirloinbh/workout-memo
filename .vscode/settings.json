@@ -1,6 +1,6 @@
 {
   "terminal.integrated.env.windows": {
-    "GH_CONFIG_DIR": "${env:LOCALAPPDATA}\\gh-workout-memo",
+    "GH_CONFIG_DIR": "${env:USERPROFILE}\\.config\\gh-personal",
     "GH_TOKEN": null,
     "GITHUB_TOKEN": null
   },

@@ -3,14 +3,14 @@ param(
     [string[]]$GhArguments
 )
 $ErrorActionPreference = 'Stop'
-if (-not $env:LOCALAPPDATA) { throw 'LOCALAPPDATA is required.' }
+if (-not $env:USERPROFILE) { throw 'USERPROFILE is required.' }
 $ghExecutable = (Get-Command gh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 $names = @('GH_CONFIG_DIR', 'GH_TOKEN', 'GITHUB_TOKEN')
 $previous = @{}
 foreach ($name in $names) { $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $ghExitCode = 1
 try {
-    $env:GH_CONFIG_DIR = Join-Path $env:LOCALAPPDATA 'gh-workout-memo'
+    $env:GH_CONFIG_DIR = Join-Path $env:USERPROFILE '.config/gh-personal'
     Remove-Item Env:GH_TOKEN, Env:GITHUB_TOKEN -ErrorAction SilentlyContinue
     $isAuthManagement = $GhArguments.Count -ge 1 -and $GhArguments[0] -eq 'auth' -and ($GhArguments.Count -lt 2 -or $GhArguments[1] -ne 'git-credential')
     if (-not $isAuthManagement) {

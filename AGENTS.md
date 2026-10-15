@@ -34,6 +34,8 @@
 - 실행·운영: [README.md](README.md).
 - 기술 추천과 적용 순서: [stack.md](skills/workout-foundation/references/stack.md). 추천 목록은 설치 완료 목록이 아니다.
 - 작업 기록: `docs/changes/`.
+- 일일 총정리: `docs/daily/YYYY-MM-DD.md`. Asia/Seoul 기준 작업일마다 새 파일을 누적하고 같은 날 추가 작업은 해당 파일에 반영한다. 목록은 `docs/daily/README.md`에 추가하며 과거 상태를 오늘 상태로 덮어쓰지 않는다.
+- 최신 다음 작업: `docs/next-steps/README.md`. 주 에이전트는 작업일 마무리·총정리 시 일일 기록과 함께 갱신하며 우선순위·의존성·차단 원인·다음 행동을 적는다. 복구 상세도 `docs/next-steps/`에 둔다. 자동 일일 스케줄러나 큐 등록을 전제하지 않으며 기존 커밋별 변경 기록도 유지한다.
 
 ## 검증 명령
 

@@ -62,6 +62,8 @@ http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세�
 
 실제 AWS 배포에는 계정, 실행 환경, 도메인, 비용 한도 결정이 필요합니다. 이 앱의 포트는 localhost에만 바인딩됩니다.
 
+개인용 앱 8개의 공유 서버·DB 운영 대안과 가정별 월 예산은 [공유 호스팅 비용 문서](docs/shared-hosting-costs.md)를 참고하세요.
+
 ## 프로젝트 전용 GitHub 계정
 
 이 프로젝트의 gh와 Git 인증은 sirloinbh 전용 설정을 사용합니다. VS Code 계정B 실행·환경변수·래퍼 명령·검증 방법은 [인증 설정 문서](docs/project-github-auth.md)를 참고하세요.

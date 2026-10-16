@@ -132,3 +132,11 @@ AGENTS.md와 workout-implementation·workout-testing을 읽고 적용했다. 조
 - `npm run check`: 종료 코드 0. 포맷·린트·양쪽 타입 검사·양쪽 빌드 성공. 앱 **13 pass / 0 fail / 0 skip**, 에이전트 **34 pass / 0 fail / 0 skip**. 제공된 전용 DB에서 머신 NULL/0/양수 저장·재조회, 브랜드 변경, 잘못된 입력 거부, 머신 전환 및 기본중량 수정 후 총중량 100 kg/볼륨 1,000 kg 보존 검증이 실제 실행됐다.
 - 이슈·브랜치 생성/전환, 커밋·푸시·PR·승인·병합 및 하위 에이전트 실행은 하지 않았다. 변경은 미커밋 상태이며 이번 결과는 `blocked=false`, 구현 역할이므로 `approved=false`다. 독립 검토 및 이후 전달 작업은 코디네이터가 수행한다.
 - 기록 갱신 후 `npx prettier --check frontend/src/main.tsx backend/test/machines.test.ts backend/test/machines.integration.test.ts docs/changes/19-agent-task.md`: 종료 코드 0. 지정 safe.directory를 사용한 읽기 전용 Git `diff --check`와 `status --short`: 종료 코드 0. 화면 파일 1개와 미추적 테스트 2개·작업 기록만 확인했다. 개인 Git ignore 파일 읽기 권한 경고는 있었으나 조회는 성공했으며 Git 설정을 변경하지 않았다.
+
+## PR #41 충돌 해결 — 2026-10-16
+
+- 사용자 요청으로 최신 `origin/main` (`812ca32563ef7986bc42799c4ecd296ff55128f4`)을 기존 `feat/19-agent-task`에 통합했다. 유일한 충돌은 `frontend/src/main.tsx`의 총중량 입력 안내 문구였다. main의 양측·편측 중량 기준 및 기본중량 미확인 시 메모 안내와 #19의 기본중량 자동 가산 없음 안내를 함께 보존했다.
+- main의 서울 날짜 공통 함수·UTC 기간 계산·최신 응답 보호·세트 메모를 유지했다. 기존 머신 테스트와 assertion은 수정하지 않았다. 충돌 해결 자체는 안내 문구 통합이므로 별도 앱 테스트를 추가하지 않고 기존 전체 회귀 검사와 실제 브라우저 흐름으로 확인한다.
+- PR 생성 후 추가 리뷰에서 최신 main 대비 제품 변경과 서버 검증·DB 통합 테스트를 확인했다. 선택 브랜드 유지, NULL/0 구분, 브랜드를 포함한 옵션, 총중량 및 과거 기록 보존에 중대한 새 코드 결함을 발견하지 못했다. 리뷰 결과는 PR 댓글에 기록한다. 별도 개선 제안의 코드 반영과 PR 병합은 이번 요청에 포함하지 않는다.
+- 통합 후 `npm run check`: 지정 Node 24.21.0 / npm 11.19.0 및 전용 테스트 DB에서 exit 0. 앱 **118 pass / 0 fail / 0 skip**, 워커 **86 pass / 0 fail / 0 skip**, 포맷·lint·타입 및 양쪽 빌드 모두 통과. 로그: ignored 루트 `.local/agent-workflow/jobs/19/merge-check.log`.
+- 통합 프로덕션 빌드의 `node node_modules/tsx/dist/cli.mjs .local/issue19-ui.mts`: exit 0. 실제 Chrome의 선택 브랜드 등록, NULL/0/20.25 kg 저장·재조회, 머신 전환 후 총중량 100 kg 유지 및 기본중량 40.5 kg 수정 후 과거 세트·1,000 kg 볼륨 보존 재통과. 검사기 출력의 Edge 표기는 이전 문자열이며 실제 실행 대상은 Chrome이다. 로그: ignored 루트 `.local/agent-workflow/jobs/19/merge-browser.log`. 검증 fixture는 정리했다. 실제 모바일 기기 검증은 포함하지 않는다.

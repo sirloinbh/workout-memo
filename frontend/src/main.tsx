@@ -251,7 +251,7 @@ function App() {
                   : page === 'machines'
                     ? () =>
                         setMachineEditor({
-                          brand_id: brands[0]?.id,
+                          brand_id: brand || brands[0]?.id,
                           name: '',
                           base_weight: null,
                           notes: '',
@@ -625,7 +625,8 @@ function App() {
             <p className="form-hint">
               세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 좌우를
               함께 움직이는 장비는 양쪽 중량의 합계를, 편측 운동은 한쪽에서 실제로 움직인 총중량을
-              기록하세요. 기본중량을 모르면 임의로 더하지 말고 세트 메모에 남겨주세요.
+              기록하세요. 기본중량을 모르면 임의로 더하지 말고 세트 메모에 남겨주세요. 머신을
+              선택해도 기본중량을 자동으로 더하지 않습니다.
             </p>
             {editor.sets?.map((s, i) => (
               <div className="set-editor" key={i}>
@@ -661,7 +662,8 @@ function App() {
                     <option value="">자유 운동</option>
                     {machines.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} (기본 {m.base_weight ?? '?'}kg)
+                        {m.brand} · {m.name} (기본중량{' '}
+                        {m.base_weight === null ? '미확인' : `${m.base_weight} kg`})
                       </option>
                     ))}
                   </select>
@@ -873,6 +875,10 @@ function App() {
                 }
               />
             </label>
+            <p className="form-hint">
+              확인하지 못한 기본중량은 비워두세요. 확인된 0 kg과 구분하여 저장하며, 기본중량을
+              수정해도 과거 세트의 총중량은 변경되지 않습니다.
+            </p>
             <label>
               확인 자료 / 설정 메모
               <textarea

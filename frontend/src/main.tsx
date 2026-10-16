@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowUpRight,
@@ -16,7 +16,14 @@ import {
   Activity,
 } from 'lucide-react';
 import './style.css';
-type SetRow = { exercise: string; machine_id: number | null; weight: number; reps: number };
+import { seoulDate } from './date';
+type SetRow = {
+  exercise: string;
+  machine_id: number | null;
+  weight: number;
+  reps: number;
+  notes: string;
+};
 type Workout = { id: number; date: string; title: string; notes: string; sets: SetRow[] };
 type Machine = {
   id: number;
@@ -36,17 +43,20 @@ type Goal = {
   achieved: boolean;
 };
 const iso = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const today = () => iso(new Date());
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+const today = () => seoulDate();
+// Calendar dates use UTC arithmetic so device time zones and DST cannot shift boundaries.
+const calendarDate = (value: string) => new Date(value + 'T12:00:00Z');
 const cleanDate = (v: string) => v.slice(0, 10);
 const dateLabel = (v: string) =>
-  new Date(cleanDate(v) + 'T12:00:00').toLocaleDateString('ko-KR', {
+  calendarDate(cleanDate(v)).toLocaleDateString('ko-KR', {
+    timeZone: 'UTC',
     month: 'long',
     day: 'numeric',
     weekday: 'short',
   });
 const vol = (w: Workout) => w.sets.reduce((n, s) => n + Number(s.weight) * s.reps, 0);
-const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 }).format(n);
+const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
 async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const res = await fetch('/api' + path, {
     method,
@@ -73,22 +83,25 @@ function App() {
     [goalEditor, setGoalEditor] = useState(false),
     [machineEditor, setMachineEditor] = useState<Partial<Machine> | null>(null);
   const range = () => {
-    const start = new Date(anchor + 'T12:00:00');
+    const start = calendarDate(anchor);
     let end = new Date(start);
     if (period === 'week') {
-      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+      start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
       end = new Date(start);
-      end.setDate(end.getDate() + 6);
+      end.setUTCDate(end.getUTCDate() + 6);
     } else if (period === 'month') {
-      start.setDate(1);
-      end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 12);
+      start.setUTCDate(1);
+      end = new Date(start);
+      end.setUTCMonth(end.getUTCMonth() + 1, 0);
     } else if (period === '4weeks' || period === '12weeks') {
-      start.setDate(start.getDate() - (period === '4weeks' ? 27 : 83));
+      start.setUTCDate(start.getUTCDate() - (period === '4weeks' ? 27 : 83));
     }
     return { from: iso(start), to: iso(end) };
   };
   const { from, to } = range();
+  const refreshVersion = useRef(0);
   const refresh = useCallback(async () => {
+    const version = ++refreshVersion.current;
     setLoading(true);
     try {
       const [w, g, m, b] = await Promise.all([
@@ -97,18 +110,22 @@ function App() {
         api<Machine[]>('/machines'),
         api<{ id: number; name: string }[]>('/brands'),
       ]);
+      // Only the newest refresh may update data, errors, or loading state.
+      if (version !== refreshVersion.current) return;
       setWorkouts(w);
       setGoals(g);
       setMachines(m);
       setBrands(b);
       setError('');
     } catch (e) {
-      setError((e as Error).message);
+      if (version === refreshVersion.current) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (version === refreshVersion.current) setLoading(false);
     }
   }, [from, to]);
+  const latestRefresh = useRef(refresh);
   useEffect(() => {
+    latestRefresh.current = refresh;
     void refresh();
   }, [refresh]);
   async function action(fn: () => Promise<unknown>, done?: () => void) {
@@ -116,7 +133,8 @@ function App() {
     try {
       await fn();
       done?.();
-      await refresh();
+      // A mutation may finish after the user has selected a different period.
+      await latestRefresh.current();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -128,7 +146,7 @@ function App() {
       date: anchor,
       title: '',
       notes: '',
-      sets: [{ exercise: '', machine_id: null, weight: 0, reps: 10 }],
+      sets: [{ exercise: '', machine_id: null, weight: 0, reps: 10, notes: '' }],
     });
   const total = workouts.reduce((n, w) => n + vol(w), 0),
     totalSets = workouts.reduce((n, w) => n + w.sets.length, 0),
@@ -140,13 +158,13 @@ function App() {
     ['machines', '머신 라이브러리', Dumbbell],
   ] as const;
   function move(dir: number) {
-    const d = new Date(anchor + 'T12:00:00');
+    const d = calendarDate(anchor);
     if (period === 'month') {
-      d.setDate(1);
-      d.setMonth(d.getMonth() + dir);
+      d.setUTCDate(1);
+      d.setUTCMonth(d.getUTCMonth() + dir);
     } else
-      d.setDate(
-        d.getDate() +
+      d.setUTCDate(
+        d.getUTCDate() +
           dir * (period === 'day' ? 1 : period === 'week' ? 7 : period === '4weeks' ? 28 : 84),
       );
     setAnchor(iso(d));
@@ -398,6 +416,18 @@ function App() {
                             {Array.from(new Set(w.sets.map((s) => s.exercise))).join(', ')}
                           </p>
                           {w.notes && <p>{w.notes}</p>}
+                          <details>
+                            <summary>세트 기록 보기</summary>
+                            <ol>
+                              {w.sets.map((s, i) => (
+                                <li key={i}>
+                                  {s.exercise} · {fmt(Number(s.weight))}kg × {s.reps}회 ·{' '}
+                                  {machines.find((m) => m.id === s.machine_id)?.name ?? '머신 없음'}
+                                  {s.notes && <p>{s.notes}</p>}
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
                         </div>
                         <div className="row-volume">
                           <strong>
@@ -593,7 +623,9 @@ function App() {
               </label>
             </div>
             <p className="form-hint">
-              세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 머신을
+              세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 좌우를
+              함께 움직이는 장비는 양쪽 중량의 합계를, 편측 운동은 한쪽에서 실제로 움직인 총중량을
+              기록하세요. 기본중량을 모르면 임의로 더하지 말고 세트 메모에 남겨주세요. 머신을
               선택해도 기본중량을 자동으로 더하지 않습니다.
             </p>
             {editor.sets?.map((s, i) => (
@@ -663,6 +695,19 @@ function App() {
                     onChange={(e) => {
                       const sets = [...editor.sets!];
                       sets[i] = { ...s, reps: Number(e.target.value) };
+                      setEditor({ ...editor, sets });
+                    }}
+                  />
+                </label>
+                <label className="set-notes">
+                  세트 메모
+                  <textarea
+                    maxLength={4000}
+                    value={s.notes}
+                    placeholder="자세, 머신 설정, 편측 기록 등"
+                    onChange={(e) => {
+                      const sets = [...editor.sets!];
+                      sets[i] = { ...s, notes: e.target.value };
                       setEditor({ ...editor, sets });
                     }}
                   />
@@ -879,20 +924,20 @@ function Stat({
   );
 }
 function Chart({ workouts, from, to }: { workouts: Workout[]; from: string; to: string }) {
-  const start = new Date(from + 'T12:00:00'),
-    end = new Date(to + 'T12:00:00');
+  const start = calendarDate(from),
+    end = calendarDate(to);
   const count = Math.round((+end - +start) / 86400000) + 1;
   const buckets = count > 31 ? 12 : count > 7 ? Math.ceil(count / 7) : count;
   const values = Array.from({ length: buckets }, (_, i) => {
     const a = new Date(start);
-    a.setDate(a.getDate() + Math.floor((i * count) / buckets));
+    a.setUTCDate(a.getUTCDate() + Math.floor((i * count) / buckets));
     const b = new Date(start);
-    b.setDate(b.getDate() + Math.floor(((i + 1) * count) / buckets));
+    b.setUTCDate(b.getUTCDate() + Math.floor(((i + 1) * count) / buckets));
     return {
       label:
         count > 7
-          ? `${a.getMonth() + 1}/${a.getDate()}`
-          : ['일', '월', '화', '수', '목', '금', '토'][a.getDay()],
+          ? `${a.getUTCMonth() + 1}/${a.getUTCDate()}`
+          : ['일', '월', '화', '수', '목', '금', '토'][a.getUTCDay()],
       value: workouts
         .filter((w) => cleanDate(w.date) >= iso(a) && cleanDate(w.date) < iso(b))
         .reduce((n, w) => n + vol(w), 0),

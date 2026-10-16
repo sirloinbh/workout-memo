@@ -141,3 +141,13 @@
 - 제공된 전용 `TEST_DATABASE_URL`만 테스트에서 사용했으며 값을 열람·출력·기록하지 않았다. DB·의존성·실행 권한 차단은 없다. 읽기 전용 Git 상태 조회에서 전역 ignore 파일 접근 경고가 있었지만 조회는 exit 0으로 완료했으며 설정을 변경하지 않았다.
 - `node -e`로 확인한 런타임은 `v22.17.0`이다. 실제 브라우저 및 지정 Node `24.21.0` 검증은 수행하지 않았다. 변경은 미커밋 상태이며 독립 검토와 커밋·푸시·PR은 코디네이터가 담당한다.
 - 문서 갱신 후 `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md`와 `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: 모두 exit 0.
+
+### PR 생성 후 리뷰 보완 — 2026-10-16
+
+- 사용자가 PR #40의 추가 코드 리뷰에서 제안한 브라우저 검증과 PR 설명 정정을 승인했다. 앱 코드·테스트·스킬은 변경하지 않았다.
+- 검증 대상 앱 커밋: `1a7c6483c591f46c8190dce53b05d517e57a6322`. 해당 커밋의 프로덕션 빌드와 전용 PostgreSQL 테스트 DB, loopback 서버, 사용자 프로필과 분리된 headless Chrome을 사용했다.
+- `node .local/agent-workflow/browser-check-17.mjs` (저장소 루트, ignored 검사기): 최종 exit 0. PC 1440×1000 및 모바일 에뮬레이션 390×844에서 1일·월요일 기준 1주·윤년 2월·최근 28일/84일의 실제 화면 기간 경계, 누적 볼륨과 그래프, 수평 넘침 없음을 확인했다. 모바일 크기에서 200→250 kg 수정 후 볼륨 3,000→3,500 kg 및 그래프 갱신, 새로고침 후 보존, 삭제 후 1,000 kg, 빈 날짜의 0 통계·빈 그래프를 확인했다.
+- 첫 실행은 화면 검사가 모두 통과했지만 정리 단계에서 이미 UI로 삭제한 fixture를 다시 삭제해 404로 종료했다. ignored 검사기에서 정리용 DELETE의 404를 허용하고 남은 fixture를 정리한 후 전체를 재실행해 통과했다. 앱 오류로 계산하지 않는다. 이 검사에서 만든 fixture만 삭제했다.
+- 화면 캡처 `browser-desktop.png`, `browser-mobile.png`를 ignored `.local/agent-workflow/jobs/17/`에 보관하고 직접 확인했다. 실제 모바일 기기·Safari·Firefox·터치 및 포커스 이동 검증은 포함하지 않는다. 캡처와 검사기는 로컬 증거이며 GitHub에 업로드하지 않았다.
+- PR 본문은 최종 게시/CI 상태 및 위 검증 범위를 반영해 갱신한다. 이전 단계의 미커밋·브라우저 미검증 기록은 당시 이력으로 보존한다. PR 병합은 사용자가 수행한다.
+- 호스트 최종 재검사: 지정 Node `24.21.0` 및 npm `11.19.0`, 전용 `TEST_DATABASE_URL`로 `npm run check` exit 0. 포맷·lint·타입 검사, 앱 **27 pass / 0 fail / 0 skip**(DB 통합 2개 포함), 워커 **34 pass / 0 fail / 0 skip**, frontend/backend 빌드 모두 통과했다. 로그: ignored `.local/agent-workflow/jobs/17/post-review-check.log`. 문서만 추가했으므로 앱 테스트 코드는 새로 추가하지 않았다.

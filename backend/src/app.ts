@@ -88,8 +88,8 @@ export function createApp(pool: Pool) {
         }
         for (const [i, s] of w.sets.entries())
           await client.query(
-            'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position) VALUES($1,$2,$3,$4,$5,$6)',
-            [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i],
+            'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes) VALUES($1,$2,$3,$4,$5,$6,$7)',
+            [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes],
           );
         await client.query('COMMIT');
         res.status(method === 'post' ? 201 : 200).json({ id: workoutId });
@@ -110,7 +110,7 @@ export function createApp(pool: Pool) {
     res.json(
       (
         await pool.query(
-          `SELECT g.*, EXISTS(SELECT 1 FROM sets s JOIN workouts w ON w.id=s.workout_id WHERE lower(trim(s.exercise))=lower(trim(g.exercise)) AND s.weight>=g.target_weight AND s.reps>=g.target_reps AND w.date BETWEEN g.start_date AND LEAST(g.deadline,CURRENT_DATE)) achieved FROM goals g ORDER BY g.deadline,g.id DESC`,
+          `SELECT g.*, EXISTS(SELECT 1 FROM sets s JOIN workouts w ON w.id=s.workout_id WHERE lower(trim(s.exercise))=lower(trim(g.exercise)) AND s.weight>=g.target_weight AND s.reps>=g.target_reps AND w.date BETWEEN g.start_date AND LEAST(g.deadline,(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date)) achieved FROM goals g ORDER BY g.deadline,g.id DESC`,
         )
       ).rows,
     ),

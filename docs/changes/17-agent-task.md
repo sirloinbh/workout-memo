@@ -151,3 +151,12 @@
 - 화면 캡처 `browser-desktop.png`, `browser-mobile.png`를 ignored `.local/agent-workflow/jobs/17/`에 보관하고 직접 확인했다. 실제 모바일 기기·Safari·Firefox·터치 및 포커스 이동 검증은 포함하지 않는다. 캡처와 검사기는 로컬 증거이며 GitHub에 업로드하지 않았다.
 - PR 본문은 최종 게시/CI 상태 및 위 검증 범위를 반영해 갱신한다. 이전 단계의 미커밋·브라우저 미검증 기록은 당시 이력으로 보존한다. PR 병합은 사용자가 수행한다.
 - 호스트 최종 재검사: 지정 Node `24.21.0` 및 npm `11.19.0`, 전용 `TEST_DATABASE_URL`로 `npm run check` exit 0. 포맷·lint·타입 검사, 앱 **27 pass / 0 fail / 0 skip**(DB 통합 2개 포함), 워커 **34 pass / 0 fail / 0 skip**, frontend/backend 빌드 모두 통과했다. 로그: ignored `.local/agent-workflow/jobs/17/post-review-check.log`. 문서만 추가했으므로 앱 테스트 코드는 새로 추가하지 않았다.
+
+### 최신 main 충돌 해결 및 병합 요청 — 2026-10-16
+
+- 사용자가 이번 PR의 충돌 해결과 에이전트 병합을 명시적으로 요청했다. 이 요청은 PR #40에 대한 병합 승인으로 적용하며 다른 PR에는 확대하지 않는다.
+- 최신 `origin/main` (`af45c3885d5a884e631391733419db6243454069`)을 작업 브랜치에 통합했다. 유일한 충돌인 `frontend/src/main.tsx`에서 main의 공통 `seoulDate()`와 #17의 UTC 달력 연산·최신 조회 응답 보호를 함께 유지했다. main의 세트 메모와 소수 둘째 자리 표기도 보존했다.
+- UI 테스트의 모듈 어댑터가 실제 `frontend/src/date.ts`를 격리된 VM에서 읽도록 연결했다. main의 메모 UI에서 생략된 자식 요소가 루트 탐색을 다시 시작하는 검사기 재귀 문제도 처리했다. 기존 assertion·테스트는 삭제하거나 약화하지 않았다. UI 회귀 테스트 21 pass / 0 fail / 0 skip.
+- 첫 전체 검사는 포맷 차이로 중단됐다. 포맷 정리 후 검사에서 UI 탐색기 재귀 오류를 재현했고, 수정 후 UI 검사와 최종 전체 검사를 다시 실행했다. 중간 실패를 최종 성공으로 숨기지 않는다.
+- 최종 호스트 `npm run check`: 지정 Node 24.21.0 / npm 11.19.0과 전용 DB에서 exit 0. 앱 **109 pass / 0 fail / 0 skip**, 워커 **86 pass / 0 fail / 0 skip**, 포맷·lint·타입·frontend/backend 빌드 통과. main에서 가져온 테스트 증가분도 포함한다. 로그: ignored `.local/agent-workflow/jobs/17/merge-check.log`.
+- 새 통합 빌드의 `node .local/agent-workflow/browser-check-17.mjs`: exit 0. PC·모바일 에뮬레이션의 다섯 기간·통계·그래프·화면 폭 및 모바일 수정·새로고침·삭제·빈 상태가 재통과했다. 실제 모바일 기기 검증은 포함하지 않는다.

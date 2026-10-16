@@ -121,6 +121,17 @@ function mount(initial: Workout[] = []) {
     exports: {},
     require: (name: string) => {
       if (name === 'react') return react;
+      if (name === './date') {
+        const dateExports = {};
+        runInNewContext(
+          ts.transpileModule(
+            readFileSync(new URL('../../frontend/src/date.ts', import.meta.url), 'utf8'),
+            { compilerOptions: { module: ts.ModuleKind.CommonJS } },
+          ).outputText,
+          { exports: dateExports, Date: DeviceDate, Intl },
+        );
+        return dateExports;
+      }
       if (name === 'react-dom/client')
         return {
           createRoot: () => ({
@@ -182,9 +193,12 @@ function mount(initial: Workout[] = []) {
     }
   }
   function all(predicate: (e: Element) => boolean, view: View = tree): Element[] {
-    if (Array.isArray(view)) return view.flatMap((v) => all(predicate, v));
+    if (Array.isArray(view)) return view.flatMap((v) => (v === undefined ? [] : all(predicate, v)));
     if (!view || typeof view !== 'object') return [];
-    return [...(predicate(view) ? [view] : []), ...all(predicate, view.props.children)];
+    return [
+      ...(predicate(view) ? [view] : []),
+      ...(view.props.children === undefined ? [] : all(predicate, view.props.children)),
+    ];
   }
   function text(view: View): string {
     if (Array.isArray(view)) return view.map(text).join('');

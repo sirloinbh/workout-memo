@@ -67,7 +67,19 @@ function mount() {
       date: '2024-03-06',
       title: '하체',
       notes: '',
-      sets: [{ exercise: '스쿼트', machine_id: null, weight: 100.25, reps: 10, notes: '' }],
+      sets: [
+        { exercise: '스쿼트', machine_id: null, weight: 100.25, reps: 10, notes: '' },
+        // #31: a planned set stays out of the same-day volume (still 1,002.5).
+        {
+          exercise: '스쿼트',
+          machine_id: null,
+          weight: 200,
+          reps: 10,
+          notes: '',
+          completed: false,
+          rpe: null,
+        },
+      ],
     },
   ];
   const requests: { path: string; method: string; body?: Record<string, unknown> }[] = [];

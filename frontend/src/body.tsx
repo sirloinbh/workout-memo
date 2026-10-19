@@ -10,7 +10,10 @@ export type BodyRecord = {
 };
 type MetricKey = 'body_weight_kg' | 'body_fat_percent' | 'skeletal_muscle_kg';
 type Draft = { id?: number; date: string } & Record<MetricKey, string>;
-type WorkoutLike = { date: string; sets: { weight: number | string; reps: number }[] };
+type WorkoutLike = {
+  date: string;
+  sets: { weight: number | string; reps: number; completed?: boolean }[];
+};
 
 // Units match the API: kg and %, stored with at most two decimals.
 const metrics: { key: MetricKey; label: string; unit: string; min: string; max: string }[] = [
@@ -124,7 +127,10 @@ export function BodyMeasurements({
   const volumeByDate = new Map<string, number>();
   for (const w of workouts) {
     const date = w.date.slice(0, 10);
-    const volume = w.sets.reduce((n, s) => n + Number(s.weight) * s.reps, 0);
+    // Planned (not completed) sets are not performance (#31); missing means completed.
+    const volume = w.sets
+      .filter((s) => s.completed !== false)
+      .reduce((n, s) => n + Number(s.weight) * s.reps, 0);
     volumeByDate.set(date, (volumeByDate.get(date) ?? 0) + volume);
   }
   const edit = (row?: BodyRecord) => {

@@ -160,6 +160,18 @@ function mount(
         );
         return dateExports;
       }
+      if (name === './rest-timer') {
+        // Pure timer helpers (#31); the timer stays idle in these draft scenarios.
+        const timerExports = {};
+        runInNewContext(
+          ts.transpileModule(
+            readFileSync(new URL('../../frontend/src/rest-timer.ts', import.meta.url), 'utf8'),
+            { compilerOptions: { module: ts.ModuleKind.CommonJS } },
+          ).outputText,
+          { exports: timerExports, Date: DeviceDate, JSON, Math, Number, String },
+        );
+        return timerExports;
+      }
       if (name === 'react-dom/client')
         return {
           createRoot: () => ({
@@ -173,6 +185,26 @@ function mount(
       // The routine planner page (#27) has its own UI tests; drafts never render it.
       if (name === './routines') return { Routines: () => null };
       if (name === './body') return { BodyMeasurements: () => null };
+      // The exercise analysis page (#32) is covered by analysis-ui.test.ts.
+      if (name === './analysis') return { Analysis: () => null };
+      // Routine goals (#28) are hook-free helpers and views; load the real module.
+      if (name === './progress') {
+        const progressExports = {};
+        runInNewContext(
+          ts.transpileModule(
+            readFileSync(new URL('../../frontend/src/progress.tsx', import.meta.url), 'utf8'),
+            {
+              compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                jsx: ts.JsxEmit.React,
+                esModuleInterop: true,
+              },
+            },
+          ).outputText,
+          { exports: progressExports, require: () => react, Intl },
+        );
+        return progressExports;
+      }
       throw Error(`Unexpected import: ${name}`);
     },
     Date: DeviceDate,
@@ -365,6 +397,9 @@ type UI = ReturnType<typeof mount>;
 async function fill(ui: UI) {
   await ui.settle();
   ui.event(ui.button('운동 기록하기'), 'onClick');
+  // #28: the editor starts with three sets; these scenarios save a single valid set.
+  for (let i = 0; i < 2; i++) ui.event(ui.button('세트 삭제'), 'onClick');
+  assert.equal(ui.all((e) => e.type === 'input' && e.props.list === 'exercise-names').length, 1);
   const change = (predicate: Parameters<UI['all']>[0], value: string) =>
     ui.event(ui.all(predicate)[0], 'onChange', { target: { value } });
   change((e) => e.type === 'input' && e.props.maxLength === 120, 'Recovery workout');
@@ -651,4 +686,22 @@ test('refreshing an edit preserves its original revision so newer device data ca
   assert.equal(JSON.parse(second.mutations[0].body!).title, 'Unsaved edit');
   assert.match(second.content(), /다른 기기에서 수정/);
   assert.ok(storage.size > 0, 'conflicting edit remains recoverable');
+});
+
+test('a new journal starts with three empty set rows and keeps the draft flow', async () => {
+  const storage = new Map<string, string>();
+  const ui = mount([], storage);
+  await ui.settle();
+  ui.event(ui.button('운동 기록하기'), 'onClick');
+  await ui.settle();
+  const names = ui.all((e) => e.type === 'input' && e.props.list === 'exercise-names');
+  assert.equal(names.length, 3, '#28: the editor starts with 3 sets');
+  assert.ok(names.every((e) => e.props.value === ''));
+  assert.ok(
+    ui
+      .all((e) => e.type === 'input' && e.props.step === '0.25')
+      .every((e) => Number(e.props.value) === 0),
+  );
+  assert.ok(storage.size > 0, 'the three-row editor is a local draft');
+  assert.equal(ui.mutations.length, 0);
 });

@@ -60,7 +60,10 @@ function mount(initial: Workout[] = []) {
     },
     useState(initialValue: unknown) {
       const index = cursor++;
-      slots[index] ??= { value: initialValue };
+      // Lazy initializers run once, as in React (used by draft and rest timer state).
+      slots[index] ??= {
+        value: typeof initialValue === 'function' ? initialValue() : initialValue,
+      };
       return [
         slots[index].value,
         (value: unknown) => {

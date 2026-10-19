@@ -15,9 +15,10 @@ test('workout validation retains independent notes for each set', () => {
       { ...set, notes: '자세 유지' },
     ],
   });
+  // Sets without a state are stored as completed with no RPE (#31).
   assert.deepEqual(parsed.sets, [
-    { ...set, notes: '왼쪽 무릎 확인' },
-    { ...set, notes: '자세 유지' },
+    { ...set, notes: '왼쪽 무릎 확인', completed: true, rpe: null },
+    { ...set, notes: '자세 유지', completed: true, rpe: null },
   ]);
 });
 

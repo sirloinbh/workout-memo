@@ -1,12 +1,13 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { StringDecoder } from 'node:string_decoder';
+import { commandFailureKind } from './failure.mjs';
 
 // No shell: prompts, issue bodies and filenames never become shell source.
 export function command(
   executable,
   args,
-  { cwd, env = process.env, input, log, onThread, timeout = 30 * 60 * 1000 } = {},
+  { cwd, env = process.env, input, log, onThread, onUsage, timeout = 30 * 60 * 1000 } = {},
 ) {
   return new Promise((resolve, reject) => {
     const stream = log ? fs.createWriteStream(log, { flags: 'a', mode: 0o600 }) : null;
@@ -37,8 +38,24 @@ export function command(
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
-    let stdout = '',
-      stderr = '';
+    const capture = () => ({ head: '', tail: '', length: 0, decoder: new StringDecoder('utf8') });
+    const stdoutCapture = capture(),
+      stderrCapture = capture();
+    const append = (target, data, end = false) => {
+      const value = end ? target.decoder.end() : target.decoder.write(data);
+      target.length += value.length;
+      target.head = (target.head + value).slice(0, 2 * 1024 * 1024);
+      target.tail = (target.tail + value).slice(-4 * 1024 * 1024);
+    };
+    const excerpt = (name, target) => {
+      if (!target.length) return '';
+      // Redact before shortening: a secret crossing an excerpt boundary must not leak.
+      const head = redact(target.head),
+        tail = redact(target.tail);
+      if (target.length <= 1200) return `${head} [${name}]`;
+      const omitted = target.length - 1200;
+      return `${head.slice(0, 600)}\n[truncated: ${name}, ${omitted} source characters omitted]\n${tail.slice(-600)}`;
+    };
     const decoder = new StringDecoder('utf8');
     let events = '',
       threadId = null;
@@ -57,9 +74,11 @@ export function command(
           threadId = redact(event.thread_id);
           onThread?.(threadId);
         }
+        if (event.type === 'turn.completed' && event.usage) onUsage?.(event.usage);
       }
     };
-    const failure = (message) => Object.assign(new Error(message), { threadId });
+    const failure = (message) =>
+      Object.assign(new Error(message), { threadId, failureKind: commandFailureKind({ message }) });
     const timer = setTimeout(() => {
       if (process.platform === 'win32' && child.pid) {
         const killer = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], {
@@ -75,12 +94,12 @@ export function command(
       reject(failure(`${executable} timed out; inspect the worktree before retrying.`));
     }, timeout);
     child.stdout.on('data', (data) => {
-      stdout = (stdout + data).slice(-4 * 1024 * 1024);
+      append(stdoutCapture, data);
       stdoutLog(data);
       captureEvents(data);
     });
     child.stderr.on('data', (data) => {
-      stderr = (stderr + data).slice(-4 * 1024 * 1024);
+      append(stderrCapture, data);
       stderrLog(data);
     });
     child.stdin.on('error', () => {});
@@ -89,7 +108,7 @@ export function command(
       stdoutLog(null, true);
       stderrLog(null, true);
       stream?.end();
-      reject(error);
+      reject(Object.assign(error, { failureKind: 'environment' }));
     });
     child.on('close', (code) => {
       clearTimeout(timer);
@@ -97,8 +116,28 @@ export function command(
       stdoutLog(null, true);
       stderrLog(null, true);
       stream?.end();
+      append(stdoutCapture, null, true);
+      append(stderrCapture, null, true);
+      const stdout = stdoutCapture.tail,
+        stderr = stderrCapture.tail;
       if (code !== 0)
-        reject(failure(`${executable} exited ${code}: ${redact(stderr).slice(-2000)}`));
+        reject(
+          Object.assign(
+            failure(
+              `${executable} exited ${code}: ${[excerpt('stderr', stderrCapture), excerpt('stdout', stdoutCapture)].filter(Boolean).join('\n')}\n${
+                log
+                  ? `Full redacted output: ${redact(log)}`
+                  : 'Full output was not logged; rerun with a local log to inspect omitted details.'
+              }`,
+            ),
+            {
+              failureKind: commandFailureKind({
+                message: `${stderrCapture.head}\n${stderr}\n${stdoutCapture.head}\n${stdout}`,
+              }),
+              exitCode: code,
+            },
+          ),
+        );
       else resolve(redact(stdout).trim());
     });
     child.stdin.end(input);

@@ -49,6 +49,11 @@ function fixture(t, stage = 'implementation') {
   const tree = path.join(home, 'worktrees/24');
   fs.mkdirSync(tree, { recursive: true });
   fs.writeFileSync(path.join(tree, 'source.txt'), 'source');
+  // Readiness now precedes model work; keep the original redaction assertions
+  // exercising an actual fake model, with prepared synthetic dependencies.
+  fs.writeFileSync(path.join(tree, 'package.json'), '{}');
+  fs.writeFileSync(path.join(tree, 'package-lock.json'), '{"lockfileVersion":3}');
+  fs.mkdirSync(path.join(tree, 'node_modules'));
   const issue = {
     number: 24,
     title: 'Review fixes',
@@ -86,6 +91,7 @@ function fixture(t, stage = 'implementation') {
     import { command as launch } from './real-process.mjs';
     export async function command(bin, args, options = {}) {
       const root = process.cwd();
+      if (args.includes('--version')) return 'synthetic tool version';
       if (bin === 'fake-codex') return launch(process.execPath, [path.join(root, 'fake.mjs'), ...args], options);
       const text = args.join(' ');
       if (text.includes('remote get-url')) return 'https://github.com/sirloinbh/workout-memo.git';
@@ -95,7 +101,10 @@ function fixture(t, stage = 'implementation') {
       if (text.includes('ls-files')) return (process.env.TRACKED_NAMES || 'source.txt').split('\\n').join('\\0');
       if (text.includes('diff --name-only')) return process.env.SENSITIVE_NAME || 'source.txt';
       if (text.includes('diff') && args.includes('--check')) return '';
-      if (bin === 'npm' || args.includes(path.join(root, 'fake-npm.mjs'))) return '';
+       if (bin === 'npm' || args.includes(path.join(root, 'fake-npm.mjs'))) {
+         if (process.env.CHECK_FAILURE) throw new Error(process.env.CHECK_FAILURE);
+         return '';
+       }
       if (text.includes('api user')) return 'sirloinbh';
       if (text.includes('issue view')) return fs.readFileSync(path.join(root, 'issue.json'), 'utf8');
       throw new Error('Unexpected command before publication: ' + text);
@@ -117,6 +126,7 @@ function fixture(t, stage = 'implementation') {
   `,
   );
   const invoke = (args, env = {}) => {
+    fs.rmSync(path.join(home, 'stop'), { force: true });
     const result = spawnSync(process.execPath, [path.join(scripts, 'cli.mjs'), ...args], {
       cwd: root,
       env: { ...process.env, TEST_DATABASE_URL: marker, ...env },
@@ -128,7 +138,92 @@ function fixture(t, stage = 'implementation') {
     assert.ok(!(result.stdout + result.stderr).includes(marker));
     return result;
   };
-  return { home, tree, jobFile, invoke };
+  return { root, home, tree, jobFile, invoke };
+}
+
+function successfulModel(f) {
+  fs.writeFileSync(
+    path.join(f.root, 'fake.mjs'),
+    `import fs from 'node:fs';
+    let prompt = ''; for await (const chunk of process.stdin) prompt += chunk;
+    fs.appendFileSync('model-prompts.jsonl', JSON.stringify(prompt) + '\\n');
+    const args = process.argv.slice(2);
+    fs.writeFileSync(args[args.indexOf('--output-last-message') + 1], JSON.stringify({
+      blocked: false, approved: true, summary: 'Synthetic completed role'
+    }));
+    fs.writeFileSync('.local/agent-workflow/stop', '');`,
+  );
+}
+
+for (const changed of [false, true]) {
+  test(`review environment recovery ${changed ? 'invalidates changed implementation' : 'resumes review without repeating implementation'}`, (t) => {
+    const f = fixture(t);
+    successfulModel(f);
+    assert.equal(f.invoke(['work', '--once']).status, 0);
+    const completed = JSON.parse(fs.readFileSync(f.jobFile, 'utf8'));
+    assert.equal(completed.stage, 'review', completed.error);
+    assert.ok(completed.implementationEvidence);
+    fs.rmdirSync(path.join(f.tree, 'node_modules'));
+    assert.equal(f.invoke(['work', '--once']).status, 0);
+    const blocked = JSON.parse(fs.readFileSync(f.jobFile, 'utf8'));
+    assert.equal(blocked.stage, 'blocked');
+    assert.equal(blocked.blockedStage, 'review');
+    assert.equal(blocked.failureKind, 'environment');
+    fs.mkdirSync(path.join(f.tree, 'node_modules'));
+    if (changed) fs.writeFileSync(path.join(f.tree, 'source.txt'), 'changed source');
+    assert.equal(f.invoke(['retry', '24']).status, 0);
+    const resumed = JSON.parse(fs.readFileSync(f.jobFile, 'utf8'));
+    assert.equal(resumed.stage, changed ? 'implementation' : 'review');
+    assert.deepEqual(resumed.results.implementation, completed.results.implementation);
+    assert.equal(
+      fs.readFileSync(path.join(f.root, 'model-prompts.jsonl'), 'utf8').trim().split('\n').length,
+      1,
+    );
+    assert.equal(f.invoke(['work', '--once']).status, 0);
+    const prompts = fs
+      .readFileSync(path.join(f.root, 'model-prompts.jsonl'), 'utf8')
+      .trim()
+      .split('\n')
+      .map(JSON.parse);
+    assert.equal(prompts.length, 2);
+    assert.match(prompts[1], /Dependencies not ready/);
+    assert.match(prompts[1], changed ? /implementation agent/ : /review agent/);
+  });
+}
+
+for (const [failure, kind, resume] of [
+  [
+    'npm exited 1: EACCES: permission denied opening build directory',
+    'environment',
+    'verification',
+  ],
+  ['npm exited 23: REGRESSION_R26 rollback assertion failed', 'test', 'implementation'],
+]) {
+  test(`host check ${kind} failure retains its code and condition across retry`, (t) => {
+    const f = fixture(t);
+    successfulModel(f);
+    assert.equal(f.invoke(['work', '--once']).status, 0);
+    assert.equal(f.invoke(['work', '--once']).status, 0);
+    assert.equal(f.invoke(['work', '--once'], { CHECK_FAILURE: failure }).status, 0);
+    const blocked = JSON.parse(fs.readFileSync(f.jobFile, 'utf8'));
+    assert.equal(blocked.stage, 'blocked');
+    assert.equal(blocked.failureKind, kind, blocked.error);
+    assert.equal(f.invoke(['retry', '24']).status, 0);
+    const resumed = JSON.parse(fs.readFileSync(f.jobFile, 'utf8'));
+    assert.equal(resumed.stage, resume);
+    assert.equal(resumed.error, null);
+    assert.equal(resumed.latestFailure.summary, failure);
+    assert.ok(resumed.resultHistory.some((entry) => entry.result.summary === failure));
+    if (kind === 'test') {
+      assert.equal(f.invoke(['work', '--once']).status, 0);
+      const prompts = fs
+        .readFileSync(path.join(f.root, 'model-prompts.jsonl'), 'utf8')
+        .trim()
+        .split('\n')
+        .map(JSON.parse);
+      assert.match(prompts.at(-1), /exited 23.*REGRESSION_R26 rollback assertion failed/);
+    }
+  });
 }
 
 test('verification accepts the repository tracked inventory without reading existing sensitive paths', (t) => {

@@ -12,6 +12,8 @@ Node.js **24.21.0**, npm **11.19.0**을 사용합니다. 설치는 `npm ci`, 포
 
 앞서 정리한 기술 구성·코드 규칙·API·디자인·검증·운영 추천은 [개발 기반 스킬](skills/workout-foundation/SKILL.md)에 보관합니다. 스킬 원본은 이 저장소의 `skills/`이며, Codex 스킬 경로에 설치하면 `$workout-implementation`, `$workout-foundation`으로 사용할 수 있습니다. 로컬 설치본을 수정하기보다 저장소 원본을 갱신한 뒤 다시 설치하세요. Claude Code용 복제본은 `.claude/skills/`에 있으며, 원본 수정 후 `npm run skills:sync`로 갱신합니다(`npm run check`가 불일치를 검출). 새 세션에서 스킬 목록이 갱신됩니다. 구현·수정 시 테스트 코드도 함께 작성하고 커밋 전과 PR 생성·갱신 전에 실행합니다. [테스트 스킬](skills/workout-testing/SKILL.md)은 `$workout-testing`으로 사용할 수 있습니다. PR 병합은 사용자가 수행합니다.
 
+새 웹앱 프로젝트를 같은 개발 환경으로 시작하려면 [AI 에이전트용 개발 환경 설정 문서](docs/ai-agent-project-setup.md)를 에이전트에게 전달하세요. 언어·기술 스택·AI 지침·디자인·Git 전략·저장소 분화·DB·AWS 인프라와 부트스트랩 순서를 담고 있습니다.
+
 ## 로컬 AI 작업 자동화
 
 작업일별 총정리는 [일일 작업 기록](docs/daily/README.md)에 날짜별로 누적하고, 최신 우선순위·할 일·차단 해제 절차는 [다음 작업](docs/next-steps/README.md)에서 갱신합니다.

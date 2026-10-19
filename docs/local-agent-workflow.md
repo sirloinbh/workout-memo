@@ -32,6 +32,8 @@ PowerShell 실행기는 프로젝트의 `.local/node-v24.21.0-win-x64/node.exe`�
 }
 ```
 
+`npmCli`를 명시하면 Windows와 POSIX 모두 현재 Node로 해당 파일을 실행한다. 파일이 없으면 PATH의 npm으로 대체하지 않고 환경 오류로 중단한다. 미지정 시 POSIX는 PATH의 npm을, Windows는 Node 옆의 `node_modules/npm/bin/npm-cli.js`를 사용한다.
+
 ## 이슈 등록과 중지
 
 완료 기준이 본문에 있는 열린 이슈를 등록한다. 본문에 `완료 기준` 또는 `Acceptance criteria`를 포함한다.
@@ -158,7 +160,7 @@ PowerShell 실행기는 프로젝트의 `.local/node-v24.21.0-win-x64/node.exe`�
 
 재검토는 직전 검토의 파일 SHA 스냅샷과 비교한 delta 및 이전 미해결 지적을 우선 확인한다. 최초 검토, 기존 범위 밖 파일 변경, 보안·인프라·migration·실행기·패키지 변경, 요구사항/base/branch 변경 및 highRiskReview는 전체 검토를 수행한다. delta 검토도 전체 최종 diff와 ALL acceptance criteria 확인을 요구한다. 검토 도중 파일이 바뀌면 승인을 재사용하지 않는다. 독립 review는 구현 thread와 분리한다.
 
-환경 복구 retry는 branch/base/요구사항/분류/원본 파일 fingerprint/보호 테스트 SHA가 승인된 검토 증거와 동일할 때만 verification/delivery/ci에서 이어간다. 그 외에는 기존 구현·독립 검토 경로를 거친다. review/CI 반려 수의 상한은 환경 retry로 초기화하지 않는다. 동일 호스트 검사 결과는 해당 소스 증거, 실행 명령, Node/도구 버전, 의존성 메타데이터, 전용 DB 환경 등 검사 key가 같고 이전 검사가 성공했을 때 재사용한다. 필수 DB 연결·스키마는 재사용 전에도 확인한다. 실패·환경·명령·파일 변경은 이전 결과를 무효화한다. 게시 직전 fingerprint 검사와 테스트 SHA 검사는 유지한다. CI 대기는 결정적 스크립트로 처리하며 모델을 추가 호출하지 않는다.
+환경 복구 retry는 branch/base/요구사항/분류/원본 파일 fingerprint/보호 테스트 SHA가 승인된 검토 증거와 동일할 때만 verification부터 이어간다. delivery/ci 환경 복구도 verification을 거쳐 현재 검사 명령·환경 key를 확인한 뒤 일치한 성공 결과만 재사용한다. 그 외에는 기존 구현·독립 검토 경로를 거친다. review/CI 반려 수의 상한은 환경 retry로 초기화하지 않는다. 동일 호스트 검사 결과는 해당 소스 증거, 실행 명령, Node/도구 버전, 의존성 메타데이터, 전용 DB 환경 등 검사 key가 같고 이전 검사가 성공했을 때 재사용한다. 필수 DB 연결·스키마는 재사용 전에도 확인한다. 실패·환경·명령·파일 변경은 이전 결과를 무효화한다. 게시 직전 fingerprint 검사와 테스트 SHA 검사는 유지한다. CI 대기는 결정적 스크립트로 처리하며 모델을 추가 호출하지 않는다.
 
 review 사전검사의 환경 실패도 완료된 구현 증거가 동일하면 review부터 재개한다. 구현 증거가 없는 기존 job이나 파일·요구사항·보호 테스트 등이 바뀐 job은 구현부터 다시 진행한다. npm 하위 도구의 EACCES/EPERM 및 Access is denied/Permission denied는 환경 실패로 구분한다. retry가 현재 오류를 초기화하기 전에 실패 단계·종류·내용을 `latestFailure`와 `resultHistory`에 보존하고 다음 역할 handoff에 전달한다. 실패 요약이 4,000자 한도를 넘으면 조용히 자르지 않고 상세 경로와 함께 retry를 중단한다. 하위 명령 실패는 stderr와 stdout 각각의 시작·끝을 보존하고, 생략한 구간은 truncation 표시와 전체 가림 처리 로그 경로로 안내한다. 로그를 지정하지 않은 호출은 전체 출력 미보관 사실을 명시한다.
 

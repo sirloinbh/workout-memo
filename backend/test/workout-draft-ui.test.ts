@@ -172,6 +172,24 @@ function mount(
       if (name.endsWith('.css')) return {};
       // The routine planner page (#27) has its own UI tests; drafts never render it.
       if (name === './routines') return { Routines: () => null };
+      // Routine goals (#28) are hook-free helpers and views; load the real module.
+      if (name === './progress') {
+        const progressExports = {};
+        runInNewContext(
+          ts.transpileModule(
+            readFileSync(new URL('../../frontend/src/progress.tsx', import.meta.url), 'utf8'),
+            {
+              compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                jsx: ts.JsxEmit.React,
+                esModuleInterop: true,
+              },
+            },
+          ).outputText,
+          { exports: progressExports, require: () => react, Intl },
+        );
+        return progressExports;
+      }
       throw Error(`Unexpected import: ${name}`);
     },
     Date: DeviceDate,

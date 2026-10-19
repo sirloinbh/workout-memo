@@ -63,4 +63,4 @@
 
 - 일반 작업은 Sol이며 문서 구현은 `enqueue -Issue <번호> -TaskKind documentation`, 고위험 검토는 `-ReviewRole highRiskReview`로 명시한다. 제목/본문으로 자동 분류하지 않는다. 기존 #21 변경은 워커 종료 후 `configure -Issue 21 -TaskKind documentation`을 사용한다.
 - 어려운 디버깅은 `./scripts/agents.ps1 diagnose -Issue <번호>`를 사용한다. Astra 진단은 읽기 전용이며 별도 잠금·스키마·결과를 ignored `.local/agent-workflow/diagnostics/`에 기록한다. 동시 구현 중에는 시점 스냅샷이며 stale 여부를 확인한다. 자동 escalation은 없다. Astra high와 반복 smoke/진단은 사용량을 소비하므로 명시적 필요가 있을 때만 호출한다. 상세 절차는 [운영 문서](docs/local-agent-workflow.md)를 따른다.
-- 큐·로그·로컬 실행 설정은 무시되는 `.local/agent-workflow/`에 저장한다. 진행 확인은 `./scripts/agents.ps1 status`, 중지는 `./scripts/agents.ps1 stop`이다. 채팅 메시지가 없을 때 워커 상태를 이 대화에 자동으로 보내는 기능은 없다.
+- 큐·로그·로컬 실행 설정은 무시되는 `.local/agent-workflow/`에 저장한다. 진행 확인은 `./scripts/agents.ps1 status`, 중지는 `./scripts/agents.ps1 stop`이다. 이벤트와 판단 요청은 영속 기록하지만 실제 Codex 채팅 전송 어댑터는 연결되지 않았다. pending을 전달 완료로 보고하지 않는다. 실제 사용자 답변은 워커 종료 후 `respond -Issue <번호> -ResponseFile <UTF-8 JSON>`으로 인계하며 질문·이슈·요구사항 버전을 검증한다. 실제 채팅 왕복 전 #43 PR은 draft로 유지한다. `npm run test:agents`와 전체 검사 및 Linux/Windows 워커 CI에 관련 테스트를 포함한다.

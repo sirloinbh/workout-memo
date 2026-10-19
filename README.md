@@ -10,7 +10,7 @@ Node.js **24.21.0**, npm **11.19.0**을 사용합니다. 설치는 `npm ci`, 포
 
 변경 작업은 **GitHub 이슈 등록 → 이슈 번호 기반 브랜치 → 구현 및 커밋별 docs 기록 → 테스트 후 PR → 사용자 직접 병합** 순서로 진행합니다. 상세 규칙은 [AGENTS.md](AGENTS.md)와 [구현 절차 스킬](skills/workout-implementation/SKILL.md)에 있습니다.
 
-앞서 정리한 기술 구성·코드 규칙·API·디자인·검증·운영 추천은 [개발 기반 스킬](skills/workout-foundation/SKILL.md)에 보관합니다. 스킬 원본은 이 저장소의 `skills/`이며, Codex 스킬 경로에 설치하면 `$workout-implementation`, `$workout-foundation`으로 사용할 수 있습니다. 로컬 설치본을 수정하기보다 저장소 원본을 갱신한 뒤 다시 설치하세요. 새 세션에서 스킬 목록이 갱신됩니다. 구현·수정 시 테스트 코드도 함께 작성하고 커밋 전과 PR 생성·갱신 전에 실행합니다. [테스트 스킬](skills/workout-testing/SKILL.md)은 `$workout-testing`으로 사용할 수 있습니다. PR 병합은 사용자가 수행합니다.
+앞서 정리한 기술 구성·코드 규칙·API·디자인·검증·운영 추천은 [개발 기반 스킬](skills/workout-foundation/SKILL.md)에 보관합니다. 스킬 원본은 이 저장소의 `skills/`이며, Codex 스킬 경로에 설치하면 `$workout-implementation`, `$workout-foundation`으로 사용할 수 있습니다. 로컬 설치본을 수정하기보다 저장소 원본을 갱신한 뒤 다시 설치하세요. Claude Code용 복제본은 `.claude/skills/`에 있으며, 원본 수정 후 `npm run skills:sync`로 갱신합니다(`npm run check`가 불일치를 검출). 새 세션에서 스킬 목록이 갱신됩니다. 구현·수정 시 테스트 코드도 함께 작성하고 커밋 전과 PR 생성·갱신 전에 실행합니다. [테스트 스킬](skills/workout-testing/SKILL.md)은 `$workout-testing`으로 사용할 수 있습니다. PR 병합은 사용자가 수행합니다.
 
 ## 로컬 AI 작업 자동화
 
@@ -45,6 +45,8 @@ npm run dev
 http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세요. 비밀번호에 URL 예약문자가 있으면 DATABASE_URL에 URL 인코딩이 필요합니다.
 
 ## 기능과 규칙
+
+- **루틴짜기**: 무분할~5분할, 순서와 중복을 보존하는 운동 부위, 운동별 기준 세트·총중량 kg·반복 수를 입력해 저장합니다. 시작일·주당 운동 횟수·휴식 요일을 직접 지정하며 운동일마다 분할을 순환합니다. 12주 각각의 중량/반복 증가량과 4·8·12주차의 디로딩 대상·감소량을 수동 입력합니다. 저장된 계획을 다시 조회할 수 있으며 실제 일지나 목표 달성을 생성하지 않습니다. 기존 DB에는 [루틴 마이그레이션](database/README.md)을 먼저 적용하세요.
 
 피트니스 서비스 13개의 기능·가격·웹 지원 비교와 추가 구현 이슈는 [서비스 조사 및 구현 백로그](docs/fitness-app-research-2026.md)를 참고하세요.
 

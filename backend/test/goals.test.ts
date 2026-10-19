@@ -159,7 +159,11 @@ test(
         ];
         for (const scenario of cases) {
           await t.test(scenario.name, async () => {
+            const revision = await pool.query('SELECT version FROM workouts WHERE id=$1', [
+              workoutId,
+            ]);
             const response = await call(`/workouts/${workoutId}`, 'PUT', {
+              version: revision.rows[0].version,
               date: scenario.date ?? '2000-01-15',
               title: exercise,
               sets: scenario.sets,

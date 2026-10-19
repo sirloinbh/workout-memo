@@ -11,4 +11,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.21.0'
-      - run: node --test scripts/test/agent-workflow.test.mjs scripts/test/agent-runtime.test.mjs scripts/test/agent-models.test.mjs scripts/test/agent-review-regressions.test.mjs scripts/test/agent-conversation-cli.test.mjs
+      - run: npm run test:agents

@@ -153,6 +153,52 @@ test('#43 infrastructure failure remains blocked and gets its own event, not a p
   assert.equal(j.pendingDecision, undefined);
 });
 
+test('#26+#43 queue cycle records both the usage audit event and the durable outbox event on block', async () => {
+  const j = job(81);
+  j.scheduling = {
+    authorized: true,
+    requirementsConfirmed: true,
+    kind: 'feature',
+    dependencies: [],
+  };
+  const audited = [];
+  const selections = [];
+  const h = handlers(j, {
+    tests: async () => {
+      throw Object.assign(new Error('npm EACCES in sandbox'), { failureKind: 'environment' });
+    },
+    event: async (current, value) => audited.push({ id: current.id, ...value }),
+    audit: async (selection) => selections.push(selection.job?.id),
+  });
+  await workflow.runQueueCycle([j], h);
+  assert.equal(j.stage, 'blocked');
+  assert.equal(j.failureKind, 'environment', '#26 failure kind survives the #43 queue path');
+  assert.deepEqual(
+    audited.map((e) => [e.kind, e.failureKind, e.stage]),
+    [['blocked', 'environment', 'tests']],
+  );
+  assert.equal(j.events.filter((e) => e.kind === 'blocked').length, 1);
+  assert.deepEqual(selections, ['81']);
+});
+
+test('#26+#43 reused verification pauses the cycle without skipping the publication event later', async () => {
+  const j = job(82);
+  j.stage = 'verification';
+  const h = handlers(j, {
+    verification: async () => {
+      h.calls.push('verification');
+      return { passed: true, reused: true, summary: 'Reused host check' };
+    },
+  });
+  await workflow.runStages(j, { ...h, deferCi: true });
+  assert.equal(j.stage, 'delivery', 'reuse returns before delivery so the CLI re-enters it');
+  assert.deepEqual(h.calls, ['verification']);
+  await workflow.runStages(j, { ...h, deferCi: true });
+  assert.equal(j.stage, 'ci');
+  assert.deepEqual(h.calls, ['verification', 'delivery']);
+  assert.equal(j.events.filter((e) => e.kind === 'pr_published').length, 1);
+});
+
 test('#43 structured product question pauses before review, verification or publication', async () => {
   const { j, q, h } = await waiting();
   assert.equal(j.stage, 'awaiting_user');

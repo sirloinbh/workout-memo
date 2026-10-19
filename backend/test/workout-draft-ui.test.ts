@@ -160,6 +160,18 @@ function mount(
         );
         return dateExports;
       }
+      if (name === './rest-timer') {
+        // Pure timer helpers (#31); the timer stays idle in these draft scenarios.
+        const timerExports = {};
+        runInNewContext(
+          ts.transpileModule(
+            readFileSync(new URL('../../frontend/src/rest-timer.ts', import.meta.url), 'utf8'),
+            { compilerOptions: { module: ts.ModuleKind.CommonJS } },
+          ).outputText,
+          { exports: timerExports, Date: DeviceDate, JSON, Math, Number, String },
+        );
+        return timerExports;
+      }
       if (name === 'react-dom/client')
         return {
           createRoot: () => ({

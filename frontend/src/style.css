@@ -1054,3 +1054,95 @@ fieldset.workout-fields {
   padding: 12px 0;
   border-bottom: 1px solid #dfe3e8;
 }
+.set-editor .set-actions {
+  grid-column: 2 / -2;
+  grid-row: 3;
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+.set-editor .set-actions label {
+  flex: 0 1 140px;
+}
+.set-editor .set-actions button {
+  grid-column: auto;
+  grid-row: auto;
+}
+.set-done {
+  min-height: 40px;
+  min-width: 84px;
+  border: 1px solid #c9d3bb;
+  border-radius: 5px;
+  background: white;
+  color: #4c6140;
+  font-weight: 600;
+}
+.set-done.active {
+  background: #4c6140;
+  border-color: #4c6140;
+  color: white;
+}
+.set-editor.completed .set-number {
+  color: #4c6140;
+  font-weight: 700;
+}
+.rest-timer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 16px;
+  align-items: center;
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid #dce3d2;
+  border-radius: 8px;
+  background: #fbfcf8;
+}
+.rest-timer strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: #32472b;
+}
+.rest-timer strong.ended {
+  color: #b2522f;
+}
+.rest-timer .rest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: end;
+}
+.rest-timer .rest-actions button {
+  margin: 0;
+  min-height: 40px;
+}
+.rest-timer label {
+  font-size: 11px;
+}
+.rest-timer input[type='number'] {
+  max-width: 120px;
+}
+.rest-timer .rest-auto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rest-timer .rest-auto input {
+  width: auto;
+}
+.rest-timer .form-hint,
+.rest-timer .error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .set-editor .set-actions {
+    grid-column: 2 / -1;
+    grid-row: 4;
+  }
+  .rest-timer {
+    grid-template-columns: 1fr;
+  }
+  .rest-timer .rest-actions {
+    justify-content: start;
+  }
+}

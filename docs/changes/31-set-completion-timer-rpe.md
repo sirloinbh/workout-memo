@@ -50,3 +50,12 @@
 - 실제 브라우저(모바일 390px/PC) 확인은 이 단계에서 하지 않았다. VM 어댑터는 DOM 배치·포커스·실제 React 스케줄링·브라우저의 백그라운드 타이머 스로틀링을 검증하지 않는다. 코디네이터의 브라우저 확인이 필요하다.
 - 휴식 종료 시 소리·진동·알림은 없다. 여러 탭은 같은 타이머 저장 위치를 공유하지만 다른 탭의 변경을 실시간 반영하지 않는다(다음 새로고침 시 반영).
 - 운영 DB에는 `006_set_completion_rpe.sql`을 적용하지 않았다. 배포 전 적용이 필요하다. 마이그레이션 번호 005는 다른 작업용으로 비어 있다.
+
+## 수정: 빠른 연속 탭 무시 (2026-10-19)
+
+- 코디네이터의 실제 브라우저(Chromium 390px) 확인에서 `완료` 더블클릭의 두 번째 클릭이 다음 렌더에 도착해 완료가 취소되는 문제가 발견됐다. 자동 시작한 휴식 타이머는 계속 진행되어 초안(`completed:false`)과 타이머 상태가 어긋났다.
+- `frontend/src/main.tsx`: 세트를 완료로 표시한 뒤 700ms 안에 같은 세트에 들어온 완료 취소는 무시한다. 무시한 클릭은 타이머를 재시작·취소하지 않는다. 700ms 이후의 의도적 취소는 그대로 동작한다. 눌린 상태 문구를 `완료됨 · 취소하려면 다시 누르기`로 바꾸고 `aria-pressed`는 유지했다.
+- `backend/test/set-completion-ui.test.ts`: 별도 렌더에서 100ms 간격의 두 클릭 → 완료 유지·휴식 1회 시작(1:30 남음), 1초 뒤 클릭 → 미완료·타이머 유지(1:29 남음)·전송 본문 `completed:false` 회귀 테스트를 추가했다. 수정 전 실행: 이 테스트 **fail**(`double click keeps completion`), 나머지 7 pass. 기존 두 UI 테스트의 의도적 완료 취소는 새 규칙에 맞게 취소 전에 시계를 1초 진행하도록 바꿨다(검증 내용은 같다).
+- 수정 후 `tsx --test test/set-completion-ui.test.ts test/workout-draft-ui.test.ts test/period-ui.test.ts`: **46 pass / 0 fail / 0 skip**.
+- `database/README.md`: 006 적용 명령을 컨테이너에 마운트된 파일을 읽는 `psql -f /docker-entrypoint-initdb.d/006_set_completion_rpe.sql`로 바꿨다(`compose.yaml`이 `database/migrations`를 해당 경로에 마운트함). Windows PowerShell 5.1의 네이티브 파이프는 ASCII로 전달해 한글이 손상될 수 있기 때문이다. 002/004 안내는 변경하지 않았다.
+- 수정·문서 반영 후 `issue-check.ps1 -Issue 31 -Migrate`: **EXIT=0**. 포맷·lint·typecheck·build 통과, `npm test` **234 pass / 0 fail / 0 skip / 0 cancelled**(전용 DB 포함), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**.

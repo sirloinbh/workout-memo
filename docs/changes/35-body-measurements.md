@@ -57,3 +57,15 @@
   - 4주 보기: 체중 선은 세 점을 연결하고, 체지방률·골격근량은 10/18 누락으로 선 없이 점만 표시(0으로 연결하지 않음). 인과 관계·의학적 판정 없음 안내 표시.
   - PC 1440×900: 세 지표 차트·기록 목록·수정/삭제 버튼 배치 정상.
   - 관찰(기존 동작): #34의 로컬 일지 초안 복구 안내가 신체 기록 화면 하단에도 표시된다. 이 작업의 변경이 아니며 후속 판단 사항으로 남긴다.
+
+## main 통합: #28·#31·#32와 충돌 해결 — 2026-10-19
+
+- #28(PR #50)·#31(PR #51)·#32(PR #52) 병합 후 `README.md`, `backend/test/workout-draft-ui.test.ts`, `frontend/src/main.tsx`, `frontend/src/style.css`가 충돌했다. 각 기능의 README 항목·아이콘·import·스타일을 모두 유지했다.
+  - `main.tsx`: 이 작업의 공통 기간 선택(`periodControls`)과 #31 휴식 타이머(`timerPanel`)를 함께 두고, 메뉴에 종목 분석(#32)과 신체 기록을 모두 둔다. 일지·대시보드 화면은 루틴짜기·신체 기록·종목 분석이 아닐 때만 표시한다.
+- git이 충돌로 표시하지 않은 문제를 고쳤다.
+  - `backend/src/app.ts`: 이 작업이 `date` import를 지웠고 main(#28·#32)은 계속 사용해 자동 병합 결과가 typecheck에서 실패했다. import를 복원했다.
+  - `frontend/src/body.tsx`: 같은 날 운동 볼륨이 미완료(`completed=false`) 계획 세트까지 합산했다. #31 규칙(누락은 완료로 간주)에 맞춰 완료 세트만 합산한다.
+- 테스트: `body-ui.test.ts`의 같은 날 일지에 미완료 200 kg × 10 세트를 추가했다. 볼륨 표시는 그대로 1,002.5여야 한다. 필터를 임시로 제거하면 **fail**, 적용 시 pass함을 확인했다. `set-completion-ui.test.ts`는 `./body` 페이지를 빈 컴포넌트로 대체한다.
+- 전용 테스트 DB에 `008_body_measurements.sql`을 `psql -f`로 적용했다.
+- `npm run check`(Node 24, `TEST_DATABASE_URL` 설정): **EXIT=0**. 포맷·lint·typecheck·build 통과, `npm test` **296 pass / 0 fail / 0 skip**(DB 통합 포함), `test:agents` **162 pass**, `test:skills` **4 pass**.
+- 통합 후 실제 브라우저 확인은 하지 않았다.

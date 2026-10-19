@@ -7,6 +7,7 @@ export const date = z
     return !Number.isNaN(+d) && d.toISOString().slice(0, 10) === v;
   }, '올바른 날짜를 입력하세요');
 export const workoutSchema = z.object({
+  version: z.number().int().positive().optional(),
   date,
   title: z.string().trim().min(1).max(120),
   notes: z.string().max(4000).default(''),

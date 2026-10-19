@@ -71,7 +71,10 @@ test(
           2005,
         );
         // Moving a session just outside the selected range removes it on reload.
-        await request(`/${caseIds[2]}`, 'PUT', body(adjacent(to, 1)));
+        await request(`/${caseIds[2]}`, 'PUT', {
+          ...body(adjacent(to, 1)),
+          version: own[0].version,
+        });
         const moved = await request(`?from=${from}&to=${to}`);
         assert.deepEqual(
           moved
@@ -150,6 +153,7 @@ test(
         (
           await call(`/workouts/${wid}`, 'PUT', {
             ...body,
+            version: 1,
             sets: [{ exercise, machine_id: mid, weight: 110, reps: 10 }],
           })
         ).status,
@@ -163,6 +167,7 @@ test(
         (
           await call(`/workouts/${wid}`, 'PUT', {
             ...body,
+            version: 2,
             sets: [{ exercise, machine_id: 2147483647, weight: 200, reps: 10 }],
           })
         ).status,

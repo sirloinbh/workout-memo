@@ -85,6 +85,7 @@ test(
       );
       const edited = {
         ...original,
+        version: created.data.version,
         date: '2024-03-01',
         title: title + '-edited',
         notes: '수정한 일지 메모',
@@ -123,6 +124,7 @@ test(
           );
           const failed = {
             ...edited,
+            version: before.version,
             date: '2024-03-02',
             title: title + '-must-rollback',
             notes: '저장되면 안 됨',

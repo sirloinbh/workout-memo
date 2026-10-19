@@ -61,6 +61,8 @@ type DraftSet = {
   weight: number;
   reps: number;
   notes: string;
+  completed: boolean;
+  rpe: number | null;
 };
 
 const kg = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
@@ -110,6 +112,9 @@ export function routineDraft(progress: Progress | null) {
         weight: e.weight,
         reps: e.reps,
         notes: '',
+        // Targets are planned, not performed, until the user marks each set (#31).
+        completed: false,
+        rpe: null,
       })),
     )
     .slice(0, 200);

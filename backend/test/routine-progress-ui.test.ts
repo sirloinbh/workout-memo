@@ -332,10 +332,22 @@ test('prefilled routine draft saves unchanged values with one confirm', async ()
   const body = saved.body as {
     date: string;
     title: string;
-    sets: { exercise: string; weight: number; reps: number; machine_id: null }[];
+    sets: {
+      exercise: string;
+      weight: number;
+      reps: number;
+      machine_id: null;
+      completed: boolean;
+      rpe: null;
+    }[];
   };
   assert.equal(body.date, today);
   assert.equal(body.title, '수동 12주 루틴 · 분할 2');
+  // #31: missing `completed` means a legacy completed set, so targets must say false.
+  assert.ok(
+    body.sets.every((s) => s.completed === false && s.rpe === null),
+    'unmarked routine targets are saved as planned sets, not performance',
+  );
   assert.deepEqual(
     body.sets.map((s) => [s.exercise, s.weight, s.reps, s.machine_id]),
     [
@@ -382,6 +394,8 @@ test('prefilled draft lets the user edit reps and add a non-routine exercise', a
     weight: 35,
     reps: 15,
     notes: '',
+    completed: false,
+    rpe: null,
   });
 });
 

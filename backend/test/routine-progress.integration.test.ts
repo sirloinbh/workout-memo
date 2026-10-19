@@ -72,9 +72,18 @@ test(
         sets: [
           { exercise: `${prefix}-운동0`, weight: 95.5, reps: 8 },
           { exercise: `${prefix}-운동0`, weight: 97.5, reps: 7 },
+          { exercise: `${prefix}-운동0`, weight: 120, reps: 5, completed: false },
         ],
       });
       assert.equal(record.status, 201);
+      // #31: a newer journal holding only a planned (not completed) set is not the
+      // previous record, and planned sets never appear as performance.
+      const planned = await call('/workouts', 'POST', {
+        date: slots[0],
+        title: prefix,
+        sets: [{ exercise: `${prefix}-운동0`, weight: 130, reps: 3, completed: false }],
+      });
+      assert.equal(planned.status, 201);
       const journal = async () =>
         (await pool.query('SELECT * FROM sets WHERE workout_id=$1 ORDER BY id', [record.data.id]))
           .rows;
@@ -104,7 +113,7 @@ test(
         assert.equal(progress.data.rest_preview.excluded[0].order, 36);
         assert.equal(
           (await pool.query('SELECT id FROM workouts WHERE title=$1', [prefix])).rowCount,
-          1,
+          2,
           'loading targets never creates a journal',
         );
       });

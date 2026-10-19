@@ -69,3 +69,15 @@
   - 미완료 세트를 추가해 저장 → 서버 기록은 `[completed:true, rpe:8.5]`, `[completed:false, rpe:null]`. 통계 "완료한 세트 1세트"에는 완료 세트만 집계된다. 가로 스크롤 없음.
   - API: RPE 7.3, 0, 10.5, 0.5 → 모두 400.
   - PC 1440px: 타이머·입력 모달 배치 정상.
+
+## main 통합: #28 루틴 진행과 충돌 해결 — 2026-10-19
+
+- #28(PR #50) 병합 후 `frontend/src/main.tsx`, `frontend/src/style.css`가 충돌했다. 두 기능이 같은 위치에 각각 추가한 import·상태·스타일을 모두 유지했다. 새 일지 기본값은 #28의 3세트에 #31의 `completed: false, rpe: null`을 합쳤다. 세트 행 grid에서 완료·RPE 줄(PC 3행·모바일 4행) 아래에 #28의 목표 참고 문구가 자동 배치되어 겹치지 않는다.
+- git이 감지하지 못한 의미 충돌을 함께 고쳤다. #31은 `completed`가 없는 세트를 기존 실적(완료)으로 간주한다.
+  - `frontend/src/progress.tsx` `routineDraft`: 오늘 목표로 채운 초안 세트가 `completed` 없이 만들어져 그대로 저장하면 목표가 수행 실적으로 집계될 수 있었다. `completed: false, rpe: null`로 시작하게 했다.
+  - `frontend/src/main.tsx` `다른 운동 추가`: 새 행도 `completed: false, rpe: null`로 시작한다.
+  - `backend/src/app.ts` 루틴 진행의 직전 기록: 미완료(계획) 세트를 제외한다(`s.completed`). 미완료 세트만 있는 더 최근 일지는 직전 기록이 되지 않는다.
+- 테스트: `routine-progress-ui.test.ts`에 초안 저장 본문의 `completed:false`·`rpe:null` 검증을 추가하고 추가 행 기대값을 갱신했다. `routine-progress.integration.test.ts`에 미완료 세트와 미완료 세트만 있는 최신 일지가 직전 기록에서 제외되는 회귀 검증을 추가했다. `set-completion-ui.test.ts`는 `./progress` 모듈을 로드하고, 새 일지 3세트 기본값에 맞춰 기대값을 갱신했다(검증 의도는 같다).
+- 전용 테스트 DB에 `005_routine_progress.sql`, `006_set_completion_rpe.sql`을 `psql -f`로 적용했다.
+- `npm run check`(Node 24, `TEST_DATABASE_URL` 설정): **EXIT=0**. 포맷·lint·typecheck·build 통과, `npm test` **274 pass / 0 fail / 0 skip / 0 cancelled**(DB 통합 포함), `test:agents` **162 pass**, `test:skills` **4 pass**.
+- 통합 후 실제 브라우저 확인은 하지 않았다.

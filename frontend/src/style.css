@@ -1146,3 +1146,77 @@ fieldset.workout-fields {
     justify-content: start;
   }
 }
+.routine-progress {
+  margin-bottom: 24px;
+}
+.progress-body {
+  padding: 8px 24px 22px;
+  font-size: 13px;
+}
+.progress-body h3 {
+  font-size: 13px;
+  margin: 18px 0 6px;
+}
+.target-list {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.target-list li {
+  margin: 6px 0;
+}
+.target-list small {
+  color: #6f7c68;
+}
+.progress-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.rest-preview {
+  margin-top: 14px;
+  padding: 14px;
+  background: #eff3e6;
+  border-radius: 6px;
+}
+.rest-preview button {
+  margin: 6px 6px 0 0;
+}
+.week-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.week-table th,
+.week-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 7px 6px;
+  border-top: 1px solid #e4e9dc;
+}
+.week-table ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.week-table .excluded {
+  color: #9a6b4c;
+}
+.set-editor .set-reference {
+  grid-column: 2 / -2;
+  margin: 0;
+  font-size: 11px;
+  color: #6f7c68;
+}
+@media (max-width: 760px) {
+  .progress-body {
+    padding: 8px 16px 18px;
+  }
+  .week-table {
+    display: block;
+    overflow-x: auto;
+  }
+  .set-editor .set-reference {
+    grid-column: 2 / -1;
+  }
+}

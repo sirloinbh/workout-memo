@@ -19,6 +19,16 @@ export const workoutSchema = z.object({
         weight: z.number().min(0).max(99999),
         reps: z.number().int().min(1).max(1000),
         notes: z.string().max(4000).default(''),
+        // Older clients only sent performed sets, so a missing state means completed.
+        completed: z.boolean().default(true),
+        // Optional effort rating; a missing value stays NULL and never becomes 0.
+        rpe: z
+          .number()
+          .min(1, 'RPE는 1~10 사이 0.5 단위로 입력하세요')
+          .max(10, 'RPE는 1~10 사이 0.5 단위로 입력하세요')
+          .refine((v) => Number.isInteger(v * 2), 'RPE는 1~10 사이 0.5 단위로 입력하세요')
+          .nullable()
+          .default(null),
       }),
     )
     .min(1)
@@ -40,8 +50,9 @@ export const goalSchema = z
   })
   .refine((v) => v.deadline >= v.start_date, '목표 종료일을 확인하세요');
 // Weight always means the total moved load, including a machine's base weight.
-export const volume = (sets: { weight: number; reps: number }[]) =>
-  sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
+// Not-completed (planned) sets are not actual performance.
+export const volume = (sets: { weight: number; reps: number; completed?: boolean }[]) =>
+  sets.reduce((sum, s) => (s.completed === false ? sum : sum + s.weight * s.reps), 0);
 
 export const routineSchema = z
   .object({

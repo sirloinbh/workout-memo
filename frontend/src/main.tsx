@@ -19,13 +19,42 @@ import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
 import { RoutineProgress, routineDraft, setReference, type Progress } from './progress';
+import {
+  cancelTimer,
+  finished,
+  formatRemaining,
+  maxRest,
+  minRest,
+  parseTimer,
+  pauseTimer,
+  remainingMs,
+  restTimerKey,
+  resumeTimer,
+  startTimer,
+  validDuration,
+  withDuration,
+  type RestTimer,
+} from './rest-timer';
 type SetRow = {
   exercise: string;
   machine_id: number | null;
   weight: number;
   reps: number;
   notes: string;
+  // Missing on rows saved before completion tracking; those count as completed.
+  completed?: boolean;
+  rpe?: number | null;
 };
+// Only completed sets are actual performance for statistics and goals.
+const done = (s: SetRow) => s.completed !== false;
+const repeatTapWindow = 700;
+function readTimer(): RestTimer {
+  try {
+    return parseTimer(localStorage.getItem(restTimerKey), Date.now());
+  } catch {
+    return parseTimer(null, Date.now());
+  }
+}
 type Workout = {
   id: number;
   version?: number;
@@ -77,7 +106,9 @@ function readDraft(): { draft: Draft | null; warning: string } {
           (s.notes === undefined || typeof s.notes === 'string') &&
           (s.machine_id === null || (Number.isInteger(s.machine_id) && s.machine_id > 0)) &&
           Number.isFinite(s.weight) &&
-          Number.isFinite(s.reps),
+          Number.isFinite(s.reps) &&
+          (s.completed === undefined || typeof s.completed === 'boolean') &&
+          (s.rpe === undefined || s.rpe === null || Number.isFinite(s.rpe)),
       ) ||
       (d.request &&
         (typeof d.request.key !== 'string' ||
@@ -134,7 +165,7 @@ const dateLabel = (v: string) =>
     day: 'numeric',
     weekday: 'short',
   });
-const vol = (w: Workout) => w.sets.reduce((n, s) => n + Number(s.weight) * s.reps, 0);
+const vol = (w: Workout) => w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * s.reps, 0);
 const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
 async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
   const controller = new AbortController();
@@ -175,6 +206,42 @@ function App() {
   const [saveError, setSaveError] = useState('');
   const draft = useRef<Draft | null>(initialDraft.draft);
   const workoutSaving = useRef(false);
+  const [timer, setTimerState] = useState(readTimer);
+  const [durationInput, setDurationInput] = useState(String(timer.duration));
+  const [timerWarning, setTimerWarning] = useState('');
+  const [tick, setTick] = useState(0);
+  const timerNow = Date.now();
+  const timerLeft = remainingMs(timer, timerNow);
+  const timerEnded = finished(timer, timerNow);
+  function updateTimer(next: RestTimer) {
+    setTimerState(next);
+    try {
+      localStorage.setItem(restTimerKey, JSON.stringify(next));
+      setTimerWarning('');
+    } catch {
+      setTimerWarning(
+        '타이머 상태를 이 브라우저에 보관하지 못했습니다. 새로고침하면 초기화됩니다.',
+      );
+    }
+  }
+  // Ticks only redraw; the shown value is always computed from the stored end time.
+  useEffect(() => {
+    if (timer.state !== 'running') return;
+    const left = remainingMs(timer, Date.now());
+    if (!left) return;
+    const id = setTimeout(() => setTick(Date.now()), left % 1000 || 1000);
+    return () => clearTimeout(id);
+  }, [timer, tick]);
+  useEffect(() => {
+    // Background tabs may skip ticks; redraw as soon as the tab is visible again.
+    const wake = () => setTick(Date.now());
+    window.addEventListener('visibilitychange', wake);
+    window.addEventListener('focus', wake);
+    return () => {
+      window.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('focus', wake);
+    };
+  }, []);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [progressError, setProgressError] = useState('');
   const [restConfirm, setRestConfirm] = useState(false);
@@ -235,6 +302,23 @@ function App() {
       setRecovery(null);
       setSaveState('로컬 초안 · 서버 저장 전');
     } else setRecovery(draft.current);
+  }
+  // Taps on one set within this window after completing it are treated as a double tap.
+  const completedAt = useRef(new Map<number, number>());
+  function markSet(i: number, completed: boolean) {
+    // The synchronously stored draft is newer than this render: a repeated tap from the
+    // same render must not toggle back or restart the rest timer.
+    const latest = draft.current?.editor ?? editor;
+    const current = latest?.sets?.[i];
+    if (!latest || !current || done(current) === completed) return;
+    if (!completed && Date.now() - (completedAt.current.get(i) ?? -Infinity) < repeatTapWindow)
+      return;
+    if (completed) completedAt.current.set(i, Date.now());
+    const sets = [...latest.sets!];
+    sets[i] = { ...current, completed };
+    setEditor({ ...latest, sets });
+    if (completed && timer.autoStart && !workoutSaving.current)
+      updateTimer(startTimer(timer, Date.now()));
   }
   async function saveWorkout() {
     if (!editor || workoutSaving.current) return;
@@ -342,6 +426,8 @@ function App() {
         weight: 0,
         reps: 10,
         notes: '',
+        completed: false,
+        rpe: null,
       })),
     });
   };
@@ -351,8 +437,8 @@ function App() {
     setEditor(value);
   };
   const total = workouts.reduce((n, w) => n + vol(w), 0),
-    totalSets = workouts.reduce((n, w) => n + w.sets.length, 0),
-    days = new Set(workouts.map((w) => cleanDate(w.date))).size;
+    totalSets = workouts.reduce((n, w) => n + w.sets.filter(done).length, 0),
+    days = new Set(workouts.filter((w) => w.sets.some(done)).map((w) => cleanDate(w.date))).size;
   const nav = [
     ['overview', '대시보드', LayoutDashboard],
     ['journal', '운동 일지', NotebookPen],
@@ -372,6 +458,91 @@ function App() {
       );
     setAnchor(iso(d));
   }
+  const timerPanel = (
+    <section className="rest-timer" aria-label="휴식 타이머">
+      <strong role="timer" aria-live="polite" className={timerEnded ? 'ended' : ''}>
+        {timerEnded
+          ? '휴식 종료'
+          : timer.state === 'running'
+            ? `${formatRemaining(timerLeft)} 남음`
+            : timer.state === 'paused'
+              ? `${formatRemaining(timerLeft)} 일시정지`
+              : `휴식 ${formatRemaining(timerLeft)}`}
+      </strong>
+      <div className="rest-actions">
+        {(timer.state === 'idle' || timerEnded) && (
+          <button
+            type="button"
+            className="subtle-button"
+            onClick={() => updateTimer(startTimer(timer, Date.now()))}
+          >
+            휴식 시작
+          </button>
+        )}
+        {timer.state === 'running' && !timerEnded && (
+          <button
+            type="button"
+            className="subtle-button"
+            onClick={() => updateTimer(pauseTimer(timer, Date.now()))}
+          >
+            일시정지
+          </button>
+        )}
+        {timer.state === 'paused' && (
+          <button
+            type="button"
+            className="subtle-button"
+            onClick={() => updateTimer(resumeTimer(timer, Date.now()))}
+          >
+            재개
+          </button>
+        )}
+        {timer.state !== 'idle' && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => updateTimer(cancelTimer(timer))}
+          >
+            휴식 취소
+          </button>
+        )}
+      </div>
+      <label>
+        휴식 시간(초)
+        <input
+          type="number"
+          aria-label="휴식 시간(초)"
+          min={minRest}
+          max={maxRest}
+          step="1"
+          inputMode="numeric"
+          value={durationInput}
+          onChange={(e) => {
+            setDurationInput(e.target.value);
+            const seconds = Number(e.target.value);
+            if (validDuration(seconds)) updateTimer(withDuration(timer, seconds));
+          }}
+        />
+      </label>
+      <label className="rest-auto">
+        <input
+          type="checkbox"
+          checked={timer.autoStart}
+          onChange={(e) => updateTimer({ ...timer, autoStart: e.target.checked })}
+        />
+        세트 완료 시 자동 시작
+      </label>
+      <p className="form-hint">
+        종료 시각 기준으로 이 브라우저에만 보관합니다. 탭을 다시 열면 남은 시간이 맞춰지며,
+        브라우저를 닫은 동안에는 알림이 없습니다.
+      </p>
+      {timerWarning && (
+        <p role="alert" className="error">
+          {timerWarning}
+        </p>
+      )}
+    </section>
+  );
   return (
     <div className="shell">
       <aside>
@@ -513,6 +684,7 @@ function App() {
               </button>
             </section>
           )}
+          {!editor && timer.state !== 'idle' && timerPanel}
           {(page === 'overview' || page === 'journal') && (
             <>
               <div className="period-bar">
@@ -683,6 +855,8 @@ function App() {
                                 <li key={i}>
                                   {s.exercise} · {fmt(Number(s.weight))}kg × {s.reps}회 ·{' '}
                                   {machines.find((m) => m.id === s.machine_id)?.name ?? '머신 없음'}
+                                  {s.rpe != null && ` · RPE ${fmt(Number(s.rpe))}`}
+                                  {!done(s) && ' · 미완료(통계 제외)'}
                                   {s.notes && <p>{s.notes}</p>}
                                 </li>
                               ))}
@@ -693,7 +867,10 @@ function App() {
                           <strong>
                             {fmt(vol(w))} <small>kg</small>
                           </strong>
-                          <span>{w.sets.length} 세트</span>
+                          <span>{w.sets.filter(done).length} 세트</span>
+                          {w.sets.some((s) => !done(s)) && (
+                            <span>미완료 {w.sets.filter((s) => !done(s)).length}</span>
+                          )}
                         </div>
                         <button
                           className="text-button"
@@ -704,7 +881,12 @@ function App() {
                               ...w,
                               version: w.version ?? 1,
                               date: cleanDate(w.date),
-                              sets: w.sets.map((s) => ({ ...s, weight: Number(s.weight) })),
+                              sets: w.sets.map((s) => ({
+                                ...s,
+                                weight: Number(s.weight),
+                                completed: done(s),
+                                rpe: s.rpe == null ? null : Number(s.rpe),
+                              })),
                             })
                           }
                         >
@@ -875,6 +1057,7 @@ function App() {
                 </button>
               </div>
             )}
+            {timerPanel}
             <fieldset disabled={saving} className="workout-fields">
               <div className="form-grid">
                 <label>
@@ -903,8 +1086,14 @@ function App() {
                 기록하세요. 기본중량을 모르면 임의로 더하지 말고 세트 메모에 남겨주세요. 머신을
                 선택해도 기본중량을 자동으로 더하지 않습니다.
               </p>
+              <p className="form-hint">
+                수행한 세트는 완료로 표시하세요. 완료한 세트만 통계와 목표 달성에 반영하며 미완료
+                세트는 계획으로 함께 보관합니다. RPE는 1~10의 0.5 단위이며 비워두면 미입력으로
+                남습니다. 완료 {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0}
+                세트
+              </p>
               {editor.sets?.map((s, i) => (
-                <div className="set-editor" key={i}>
+                <div className={'set-editor' + (done(s) ? ' completed' : '')} key={i}>
                   <div className="set-number">{i + 1}</div>
                   <label>
                     운동명
@@ -974,6 +1163,37 @@ function App() {
                       }}
                     />
                   </label>
+                  <div className="set-actions">
+                    <button
+                      type="button"
+                      className={done(s) ? 'set-done active' : 'set-done'}
+                      aria-pressed={done(s)}
+                      aria-label={`${i + 1}세트 완료`}
+                      onClick={() => markSet(i, !done(s))}
+                    >
+                      {done(s) ? '완료됨 · 취소하려면 다시 누르기' : '완료'}
+                    </button>
+                    <label>
+                      RPE (선택)
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        step="0.5"
+                        inputMode="decimal"
+                        placeholder="미입력"
+                        value={s.rpe ?? ''}
+                        onChange={(e) => {
+                          const sets = [...editor.sets!];
+                          sets[i] = {
+                            ...s,
+                            rpe: e.target.value === '' ? null : Number(e.target.value),
+                          };
+                          setEditor({ ...editor, sets });
+                        }}
+                      />
+                    </label>
+                  </div>
                   <label className="set-notes">
                     세트 메모
                     <textarea
@@ -1018,7 +1238,14 @@ function App() {
                 type="button"
                 className="subtle-button"
                 onClick={() =>
-                  setEditor({ ...editor, sets: [...editor.sets!, { ...editor.sets!.at(-1)! }] })
+                  setEditor({
+                    ...editor,
+                    // The next set is planned until it is marked completed.
+                    sets: [
+                      ...editor.sets!,
+                      { ...editor.sets!.at(-1)!, completed: false, rpe: null },
+                    ],
+                  })
                 }
               >
                 <Plus size={16} />
@@ -1033,7 +1260,15 @@ function App() {
                     ...editor,
                     sets: [
                       ...editor.sets!,
-                      { exercise: '', machine_id: null, weight: 0, reps: 10, notes: '' },
+                      {
+                        exercise: '',
+                        machine_id: null,
+                        weight: 0,
+                        reps: 10,
+                        notes: '',
+                        completed: false,
+                        rpe: null,
+                      },
                     ],
                   })
                 }

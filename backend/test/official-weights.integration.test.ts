@@ -159,6 +159,23 @@ test(
         assert.equal(again.data.length, hammer.data.length, 'Seeding is idempotent');
       });
 
+      await t.test(
+        'Newtech brand exists once after re-runs and lists its unverified rows',
+        async () => {
+          const count = await pool.query("SELECT count(*)::int n FROM brands WHERE name='Newtech'");
+          assert.equal(count.rows[0].n, 1);
+          const listed = await call('/brands');
+          assert.equal(listed.data.filter((b: { name: string }) => b.name === 'Newtech').length, 1);
+          const refs = await call('/official-machine-weights?brand=Newtech');
+          assert.equal(refs.status, 200);
+          assert.ok(refs.data.length > 0);
+          for (const ref of refs.data) {
+            assert.equal(ref.status, 'unverified');
+            assert.equal(ref.lineup, '온힘');
+            assert.equal(ref.weight_kg, null);
+          }
+        },
+      );
       const linkOf = async (machineId: number) =>
         (await pool.query('SELECT official_weight_id FROM machines WHERE id=$1', [machineId]))
           .rows[0].official_weight_id;

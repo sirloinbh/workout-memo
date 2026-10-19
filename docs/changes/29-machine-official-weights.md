@@ -93,3 +93,11 @@
   - 모바일 390px 머신 등록: Arsenal Strength 선택 시 참고값 후보는 모두 "공식값 미확인". Hammer Strength로 바꾸면 44개 후보가 나오고, "Iso-Lateral Bench Press — 7 lb = 3.18 kg · 편측"을 선택하면 출처 링크(lifefitness.com)와 "기본중량에 자동 반영되지 않음 · 편측 값은 양쪽 합계 아님" 안내가 표시된다. 기본중량 칸은 빈 채로 저장돼 `base_weight=null`, `official_weight_id=1`.
   - API: 필드를 생략한 PUT은 연결을 유지(200, id 1 유지), 없는 id 999999는 400 "선택한 공식 참고값이 존재하지 않습니다".
   - PC 1440px: 라이브러리 행에 "공식 참고값(Iso-Lateral Bench Press): 7 lb = 3.18 kg · 편측 · 출처 (2026-10-19 확인)", 일지 머신 선택에 "아이소 벤치 (기본중량 미확인) · 공식 참고값 7 lb = 3.18 kg · 편측". 가로 스크롤 없음.
+
+## Newtech 브랜드 추가 — 2026-10-19
+
+- 사용자 요청("뉴텍도 추가해줘")에 따라 009에 `INSERT INTO brands(name) VALUES ('Newtech') ON CONFLICT (name) DO NOTHING`을 추가했다. 001의 `brands.name UNIQUE` 제약을 사용한다. 이름은 참고 테이블의 `brand`와 같은 `Newtech`로 저장·표시해 브랜드별 참고값 매칭을 유지하고, SQL에 새 한글 리터럴을 넣지 않았다.
+- 테스트:
+  - 통합 테스트: 009를 두 번 재실행한 뒤 `Newtech` 브랜드가 정확히 1개인지, `/brands`에 노출되는지, `?brand=Newtech` 참고 행이 모두 온힘·unverified·NULL인지 확인한다.
+  - UI 테스트: 브랜드 탭과 등록 폼의 브랜드 선택지에 Newtech가 보이는지, 선택 시 참고값 선택지가 `온힘 · 온힘 라인업 (모델 미확인) — 공식값 미확인`인지 확인한다.
+- 실행: `issue-check.ps1 -Issue 29 -Migrate`. 첫 실행은 이 문서의 Prettier 경고로 EXIT=1이었고, 포맷 수정 뒤 재실행은 EXIT=0이었다(001~004·009 적용). 앱 테스트 **233 pass / 0 fail / 0 skip**(DB 통합 포함, 새 Newtech 통합·UI 테스트 실행됨). 에이전트·스킬 테스트, 포맷·린트·타입 검사·빌드도 성공했다.

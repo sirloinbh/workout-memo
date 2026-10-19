@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS official_machine_weights (
     AND weight_kg IS NULL AND length(btrim(notes)) > 0)),
   CHECK (status <> 'conflict' OR length(btrim(notes)) > 0)
 );
+-- Newtech machines can be registered; the name matches official_machine_weights.brand.
+INSERT INTO brands(name) VALUES ('Newtech') ON CONFLICT (name) DO NOTHING;
 -- Optional user-chosen link; deleting a reference row only clears the link.
 ALTER TABLE machines ADD COLUMN IF NOT EXISTS official_weight_id integer
   REFERENCES official_machine_weights(id) ON DELETE SET NULL;

@@ -110,7 +110,53 @@ type Machine = {
   name: string;
   base_weight: number | null;
   notes: string;
+  official_weight_id?: number | null;
+  official_status?: OfficialWeight['status'] | null;
+  official_model_name?: string | null;
+  official_setting?: string | null;
+  official_raw_value?: number | string | null;
+  official_raw_unit?: string | null;
+  official_weight_kg?: number | string | null;
+  official_basis?: OfficialWeight['basis'];
+  official_source_url?: string | null;
+  official_checked_date?: string | null;
 };
+// Manufacturer starting resistance (no plates). Reference only: never added to a set total.
+type OfficialWeight = {
+  id: number;
+  brand: string;
+  lineup: string;
+  model_number: string;
+  model_name: string;
+  official_item_name: string;
+  setting: string;
+  status: 'verified' | 'unverified' | 'conflict';
+  raw_value: number | string | null;
+  raw_unit: string | null;
+  official_kg_text: string | null;
+  weight_kg: number | string | null;
+  basis: 'per_arm' | 'combined' | 'unspecified' | null;
+  source_url: string | null;
+  checked_date: string;
+  notes: string;
+};
+const basisLabel = { per_arm: '편측', combined: '합계', unspecified: '기준 미표기' } as const;
+function officialLabel(r: {
+  status?: OfficialWeight['status'] | null;
+  raw_value?: number | string | null;
+  raw_unit?: string | null;
+  weight_kg?: number | string | null;
+  basis?: OfficialWeight['basis'];
+}) {
+  if (r.status !== 'verified' && r.status !== 'conflict') return '공식값 미확인';
+  if (r.raw_value === null || r.raw_value === undefined || r.weight_kg == null)
+    return '공식값 미확인';
+  const raw = r.raw_unit === 'kg' ? '' : `${fmt(Number(r.raw_value))} ${r.raw_unit} = `;
+  return (
+    `${raw}${fmt(Number(r.weight_kg))} kg · ${r.basis ? basisLabel[r.basis] : '기준 미표기'}` +
+    (r.status === 'conflict' ? ' · 공식 자료 간 불일치' : '')
+  );
+}
 type Goal = {
   id: number;
   exercise: string;
@@ -160,6 +206,7 @@ function App() {
     [goals, setGoals] = useState<Goal[]>([]),
     [machines, setMachines] = useState<Machine[]>([]),
     [brands, setBrands] = useState<{ id: number; name: string }[]>([]),
+    [officialWeights, setOfficialWeights] = useState<OfficialWeight[] | null>([]),
     [brand, setBrand] = useState(0),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true),
@@ -250,11 +297,13 @@ function App() {
     const version = ++refreshVersion.current;
     setLoading(true);
     try {
-      const [w, g, m, b] = await Promise.all([
+      const [w, g, m, b, o] = await Promise.all([
         api<Workout[]>(`/workouts?from=${from}&to=${to}`),
         api<Goal[]>('/goals'),
         api<Machine[]>('/machines'),
         api<{ id: number; name: string }[]>('/brands'),
+        // Reference data is optional: its failure must not block journal data.
+        api<OfficialWeight[]>('/official-machine-weights').catch(() => null),
       ]);
       // Only the newest refresh may update data, errors, or loading state.
       if (version !== refreshVersion.current) return;
@@ -262,6 +311,7 @@ function App() {
       setGoals(g);
       setMachines(m);
       setBrands(b);
+      setOfficialWeights(o);
       setError('');
     } catch (e) {
       if (version === refreshVersion.current) setError((e as Error).message);
@@ -407,6 +457,7 @@ function App() {
                             name: '',
                             base_weight: null,
                             notes: '',
+                            official_weight_id: null,
                           })
                       : newWorkout
                 }
@@ -751,6 +802,28 @@ function App() {
                           <p>
                             {m.brand} · {m.notes || '메모 없음'}
                           </p>
+                          {m.official_status && (
+                            <p className="official-ref">
+                              공식 참고값({m.official_model_name}
+                              {m.official_setting ? ` · ${m.official_setting}` : ''}):{' '}
+                              {officialLabel({
+                                status: m.official_status,
+                                raw_value: m.official_raw_value,
+                                raw_unit: m.official_raw_unit,
+                                weight_kg: m.official_weight_kg,
+                                basis: m.official_basis,
+                              })}
+                              {m.official_source_url && (
+                                <>
+                                  {' · '}
+                                  <a href={m.official_source_url} target="_blank" rel="noreferrer">
+                                    출처
+                                  </a>
+                                  {` (${m.official_checked_date} 확인)`}
+                                </>
+                              )}
+                            </p>
+                          )}
                         </div>
                         <strong>{m.base_weight === null ? '미입력' : `${m.base_weight} kg`}</strong>
                         <button
@@ -870,6 +943,15 @@ function App() {
                         <option key={m.id} value={m.id}>
                           {m.brand} · {m.name} (기본중량{' '}
                           {m.base_weight === null ? '미확인' : `${m.base_weight} kg`})
+                          {m.official_status
+                            ? ` · 공식 참고값 ${officialLabel({
+                                status: m.official_status,
+                                raw_value: m.official_raw_value,
+                                raw_unit: m.official_raw_unit,
+                                weight_kg: m.official_weight_kg,
+                                basis: m.official_basis,
+                              })}`
+                            : ''}
                         </option>
                       ))}
                     </select>
@@ -1043,9 +1125,20 @@ function App() {
               <select
                 required
                 value={machineEditor.brand_id ?? ''}
-                onChange={(e) =>
-                  setMachineEditor({ ...machineEditor, brand_id: Number(e.target.value) })
-                }
+                onChange={(e) => {
+                  const brandId = Number(e.target.value);
+                  const name = brands.find((b) => b.id === brandId)?.name;
+                  const linked = officialWeights?.find(
+                    (r) => r.id === machineEditor.official_weight_id,
+                  );
+                  // A reference from another brand cannot stay linked after a brand change.
+                  setMachineEditor({
+                    ...machineEditor,
+                    brand_id: brandId,
+                    official_weight_id:
+                      linked && linked.brand === name ? machineEditor.official_weight_id : null,
+                  });
+                }}
               >
                 <option value="" disabled>
                   브랜드 선택
@@ -1057,6 +1150,67 @@ function App() {
                 ))}
               </select>
             </label>
+            {(() => {
+              const brandName = brands.find((b) => b.id === machineEditor.brand_id)?.name;
+              const refs = (officialWeights ?? []).filter((r) => r.brand === brandName);
+              const selected = refs.find((r) => r.id === machineEditor.official_weight_id);
+              if (officialWeights === null)
+                return <p className="form-hint">공식 참고값을 불러오지 못했습니다.</p>;
+              if (!refs.length)
+                return <p className="form-hint">이 브랜드의 공식 참고값 자료가 없습니다.</p>;
+              return (
+                <>
+                  <label>
+                    공식 참고값 (선택)
+                    <select
+                      value={selected?.id ?? ''}
+                      onChange={(e) =>
+                        setMachineEditor({
+                          ...machineEditor,
+                          official_weight_id: e.target.value === '' ? null : Number(e.target.value),
+                        })
+                      }
+                    >
+                      <option value="">연결 안 함</option>
+                      {refs.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.lineup} · {r.model_name}
+                          {r.setting ? ` (${r.setting})` : ''} — {officialLabel(r)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {selected && (
+                    <div className="official-ref" role="note" aria-label="공식 참고값">
+                      <strong>공식 참고값: {officialLabel(selected)}</strong>
+                      <p>
+                        {selected.brand} {selected.lineup}
+                        {selected.model_number ? ` ${selected.model_number}` : ''} ·{' '}
+                        {selected.official_item_name}
+                        {selected.official_kg_text
+                          ? ` · 제조사 kg 표기 ${selected.official_kg_text}`
+                          : ''}
+                      </p>
+                      {selected.notes && <p>{selected.notes}</p>}
+                      <p>
+                        {selected.source_url ? (
+                          <a href={selected.source_url} target="_blank" rel="noreferrer">
+                            제조사 공식 출처
+                          </a>
+                        ) : (
+                          '공식 출처 없음'
+                        )}{' '}
+                        · {selected.checked_date} 확인
+                      </p>
+                      <p>
+                        공식 참고값은 플레이트 없는 시작 저항이며 아래 기본중량에 자동 반영되지
+                        않습니다. 편측 값은 양쪽 합계가 아닙니다.
+                      </p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <label>
               머신 이름
               <input

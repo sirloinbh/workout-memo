@@ -23,6 +23,7 @@ const brands = [
   { id: 1, name: 'Arsenal Strength' },
   { id: 2, name: 'Hammer Strength' },
   { id: 3, name: '기타' },
+  { id: 4, name: 'Newtech' },
 ];
 const bench = {
   id: 11,
@@ -59,6 +60,14 @@ const unknown = {
   basis: null,
   source_url: null,
   notes: '제조사 공식 자료를 찾지 못했다.',
+};
+const onhim = {
+  ...unknown,
+  id: 13,
+  brand: 'Newtech',
+  lineup: '온힘',
+  model_name: '온힘 라인업 (모델 미확인)',
+  notes: '공식 사이트 조회 실패',
 };
 const linkedMachine = {
   id: 5,
@@ -183,7 +192,7 @@ function mount(failReferences = false) {
           : url.pathname === '/api/brands'
             ? brands
             : url.pathname === '/api/official-machine-weights'
-              ? [bench, unknown]
+              ? [bench, unknown, onhim]
               : [];
       return { ok: true, json: async () => structuredClone(data) };
     },
@@ -319,4 +328,24 @@ test('a reference load failure does not block machines and is reported in the fo
   assert.equal(ui.all((e) => e.props.className === 'workout-row').length, 1);
   ui.event(ui.button('머신 등록'), 'onClick');
   assert.ok(ui.all((e) => ui.text(e) === '공식 참고값을 불러오지 못했습니다.').length > 0);
+});
+
+test('Newtech is selectable on register and its references read 공식값 미확인', async () => {
+  const ui = mount();
+  await ui.settle();
+  ui.event(ui.button('머신 라이브러리'), 'onClick');
+  assert.ok(ui.all((e) => e.type === 'button' && ui.text(e) === 'Newtech').length > 0);
+  ui.event(ui.button('머신 등록'), 'onClick');
+  const brandSelect = ui.labelled('브랜드', 'select');
+  assert.ok(
+    ui
+      .all((e) => e.type === 'option', brandSelect)
+      .map(ui.text)
+      .includes('Newtech'),
+  );
+  ui.event(brandSelect, 'onChange', { target: { value: '4' } });
+  const options = ui
+    .all((e) => e.type === 'option', ui.labelled('공식 참고값', 'select'))
+    .map(ui.text);
+  assert.deepEqual(options, ['연결 안 함', '온힘 · 온힘 라인업 (모델 미확인) — 공식값 미확인']);
 });

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 
@@ -117,20 +117,31 @@ function mount(initial: Workout[] = []) {
       return this.setUTCMonth(month);
     }
   }
-  runInNewContext(source, {
+  const modules = new Map<string, object>();
+  const sandbox: Record<string, unknown> = {
     exports: {},
     require: (name: string) => {
       if (name === 'react') return react;
-      if (name === './date') {
-        const dateExports = {};
+      if (name.endsWith('.css')) return {};
+      if (name.startsWith('./')) {
+        if (modules.has(name)) return modules.get(name);
+        const target = ['.ts', '.tsx']
+          .map((ext) => new URL('../../frontend/src/' + name.slice(2) + ext, import.meta.url))
+          .find(existsSync);
+        assert.ok(target, `Frontend module ${name} exists`);
+        const moduleExports = {};
+        modules.set(name, moduleExports);
         runInNewContext(
-          ts.transpileModule(
-            readFileSync(new URL('../../frontend/src/date.ts', import.meta.url), 'utf8'),
-            { compilerOptions: { module: ts.ModuleKind.CommonJS } },
-          ).outputText,
-          { exports: dateExports, Date: DeviceDate, Intl },
+          ts.transpileModule(readFileSync(target, 'utf8'), {
+            compilerOptions: {
+              module: ts.ModuleKind.CommonJS,
+              jsx: ts.JsxEmit.React,
+              esModuleInterop: true,
+            },
+          }).outputText,
+          { ...sandbox, exports: moduleExports },
         );
-        return dateExports;
+        return moduleExports;
       }
       if (name === 'react-dom/client')
         return {
@@ -141,7 +152,6 @@ function mount(initial: Workout[] = []) {
           }),
         };
       if (name === 'lucide-react') return new Proxy({}, { get: () => () => null });
-      if (name.endsWith('.css')) return {};
       throw Error(`Unexpected import: ${name}`);
     },
     Date: DeviceDate,
@@ -177,7 +187,8 @@ function mount(initial: Workout[] = []) {
       }
       return { ok: true, json: async () => structuredClone(data) };
     },
-  });
+  };
+  runInNewContext(source, sandbox);
   function render() {
     cursor = 0;
     tree = expand(root);

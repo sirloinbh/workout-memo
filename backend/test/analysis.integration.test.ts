@@ -97,7 +97,14 @@ test(
       const monday = await create(
         workout('1987-03-02', [s(bench, 100, 5), s(row.toUpperCase(), 80, 8)]),
       );
-      await create(workout('1987-03-08', [s(bench.toLowerCase(), 100, 5)]));
+      // #31: a planned (not completed) set is not performance; it must not change
+      // any PR, trend or weekly total asserted below.
+      await create(
+        workout('1987-03-08', [
+          s(bench.toLowerCase(), 100, 5),
+          { ...s(bench, 200, 10), completed: false },
+        ]),
+      );
       const nextWeek = await create(workout('1987-03-09', [s(bench, 105, 3)]));
       await create(workout('1987-03-01', [s(bench, 60, 1, machineId)]));
       await create(workout('2099-01-01', [s(bench, 999, 1)]));

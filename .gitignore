@@ -7,3 +7,5 @@ dist/
 *.tfplan
 backups/
 .local/
+.bkit/
+.playwright-mcp/

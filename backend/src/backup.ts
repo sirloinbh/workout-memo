@@ -162,6 +162,8 @@ export type RestoreSummary = {
   dry_run: boolean;
   tables: Record<(typeof tables)[number], Counts>;
   conflicts: string[];
+  // Replace only: retry keys removed so an old key cannot replay a deleted workout id.
+  retry_keys_cleared: number;
 };
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
@@ -217,6 +219,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
       tables.map((t) => [t, { added: 0, skipped: 0, conflicts: 0, deleted: 0 }]),
     ) as RestoreSummary['tables'],
     conflicts: [],
+    retry_keys_cleared: 0,
   };
   const t = summary.tables;
   // Readers continue; concurrent writers wait so the preview/restore sees a stable state.
@@ -226,7 +229,13 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   if (mode === 'replace') {
     for (const table of tables)
       t[table].deleted = (await client.query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n;
-    // Sets are removed by ON DELETE CASCADE. workout_requests is intentionally kept.
+    // Locked last, after the data tables, matching the order a workout save takes them.
+    await client.query('LOCK TABLE workout_requests IN EXCLUSIVE MODE');
+    // A kept key would replay {id} of a workout deleted here, so a client whose response
+    // was lost would wrongly believe its save exists. Clear keys in the same transaction;
+    // a retry after the replace is then stored as a new workout.
+    summary.retry_keys_cleared = (await client.query('DELETE FROM workout_requests')).rowCount ?? 0;
+    // Sets are removed by ON DELETE CASCADE.
     for (const table of ['workouts', 'goals', 'routines', 'machines', 'brands'])
       await client.query(`DELETE FROM ${table}`);
   }

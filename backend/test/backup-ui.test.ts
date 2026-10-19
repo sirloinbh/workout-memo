@@ -15,6 +15,7 @@ type Summary = {
   dry_run: boolean;
   tables: Record<string, { added: number; skipped: number; conflicts: number; deleted: number }>;
   conflicts: string[];
+  retry_keys_cleared: number;
 };
 const summary = (mode: string, dry_run: boolean): Summary => ({
   mode,
@@ -28,6 +29,7 @@ const summary = (mode: string, dry_run: boolean): Summary => ({
     routines: { added: 0, skipped: 1, conflicts: 0, deleted: 0 },
   },
   conflicts: mode === 'merge' ? ['Arsenal Strength / 레그 프레스: 기존 값 유지'] : [],
+  retry_keys_cleared: mode === 'replace' ? 3 : 0,
 });
 const backup = { format: 'workout-memo-backup', version: 1, data: { marker: randomUUID() } };
 
@@ -276,6 +278,7 @@ test('replace mode previews deletions and requires the typed confirmation', asyn
   assert.equal(previews.length, 2, 'Changing the mode refreshes the preview');
   assert.equal(previews[1].body?.mode, 'replace');
   assert.match(ui.text(), /기존 기록이 삭제됩니다/);
+  assert.match(ui.text(), /진행 중이던 저장 재시도 기록도\s*초기화됩니다\(3건\)/);
   assert.match(ui.text(), /운동 일지.*삭제 5/s);
   const run = ui.findButton('복원 실행');
   assert.equal(run.props.disabled, true, 'Replace is locked until confirmed');

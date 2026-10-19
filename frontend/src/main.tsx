@@ -14,10 +14,12 @@ import {
   Trash2,
   ArrowRight,
   Activity,
+  Trophy,
 } from 'lucide-react';
 import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
+import { Analysis } from './analysis';
 import { RoutineProgress, routineDraft, setReference, type Progress } from './progress';
 import {
   cancelTimer,
@@ -443,6 +445,7 @@ function App() {
     ['overview', '대시보드', LayoutDashboard],
     ['journal', '운동 일지', NotebookPen],
     ['goals', '나의 목표', Target],
+    ['analysis', '종목 분석', Trophy],
     ['routines', '루틴짜기', NotebookPen],
     ['machines', '머신 라이브러리', Dumbbell],
   ] as const;
@@ -595,7 +598,8 @@ function App() {
         </header>
         <div className="content">
           {page === 'routines' && <Routines />}
-          {page !== 'routines' && (
+          {page === 'analysis' && <Analysis />}
+          {page !== 'routines' && page !== 'analysis' && (
             <div className="page-heading">
               <div>
                 <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>

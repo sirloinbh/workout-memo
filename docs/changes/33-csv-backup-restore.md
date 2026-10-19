@@ -71,3 +71,13 @@
 
 - 수정 전 `issue-check.ps1 -Issue 33 -Migrate -Script test`: **227 pass / 1 fail**, 실패 `Must not replay the deleted id`, EXIT=1.
 - 수정 후 `issue-check.ps1 -Issue 33 -Migrate`(전체 `npm run check`): **EXIT=0**. format·lint·typecheck pass, `npm test` **228 pass / 0 fail / 0 skip**, `test:agents` **162 pass**, `test:skills` **4 pass**, build pass.
+
+## 코디네이터 검토·실제 브라우저 확인 — 2026-10-19
+
+- 독립 고위험 검토(읽기 전용): P0/P1 없음. **P2 1건**: 전체 교체 복원 뒤에도 `workout_requests` 재시도 키가 남아, 응답을 잃은 저장을 같은 키로 다시 보내면 삭제된 일지 id를 "저장됨"으로 돌려줄 수 있었다. 위 `fix: clear stale retry keys on replace restore`로 수정했다(회귀 테스트는 수정 전 실패). 그 밖에 확인 문구 없이 교체 불가, 미리보기 롤백, 단일 클라이언트 트랜잭션, 참조 검증·id 재매핑, 10MB 본문 한도, CSV 이스케이프, 파라미터 쿼리를 확인했다.
+- 실제 브라우저(Playwright, 전용 DB `workout_test_33`의 dev 서버):
+  - 제목 `백업 "검증", 쉼표`, 메모 `줄1\n줄2`, 운동명 `=SUM(1,2)`, 세트 메모 `-메모`로 저장 → CSV: UTF-8 BOM(EF BB BF), `text/csv; charset=utf-8`, 따옴표 두 번 쓰기·쉼표·줄바꿈 셀 인용, `'=SUM(1,2)`·`'-메모`로 수식 실행 방지.
+  - 백업 v1 내려받기 → 화면에서 파일 선택: "미리보기 · 추가만 (아직 변경되지 않았습니다)", 동일 항목 건너뜀 표시.
+  - 전체 교체 선택: 삭제 수와 "진행 중이던 저장 재시도 기록도 초기화됩니다(1건)" 경고, 확인 문구 미입력·`전체교체`(띄어쓰기 없음)에서는 실행 버튼 비활성, 미리보기 후에도 서버 기록 유지. 정확히 `전체 교체` 입력 후 실행 → 기록이 같은 내용(따옴표·줄바꿈·특수문자 포함)으로 복원됐다.
+  - API: 확인 문구 없는 교체 400, 미지원 버전(v99) 400.
+  - 모바일 390px 가로 스크롤 없음.

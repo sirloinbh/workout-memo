@@ -260,8 +260,13 @@ Return the required structured result with a concise summary. For test/implement
 function writeDecisionRecord(job) {
   const note = path.join(worktree(job), 'docs/changes', `${job.id}-agent-task.md`);
   if (fs.existsSync(note) && (job.decisions?.length || job.pendingDecision)) {
-    const relative = path.relative(worktree(job), note);
-    if (relative.startsWith('..') || fs.lstatSync(note).isSymbolicLink())
+    // The worktree is model-writable: a symlinked/junctioned parent or a
+    // hard link could redirect this coordinator write outside the worktree.
+    const real = fs.realpathSync.native(note);
+    const relative = path.relative(fs.realpathSync.native(worktree(job)), real);
+    const expected = path.join('docs', 'changes', `${job.id}-agent-task.md`);
+    const stat = fs.lstatSync(note);
+    if (relative !== expected || stat.isSymbolicLink() || !stat.isFile() || stat.nlink > 1)
       throw new Error('Unsafe change record path');
     fs.writeFileSync(note, updateDecisionRecord(fs.readFileSync(note, 'utf8'), job), 'utf8');
   }

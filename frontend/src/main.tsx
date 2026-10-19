@@ -18,6 +18,7 @@ import {
 import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
+import { RoutineProgress, routineDraft, setReference, type Progress } from './progress';
 type SetRow = {
   exercise: string;
   machine_id: number | null;
@@ -174,6 +175,46 @@ function App() {
   const [saveError, setSaveError] = useState('');
   const draft = useRef<Draft | null>(initialDraft.draft);
   const workoutSaving = useRef(false);
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [progressError, setProgressError] = useState('');
+  const [restConfirm, setRestConfirm] = useState(false);
+  const [restBusy, setRestBusy] = useState(false);
+  const restPending = useRef(false);
+  const loadProgress = useCallback(async () => {
+    try {
+      setProgress(await api<Progress>('/routine-progress'));
+      setProgressError('');
+    } catch (e) {
+      setProgressError((e as Error).message);
+    }
+  }, []);
+  // Reload on every page change: a routine created in 루틴짜기 must show up when the
+  // user comes back to the journal without a full page refresh.
+  useEffect(() => {
+    void loadProgress();
+  }, [loadProgress, page]);
+  // Rest changes only the plan. A pending request blocks repeated clicks and the
+  // server applies the same day's rest at most once.
+  async function changeRest(method: 'POST' | 'DELETE') {
+    const routine = progress?.routine;
+    if (!progress || !routine || restPending.current) return;
+    restPending.current = true;
+    setRestBusy(true);
+    try {
+      const path =
+        `/routines/${routine.id}/rests` + (method === 'DELETE' ? '/' + progress.today : '');
+      setProgress(
+        await api<Progress>(path, method, method === 'POST' ? { date: progress.today } : undefined),
+      );
+      setRestConfirm(false);
+      setProgressError('');
+    } catch (e) {
+      setProgressError((e as Error).message);
+    } finally {
+      restPending.current = false;
+      setRestBusy(false);
+    }
+  }
   function persist(value: Draft | null) {
     draft.current = value;
     try {
@@ -216,6 +257,7 @@ function App() {
       setRecovery(null);
       updateEditor(null);
       setSaveState('서버 저장 완료');
+      void loadProgress();
       await latestRefresh.current();
     } catch (e) {
       setSaveState('저장 실패 · 서버 저장 여부 미확인');
@@ -293,8 +335,20 @@ function App() {
       date: anchor,
       title: '',
       notes: '',
-      sets: [{ exercise: '', machine_id: null, weight: 0, reps: 10, notes: '' }],
+      // #28: a new journal starts with three sets.
+      sets: Array.from({ length: 3 }, () => ({
+        exercise: '',
+        machine_id: null,
+        weight: 0,
+        reps: 10,
+        notes: '',
+      })),
     });
+  };
+  const quickWorkout = () => {
+    const value = routineDraft(progress);
+    if (recovery || !value) return;
+    setEditor(value);
   };
   const total = workouts.reduce((n, w) => n + vol(w), 0),
     totalSets = workouts.reduce((n, w) => n + w.sets.length, 0),
@@ -527,6 +581,21 @@ function App() {
                   foot="목표 기간 내 기록 기준"
                 />
               </div>
+              {page === 'journal' && (
+                <RoutineProgress
+                  progress={progress}
+                  error={progressError}
+                  busy={restBusy}
+                  confirming={restConfirm}
+                  draftDisabled={!!recovery || saving}
+                  onQuick={quickWorkout}
+                  onRestStart={() => setRestConfirm(true)}
+                  onRestBack={() => setRestConfirm(false)}
+                  onRestConfirm={() => void changeRest('POST')}
+                  onRestCancel={() => void changeRest('DELETE')}
+                  onReload={() => void loadProgress()}
+                />
+              )}
               {page === 'overview' && (
                 <div className="overview-grid">
                   <section className="card">
@@ -918,6 +987,9 @@ function App() {
                       }}
                     />
                   </label>
+                  {setReference(progress, s.exercise) && (
+                    <p className="set-reference">{setReference(progress, s.exercise)}</p>
+                  )}
                   <button
                     type="button"
                     className="icon-button"
@@ -933,7 +1005,11 @@ function App() {
               ))}
               <datalist id="exercise-names">
                 {Array.from(
-                  new Set([...goals.map((g) => g.exercise), ...machines.map((m) => m.name)]),
+                  new Set([
+                    ...(progress?.today_plan?.target?.exercises.map((e) => e.exercise) ?? []),
+                    ...goals.map((g) => g.exercise),
+                    ...machines.map((m) => m.name),
+                  ]),
                 ).map((n) => (
                   <option key={n}>{n}</option>
                 ))}
@@ -947,6 +1023,23 @@ function App() {
               >
                 <Plus size={16} />
                 세트 추가
+              </button>
+              <button
+                type="button"
+                className="subtle-button"
+                disabled={editor.sets!.length >= 200}
+                onClick={() =>
+                  setEditor({
+                    ...editor,
+                    sets: [
+                      ...editor.sets!,
+                      { exercise: '', machine_id: null, weight: 0, reps: 10, notes: '' },
+                    ],
+                  })
+                }
+              >
+                <Plus size={16} />
+                다른 운동 추가
               </button>
               <label>
                 운동 메모

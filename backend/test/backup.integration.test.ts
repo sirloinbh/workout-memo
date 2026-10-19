@@ -21,7 +21,12 @@ type Api = (
 ) => Promise<{ status: number; data: Data; text: string; headers: Headers }>;
 // Every JSON response of these endpoints is one of these shapes.
 type Data = Backup & RestoreSummary & { id: number; error: string };
-type Db = { pool: Pool; api: Api; count: () => Promise<Record<string, number>> };
+type Db = {
+  pool: Pool;
+  api: Api;
+  base: string;
+  count: () => Promise<Record<string, number>>;
+};
 
 async function isolated(run: (...dbs: Db[]) => Promise<void>, n = 1, wrap?: (p: Pool) => Pool) {
   const admin = new Pool({ connectionString: url });
@@ -69,7 +74,7 @@ async function isolated(run: (...dbs: Db[]) => Promise<void>, n = 1, wrap?: (p: 
           out[table] = (await pool.query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n;
         return out;
       };
-      dbs.push({ pool, api, count });
+      dbs.push({ pool, api, count, base: `http://127.0.0.1:${address.port}` });
     }
     await run(...dbs);
   } finally {
@@ -545,37 +550,92 @@ test(
   },
 );
 
+test('idempotency keys are not part of the backup', { skip }, async () => {
+  await isolated(async (db) => {
+    const key = randomUUID();
+    const saved = await db.pool.query(
+      "INSERT INTO workout_requests(key,fingerprint,status,response) VALUES($1,'f',201,'{}') RETURNING key",
+      [key],
+    );
+    assert.equal(saved.rowCount, 1);
+    const exported = await db.api('/backup');
+    assert.equal(exported.text.includes(key), false);
+    assert.deepEqual(Object.keys(exported.data.data).sort(), [
+      'brands',
+      'goals',
+      'machines',
+      'routines',
+      'workouts',
+    ]);
+  });
+});
+
+// Regression (#33 review): a retry key from before a replace must not replay the id of a
+// workout the replace deleted, otherwise the client believes a lost save succeeded.
 test(
-  'idempotency keys are not part of the backup and survive a replace restore',
+  'a retried save after a replace restore never claims a deleted workout id',
   { skip },
   async () => {
     await isolated(async (db) => {
       const key = randomUUID();
-      const saved = await db.pool.query(
-        "INSERT INTO workout_requests(key,fingerprint,status,response) VALUES($1,'f',201,'{}') RETURNING key",
-        [key],
-      );
-      assert.equal(saved.rowCount, 1);
-      const exported = await db.api('/backup');
-      assert.equal(exported.text.includes(key), false);
-      assert.deepEqual(Object.keys(exported.data.data).sort(), [
-        'brands',
-        'goals',
-        'machines',
-        'routines',
-        'workouts',
-      ]);
-      const replaced = await db.api('/backup/restore', 'POST', {
-        mode: 'replace',
-        backup: exported.data,
-        confirm: '전체 교체',
-      });
-      assert.equal(replaced.status, 200);
+      const body = {
+        date: '2025-02-01',
+        title: '응답 유실된 저장',
+        notes: '',
+        sets: [{ exercise: '벤치', machine_id: null, weight: 60, reps: 5, notes: '' }],
+      };
+      const save = (k: string) =>
+        fetchJson(db, '/workouts', 'POST', body, { 'Idempotency-Key': k });
+      const first = await save(key);
+      assert.equal(first.status, 201);
+      const backup = (await db.api('/backup')).data;
+
+      // Add-only restore keeps retry keys: nothing was deleted, the replay is still true.
+      const merged = await db.api('/backup/restore', 'POST', { mode: 'merge', backup });
+      assert.equal(merged.status, 200);
+      const replay = await save(key);
+      assert.equal(replay.data.id, first.data.id);
+
+      const preview = await db.api('/backup/preview', 'POST', { mode: 'replace', backup });
+      assert.equal(preview.status, 200);
       assert.equal(
         (await db.pool.query('SELECT 1 FROM workout_requests WHERE key=$1', [key])).rowCount,
         1,
-        'Retry tombstones are kept so an old request can never become a new insert',
+        'Preview does not clear retry keys',
       );
+      const replaced = await db.api('/backup/restore', 'POST', {
+        mode: 'replace',
+        backup,
+        confirm: '전체 교체',
+      });
+      assert.equal(replaced.status, 200);
+      const exists = await db.pool.query('SELECT 1 FROM workouts WHERE id=$1', [first.data.id]);
+      assert.equal(exists.rowCount, 0, 'Replace re-created the workout under a new id');
+
+      const retried = await save(key);
+      assert.ok([200, 201].includes(retried.status));
+      assert.notEqual(retried.data.id, first.data.id, 'Must not replay the deleted id');
+      assert.equal(
+        (await db.pool.query('SELECT 1 FROM workouts WHERE id=$1', [retried.data.id])).rowCount,
+        1,
+        'The acknowledged id refers to a stored workout',
+      );
+      assert.equal(replaced.data.retry_keys_cleared, 1, 'The summary reports cleared retry keys');
     });
   },
 );
+
+async function fetchJson(
+  db: Db,
+  path: string,
+  method: string,
+  body: unknown,
+  headers: Record<string, string>,
+) {
+  const response = await fetch(`${db.base}/api${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+  return { status: response.status, data: (await response.json()) as { id: number } };
+}

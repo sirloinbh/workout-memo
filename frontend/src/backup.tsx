@@ -10,6 +10,7 @@ type Summary = {
   dry_run: boolean;
   tables: Record<string, Counts>;
   conflicts: string[];
+  retry_keys_cleared: number;
 };
 const labels: [string, string][] = [
   ['workouts', '운동 일지'],
@@ -128,8 +129,9 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
           건너뜁니다. 같은 브랜드·이름의 머신이 다르면 기존 값을 유지하고 충돌로 표시합니다.
         </p>
         <p>
-          전체 교체: 현재 기록을 모두 삭제하고 백업 내용으로 바꿉니다. 확인 문구 “{confirmation}”를
-          입력해야 실행됩니다.
+          전체 교체: 현재 기록을 모두 삭제하고 백업 내용으로 바꿉니다. 저장 재시도 기록도
+          초기화되므로 응답을 받지 못한 저장은 다시 저장하면 새 기록이 됩니다. 확인 문구 “
+          {confirmation}”를 입력해야 실행됩니다.
         </p>
         <p>
           복원 전에 형식·버전·참조·크기(최대 10MB)를 검사하고 변경 요약을 미리 보여 줍니다. 복원은
@@ -180,7 +182,10 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                 : `미리보기 · ${mode === 'replace' ? '전체 교체' : '추가만'} (아직 변경되지 않았습니다)`}
             </h4>
             {shown.mode === 'replace' && !result && (
-              <p className="error">기존 기록이 삭제됩니다. 삭제 수를 확인하세요.</p>
+              <p className="error">
+                기존 기록이 삭제됩니다. 삭제 수를 확인하세요. 진행 중이던 저장 재시도 기록도
+                초기화됩니다({shown.retry_keys_cleared}건).
+              </p>
             )}
             <ul>
               {labels.map(([key, label]) => {

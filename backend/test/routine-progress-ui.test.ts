@@ -292,6 +292,16 @@ test('journal shows per-exercise targets for today, this week and all 12 weeks',
   );
 });
 
+test('returning to the journal reloads routine goals so a routine saved elsewhere appears', async () => {
+  const ui = mount();
+  await openJournal(ui);
+  const loads = () => ui.requests.filter((r) => r.path === '/api/routine-progress').length;
+  const before = loads();
+  await ui.click('대시보드');
+  await ui.click('운동 일지');
+  assert.ok(loads() > before, 'switching pages fetches the active routine again');
+});
+
 test('without a started routine the journal shows guidance to create one', async () => {
   const ui = mount({ routine: false });
   await openJournal(ui);

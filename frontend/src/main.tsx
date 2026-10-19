@@ -188,9 +188,11 @@ function App() {
       setProgressError((e as Error).message);
     }
   }, []);
+  // Reload on every page change: a routine created in 루틴짜기 must show up when the
+  // user comes back to the journal without a full page refresh.
   useEffect(() => {
     void loadProgress();
-  }, [loadProgress]);
+  }, [loadProgress, page]);
   // Rest changes only the plan. A pending request blocks repeated clicks and the
   // server applies the same day's rest at most once.
   async function changeRest(method: 'POST' | 'DELETE') {

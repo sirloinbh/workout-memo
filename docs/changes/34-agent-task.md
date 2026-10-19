@@ -101,3 +101,12 @@
   - 같은 Idempotency-Key로 POST 2회: 두 응답 모두 201·같은 id, 기록 1건. version 1로 PUT 2회(다른 키): 첫 번째 200(version 2), 두 번째 409 충돌 안내.
   - PC 1440×900: 입력 모달 레이아웃·저장 상태 안내 정상.
   - 관찰: 모달을 연 직후 여러 필드를 연속 자동 입력한 첫 시도에서 복구 후 제목만 비어 있었다. 같은 절차를 다시 수행하면 제목이 저장·복구되어 재현되지 않았다. 자동화 타이밍 문제로 보이나 실제 사용자 입력 결함 여부는 PR 검토 시 확인을 권장한다.
+
+## main 병합 충돌 해소 — 2026-10-19
+
+- PR #46(#27 루틴)과 #42(#26) 병합 후 main을 이 브랜치에 병합했다. 충돌 3건을 다음과 같이 해소했다.
+  - `frontend/src/main.tsx`: main의 루틴 페이지 분기(`page !== 'routines'`일 때만 제목·주요 버튼 표시)를 유지하고, 초안 복구 대기 중 일지 화면의 새 기록 버튼을 막는 이 작업의 `disabled` 조건만 더했다.
+  - `frontend/src/style.css`: 이 작업의 `fieldset.workout-fields`와 main의 `.routine-page` 규칙을 모두 유지했다.
+  - `backend/test/period-ui.test.ts`: main의 모듈 로더(`sandbox`, 로컬 모듈 로드)를 유지하고 이 작업에서 필요한 `localStorage`·`crypto`·`AbortController`·타이머를 sandbox에 추가했다.
+- 병합 후 `workout-draft-ui.test.ts` 17건이 main에서 새로 생긴 `./routines` import를 처리하지 못해 실패했다. 이 테스트는 일지 화면만 렌더하므로 routines 모듈을 빈 컴포넌트로 대체했다. 루틴 화면은 #27의 자체 UI 테스트가 검증한다. 기존 assertion은 바꾸지 않았다.
+- 병합 결과로 호스트 `npm run check`: **exit 0** — 앱·DB **209 pass / 0 fail / 0 skip**, 워커 **162 pass / 0 fail / 0 skip**, 빌드 통과. 마이그레이션은 main의 `004_routines.sql`과 이 작업의 `003_workout_retries.sql`이 번호 충돌 없이 공존한다.

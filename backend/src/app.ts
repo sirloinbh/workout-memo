@@ -3,12 +3,50 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { types } from 'pg';
 import { ZodError, z } from 'zod';
-import { date, workoutSchema, machineSchema, goalSchema } from './domain.js';
+import {
+  date,
+  workoutSchema,
+  machineSchema,
+  goalSchema,
+  routineSchema,
+  routineSchedule,
+  type RoutinePlan,
+} from './domain.js';
 types.setTypeParser(1082, (value) => value);
 export function createApp(pool: Pool) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '256kb' }));
+  app.post('/api/routines', async (req, res) => {
+    const plan = routineSchema.parse(req.body);
+    const result = await pool.query('INSERT INTO routines(plan) VALUES($1::jsonb) RETURNING id', [
+      JSON.stringify(plan),
+    ]);
+    res.status(201).json(result.rows[0]);
+  });
+  app.get('/api/routines', async (_req, res) => {
+    const result = await pool.query('SELECT id, plan FROM routines ORDER BY id DESC');
+    res.json(
+      result.rows.map((row: { id: number; plan: RoutinePlan }) => ({
+        ...row.plan,
+        id: row.id,
+        schedule: routineSchedule(row.plan),
+      })),
+    );
+  });
+  app.get('/api/routines/:id', async (req, res) => {
+    const result = await pool.query('SELECT id, plan FROM routines WHERE id=$1', [
+      id(req.params.id),
+    ]);
+    const row = result.rows[0] as { id: number; plan: RoutinePlan } | undefined;
+    res
+      .status(row ? 200 : 404)
+      .json(
+        row
+          ? { ...row.plan, id: row.id, schedule: routineSchedule(row.plan) }
+          : { error: '루틴을 찾을 수 없습니다' },
+      );
+  });
   app.get('/api/health', async (_req, res) => {
     await pool.query('SELECT 1');
     res.json({ status: 'ok' });

@@ -1054,3 +1054,60 @@ fieldset.workout-fields {
   padding: 12px 0;
   border-bottom: 1px solid #dfe3e8;
 }
+.analysis-page > .card {
+  margin-top: 20px;
+}
+.analysis-week {
+  padding: 12px 0;
+  border-bottom: 1px solid #dfe3e8;
+}
+.analysis-week table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.analysis-week th,
+.analysis-week td {
+  padding: 4px 8px;
+  text-align: left;
+}
+.exercise-pr {
+  padding: 16px 0;
+  border-bottom: 1px solid #dfe3e8;
+}
+.exercise-pr dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+}
+.exercise-pr dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.part-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.part-editor .selected {
+  font-weight: 700;
+  outline: 2px solid currentColor;
+}
+.trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: 100px;
+  overflow-x: auto;
+}
+.trend-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 11px;
+}
+.trend-bar {
+  width: 14px;
+  border-radius: 4px 4px 0 0;
+  background: #6f8f3a;
+}

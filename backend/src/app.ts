@@ -10,8 +10,13 @@ import {
   goalSchema,
   routineSchema,
   routineSchedule,
+  exerciseKeySql,
+  bodyParts,
   type RoutinePlan,
 } from './domain.js';
+import { analyze, bodyPartMappingSchema, type AnalysisSet } from './analysis.js';
+const seoulToday = "(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date";
+const partOrder = `array_position(ARRAY[${bodyParts.map((p) => `'${p}'`).join(',')}]::text[], body_part)`;
 types.setTypeParser(1082, (value) => value);
 export function createApp(pool: Pool) {
   const app = express();
@@ -201,7 +206,7 @@ export function createApp(pool: Pool) {
     res.json(
       (
         await pool.query(
-          `SELECT g.*, EXISTS(SELECT 1 FROM sets s JOIN workouts w ON w.id=s.workout_id WHERE lower(trim(s.exercise))=lower(trim(g.exercise)) AND s.weight>=g.target_weight AND s.reps>=g.target_reps AND w.date BETWEEN g.start_date AND LEAST(g.deadline,(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date)) achieved FROM goals g ORDER BY g.deadline,g.id DESC`,
+          `SELECT g.*, EXISTS(SELECT 1 FROM sets s JOIN workouts w ON w.id=s.workout_id WHERE ${exerciseKeySql('s.exercise')}=${exerciseKeySql('g.exercise')} AND s.weight>=g.target_weight AND s.reps>=g.target_reps AND w.date BETWEEN g.start_date AND LEAST(g.deadline,${seoulToday})) achieved FROM goals g ORDER BY g.deadline,g.id DESC`,
         )
       ).rows,
     ),
@@ -222,6 +227,60 @@ export function createApp(pool: Pool) {
   app.delete('/api/goals/:id', async (req, res) => {
     const r = await pool.query('DELETE FROM goals WHERE id=$1', [id(req.params.id)]);
     res.status(r.rowCount ? 200 : 404).json({ ok: !!r.rowCount });
+  });
+  // PRs, estimates and weekly body-part totals are recomputed from saved sets on
+  // every read. Like goal judgment, sets dated after the Seoul service date are
+  // excluded; unsaved browser drafts never reach the server.
+  app.get('/api/analysis', async (req, res) => {
+    const q = z
+      .object({ from: date, to: date })
+      .refine((value) => value.from <= value.to, '조회 종료일은 시작일 이후여야 합니다')
+      .refine(
+        (value) => +new Date(value.to) - +new Date(value.from) <= 370 * 86400000,
+        '분석 기간은 371일 이하로 선택하세요',
+      )
+      .parse(req.query);
+    const today: string = (await pool.query(`SELECT ${seoulToday} AS today`)).rows[0].today;
+    const sets = await pool.query(
+      `SELECT s.id, w.date, s.exercise, ${exerciseKeySql('s.exercise')} exercise_key, s.weight, s.reps, (s.machine_id IS NOT NULL AND m.base_weight IS NULL) unknown_base FROM sets s JOIN workouts w ON w.id=s.workout_id LEFT JOIN machines m ON m.id=s.machine_id WHERE w.date <= $1 ORDER BY w.date, s.id`,
+      [today],
+    );
+    const mappings = await pool.query('SELECT exercise, body_part FROM exercise_body_parts');
+    res.json({ ...analyze(sets.rows as AnalysisSet[], mappings.rows, q.from, q.to), today });
+  });
+  app.get('/api/exercise-body-parts', async (_req, res) => {
+    const result = await pool.query(
+      `SELECT exercise, json_agg(body_part ORDER BY ${partOrder}) body_parts FROM exercise_body_parts GROUP BY exercise ORDER BY exercise`,
+    );
+    res.json(result.rows);
+  });
+  // Explicit user mapping only; body parts are never inferred from exercise names.
+  // An empty list removes the mapping so the exercise is counted as 미분류.
+  app.put('/api/exercise-body-parts', async (req, res) => {
+    const m = bodyPartMappingSchema.parse(req.body);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const key: string = (
+        await client.query(`SELECT ${exerciseKeySql('$1::text')} AS key`, [m.exercise])
+      ).rows[0].key;
+      await client.query('DELETE FROM exercise_body_parts WHERE exercise=$1', [key]);
+      for (const part of m.body_parts)
+        await client.query('INSERT INTO exercise_body_parts(exercise, body_part) VALUES($1,$2)', [
+          key,
+          part,
+        ]);
+      await client.query('COMMIT');
+      res.json({
+        exercise: key,
+        body_parts: bodyParts.filter((p) => m.body_parts.includes(p)),
+      });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   });
   app.use(
     (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -172,6 +172,8 @@ function mount(
       if (name.endsWith('.css')) return {};
       // The routine planner page (#27) has its own UI tests; drafts never render it.
       if (name === './routines') return { Routines: () => null };
+      // The exercise analysis page (#32) is covered by analysis-ui.test.ts.
+      if (name === './analysis') return { Analysis: () => null };
       throw Error(`Unexpected import: ${name}`);
     },
     Date: DeviceDate,

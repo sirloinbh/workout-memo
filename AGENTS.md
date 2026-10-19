@@ -59,6 +59,10 @@
 | tests, implementation, review       | gpt-6.1-sol | medium           |
 | research, documentation             | gpt-6-luna  | medium           |
 
+- 테스트 복잡도는 `-TestComplexity simple|complex`로 enqueue/configure 시 명시한다. 단순 정상·오류 입력 테스트만 `simple`로 지정하면 tests 역할은 gpt-6-luna medium을 사용한다. 미지정 기존 job과 트랜잭션·동시성·복잡한 경계 테스트(`complex`)는 Sol을 유지한다. 기존 실행 중 job을 자동 재분류하지 않는다.
+- 필수 DB/브라우저 검증은 `-RequireDatabase true -RequireBrowser true`로 명시한다. 모델 호출 전 도구·잠금·worktree·의존성 및 필수 환경을 검사하며 실패 시 모델 호출 없이 환경 차단을 기록한다. 브라우저 필수 작업에는 로컬 config의 `browserExecutable`, `browserCheckArgs`가 필요하다. 자동 설치·ACL 변경·샌드박스 해제는 하지 않는다.
+- 역할 문맥은 완료 기준·base SHA·변경 경로·최근 검사 요약·미해결 지적만 전달한다. 전체 로그·해시·감사 기록은 로컬에 보존한다. 한도 초과 중요 지적은 조용히 자르지 않고 인계 전 중단한다. 검토 증거가 동일한 환경 복구는 통과한 코드 단계를 재사용하고, 변경 시 재검토한다. 보호 테스트 수정은 워커 종료 후 `handoff-tests -Issue <번호>`로 테스트 역할에 정식 재인계한다.
+
 - 일반 작업은 Sol이며 문서 구현은 `enqueue -Issue <번호> -TaskKind documentation`, 고위험 검토는 `-ReviewRole highRiskReview`로 명시한다. 제목/본문으로 자동 분류하지 않는다. 기존 #21 변경은 워커 종료 후 `configure -Issue 21 -TaskKind documentation`을 사용한다.
 - 어려운 디버깅은 `./scripts/agents.ps1 diagnose -Issue <번호>`를 사용한다. Astra 진단은 읽기 전용이며 별도 잠금·스키마·결과를 ignored `.local/agent-workflow/diagnostics/`에 기록한다. 동시 구현 중에는 시점 스냅샷이며 stale 여부를 확인한다. 자동 escalation은 없다. Astra high와 반복 smoke/진단은 사용량을 소비하므로 명시적 필요가 있을 때만 호출한다. 상세 절차는 [운영 문서](docs/local-agent-workflow.md)를 따른다.
 - 큐·로그·로컬 실행 설정은 무시되는 `.local/agent-workflow/`에 저장한다. 진행 확인은 `./scripts/agents.ps1 status`, 중지는 `./scripts/agents.ps1 stop`이다. 채팅 메시지가 없을 때 워커 상태를 이 대화에 자동으로 보내는 기능은 없다.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-import { routineInput } from './routine-fixture.js';
+import { autoRoutineInput, routineInput } from './routine-fixture.js';
 
 // Same dependency-free rendered-element approach as period-ui.test.ts.
 // Real browser layout, focus, native validation and React scheduling are outside
@@ -268,6 +268,8 @@ for (const failRead of [false, true]) {
     await ui.settle();
     await ui.click('루틴짜기');
     await ui.click('새 루틴 만들기');
+    // #28 rule change: new routines default to automatic targets; this test covers manual mode.
+    await ui.change('주차 목표 방식', 'manual');
     await ui.change('루틴 이름', expected.name);
     await ui.change('시작일', expected.start_date);
     await ui.change('주당 운동 횟수', '3');
@@ -300,7 +302,8 @@ for (const failRead of [false, true]) {
     await ui.submit();
     const post = ui.requests.find((r) => r.method === 'POST');
     assert.ok(post);
-    assert.deepEqual(post.body, expected);
+    // #28: the form now states the mode explicitly; manual plans keep every manual week.
+    assert.deepEqual(post.body, { ...expected, progression: 'manual' });
     assert.ok(ui.requests.some((r) => r.path === '/api/routines/27'));
     assert.match(ui.text(), /7\.25/);
     assert.match(ui.text(), /100\.25/);
@@ -363,6 +366,7 @@ test('new routine requires explicit manual amounts and removes only the selected
   await ui.settle();
   await ui.click('루틴짜기');
   await ui.click('새 루틴 만들기');
+  await ui.change('주차 목표 방식', 'manual');
   for (let week = 1; week <= 12; week++) {
     const field = ui.all(
       (el) => el.type === 'fieldset' && ui.text(el).startsWith(`${week}주차`),
@@ -387,4 +391,59 @@ test('new routine requires explicit manual amounts and removes only the selected
     'Removing one occurrence preserves the other occurrence and order',
   );
   assert.equal(ui.requests.filter((r) => r.method !== 'GET').length, 0);
+});
+
+test('new routines default to automatic double progression with a 12-week preview', async () => {
+  const expected = autoRoutineInput();
+  const ui = mount(false, false, expected as unknown as ReturnType<typeof routineInput>);
+  await ui.settle();
+  await ui.click('루틴짜기');
+  await ui.click('새 루틴 만들기');
+  const mode = ui.all(
+    (el) => el.type === 'label' && ui.text(el).trim().startsWith('주차 목표 방식'),
+  )[0];
+  assert.ok(mode, 'the form offers a target mode');
+  assert.equal(ui.all((el) => el.type === 'select', mode)[0].props.value, 'auto');
+  assert.match(ui.text(), /반복 수를 1회씩/, 'the rule is explained on screen');
+  assert.equal(
+    ui.all((el) => el.type === 'label' && /^(증가량|감소량)/.test(ui.text(el).trim())).length,
+    0,
+    'no manual per-week amounts in auto mode',
+  );
+  await ui.change('루틴 이름', expected.name);
+  await ui.change('분할 이름', expected.splits[0].name);
+  await ui.change('시작일', expected.start_date);
+  await ui.change('주당 운동 횟수', '3');
+  for (const day of ['일', '화', '목', '토']) await ui.change(day, '', 0, true);
+  for (const part of expected.splits[0].body_parts) await ui.click(part + ' 추가');
+  await ui.click('운동 추가');
+  await ui.click('운동 추가');
+  for (const [i, ex] of expected.splits[0].exercises.entries()) {
+    const sets = ui.all((el) => el.type === 'label' && ui.text(el).trim().startsWith('세트 수'))[i];
+    assert.equal(ui.all((el) => el.type === 'input', sets)[0].props.value, 3, 'default 3 sets');
+    const range = (label: string) =>
+      ui.all(
+        (el) => el.type === 'input',
+        ui.all((el) => el.type === 'label' && ui.text(el).trim().startsWith(label))[i],
+      )[0].props.value;
+    assert.equal(range('반복 하한'), 8);
+    assert.equal(range('반복 상한'), 12);
+    await ui.change('운동명', ex.exercise, i);
+    await ui.change('현재 총중량 (kg, 머신 기본중량 포함)', String(ex.weight), i);
+    await ui.change('현재 반복 수', String(ex.reps), i);
+  }
+  const preview = ui.text();
+  assert.match(preview, /1주차 · 100 kg × 10회 · 시작/);
+  assert.match(preview, /4주차 · 90 kg × 12회 · 디로딩/);
+  assert.match(preview, /5주차 · 105 kg × 8회 · 증량 \+5 kg/);
+  assert.match(preview, /2주차 · 42\.5 kg × 8회 · 증량 \+2\.5 kg/);
+  assert.match(preview, /12주차 · 0 kg × 12회 · 디로딩/);
+  assert.equal(ui.requests.filter((r) => r.method !== 'GET').length, 0, 'preview sends nothing');
+  await ui.submit();
+  const post = ui.requests.find((r) => r.method === 'POST');
+  assert.ok(post);
+  assert.deepEqual(post.body, expected);
+  await ui.settle();
+  assert.match(ui.text(), /자동 · 이중 점진 과부하/);
+  assert.match(ui.text(), /11주차 · 110 kg × 8회 · 증량 \+5 kg/);
 });

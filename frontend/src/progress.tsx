@@ -8,6 +8,8 @@ export type TargetExercise = {
   weight: number;
   reps: number;
   base: { sets: number; weight: number; reps: number };
+  projected?: boolean;
+  result?: 'achieved' | 'missed' | null;
 };
 type Change = { week: number; kind: string; amount: number; deload_metric: string | null };
 export type Target = {
@@ -16,7 +18,7 @@ export type Target = {
   is_deload: boolean;
   split_index: number;
   split_name: string;
-  change: Change;
+  change: Change | null;
   exercises: TargetExercise[];
 };
 type Day = { date: string; week: number; rest: boolean; target: Target | null };
@@ -35,12 +37,14 @@ export type Progress = {
   start_date?: string;
   end_date?: string;
   status?: string;
+  progression?: 'manual' | 'auto';
   current_week?: number | null;
   today_plan?: Day | null;
   this_week?: Day[];
   weeks?: {
     week: number;
-    change: Change;
+    is_deload?: boolean;
+    change: Change | null;
     entries: { date: string | null; excluded: boolean; target: Target }[];
   }[];
   excluded?: Target[];
@@ -60,14 +64,28 @@ type DraftSet = {
 
 const kg = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
 export const exerciseKey = (name: string) => name.trim().toLowerCase();
-export const changeLabel = (c: Change) =>
-  c.kind === 'deload'
-    ? `디로딩 · ${c.deload_metric === 'weight' ? '총중량' : c.deload_metric === 'sets' ? '세트 수' : '반복 수'} ${c.amount}${c.deload_metric === 'weight' ? ' kg' : ''} 감소`
-    : `${c.kind === 'increase_weight' ? '총중량' : '반복 수'} ${c.amount}${c.kind === 'increase_weight' ? ' kg' : ''} 증가`;
+// Auto routines (#28 rule change) have no manual change; the target is computed.
+export const changeLabel = (c: Change | null, deload = false) =>
+  !c
+    ? deload
+      ? '디로딩 · 자동 (직전 주 중량 90%)'
+      : '자동 · 이중 점진 과부하'
+    : c.kind === 'deload'
+      ? `디로딩 · ${c.deload_metric === 'weight' ? '총중량' : c.deload_metric === 'sets' ? '세트 수' : '반복 수'} ${c.amount}${c.deload_metric === 'weight' ? ' kg' : ''} 감소`
+      : `${c.kind === 'increase_weight' ? '총중량' : '반복 수'} ${c.amount}${c.kind === 'increase_weight' ? ' kg' : ''} 증가`;
 const targetLabel = (t: { week: number; is_deload: boolean; split_name: string }) =>
   `${t.week}주차${t.is_deload ? ' 디로딩' : ''} · ${t.split_name}`;
-export const exerciseText = (e: { exercise: string; sets: number; weight: number; reps: number }) =>
-  `${e.exercise} ${e.sets}세트 · 총중량 ${kg(e.weight)} kg · ${e.reps}회`;
+export const exerciseText = (e: {
+  exercise: string;
+  sets: number;
+  weight: number;
+  reps: number;
+  projected?: boolean;
+  result?: string | null;
+}) =>
+  `${e.exercise} ${e.sets}세트 · 총중량 ${kg(e.weight)} kg · ${e.reps}회` +
+  (e.result === 'achieved' ? ' · 달성' : e.result === 'missed' ? ' · 미달성(유지)' : '') +
+  (e.projected ? ' · 예상' : '');
 export const previousText = (p: Previous | undefined) =>
   p
     ? `직전 기록 ${p.date} · ${p.sets.map((s) => `${kg(s.weight)} kg × ${s.reps}회`).join(', ')}`
@@ -164,6 +182,13 @@ export function RoutineProgress({
               <strong>{progress.routine.name}</strong> · {progress.start_date} — {progress.end_date}
               {progress.current_week ? ` · 현재 ${progress.current_week}주차` : ' · 루틴 기간 종료'}
             </p>
+            {progress.progression === 'auto' && (
+              <p className="form-hint">
+                자동 목표(이중 점진 과부하): 저장한 일지에서 계획 세트를 모두 목표 이상으로 수행하면
+                다음 목표로 진행하고, 못하면 같은 목표를 유지합니다. 기록이 없는 앞으로의 목표는
+                예상입니다.
+              </p>
+            )}
             <h3>오늘 목표 · {progress.today}</h3>
             {!today ? (
               <p>오늘은 계획된 운동일이 아닙니다.</p>
@@ -177,7 +202,8 @@ export function RoutineProgress({
             ) : today.target ? (
               <>
                 <p>
-                  {targetLabel(today.target)} · {changeLabel(today.target.change)}
+                  {targetLabel(today.target)} ·{' '}
+                  {changeLabel(today.target.change, today.target.is_deload)}
                 </p>
                 <ul className="target-list">
                   {today.target.exercises.map((e, i) => (
@@ -273,7 +299,7 @@ export function RoutineProgress({
                   {progress.weeks?.map((w) => (
                     <tr key={w.week}>
                       <th>{w.week}주차</th>
-                      <td>{changeLabel(w.change)}</td>
+                      <td>{changeLabel(w.change, w.is_deload ?? w.week % 4 === 0)}</td>
                       <td>
                         <ul>
                           {w.entries.map((e) => (

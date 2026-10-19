@@ -59,3 +59,13 @@
 - 수정 후 `tsx --test test/set-completion-ui.test.ts test/workout-draft-ui.test.ts test/period-ui.test.ts`: **46 pass / 0 fail / 0 skip**.
 - `database/README.md`: 006 적용 명령을 컨테이너에 마운트된 파일을 읽는 `psql -f /docker-entrypoint-initdb.d/006_set_completion_rpe.sql`로 바꿨다(`compose.yaml`이 `database/migrations`를 해당 경로에 마운트함). Windows PowerShell 5.1의 네이티브 파이프는 ASCII로 전달해 한글이 손상될 수 있기 때문이다. 002/004 안내는 변경하지 않았다.
 - 수정·문서 반영 후 `issue-check.ps1 -Issue 31 -Migrate`: **EXIT=0**. 포맷·lint·typecheck·build 통과, `npm test` **234 pass / 0 fail / 0 skip / 0 cancelled**(전용 DB 포함), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**.
+
+## 코디네이터 검토·실제 브라우저 확인 — 2026-10-19
+
+- 독립 검토(읽기 전용): 차단 지적 없음. 006 마이그레이션 멱등성과 기존 세트 `completed=true` 보존, 서버 목표 판정·`volume`의 완료 세트 필터, RPE 0.5 단위 검증, #34 요청 fingerprint 호환, 종료 시각 기반 타이머를 확인했다. 참고(P3): RPE `onChange`가 렌더 시점 editor를 사용(같은 tick 이중 변경은 실사용에서 드묾).
+- 실제 브라우저(Playwright, 전용 DB `workout_test_31`의 dev 서버)에서 처음 확인했을 때 **완료 버튼 더블클릭이 완료→미완료로 되돌아가는 문제**를 발견했다. 두 클릭이 서로 다른 렌더에서 처리돼 같은 렌더 방어가 동작하지 않았다. 위의 `fix: ignore rapid repeat taps` 수정 후 재확인했다:
+  - 모바일 390px: 자동 시작 켜고 휴식 20초, RPE 8.5 입력 → 완료 더블클릭 시 `completed: true` 유지, 타이머 1회 시작("0:20 남음"), 버튼 "완료됨 · 취소하려면 다시 누르기", `aria-pressed=true`.
+  - 새로고침 → 초안 복구: 타이머가 종료 시각 기준으로 "0:11 남음", 완료 상태·RPE 8.5가 복원됐다.
+  - 미완료 세트를 추가해 저장 → 서버 기록은 `[completed:true, rpe:8.5]`, `[completed:false, rpe:null]`. 통계 "완료한 세트 1세트"에는 완료 세트만 집계된다. 가로 스크롤 없음.
+  - API: RPE 7.3, 0, 10.5, 0.5 → 모두 400.
+  - PC 1440px: 타이머·입력 모달 배치 정상.

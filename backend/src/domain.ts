@@ -43,6 +43,12 @@ export const goalSchema = z
 export const volume = (sets: { weight: number; reps: number }[]) =>
   sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
 
+// The seven routine body parts (#27), also used by the exercise mapping (#32).
+export const bodyParts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'] as const;
+// Same-exercise identity shared by goal judgment and exercise analysis: case and
+// outer spaces are ignored. Evaluated by PostgreSQL so both use one collation.
+export const exerciseKeySql = (column: string) => `lower(trim(${column}))`;
+
 export const routineSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
@@ -54,10 +60,7 @@ export const routineSchema = z
       .array(
         z.object({
           name: z.string().trim().min(1).max(120),
-          body_parts: z
-            .array(z.enum(['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근']))
-            .min(1)
-            .max(100),
+          body_parts: z.array(z.enum(bodyParts)).min(1).max(100),
           exercises: z
             .array(
               z.object({

@@ -12,6 +12,12 @@ PostgreSQL 17. 초기 테이블은 `migrations/001_initial.sql`. Docker의 빈 �
 Get-Content -Raw -Encoding UTF8 database/migrations/004_routines.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
 ```
 
+종목 분석(종목별 PR·추정 1RM·부위별 주간 운동량) API를 사용하기 전에는 `007_exercise_body_parts.sql`도 적용하세요. 사용자가 직접 지정한 운동→부위 매핑만 보관합니다. 운동명은 목표 판정과 같은 규칙(`lower(trim(운동명))`)으로 정규화한 값으로 저장하며 운동명에서 부위를 추측하지 않습니다. 매핑이 없는 운동은 `미분류`로 집계합니다. 기존 일지·세트는 변경하지 않으며 재실행해도 안전합니다. PR과 주간 통계는 저장하지 않고 조회할 때마다 계산합니다.
+
+```powershell
+Get-Content -Raw -Encoding UTF8 database/migrations/007_exercise_body_parts.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+```
+
 ```powershell
 Get-Content -Raw -Encoding UTF8 database/migrations/002_set_notes.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
 ```

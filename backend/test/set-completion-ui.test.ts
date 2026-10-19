@@ -153,6 +153,8 @@ function mount(
     if (name === 'lucide-react') return new Proxy({}, { get: () => () => null });
     if (name.endsWith('.css')) return {};
     if (name === './routines') return { Routines: () => null };
+    // The exercise analysis page (#32) is covered by analysis-ui.test.ts.
+    if (name === './analysis') return { Analysis: () => null };
     // Routine goals (#28) are hook-free helpers and views; load the real module.
     if (name === './date' || name === './rest-timer' || name === './progress') {
       if (!modules.has(name)) {

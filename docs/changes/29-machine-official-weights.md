@@ -73,3 +73,14 @@
 - Arsenal Strength와 Newtech 온힘은 공식 자료를 확보하지 못했다. 제조사 공식 사이트·카탈로그나 기록 가능한 공식 답변이 확보되면 행을 갱신한다.
 - Seated Biceps의 en-us와 en-eu 기준 표기 차이는 en-eu 페이지를 직접 조회해 확인해야 한다.
 - 실제 브라우저 레이아웃, 링크 열기, 모바일 폭 확인은 조정자 브라우저 검증 범위다.
+
+## 검토 반영 — 2026-10-19
+
+- 머신 PUT에서 `official_weight_id`를 생략하면 저장된 연결을 유지한다. 명시적 `null`은 연결 해제, 숫자는 변경이다. POST에서 생략하면 연결 없음이다. Zod 기본값 null을 제거해 부분 갱신 시 연결이 지워지지 않게 했다.
+- 존재하지 않는 참고값 ID는 FK 제약명(`machines_official_weight_id_fkey`)으로 구분해 400 `선택한 공식 참고값이 존재하지 않습니다`를 반환한다. 다른 FK 위반 메시지는 기존 문구로 되돌렸다.
+- `database/README.md`의 009 적용 명령을 파이프 대신 컨테이너 내부 파일 실행(`psql ... -f /docker-entrypoint-initdb.d/009_official_machine_weights.sql`)으로 바꿨다. Windows PowerShell 5.1 파이프가 한글을 ASCII로 손상시키기 때문이다. 002/004 안내는 별도 이슈 범위로 남겼다.
+- 회귀 테스트:
+  - `official-weights.test.ts`: HTTP 테스트 1개를 추가했다. PUT에서 필드 생략은 갱신 플래그 false, null·숫자는 true인지, POST 생략은 null인지, POST·PUT의 FK 위반이 400과 한국어 메시지를 반환하는지 확인한다. 스키마 테스트는 생략=undefined, null=null을 확인한다.
+  - `official-weights.integration.test.ts`: 생략 PUT 후 연결 유지, 전환·null 해제, 존재하지 않는 ID의 POST·PUT 400·메시지·미저장·기존 연결 유지, 그리고 매 단계 기본중량·과거 총중량 보존을 확인한다.
+- 실행: `issue-check.ps1 -Issue 29 -Migrate`. 001~004·009 마이그레이션 적용 후 EXIT=0. 앱 테스트 **231 pass / 0 fail / 0 skip**(DB 통합 포함), 에이전트·스킬 테스트, 포맷·린트·타입 검사·빌드 성공. 그 전에 대상 테스트 3개 파일을 실행했다(17 pass / 0 fail).
+- 참고: 이전 실행이 ASCII 파이프로 마이그레이션을 적용했다면, 전용 테스트 DB에 한글이 손상된 참고 행이 별도 키로 남아 있을 수 있다. 테스트 DB 전용이며 테스트 결과에는 영향이 없었다.

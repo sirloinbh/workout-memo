@@ -88,7 +88,7 @@ export function createApp(pool: Pool) {
         (
           await pool.query(
             'INSERT INTO machines(brand_id,name,base_weight,notes,official_weight_id) VALUES($1,$2,$3,$4,$5) RETURNING *',
-            [m.brand_id, m.name, m.base_weight, m.notes, m.official_weight_id],
+            [m.brand_id, m.name, m.base_weight, m.notes, m.official_weight_id ?? null],
           )
         ).rows[0],
       );
@@ -96,8 +96,16 @@ export function createApp(pool: Pool) {
   app.put('/api/machines/:id', async (req, res) => {
     const m = machineSchema.parse(req.body);
     const r = await pool.query(
-      'UPDATE machines SET brand_id=$1,name=$2,base_weight=$3,notes=$4,official_weight_id=$5 WHERE id=$6 RETURNING *',
-      [m.brand_id, m.name, m.base_weight, m.notes, m.official_weight_id, id(req.params.id)],
+      'UPDATE machines SET brand_id=$1,name=$2,base_weight=$3,notes=$4,official_weight_id=CASE WHEN $7::boolean THEN $5::integer ELSE official_weight_id END WHERE id=$6 RETURNING *',
+      [
+        m.brand_id,
+        m.name,
+        m.base_weight,
+        m.notes,
+        m.official_weight_id ?? null,
+        id(req.params.id),
+        m.official_weight_id !== undefined,
+      ],
     );
     res.status(r.rowCount ? 200 : 404).json(r.rows[0] ?? { error: '머신을 찾을 수 없습니다' });
   });
@@ -248,14 +256,18 @@ export function createApp(pool: Pool) {
       }
       const error =
         typeof err === 'object' && err !== null
-          ? (err as { code?: unknown; status?: unknown; message?: unknown })
+          ? (err as { code?: unknown; constraint?: unknown; status?: unknown; message?: unknown })
           : {};
       if (error.code === '23505') {
         res.status(409).json({ error: '이미 등록된 항목입니다' });
         return;
       }
+      if (error.code === '23503' && error.constraint === 'machines_official_weight_id_fkey') {
+        res.status(400).json({ error: '선택한 공식 참고값이 존재하지 않습니다' });
+        return;
+      }
       if (error.code === '23503') {
-        res.status(400).json({ error: '선택한 머신, 브랜드 또는 공식 참고값이 존재하지 않습니다' });
+        res.status(400).json({ error: '선택한 머신 또는 브랜드가 존재하지 않습니다' });
         return;
       }
       if (error.status === 400) {

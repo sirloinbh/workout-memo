@@ -159,19 +159,60 @@ test(
         assert.equal(again.data.length, hammer.data.length, 'Seeding is idempotent');
       });
 
-      await t.test('unlinking or switching references keeps base weight and totals', async () => {
-        for (const official_weight_id of [unverified.id, null, 2147483647]) {
+      const linkOf = async (machineId: number) =>
+        (await pool.query('SELECT official_weight_id FROM machines WHERE id=$1', [machineId]))
+          .rows[0].official_weight_id;
+      const editBody = {
+        brand_id: hammerBrand.id,
+        name: `${name}-20.25`,
+        base_weight: 20.25,
+        notes: 'Test fixture',
+      };
+      await t.test('omitting official_weight_id on update keeps the stored link', async () => {
+        const updated = await call(`/machines/${machineIds[2]}`, 'PUT', editBody);
+        assert.equal(updated.status, 200);
+        assert.equal(await linkOf(machineIds[2]), bench.id);
+        assert.deepEqual(await snapshot(), before);
+      });
+      await t.test('switching and explicit null unlink keep base weight and totals', async () => {
+        for (const official_weight_id of [unverified.id, null]) {
           const updated = await call(`/machines/${machineIds[2]}`, 'PUT', {
-            brand_id: hammerBrand.id,
-            name: `${name}-20.25`,
-            base_weight: 20.25,
-            notes: 'Test fixture',
+            ...editBody,
             official_weight_id,
           });
-          assert.equal(updated.status, official_weight_id === 2147483647 ? 400 : 200);
+          assert.equal(updated.status, 200);
+          assert.equal(await linkOf(machineIds[2]), official_weight_id);
           assert.deepEqual(await snapshot(), before);
         }
       });
+      await t.test(
+        'an unknown reference id is a 400 with a Korean message, not a 500',
+        async () => {
+          const unknownId = 2147483647;
+          const posted = await call('/machines', 'POST', {
+            ...editBody,
+            name: `${name}-unknown`,
+            official_weight_id: unknownId,
+          });
+          const put = await call(`/machines/${machineIds[1]}`, 'PUT', {
+            ...editBody,
+            name: `${name}-0`,
+            base_weight: 0,
+            official_weight_id: unknownId,
+          });
+          for (const response of [posted, put]) {
+            assert.equal(response.status, 400);
+            assert.equal(response.data.error, '선택한 공식 참고값이 존재하지 않습니다');
+          }
+          assert.equal(
+            (await pool.query('SELECT 1 FROM machines WHERE name=$1', [`${name}-unknown`]))
+              .rowCount,
+            0,
+          );
+          assert.equal(await linkOf(machineIds[1]), bench.id, 'Rejected update keeps the link');
+          assert.deepEqual(await snapshot(), before);
+        },
+      );
     } finally {
       try {
         if (workoutId !== undefined)

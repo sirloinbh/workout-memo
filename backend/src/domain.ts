@@ -30,7 +30,8 @@ export const machineSchema = z.object({
   base_weight: z.number().min(0).max(99999).nullable(),
   notes: z.string().max(2000).default(''),
   // A link to a manufacturer reference row; it never sets or changes base_weight.
-  official_weight_id: z.number().int().positive().max(2147483647).nullable().default(null),
+  // Omitted keeps the stored link on update (none on create); explicit null unlinks.
+  official_weight_id: z.number().int().positive().max(2147483647).nullable().optional(),
 });
 export const officialWeightQuery = z
   .object({ brand: z.string().trim().min(1).max(120).optional() })

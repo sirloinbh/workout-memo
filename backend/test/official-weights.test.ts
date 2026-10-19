@@ -178,7 +178,12 @@ test('migration is idempotent and never writes user machine weights or set total
 
 test('machine link to an official reference is optional and validated', () => {
   const machine = { brand_id: 1, name: 'Test', base_weight: null };
-  assert.equal(machineSchema.parse(machine).official_weight_id, null);
+  // Omitted stays undefined so an update can keep the stored link; null means unlink.
+  assert.equal(machineSchema.parse(machine).official_weight_id, undefined);
+  assert.equal(
+    machineSchema.parse({ ...machine, official_weight_id: null }).official_weight_id,
+    null,
+  );
   assert.equal(machineSchema.parse({ ...machine, official_weight_id: 5 }).official_weight_id, 5);
   for (const official_weight_id of [0, -1, 1.5, '1', 2147483648, {}])
     assert.equal(machineSchema.safeParse({ ...machine, official_weight_id }).success, false);
@@ -217,6 +222,63 @@ test('official reference API validates the query before touching storage', async
       assert.equal(response.status, 200);
       assert.deepEqual(await response.json(), []);
       assert.deepEqual(calls.at(-1), [param]);
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+});
+
+test('machine PUT keeps an omitted link and maps an unknown reference id to 400', async () => {
+  const calls: unknown[][] = [];
+  let fail = false;
+  const pool = {
+    query(_sql: string, params: unknown[]) {
+      calls.push(params);
+      if (fail)
+        return Promise.reject(
+          Object.assign(new Error('fk'), {
+            code: '23503',
+            constraint: 'machines_official_weight_id_fkey',
+          }),
+        );
+      return Promise.resolve({ rowCount: 1, rows: [{ id: 1 }] });
+    },
+  } as unknown as Pool;
+  const server = createApp(pool).listen(0, '127.0.0.1');
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once('listening', resolve);
+      server.once('error', reject);
+    });
+    const address = server.address();
+    if (!address || typeof address === 'string') throw Error('server');
+    const send = (method: string, body: object) =>
+      fetch(`http://127.0.0.1:${address.port}/api/machines${method === 'PUT' ? '/1' : ''}`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    const body = { brand_id: 1, name: 'Test', base_weight: null };
+    // [official_weight_id, update flag]: omitted must not overwrite the stored link.
+    for (const [value, flag] of [
+      [undefined, false],
+      [null, true],
+      [7, true],
+    ] as const) {
+      const response: Response = await send('PUT', { ...body, official_weight_id: value });
+      assert.equal(response.status, 200);
+      assert.deepEqual(calls.at(-1)!.slice(4), [value ?? null, 1, flag]);
+    }
+    const created: Response = await send('POST', body);
+    assert.equal(created.status, 201);
+    assert.equal(calls.at(-1)![4], null, 'Omitted on create means no link');
+    fail = true;
+    for (const method of ['POST', 'PUT']) {
+      const response: Response = await send(method, { ...body, official_weight_id: 99 });
+      assert.equal(response.status, 400, method);
+      assert.equal((await response.json()).error, '선택한 공식 참고값이 존재하지 않습니다');
     }
   } finally {
     await new Promise<void>((resolve, reject) =>

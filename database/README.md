@@ -40,7 +40,7 @@ PUT에는 조회한 양의 정수 `version`이 필수이며 누락·형식 오�
 `completed=false`인 세트는 계획으로 보관만 하며 목표 달성·볼륨·세트 수·운동한 날에 반영하지 않습니다. `completed`를 보내지 않는 기존 클라이언트의 세트는 완료로 저장됩니다. 재실행해도 안전합니다.
 
 ```powershell
-Get-Content -Raw -Encoding UTF8 database/migrations/006_set_completion_rpe.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/006_set_completion_rpe.sql
 ```
 
 휴식 타이머는 서버에 저장하지 않습니다. 이 브라우저의 localStorage(`workout-memo:rest-timer:v1`)에 시간 설정·자동 시작 여부·종료 시각만 보관하며, 남은 시간은 종료 시각으로 다시 계산합니다.

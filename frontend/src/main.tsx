@@ -46,6 +46,7 @@ type SetRow = {
 };
 // Only completed sets are actual performance for statistics and goals.
 const done = (s: SetRow) => s.completed !== false;
+const repeatTapWindow = 700;
 function readTimer(): RestTimer {
   try {
     return parseTimer(localStorage.getItem(restTimerKey), Date.now());
@@ -261,12 +262,17 @@ function App() {
       setSaveState('로컬 초안 · 서버 저장 전');
     } else setRecovery(draft.current);
   }
+  // Taps on one set within this window after completing it are treated as a double tap.
+  const completedAt = useRef(new Map<number, number>());
   function markSet(i: number, completed: boolean) {
     // The synchronously stored draft is newer than this render: a repeated tap from the
     // same render must not toggle back or restart the rest timer.
     const latest = draft.current?.editor ?? editor;
     const current = latest?.sets?.[i];
     if (!latest || !current || done(current) === completed) return;
+    if (!completed && Date.now() - (completedAt.current.get(i) ?? -Infinity) < repeatTapWindow)
+      return;
+    if (completed) completedAt.current.set(i, Date.now());
     const sets = [...latest.sets!];
     sets[i] = { ...current, completed };
     setEditor({ ...latest, sets });
@@ -1104,7 +1110,7 @@ function App() {
                       aria-label={`${i + 1}세트 완료`}
                       onClick={() => markSet(i, !done(s))}
                     >
-                      {done(s) ? '완료됨' : '완료'}
+                      {done(s) ? '완료됨 · 취소하려면 다시 누르기' : '완료'}
                     </button>
                     <label>
                       RPE (선택)

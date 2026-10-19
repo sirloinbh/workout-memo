@@ -269,10 +269,12 @@ test('new sets start not completed; completion and undo are sent explicitly', as
   ui.event(completion(ui), 'onClick');
   assert.equal(completion(ui).props['aria-pressed'], true);
   assert.match(ui.text(completion(ui)), /완료됨/);
+  ui.clock.now += 1000;
   ui.event(completion(ui), 'onClick');
   assert.equal(completion(ui).props['aria-pressed'], false, 'completion can be undone');
   ui.event(ui.button('세트 추가'), 'onClick');
   ui.event(completion(ui, 1), 'onClick');
+  ui.clock.now += 1000;
   submit(ui);
   await ui.settle();
   assert.deepEqual(
@@ -291,6 +293,7 @@ test('auto-start is opt-in and a duplicate completion click starts one rest', as
   ui.event(completion(ui), 'onClick');
   assert.match(ui.timer(), /1:30/);
   assert.doesNotMatch(ui.timer(), /남음/, 'auto-start is off by default');
+  ui.clock.now += 1000;
   ui.event(completion(ui), 'onClick');
   ui.event(autoStart(ui), 'onChange', { target: { checked: true } });
   const stale = completion(ui).props.onClick as () => void;
@@ -409,4 +412,23 @@ test('not-completed sets are excluded from volume, set count and workout days', 
   assert.equal(ui.stat('누적 볼륨'), '1,500kg');
   assert.equal(ui.stat('운동한 날'), '1일');
   assert.match(ui.content(), /미완료 1/);
+});
+
+test('a rapid second tap in a later render does not undo completion or touch the rest', async () => {
+  const ui = mount();
+  await openNew(ui);
+  ui.event(autoStart(ui), 'onChange', { target: { checked: true } });
+  ui.event(completion(ui), 'onClick');
+  ui.clock.now += 100;
+  // Double click: the second click arrives after React re-rendered.
+  ui.event(completion(ui), 'onClick');
+  assert.equal(completion(ui).props['aria-pressed'], true, 'double click keeps completion');
+  assert.match(ui.timer(), /1:30 남음/, 'rest started once and keeps running');
+  ui.clock.now += 1000;
+  ui.event(completion(ui), 'onClick');
+  assert.equal(completion(ui).props['aria-pressed'], false, 'deliberate undo still works');
+  assert.match(ui.timer(), /1:29 남음/, 'undo does not cancel the rest');
+  submit(ui);
+  await ui.settle();
+  assert.equal(sentSets(ui)[0].completed, false);
 });

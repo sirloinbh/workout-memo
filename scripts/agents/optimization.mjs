@@ -61,7 +61,9 @@ export function retryStage(job, files) {
       job.results.review?.approved === true &&
       job.reviewEvidence === evidence
     )
-      return job.blockedStage;
+      // Review evidence proves the code, not the current host validation.
+      // Verification compares the command/environment key before reusing checks.
+      return 'verification';
   }
   return ['verification', 'delivery', 'ci', 'review'].includes(job.blockedStage)
     ? 'implementation'
@@ -80,6 +82,35 @@ export function preserveRetryFailure(job, details) {
   job.latestFailure = failure;
   job.resultHistory ??= [];
   job.resultHistory.push({ stage: 'failure', result: failure });
+}
+
+function failureConditions(logs) {
+  const selected = [];
+  for (const log of logs) {
+    // GitHub's repeated step/timestamp prefix is transport metadata. Keep the
+    // original log locally and use the diagnostic text within the handoff cap.
+    const lines = String(log)
+      .split('\n')
+      .map((line) => line.replace(/^.*\t\uFEFF?\d{4}-\d{2}-\d{2}T[\d:.]+Z ?/, ''));
+    const indices = new Set();
+    let assertion = false;
+    for (const [index, line] of lines.entries()) {
+      if (/\bAssertionError\b|\bERR_ASSERTION\b/.test(line)) {
+        assertion = true;
+        for (let context = Math.max(0, index - 2); context < index; context++) indices.add(context);
+      }
+      if (
+        assertion ||
+        /\b(error|failed|failure|regression|assertion|rollback)\b|\bexit(?:[_ :]\w*)?/i.test(line)
+      )
+        indices.add(index);
+      if (assertion && line.trim() === '}') assertion = false;
+    }
+    selected.push(...[...indices].sort((a, b) => a - b).map((index) => lines[index]));
+  }
+  // Shared assertion scaffolding need not be repeated. Every distinct failure
+  // and actual/expected value remains; oversized critical detail still blocks.
+  return [...new Set(selected)];
 }
 
 export function compactHandoff(job, role, paths, details, review = { mode: 'full' }) {
@@ -115,11 +146,7 @@ export function compactHandoff(job, role, paths, details, review = { mode: 'full
       state,
       detailsUrl,
     })),
-    failureConditions: (job.results.ci?.logs || [])
-      .flatMap((log) => String(log).split('\n'))
-      .filter((line) =>
-        /\b(error|failed|failure|regression|assertion|rollback)\b|\bexit(?:[_ :]\w*)?/i.test(line),
-      ),
+    failureConditions: failureConditions(job.results.ci?.logs || []),
     review,
     error: job.error,
     latestFailure: job.latestFailure,
@@ -163,7 +190,7 @@ export async function databaseProbe(directory) {
       brands: ['id', 'name'],
       machines: ['id', 'brand_id', 'name', 'base_weight', 'notes'],
       workouts: ['id', 'date', 'title', 'notes', 'created_at'],
-      sets: ['id', 'workout_id', 'exercise', 'machine_id', 'weight', 'reps', 'position'],
+      sets: ['id', 'workout_id', 'exercise', 'machine_id', 'weight', 'reps', 'position', 'notes'],
       goals: ['id', 'exercise', 'target_weight', 'target_reps', 'start_date', 'deadline'],
     };
     if (

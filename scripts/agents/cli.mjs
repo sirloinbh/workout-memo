@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { command } from './process.mjs';
+import { npmCommand as selectNpmCommand } from './npm.mjs';
 import { commandFailureKind } from './failure.mjs';
 import { createJob, runStages, stages } from './workflow.mjs';
 import { acquireLock, fingerprintFiles, listJobs, readJson, saveJson } from './store.mjs';
@@ -123,14 +124,7 @@ async function fingerprint(job, diagnostic = false) {
 }
 
 function npmCommand() {
-  if (process.platform !== 'win32') return ['npm', []];
-  const cli =
-    config.npmCli || path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
-  if (!fs.existsSync(cli))
-    throw new Error(
-      'Set npmCli in local config to the npm-cli.js matching your Node installation.',
-    );
-  return [process.execPath, [cli]];
+  return selectNpmCommand(config);
 }
 
 async function npm(job, ...args) {
@@ -679,6 +673,14 @@ async function changedPaths(job) {
 async function delivery(job) {
   await identity();
   await assertBranch(job);
+  // A persisted delivery stage can be resumed without going through retry.
+  // Recheck the current validation key at the publication boundary itself.
+  // Identical passing checks are reused; changed commands/environment rerun.
+  const checked = await verification(job);
+  if (checked.passed !== true)
+    throw new Error('Publication requires current passing verification.');
+  job.results.verification = checked;
+  save(job);
   const cwd = worktree(job);
   if ((await fingerprint(job)) !== job.results.verification.fingerprint)
     throw new Error('Files changed after verification. Re-run implementation, review and checks.');
@@ -752,6 +754,13 @@ async function delivery(job) {
 }
 
 async function ci(job) {
+  // A restarted CI poll may also have different validation configuration.
+  // Confirm current evidence before declaring an already-published PR ready.
+  const checked = await verification(job);
+  if (checked.passed !== true)
+    throw new Error('PR readiness requires current passing verification.');
+  job.results.verification = checked;
+  save(job);
   const pr = JSON.parse(
     await gh(
       'pr',

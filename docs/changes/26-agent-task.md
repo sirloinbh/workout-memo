@@ -174,6 +174,14 @@
 - 이번 변경은 검증 기록뿐이다. 제품 코드와 테스트가 같으면 위 결과를 재사용할 수 있다. 제한된 모델 샌드박스의 동일한 esbuild 상위 경로 권한 오류를 반복할 필요가 없으며, 코드·테스트를 바꾸면 새 호스트 검사가 필요하다. ACL·전역 설정·활성 runtime은 변경하지 않았다.
 - 표준 retry 경로로 구현 확인 후 기존 highRiskReview(Astra high)의 독립 재검토, 게시 전 호스트 검사, PR·CI를 진행한다. 구현 역할은 이전 P2 stdout/stderr 상세 보존 수정과 회귀 3개 및 이번 호스트 증거를 확인한다. 이번 호스트 검사 성공은 독립 승인이나 PR·CI 성공을 대신하지 않는다. 병합은 사용자에게 맡긴다.
 
+## PR #42의 최신 main 충돌 및 Linux CI 후속 — 2026-10-19
+
+- 구현 확인, 독립 highRiskReview 승인, 호스트 게시 전 전체 검사가 통과해 PR #42가 draft로 생성됐다. Linux의 agent-workflow 검사에서 `#26 host verification` 증거 재사용/소스 변경/환경 변경/명령 변경 테스트 네 건이 delivery 대신 blocked가 되어 실패했다. CI 성공이나 구현 완료로 보고하지 않는다. 실패 로그는 ignored jobs/26/ci-39184537639.log에 보존했다.
+- 원인 조사: modelFixture의 npm 대체 실행은 fake-npm.cjs를 기준으로 하지만 제품 npmCommand는 POSIX에서 npmCli를 사용하지 않고 npm을 선택하며, fixture command는 이 명령을 처리하지 않는다. Windows에서만 성공한 검증 증거 테스트의 Linux 실행 경계를 수정해야 한다. 기존 assertion을 약화하거나 Linux 테스트를 skip하지 않는다. 보호 파일 수정이 필요하면 테스트 역할에 정식 재인계한다. 명시 npmCli 설정을 플랫폼 공통으로 지원할지, fixture를 실제 POSIX 명령 경계에 맞출지는 구현·테스트 담당이 요구사항과 대조해 판단한다.
+- 별도 local-agent-workflow CI가 예전 네 테스트 파일을 직접 열거하여 신규 optimization/process-output 회귀 파일을 빠뜨리는 것도 확인했다. 현재 package.json의 test:agents와 CI의 실제 실행 목록을 일치시키고 Linux/Windows 양쪽 결과를 확인한다.
+- #26 브랜치에서 최신 origin/main을 `merge --no-commit --no-ff`로 통합 준비했다. main 직접 변경이나 병합 게시를 하지 않았다. 동일한 #24 코드가 서로 다른 선행 커밋으로 들어가 있어 여러 파일이 충돌했지만, AGENTS.md 외 충돌 파일은 기존 f800a27과 origin/main 사이의 내용이 완전히 동일함을 `git diff --exit-code`로 확인했다. 해당 파일은 #26 구현을 보존했다. AGENTS.md에는 main의 일일 기록·다음 작업 지침 두 줄을 함께 보존했다. 앱·기간 조회·머신·기존 작업 기록은 최신 main 내용을 통합했다.
+- 충돌 정리 후 보호 테스트 네 파일 SHA-256은 기존 정식 인계값과 모두 동일하다. 이 통합과 후속 수정 이후에는 앞선 전체 검사/검토 결과를 재사용하지 않고 다시 검증·독립 검토한다. 최종 병합 커밋·푸시는 워커의 검증 후 게시 단계에서 처리한다.
+
 ## 구현 역할 — 호스트 복구 후 P2 수정 확인 (2026-10-19)
 
 - AGENTS.md와 workout-implementation/workout-testing을 읽고 이전 P2 지적 및 수정 코드를 대조했다. `process.mjs`는 실패 시 두 스트림을 각각 발췌하며 시작/끝 구간, 명시적 truncation 표시, 전체 가림 로그 안내를 보존한다. `agent-process-output.test.mjs`의 회귀 3개는 짧은/긴 양쪽 출력이 retry handoff에 남는지, UTF-8 및 비밀값 가림이 유지되는지 확인한다. 이번 역할에서는 제품 코드와 테스트를 변경하지 않았다.
@@ -181,3 +189,78 @@
 - `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/26 diff --check`: exit 0. 작업 기록 추가 후 `node node_modules/prettier/bin/prettier.cjs --check docs/changes/26-agent-task.md` 및 diff 검사도 exit 0으로 통과했다.
 - 전체 `npm run check`는 위 2026-10-19 코디네이터의 동일 제품 코드·테스트 대상 호스트 성공 증거(앱/전용 DB 40개, 워커 144개, 양쪽 빌드 성공)를 재사용한다. 이번 역할은 기록만 추가했으며 전체 검사나 DB 검증을 직접 재실행했다고 보고하지 않는다. 동일 샌드박스 빌드 권한 오류를 반복하지 않았다.
 - 차단 없이 독립 highRiskReview로 인계한다. 스킬 변경이 없어 skill validator는 적용 대상이 아니다. 이슈/브랜치 생성, 커밋, 푸시, PR, 추가 에이전트 호출은 수행하지 않았다. 독립 승인 판단과 게시 전 검사·CI는 이후 파이프라인에 남긴다.
+
+## 구현 재작업 — Linux npm 경계 및 CI 검사 목록 수정 (2026-10-19)
+
+- 전달받은 Linux CI 실패 네 건의 원인은 POSIX npmCommand가 명시 npmCli를 무시하여 modelFixture의 가짜 npm 대신 PATH npm을 선택한 것이다. 기존 CI 실패와 수정 전 분기 코드를 대조했으며 보호 테스트/assertion은 변경하지 않았다.
+- npm 선택을 scripts/agents/npm.mjs로 분리하고 명시 npmCli는 플랫폼 공통으로 현재 Node에서 실행하도록 수정했다. 경로 미존재 시 fallback 없이 실패한다. 미지정 POSIX PATH npm 및 Windows 인접 npm-cli.js 선택은 유지한다. 호스트 검사, preflight, 검사 증거 키가 같은 선택 함수를 사용한다.
+- scripts/test/agent-npm.test.mjs에 회귀 3개를 추가했다. linux/win32 선택을 각각 주입하여 공백 포함 CLI 경로의 실제 실행·인자 전달·누락 경로 거부를 확인하고 플랫폼별 기본 선택도 확인한다. 실제 Linux 호스트에서 실행한 결과로 표시하지 않는다. 기존 host verification 네 시나리오와 보호 테스트는 그대로 유지했다.
+- package.json test:agents에 새 회귀를 연결했다. .github/workflows/local-agent-workflow.yml의 Ubuntu/Windows matrix는 npm run test:agents를 호출하므로 optimization/process-output 및 신규 npm 회귀까지 같은 목록으로 검사한다. 의존성 설치나 새 모델 호출은 추가하지 않았다. docs/local-agent-workflow.md에 npmCli의 플랫폼 공통 동작을 기록했다.
+- 실제 npm run test:agents: 147 pass, 0 fail, 0 skip, exit 0. 실제 npm run check: exit 0. 전달된 전용 TEST_DATABASE_URL을 그대로 상속하여 앱/DB 테스트를 실행했고 format:check, lint, typecheck, 워커 147개, frontend/backend 빌드가 모두 성공했다. 연결 값이나 인증 파일은 읽거나 출력하지 않았다. 이전 main 통합 전 호스트 성공 증거로 대체하지 않았다.
+- Node crypto로 보호 테스트 네 파일의 SHA-256을 계산하여 tests 인계값과 모두 일치함을 확인했다. 새 테스트는 별도 파일이며 기존 보호 해시를 수동 수정하지 않았다.
+- node node_modules/prettier/bin/prettier.cjs --check scripts/agents/npm.mjs scripts/agents/cli.mjs scripts/test/agent-npm.test.mjs package.json .github/workflows/local-agent-workflow.yml docs/local-agent-workflow.md: exit 0. 최종 문서의 Prettier 검사 및 git -c safe.directory 지정 staged/unstaged diff --check도 모두 exit 0. staged 검사에는 전역 ignore 파일 읽기 Permission denied 경고가 있었으나 설정은 변경하지 않았다. 스킬 변경이 없어 skill validator는 적용 대상 없음이다.
+- 독립 검토와 게시 후 실제 Linux/Windows CI 확인은 코디네이터에게 남긴다. 기존 staged main 통합 및 다른 작업 기록은 보존했다. 이슈/브랜치 생성, 커밋, 푸시, PR 변경, 추가 에이전트 호출은 수행하지 않았다.
+
+## 코디네이터: PR 충돌 해소 후 검토 지적 수정 및 호스트 검증 — 2026-10-19
+
+- 사용자가 PR #42의 충돌 목록과 실제 구현 진행 여부를 문의했다. 확인 시 워커 프로세스는 살아 있었지만 #26·#27·#34·#43 모두 blocked여서 실행 중 역할은 없었다. 워커를 표준 stop으로 종료했다. 개인 sirloinbh 인증과 원격 main을 다시 확인했다. 현재 origin/main과 기존 MERGE_HEAD가 모두 c827abbe3a29d404ab42faa60a6a8f0c72ba9817로 일치한다.
+- 로컬 충돌 정리가 아직 커밋·푸시되지 않아 GitHub에 예전 충돌이 표시되는 것을 확인했다. 이번 변경은 이슈 #26의 기존 브랜치에서 수행하며, 최신 앱/문서 지침과 #26 구현 및 보호 테스트를 보존한다. unresolved 경로가 0개인 것을 확인했다. main 직접 변경·병합 게시·강제 푸시는 하지 않는다.
+- 독립 검토의 P2 두 건을 회귀 테스트로 재현했다. 새 `scripts/test/agent-preflight-handoff.test.mjs` 최초 실행은 **1 pass / 2 fail / 0 skip**: notes 컬럼이 빠진 DB를 허용하고, GitHub AssertionError의 실제값/기대값 문맥을 누락했다. 기존 보호 테스트 네 파일과 assertion은 변경하지 않았다.
+- DB 사전검사의 필수 sets 컬럼에 notes를 추가했다. GitHub 로그의 반복 전송 접두만 제거하고 AssertionError의 실패 위치·diff·actual/expected 블록을 전달한다. 중복 진단 행을 합치되 서로 다른 실제값·기대값은 보존하고 길이 한도 초과 시 기존 중단 경계를 유지한다. 원본 로그는 로컬에 보존한다.
+- 회귀 파일 3개 시나리오와 기존 optimization 테스트를 함께 실행해 **18 pass / 0 fail / 0 skip**을 확인했다. DB probe 테스트는 가짜 pg 경계로 미적용/적용 완료 스키마를 구분하고 연결 종료 및 비밀값 비노출도 확인한다. test:agents에 새 파일을 연결하여 전체 check와 Linux/Windows CI에서도 실행한다.
+- 현재 파일 기준 프로젝트 지정 Node 24.21.0 / npm 11.19.0 및 기존 전용 테스트 DB의 호스트 `npm run check`: **exit 0**, 앱·DB **118 pass / 0 fail / 0 skip**, 워커 **150 pass / 0 fail / 0 skip**, 포맷·lint·타입 및 frontend/backend 빌드 성공. 원본 로그는 ignored jobs/26/coordinator-conflict-check.log다. 실제 사용자 DB는 사용하지 않았고 연결 값은 출력하지 않았다. 앞선 40개/147개 결과를 재사용하지 않고 최신 main 통합 대상에서 실행했다.
+- 보호 테스트 네 파일의 SHA-256을 기존 정식 인계값과 비교해 모두 동일함을 확인했다. staged/unstaged diff 검사도 통과했다. 스킬 변경은 없어 skill validator 대상이 아니다. 이후 작업 기록만 추가했으므로 코드·테스트가 같으면 이번 호스트 증거를 재사용할 수 있으며, 같은 esbuild 샌드박스 권한 실패를 반복할 필요가 없다.
+- 표준 retry로 구현 확인 → 독립 highRiskReview → 게시 전 검사 → 기존 PR #42 갱신·CI를 진행한다. 이번 성공을 독립 승인이나 원격 충돌 해소 완료로 대신 보고하지 않는다. PR 병합은 사용자에게 맡긴다.
+
+## 구현 역할 — 최신 P2 수정 및 검증 증거 확인 (2026-10-19)
+
+- AGENTS.md와 workout-implementation/workout-testing을 읽고 현재 수정과 이전 검토 지적을 대조했다. sets.notes 필수 컬럼 검사, GitHub AssertionError diff 및 actual/expected 보존, 플랫폼 공통 명시 npmCli 실행, CI의 test:agents 목록 통합을 확인했다. 관련 회귀는 별도 파일에 연결되어 있으며 제품 코드와 테스트를 이번 역할에서 추가 변경하지 않았다.
+- 직접 실행한 `npm run test:agents`: **150 pass / 0 fail / 0 skip**, exit 0. Node crypto로 보호 테스트 네 파일의 SHA-256을 계산하여 정식 tests 인계값과 모두 일치함을 확인했다. 기존 assertion과 staged main 통합을 보존했다. 이번 실행 환경의 Node는 v22.17.0이며 Linux 호스트 실행 결과로 표시하지 않는다.
+- 전체 `npm run check`는 바로 위 코디네이터의 동일 제품 코드·테스트 대상 호스트 성공 증거를 재사용한다: 앱/전용 DB **118 pass / 0 fail / 0 skip**, 워커 **150 pass / 0 fail / 0 skip**, 포맷·lint·타입 및 양쪽 빌드 성공. 이번 역할에서 전체 검사나 DB 연결을 직접 재실행했다고 보고하지 않는다. 현재 변경은 작업 기록뿐이며 동일 샌드박스 권한 실패를 반복하지 않았다.
+- safe.directory를 지정한 `git diff --check` 및 `git diff --cached --check`: exit 0. staged 검사에는 사용자 전역 ignore 파일 읽기 Permission denied 경고가 있었으나 설정은 변경하지 않았다. 문서와 후속 수정 파일의 Prettier 검사도 수행했다.
+- 작업 기록을 Node 명령으로 추가하려던 최초 시도는 PowerShell의 Markdown backtick 해석으로 SyntaxError가 발생하여 파일을 변경하지 못했다. apply_patch로 기록을 추가했다. 제품 코드·테스트에는 영향이 없다.
+- 스킬 변경이 없어 skill validator는 적용 대상 없음이다. 독립 highRiskReview, 게시 전 검증 및 실제 Linux/Windows CI는 코디네이터에게 인계한다. 승인·커밋·원격 작업·추가 에이전트 호출은 수행하지 않았다.
+
+## 구현 재작업 — delivery/CI 환경 복구 시 검사 증거 재확인 (2026-10-19)
+
+- 최신 독립 검토 P2를 수정했다. `retryStage`가 delivery/ci 환경 실패에서 코드 검토 증거만으로 게시 단계에 직접 복귀하던 경로를 verification으로 변경했다. 기존 verification이 현재 도구·환경·명령 key를 확인하고 동일한 성공 결과만 재사용하며, 변경 시 검사를 다시 실행한다. 기존 독립 검토 증거, 보호 테스트 SHA 검사, 게시 직전 fingerprint 검사와 재시도 상한은 유지한다. 코드 증거가 다르면 기존대로 구현·독립 검토부터 진행한다.
+- `scripts/test/agent-recovery.test.mjs`의 회귀 6개는 delivery/ci 각각에서 동일 검사 증거, 환경 변경, 브라우저 검사 인자 변경을 검증한다. 실제 retryStage/checkEvidence/runStages와 가짜 검사·게시 경계를 사용한다. 동일 증거는 재사용하고 변경된 검사가 실패하면 게시/CI를 호출하지 않는지, 승인된 검토 보존·모델 단계 미호출·변경 소스의 구현 복귀를 확인한다. 기존 보호 테스트/assertion은 수정하지 않았다. test:agents 및 이를 호출하는 전체 check/CI에 새 파일을 연결하고 운영 문서의 복구 절차를 갱신했다.
+- 수정 전 `node --test scripts/test/agent-recovery.test.mjs`: **0 pass / 6 fail / 0 skip**, exit 1. 수정 후 같은 명령: **6 pass / 0 fail / 0 skip**, exit 0. `npm run test:agents`: **156 pass / 0 fail / 0 skip**, exit 0 (직접 실행 Node v22.17.0). Node crypto로 보호 테스트 네 파일을 정식 인계 SHA-256과 비교하여 모두 일치함을 확인했다.
+- 이전 Linux npmCli 선택 및 CI 목록 수정, DB sets.notes 사전검사와 AssertionError 문맥 보존 수정은 그대로 유지했다. 이번 제품 코드 변경으로 앞선 호스트 전체 검사 증거를 재사용하지 않는다. 설치된 프로젝트 Node v24.21.0과 상속된 전용 TEST_DATABASE_URL로 새 전체 검사를 실행하며 결과를 아래에 기록한다. 연결 값·인증 파일·.env를 읽거나 출력하지 않는다.
+- 스킬 변경이 없어 skill validator는 적용 대상 없음이다. 기존 staged main 통합과 사용자 변경을 보존했으며 이슈/브랜치 생성, 커밋·푸시·PR 작업, 추가 에이전트 호출은 하지 않았다. 독립 승인과 실제 Linux/Windows CI 확인은 코디네이터 단계에 남긴다.
+
+### 이번 수정의 전체 검사 결과 및 환경 차단
+
+- 명령 프로세스 PATH 앞에 기존 `.local/node-v24.21.0-win-x64`를 지정하고 `node --version` / `npm --version`으로 **v24.21.0 / 11.19.0**을 확인한 뒤 `npm run check`를 실행했다. **exit 1**: 전체 포맷·lint·타입 검사, 상속된 전용 DB의 앱 테스트 **118 pass / 0 fail / 0 skip**, 워커 테스트 **156 pass / 0 fail / 0 skip**은 통과했다.
+- frontend Vite/esbuild가 상위 경로 `../../../../../../../..` 읽기에서 **Access is denied**로 실패했다. 뒤의 backend build는 실행되지 않았다. 현재 코드 기준 호스트 전체 검사가 필요하며 이전 성공 결과로 대체하지 않는다. ACL 변경·자동 설치·샌드박스 우회는 하지 않았다. 실제 전체 출력은 시스템 임시 폴더 `workout-26-recovery-check.log`에 있다.
+- `node node_modules/prettier/bin/prettier.cjs --check scripts/agents/optimization.mjs scripts/test/agent-recovery.test.mjs package.json docs/local-agent-workflow.md docs/changes/26-agent-task.md`: exit 0. safe.directory를 지정한 `git diff --check` / `git diff --cached --check`: exit 0. staged 검사에는 기존 사용자 전역 ignore 파일 읽기 권한 경고가 있었으며 전역 설정은 변경하지 않았다. 최종 결과 기록 후 문서 포맷·diff 검사만 재확인한다.
+
+### 코디네이터 호스트 재검증 — 재시도 경로 수정 포함
+
+- 위 delivery/CI 복구 수정과 회귀 6개를 포함한 현재 파일로 호스트 `npm run check`를 실행했다. 지정 Node 24.21.0 / npm 11.19.0에서 **exit 0**, 앱·DB **118 pass / 0 fail / 0 skip**, 워커 **156 pass / 0 fail / 0 skip**, 전체 포맷·lint·타입 및 frontend/backend 빌드 통과다. 로그는 ignored jobs/26/coordinator-recovery-check.log다. 이전 150개 검사 결과를 재사용하지 않았다.
+- 다른 이슈의 진행 중인 DB 검증과 간섭하지 않도록 기존 전용 테스트 컨테이너에 #26 검증 전용 DB를 별도로 준비하고 해당 worktree의 001·002 마이그레이션을 적용했다. 실제 사용자 DB·기존 워커 DB·큐·runtime은 보존했다. 연결 값은 출력하거나 기록하지 않았다.
+- 같은 제품 코드·테스트가 유지되면 이 호스트 결과를 재사용할 수 있다. 이후 코드·테스트 변경은 이 증거를 무효화한다. 제한된 모델 샌드박스의 동일 Vite/esbuild 권한 오류를 반복하지 않고 구현 확인·독립 검토를 인계한다. 게시 전 워커 검증은 별도로 유지한다. 원격 PR의 충돌 해소는 실제 커밋·푸시 이후 확인한다.
+
+## 코디네이터: 일반 게시/CI 재시작 경계의 검증 확인 — 2026-10-19
+
+- 독립 검토가 blocked 재시도와 별개인 일반 delivery 재시작에서 검증 키를 확인하지 않는 P2를 재현했다. 작업 브랜치의 충돌 정리와 이전 수정은 보존하고 해당 게시 경계를 보완했다. 기존 보호 테스트 네 파일은 변경하지 않았다.
+- delivery 진입 시 현재 verification을 호출해 검증 결과를 저장하고, passed가 true인 경우에만 커밋·푸시·PR 갱신으로 진행한다. 같은 확인을 ci 진입에도 적용해 재시작 후 오래된 로컬 검사 증거로 PR을 ready 처리하지 않는다. 동일한 검사 키의 성공 결과는 그대로 재사용하고, 명령/환경이 달라지면 검사를 다시 수행한다. 소스/검토 fingerprint 경계는 유지한다.
+- 새 scripts/test/agent-publication-resume.test.mjs는 CLI의 실제 delivery/ci 함수 코드를 가짜 IO 경계에서 실행한다. 각 단계에서 동일 증거의 재사용, 변경된 검사 실패 시 push/ready 금지, 환경 변경 후 검사 통과 시에만 게시/ready 처리하는 여섯 시나리오를 검사한다. 모델·GitHub 호출이나 실제 저장소 게시는 하지 않는다. 기존 retry 회귀 6개와 함께 정상 재시작·실패 복구를 모두 검증한다.
+- delivery 수정 전 신규 테스트 **0 pass / 3 fail**, delivery 수정 후 **3 pass / 0 fail**. CI 시나리오 추가 후 **3 pass / 3 fail**, CI 수정 후 **6 pass / 0 fail / 0 skip**. 새 테스트를 test:agents/check/CI 목록에 연결했다. 기존 runtime 테스트도 별도 실행해 **79 pass / 0 fail / 0 skip**을 확인했다.
+- 최종 파일 기준 지정 Node 24.21.0 / npm 11.19.0과 #26 검증 전용 DB로 호스트 npm run check: **exit 0**, 앱·DB **118 pass / 0 fail / 0 skip**, 워커 **162 pass / 0 fail / 0 skip**, 포맷·lint·타입 및 frontend/backend 빌드 성공. 최종 로그는 ignored jobs/26/coordinator-publication-final-check.log다. delivery 수정만 포함한 중간 호스트 성공(159개)으로 최종 변경을 대신 검증하지 않았다. 실제 사용자 DB와 기존 워커 테스트 DB를 보존했다.
+- 보호 테스트 네 파일은 정식 SHA-256과 모두 동일하다. 이번 검증 이후 기록만 추가했으며 같은 코드·테스트가 유지되면 위 최종 호스트 결과를 재사용할 수 있다. 동일한 샌드박스 빌드 권한 오류를 반복할 필요가 없다. 추가 코드 변경이 있으면 재검증한다. 독립 고위험 검토와 게시 전 검사·PR 갱신·실제 CI는 계속 필요하며 병합은 사용자에게 맡긴다.
+
+## 구현 역할 — 복구 후 최종 확인 (2026-10-19)
+
+- AGENTS.md와 workout-implementation/workout-testing을 읽고 최신 파일을 확인했다. 전달된 CI 실패는 이미 수정된 POSIX npmCli 무시 분기에 해당한다. 현재 플랫폼 공통 npm 선택과 CI의 `npm run test:agents` 연결을 보존했다. 최신 P2의 delivery/CI 환경 복구는 verification으로 복귀하며 검사 명령·환경 증거를 재확인한다. 이번 역할에서는 제품 코드와 테스트를 추가 변경하지 않았다.
+- 직접 실행한 `node --test --test-name-pattern="host verification" scripts/test/agent-runtime.test.mjs`: **4 pass / 0 fail / 0 skip**, exit 0. `npm run test:agents`: **156 pass / 0 fail / 0 skip**, exit 0 (Node v22.17.0). 실제 Linux 실행 결과로 표시하지 않는다.
+- Node crypto로 보호 테스트 네 파일의 SHA-256을 계산해 정식 tests 인계값과 모두 일치함을 확인했다. 기존 assertion과 staged main 통합을 보존했다. safe.directory를 지정한 `git diff --check`와 `git diff --cached --check`는 exit 0이었다. staged 검사에는 기존 전역 ignore 파일 읽기 Permission denied 경고가 있었으며 설정을 변경하지 않았다.
+- 전체 검사는 바로 위 코디네이터의 동일 제품 코드·테스트 대상 호스트 `npm run check` 성공 증거를 재사용한다: 지정 Node 24.21.0/npm 11.19.0, 앱·전용 DB 118개 및 워커 156개 통과, 양쪽 빌드 성공. 이번 역할에서 전체 검사나 DB 검증을 직접 재실행했다고 보고하지 않는다. 변경은 이 기록뿐이며 반복된 샌드박스 esbuild 권한 실패를 재시도하지 않았다.
+- 문서 포맷 검사를 수행한다. 스킬 변경이 없어 skill validator는 적용 대상 없음이다. 독립 검토, 게시 전 검사 및 실제 Linux/Windows CI 확인은 코디네이터에게 인계한다. 이슈/브랜치 생성, 커밋·푸시·PR·승인·병합 및 추가 에이전트 호출은 수행하지 않았다.
+
+## 코디네이터(Claude Code): 재검토·main 통합 커밋·게시 — 2026-10-19
+
+- Codex 사용량 소진으로 Claude Code가 이어받았다. 코드·테스트는 변경하지 않았고 일일 기록·다음 작업 문서만 갱신했다.
+- 독립 고위험 재검토(읽기 전용): 차단 지적 없음. delivery/ci 진입 시 `verification()`이 검증 키(명령·런타임·환경 digest·설정·호스트)를 다시 확인하고 `passed === true`일 때만 push/ready로 진행해 이전 P2가 해소됐다. fingerprint는 내용 기반이라 커밋 후 ci 단계에서 오탐이 없다. 참고(P3): node_modules mtime 변화 시 검사 1회 재실행 가능, ci 폴링마다 호스트 probe 비용.
+- 호스트(Node 24.21.0 / npm 11.19.0, 전용 테스트 DB) 최종 `npm run check` 결과는 PR #42에 기록한다.
+- 미완료 main 병합(MERGE_HEAD = c827abb)을 커밋으로 마무리하고 이후 수정을 별도 커밋으로 푸시했다. 강제 푸시·main 직접 변경은 하지 않았다.

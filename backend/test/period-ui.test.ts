@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -118,6 +119,18 @@ function mount(initial: Workout[] = []) {
     }
   }
   runInNewContext(source, {
+    localStorage: (() => {
+      const items = new Map<string, string>();
+      return {
+        getItem: (key: string) => items.get(key) ?? null,
+        setItem: (key: string, value: string) => items.set(key, value),
+        removeItem: (key: string) => items.delete(key),
+      };
+    })(),
+    crypto: { randomUUID },
+    AbortController,
+    setTimeout,
+    clearTimeout,
     exports: {},
     require: (name: string) => {
       if (name === 'react') return react;

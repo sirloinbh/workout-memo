@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { byWeek, kindLabel, previewTargets } from './progression';
 
 const parts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'];
 const days = ['일', '월', '화', '수', '목', '금', '토'];
@@ -7,21 +8,32 @@ type Exercise = {
   sets: number | string;
   weight: number | string;
   reps: number | string;
+  rep_min?: number | string;
+  rep_max?: number | string;
 };
 type Split = { name: string; body_parts: string[]; exercises: Exercise[] };
 type Week = { week: number; kind: string; amount: number | string; deload_metric: string | null };
 type Plan = {
   id?: number;
   name: string;
+  progression?: 'manual' | 'auto';
   start_date: string;
   split_count: number;
   weekly_workouts: number;
   rest_days: number[];
   splits: Split[];
-  weeks: Week[];
+  weeks?: Week[];
   schedule?: { date: string; week: number; split_index: number; is_deload: boolean }[];
 };
-const exercise = (): Exercise => ({ exercise: '', sets: '', weight: '', reps: '' });
+// #28: new exercises default to 3 sets and an 8–12 rep range.
+const exercise = (): Exercise => ({
+  exercise: '',
+  sets: 3,
+  weight: '',
+  reps: '',
+  rep_min: 8,
+  rep_max: 12,
+});
 const split = (i: number): Split => ({
   name: `분할 ${i + 1}`,
   body_parts: [],
@@ -29,6 +41,7 @@ const split = (i: number): Split => ({
 });
 const newPlan = (): Plan => ({
   name: '',
+  progression: 'auto',
   start_date: '',
   split_count: 1,
   weekly_workouts: 0,
@@ -41,6 +54,56 @@ const newPlan = (): Plan => ({
     deload_metric: null,
   })),
 });
+const autoRule =
+  '현재 수행 능력(총중량·반복 수)을 입력하면 12주 목표를 자동으로 만듭니다. 종목이 들어 있는 분할의 세션(운동일)마다 반복 수를 1회씩 늘리고, 상한을 넘으면 중량을 약 5%(2.5 kg 단위, 최소 2.5 kg) 올리고 반복 수를 하한으로 되돌립니다. 주 2~3번 하는 분할은 한 주에 2~3단계 진행합니다. 0 kg(맨몸) 종목은 반복 수만 늘립니다. 4·8·12주차의 세션은 모두 직전 목표 중량의 90%(2.5 kg 단위)·같은 반복 수로 디로딩하며 진행하지 않고, 다음 세션은 디로딩 직전 목표에서 이어갑니다. 세션 날짜부터 같은 분할의 다음 세션 전까지 저장한 일지에서 목표를 달성하지 못하면 다음 세션도 같은 목표를 유지합니다.';
+// The server receives only the fields of the chosen mode.
+function payload(plan: Plan) {
+  const auto = plan.progression === 'auto';
+  return {
+    ...plan,
+    progression: auto ? 'auto' : 'manual',
+    weeks: auto ? undefined : plan.weeks,
+    splits: plan.splits.map((s) => ({
+      ...s,
+      exercises: s.exercises.map(({ rep_min, rep_max, ...rest }) =>
+        auto ? { ...rest, rep_min, rep_max } : rest,
+      ),
+    })),
+  };
+}
+function Preview({ plan }: { plan: Plan }) {
+  const preview = previewTargets(plan);
+  if (!preview) return <p>시작일과 휴식 요일을 입력하면 12주 예상 목표를 표시합니다.</p>;
+  return (
+    <section className="routine-preview">
+      <h4>12주 예상 목표 · 기록에 따라 바뀔 수 있음</h4>
+      {preview.map((split, i) =>
+        split
+          .filter((ex) => ex.exercise.trim())
+          .map((ex, j) => (
+            <details key={`${i}-${j}`} open>
+              <summary>
+                {plan.splits[i].name} · {ex.exercise}
+              </summary>
+              <ol>
+                {byWeek(ex.rows).map((w) => (
+                  <li key={w.week} className={w.week % 4 === 0 ? 'deload' : ''}>
+                    {`${w.week}주차${w.week % 4 === 0 ? ' 디로딩' : ''}: `}
+                    {w.rows
+                      .map(
+                        (r) =>
+                          `${r.session}번째 ${String(r.weight)} kg × ${r.reps}회(${kindLabel(r)})`,
+                      )
+                      .join(', ')}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )),
+      )}
+    </section>
+  );
+}
 async function request<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch('/api/routines' + path, {
     method: body ? 'POST' : 'GET',
@@ -87,10 +150,11 @@ export function Routines() {
   return (
     <section className="routine-page">
       <h2>루틴짜기 · 12주 계획</h2>
-      <p>운동일마다 분할을 순환합니다. 매주 변화량을 직접 입력하며 4·8·12주차는 디로딩입니다.</p>
       <p>
-        증가·감소량은 해당 주의 수동 계획입니다. 실제 일지와 목표 달성은 운동 후 따로 기록하세요.
+        운동일마다 분할을 순환하며 4·8·12주차는 디로딩입니다. 자동 목표는 현재 수행 능력에서 12주
+        목표를 계산하고, 수동 목표는 주차별 변화량을 직접 입력합니다.
       </p>
+      <p>계획은 목표일 뿐이며 실제 수행은 운동 일지에 따로 기록하세요.</p>
       {error && (
         <p role="alert" className="error">
           {error}
@@ -139,11 +203,11 @@ export function Routines() {
             if (saving) return;
             setSaving(true);
             setError('');
-            void request<{ id: number }>('', draft)
+            void request<{ id: number }>('', payload(draft))
               .then(async (result) => {
                 // The POST has succeeded even if a subsequent read fails.
                 // Close this draft so retrying a read cannot duplicate the plan.
-                const saved = { ...draft, id: result.id };
+                const saved = { ...(payload(draft) as Plan), id: result.id };
                 setSavedId(result.id);
                 setDraft(null);
                 setSelected(saved);
@@ -156,6 +220,19 @@ export function Routines() {
               .finally(() => setSaving(false));
           }}
         >
+          <label>
+            주차 목표 방식
+            <select
+              value={draft.progression ?? 'manual'}
+              onChange={(e) =>
+                setDraft({ ...draft, progression: e.target.value as 'manual' | 'auto' })
+              }
+            >
+              <option value="auto">자동 · 이중 점진 과부하</option>
+              <option value="manual">수동 · 주차별 직접 입력</option>
+            </select>
+          </label>
+          {draft.progression === 'auto' && <p className="form-hint">{autoRule}</p>}
           <label>
             루틴 이름
             <input
@@ -285,20 +362,31 @@ export function Routines() {
                       }
                     />
                   </label>
-                  {(['sets', 'weight', 'reps'] as const).map((key) => (
+                  {(draft.progression === 'auto'
+                    ? (['sets', 'weight', 'reps', 'rep_min', 'rep_max'] as const)
+                    : (['sets', 'weight', 'reps'] as const)
+                  ).map((key) => (
                     <label key={key}>
-                      {key === 'sets'
-                        ? '기준 세트 수'
-                        : key === 'weight'
-                          ? '기준 총중량 (kg, 머신 기본중량 포함)'
-                          : '기준 반복 수'}
+                      {draft.progression === 'auto'
+                        ? {
+                            sets: '세트 수',
+                            weight: '현재 총중량 (kg, 머신 기본중량 포함)',
+                            reps: '현재 반복 수',
+                            rep_min: '반복 하한',
+                            rep_max: '반복 상한',
+                          }[key]
+                        : key === 'sets'
+                          ? '기준 세트 수'
+                          : key === 'weight'
+                            ? '기준 총중량 (kg, 머신 기본중량 포함)'
+                            : '기준 반복 수'}
                       <input
                         required
                         type="number"
                         min={key === 'weight' ? 0 : 1}
                         max={key === 'weight' ? 99999 : key === 'sets' ? 200 : 1000}
                         step={key === 'weight' ? 'any' : 1}
-                        value={ex[key]}
+                        value={ex[key] ?? ''}
                         onChange={(e) =>
                           changeSplit(i, {
                             ...s,
@@ -334,81 +422,83 @@ export function Routines() {
               </button>
             </fieldset>
           ))}
-          {draft.weeks.map((w, i) => (
-            <fieldset key={w.week}>
-              <legend>
-                {w.week}주차 {w.kind === 'deload' ? '디로딩' : '증가 목표'}
-              </legend>
-              <label>
-                {w.kind === 'deload' ? '감소 대상' : '증가 대상'}
-                <select
-                  required
-                  value={w.kind === 'deload' ? (w.deload_metric ?? '') : w.kind}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      weeks: draft.weeks.map((v, k) =>
-                        k === i
-                          ? {
-                              ...v,
-                              amount: '',
-                              ...(v.kind === 'deload'
-                                ? { deload_metric: e.target.value }
-                                : { kind: e.target.value }),
-                            }
-                          : v,
-                      ),
-                    })
-                  }
-                >
-                  {w.kind === 'deload' ? (
-                    <>
-                      <option value="" disabled>
-                        감소 대상 선택
-                      </option>
-                      <option value="weight">총중량 (kg)</option>
-                      <option value="sets">세트 수</option>
-                      <option value="reps">반복 수</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="increase_weight">총중량 (kg)</option>
-                      <option value="increase_reps">반복 수</option>
-                    </>
-                  )}
-                </select>
-              </label>
-              <label>
-                {w.kind === 'deload' ? '감소량' : '증가량'}
-                <input
-                  required
-                  type="number"
-                  min={
-                    w.kind === 'increase_weight' || w.deload_metric === 'weight' ? '0.000001' : 1
-                  }
-                  max={
-                    w.deload_metric === 'sets'
-                      ? 200
-                      : w.kind === 'increase_reps' || w.deload_metric === 'reps'
-                        ? 1000
-                        : 99999
-                  }
-                  step={w.kind === 'increase_weight' || w.deload_metric === 'weight' ? 'any' : 1}
-                  value={w.amount}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      weeks: draft.weeks.map((v, k) =>
-                        k === i
-                          ? { ...v, amount: e.target.value === '' ? '' : Number(e.target.value) }
-                          : v,
-                      ),
-                    })
-                  }
-                />
-              </label>
-            </fieldset>
-          ))}
+          {draft.progression === 'auto' && <Preview plan={draft} />}
+          {draft.progression !== 'auto' &&
+            draft.weeks?.map((w, i) => (
+              <fieldset key={w.week}>
+                <legend>
+                  {w.week}주차 {w.kind === 'deload' ? '디로딩' : '증가 목표'}
+                </legend>
+                <label>
+                  {w.kind === 'deload' ? '감소 대상' : '증가 대상'}
+                  <select
+                    required
+                    value={w.kind === 'deload' ? (w.deload_metric ?? '') : w.kind}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        weeks: draft.weeks!.map((v, k) =>
+                          k === i
+                            ? {
+                                ...v,
+                                amount: '',
+                                ...(v.kind === 'deload'
+                                  ? { deload_metric: e.target.value }
+                                  : { kind: e.target.value }),
+                              }
+                            : v,
+                        ),
+                      })
+                    }
+                  >
+                    {w.kind === 'deload' ? (
+                      <>
+                        <option value="" disabled>
+                          감소 대상 선택
+                        </option>
+                        <option value="weight">총중량 (kg)</option>
+                        <option value="sets">세트 수</option>
+                        <option value="reps">반복 수</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="increase_weight">총중량 (kg)</option>
+                        <option value="increase_reps">반복 수</option>
+                      </>
+                    )}
+                  </select>
+                </label>
+                <label>
+                  {w.kind === 'deload' ? '감소량' : '증가량'}
+                  <input
+                    required
+                    type="number"
+                    min={
+                      w.kind === 'increase_weight' || w.deload_metric === 'weight' ? '0.000001' : 1
+                    }
+                    max={
+                      w.deload_metric === 'sets'
+                        ? 200
+                        : w.kind === 'increase_reps' || w.deload_metric === 'reps'
+                          ? 1000
+                          : 99999
+                    }
+                    step={w.kind === 'increase_weight' || w.deload_metric === 'weight' ? 'any' : 1}
+                    value={w.amount}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        weeks: draft.weeks!.map((v, k) =>
+                          k === i
+                            ? { ...v, amount: e.target.value === '' ? '' : Number(e.target.value) }
+                            : v,
+                        ),
+                      })
+                    }
+                  />
+                </label>
+              </fieldset>
+            ))}
           <button className="primary" disabled={saving}>
             {saving ? '저장 중…' : '루틴 저장하기'}
           </button>
@@ -433,18 +523,27 @@ export function Routines() {
                 {s.exercises.map((ex, j) => (
                   <li key={j}>
                     {ex.exercise} · {ex.sets}세트 · 총중량 {ex.weight} kg · {ex.reps}회
+                    {selected.progression === 'auto' &&
+                      ` · 반복 범위 ${ex.rep_min}~${ex.rep_max}회`}
                   </li>
                 ))}
               </ul>
             </section>
           ))}
-          <ol>
-            {selected.weeks.map((w) => (
-              <li key={w.week}>
-                {w.week}주차 · {goalLabel(w)}
-              </li>
-            ))}
-          </ol>
+          {selected.progression === 'auto' ? (
+            <>
+              <p>자동 · 이중 점진 과부하. {autoRule}</p>
+              <Preview plan={selected} />
+            </>
+          ) : (
+            <ol>
+              {selected.weeks?.map((w) => (
+                <li key={w.week}>
+                  {w.week}주차 · {goalLabel(w)}
+                </li>
+              ))}
+            </ol>
+          )}
           <h4>운동 일정 · 시작일부터 12주 (Asia/Seoul)</h4>
           <ul>
             {selected.schedule?.map((day) => (

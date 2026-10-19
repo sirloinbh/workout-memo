@@ -153,11 +153,16 @@ function mount(
     if (name === 'lucide-react') return new Proxy({}, { get: () => () => null });
     if (name.endsWith('.css')) return {};
     if (name === './routines') return { Routines: () => null };
-    if (name === './date' || name === './rest-timer') {
+    // Routine goals (#28) are hook-free helpers and views; load the real module.
+    if (name === './date' || name === './rest-timer' || name === './progress') {
       if (!modules.has(name)) {
         const exports = {};
         modules.set(name, exports);
-        runInNewContext(compile(`../../frontend/src/${name.slice(2)}.ts`), { ...sandbox, exports });
+        const ext = name === './progress' ? 'tsx' : 'ts';
+        runInNewContext(compile(`../../frontend/src/${name.slice(2)}.${ext}`), {
+          ...sandbox,
+          exports,
+        });
       }
       return modules.get(name);
     }
@@ -277,11 +282,14 @@ test('new sets start not completed; completion and undo are sent explicitly', as
   ui.clock.now += 1000;
   submit(ui);
   await ui.settle();
+  // A new journal starts with three sets (#28); the added fourth one is planned too.
   assert.deepEqual(
     sentSets(ui).map((s) => [s.completed, s.rpe]),
     [
       [false, null],
       [true, null],
+      [false, null],
+      [false, null],
     ],
     'missing RPE is sent as null, never 0',
   );
@@ -369,7 +377,11 @@ test('refresh restores timer from its end time and set state from the draft', as
   await second.settle();
   assert.deepEqual(
     sentSets(second).map((s) => [s.completed, s.rpe]),
-    [[true, 8.5]],
+    [
+      [true, 8.5],
+      [false, null],
+      [false, null],
+    ],
   );
 });
 

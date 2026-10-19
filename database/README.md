@@ -12,6 +12,12 @@ PostgreSQL 17. 초기 테이블은 `migrations/001_initial.sql`. Docker의 빈 �
 Get-Content -Raw -Encoding UTF8 database/migrations/004_routines.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
 ```
 
+루틴 목표·오늘 하루 휴식하기 API(#28) 전에는 `004_routines.sql` 다음에 `005_routine_progress.sql`을 적용하세요. `routine_rests`에 루틴별 휴식 날짜만 한 행씩 저장하며(같은 날 중복 불가), 이동된 일정과 '제외됨' 목표는 이 날짜로부터 계산합니다. 기존 일지·세트·루틴은 바뀌지 않으며 재실행해도 안전합니다. 루틴을 삭제하면 휴식 기록도 함께 삭제됩니다.
+
+```powershell
+Get-Content -Raw -Encoding UTF8 database/migrations/005_routine_progress.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+```
+
 ```powershell
 Get-Content -Raw -Encoding UTF8 database/migrations/002_set_notes.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
 ```

@@ -75,6 +75,11 @@ export async function runStages(job, handlers) {
       job.history.push({ stage, at: new Date().toISOString(), summary: result?.summary });
       if ((stage === 'review' && result?.approved !== true) || (stage === 'ci' && result?.failed)) {
         job.attempts += 1;
+        await handlers.event?.(job, {
+          kind: 'repair-retry',
+          failureKind: stage,
+          attempt: job.attempts,
+        });
         if (job.attempts >= (handlers.maxAttempts ?? 2))
           throw new Error(`${stage} retry limit reached.`);
         job.stage = 'implementation';
@@ -82,11 +87,27 @@ export async function runStages(job, handlers) {
         job.stage = nextStage(stage);
       }
       await handlers.save(job);
+      if (stage === 'verification' && result?.reused) return job;
     } catch (error) {
       job.stage = 'blocked';
       job.blockedStage = stage;
       job.runningStage = null;
       job.error = error.message;
+      job.failureKind =
+        error.failureKind ||
+        (stage === 'verification'
+          ? 'test'
+          : stage === 'review'
+            ? 'review'
+            : stage === 'ci'
+              ? 'ci'
+              : 'code');
+      await handlers.event?.(job, {
+        kind: 'blocked',
+        stage,
+        failureKind: job.failureKind,
+        error: job.error,
+      });
       await handlers.save(job);
       return job;
     }

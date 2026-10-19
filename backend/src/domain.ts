@@ -59,7 +59,7 @@ export const routineSchema = z
           name: z.string().trim().min(1).max(120),
           body_parts: z
             .array(z.enum(['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근']))
-            .min(1)
+            .min(1, '분할마다 운동 부위를 1개 이상 선택하세요')
             .max(100),
           exercises: z
             .array(

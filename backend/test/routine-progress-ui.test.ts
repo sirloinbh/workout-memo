@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { routineSchema, type RoutinePlan } from '../src/domain.js';
 import { routineProgress } from '../src/progress.js';
-import { routineInput } from './routine-fixture.js';
+import { autoRoutineInput, routineInput } from './routine-fixture.js';
 
 // Same dependency-free rendered-element adapter as routines-ui.test.ts. The server
 // is simulated with the real progress functions so previews match applied results.
@@ -19,7 +19,7 @@ type Request = { path: string; method: string; body?: unknown; key?: string };
 const plan = routineSchema.parse(routineInput(2)) as RoutinePlan;
 const today = '2024-03-04'; // Monday, the second training slot: split 2, week 1.
 
-function mount(options: { routine?: boolean } = {}) {
+function mount(options: { routine?: boolean; plan?: RoutinePlan } = {}) {
   const storage = new Map<string, string>();
   let rests: string[] = [];
   const requests: Request[] = [];
@@ -29,7 +29,7 @@ function mount(options: { routine?: boolean } = {}) {
       ? { today, routine: null }
       : {
           routine: { id: 7, name: '수동 12주 루틴', splits: 2 },
-          ...routineProgress(plan, rests, today),
+          ...routineProgress(options.plan ?? plan, rests, today),
           previous: {
             스쿼트: {
               date: '2024-03-01',
@@ -406,4 +406,23 @@ test('rest shows the preview first, applies once on rapid clicks and can be canc
   assert.match(ui.text(), /스쿼트 3세트 · 총중량 102\.75 kg · 10회/);
   assert.equal(ui.all((e) => e.type === 'li' && e.props.className === 'excluded').length, 0);
   assert.equal(posts(ui, '/api/workouts').length, 0, 'rest never writes journals');
+});
+
+test('auto routine targets show firm values today and label future sessions as projected', async () => {
+  // Auto fixture starts Monday 2024-03-04, so today is its first session.
+  const ui = mount({ plan: routineSchema.parse(autoRoutineInput()) as RoutinePlan });
+  await openJournal(ui);
+  const card = ui.all((e) => e.props['aria-label'] === '루틴 목표')[0];
+  const content = ui.text(card);
+  assert.match(content, /자동 목표/);
+  assert.match(content, /벤치프레스 3세트 · 총중량 100 kg · 10회/);
+  const today = ui.all((e) => e.props.className === 'target-list')[0];
+  assert.doesNotMatch(ui.text(today), /예상/, "today's target is not a projection");
+  const rows = ui.all((e) => e.type === 'tr' && /^\d+주차/.test(ui.text(e)));
+  assert.match(ui.text(rows[1]), /예상/);
+  assert.match(ui.text(rows[3]), /4주차디로딩 · 자동/);
+  assert.match(ui.text(rows[4]), /벤치프레스 3세트 · 총중량 105 kg · 8회/);
+  await ui.click('오늘 루틴으로 기록하기');
+  assert.equal(ui.setRows().length, 9, '3 exercises × 3 sets');
+  assert.equal(Number(ui.field(ui.setRows()[0], '총중량').props.value), 100);
 });

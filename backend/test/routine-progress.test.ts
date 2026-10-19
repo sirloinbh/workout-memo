@@ -37,7 +37,7 @@ test('week targets apply only that week’s manual change to the base values', (
   assert.equal(squat4.weight, 87.75);
   assert.equal(lunge4.weight, 0, 'deload never yields a negative total weight');
   const sets = structuredClone(plan);
-  sets.weeks[7] = { week: 8, kind: 'deload', amount: 5, deload_metric: 'sets' };
+  sets.weeks![7] = { week: 8, kind: 'deload', amount: 5, deload_metric: 'sets' };
   assert.equal(weekExercises(sets, 0, 8)[0].sets, 1, 'deload keeps at least one set');
 });
 

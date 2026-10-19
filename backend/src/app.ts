@@ -12,7 +12,14 @@ import {
   routineSchedule,
   type RoutinePlan,
 } from './domain.js';
-import { routineProgress, seoulToday } from './progress.js';
+import {
+  exerciseKey,
+  isAuto,
+  planEndDate,
+  routineProgress,
+  seoulToday,
+  type WorkoutRecord,
+} from './progress.js';
 types.setTypeParser(1082, (value) => value);
 type Db = Pick<Pool, 'query'>;
 type ActiveRoutine = { id: number; plan: RoutinePlan };
@@ -33,8 +40,43 @@ async function restDates(db: Db, routineId: number) {
 }
 // Planned goals and actual records stay separate: the latest earlier journal sets
 // for each of today's exercises are returned only as a reference.
+// Auto targets adapt to saved sets of the plan's exercises within its 12 weeks.
+// to_jsonb keeps this working before and after sets gain a `completed` column.
+async function planRecords(db: Db, plan: RoutinePlan, today: string) {
+  if (!isAuto(plan)) return [];
+  const names = [
+    ...new Set(plan.splits.flatMap((s) => s.exercises.map((e) => exerciseKey(e.exercise)))),
+  ];
+  const result = await db.query(
+    `SELECT w.id, w.date, lower(trim(s.exercise)) AS key, s.weight, s.reps,
+       to_jsonb(s)->'completed' AS completed
+     FROM sets s JOIN workouts w ON w.id = s.workout_id
+     WHERE lower(trim(s.exercise)) = ANY($1::text[]) AND w.date BETWEEN $2 AND $3
+     ORDER BY w.date, w.id, s.position`,
+    [names, plan.start_date, today < planEndDate(plan) ? today : planEndDate(plan)],
+  );
+  const grouped = new Map<string, WorkoutRecord>();
+  for (const row of result.rows as {
+    id: number;
+    date: string;
+    key: string;
+    weight: string | number;
+    reps: number;
+    completed: unknown;
+  }[]) {
+    const id = `${row.id}:${row.key}`;
+    if (!grouped.has(id)) grouped.set(id, { date: row.date, exercise: row.key, sets: [] });
+    grouped.get(id)!.sets.push({
+      weight: Number(row.weight),
+      reps: row.reps,
+      completed: typeof row.completed === 'boolean' ? row.completed : null,
+    });
+  }
+  return [...grouped.values()];
+}
 async function progressResponse(db: Db, routine: ActiveRoutine, rests: string[], today: string) {
-  const progress = routineProgress(routine.plan, rests, today);
+  const records = await planRecords(db, routine.plan, today);
+  const progress = routineProgress(routine.plan, rests, today, records);
   const names = [
     ...new Set(
       (progress.today_plan?.target?.exercises ?? []).map((e) => e.exercise.trim().toLowerCase()),

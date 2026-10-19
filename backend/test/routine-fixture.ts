@@ -32,3 +32,29 @@ export type SavedRoutine = RoutineInput & {
   id: number;
   schedule: { date: string; week: number; split_index: number; is_deload: boolean }[];
 };
+
+// #28 rule change: automatic double progression. The user enters current
+// performance (total kg, reps) and a rep range; weekly targets are computed.
+// Starts Monday 2024-03-04, trains Mon/Wed/Fri, one split (3 sessions a week).
+export function autoRoutineInput() {
+  return {
+    name: '자동 12주 루틴',
+    progression: 'auto' as const,
+    start_date: '2024-03-04',
+    split_count: 1,
+    weekly_workouts: 3,
+    rest_days: [0, 2, 4, 6],
+    splits: [
+      {
+        name: '전신',
+        body_parts: ['가슴', '등', '팔'],
+        exercises: [
+          { exercise: '벤치프레스', sets: 3, weight: 100, reps: 10, rep_min: 8, rep_max: 12 },
+          { exercise: '맨몸 풀업', sets: 3, weight: 0, reps: 10, rep_min: 8, rep_max: 12 },
+          { exercise: '덤벨 컬', sets: 3, weight: 40, reps: 12, rep_min: 8, rep_max: 12 },
+        ],
+      },
+    ],
+  };
+}
+export type AutoRoutineInput = ReturnType<typeof autoRoutineInput>;

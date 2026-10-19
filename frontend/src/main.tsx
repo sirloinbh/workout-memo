@@ -333,7 +333,14 @@ function App() {
       date: anchor,
       title: '',
       notes: '',
-      sets: [{ exercise: '', machine_id: null, weight: 0, reps: 10, notes: '' }],
+      // #28: a new journal starts with three sets.
+      sets: Array.from({ length: 3 }, () => ({
+        exercise: '',
+        machine_id: null,
+        weight: 0,
+        reps: 10,
+        notes: '',
+      })),
     });
   };
   const quickWorkout = () => {

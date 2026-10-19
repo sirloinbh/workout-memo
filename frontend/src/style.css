@@ -1028,6 +1028,12 @@ footer > span:last-child {
     gap: 0 12px;
   }
 }
+fieldset.workout-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
 .routine-page fieldset {
   margin: 20px 0;
   padding: 16px;

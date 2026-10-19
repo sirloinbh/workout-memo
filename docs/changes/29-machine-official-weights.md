@@ -84,3 +84,12 @@
   - `official-weights.integration.test.ts`: 생략 PUT 후 연결 유지, 전환·null 해제, 존재하지 않는 ID의 POST·PUT 400·메시지·미저장·기존 연결 유지, 그리고 매 단계 기본중량·과거 총중량 보존을 확인한다.
 - 실행: `issue-check.ps1 -Issue 29 -Migrate`. 001~004·009 마이그레이션 적용 후 EXIT=0. 앱 테스트 **231 pass / 0 fail / 0 skip**(DB 통합 포함), 에이전트·스킬 테스트, 포맷·린트·타입 검사·빌드 성공. 그 전에 대상 테스트 3개 파일을 실행했다(17 pass / 0 fail).
 - 참고: 이전 실행이 ASCII 파이프로 마이그레이션을 적용했다면, 전용 테스트 DB에 한글이 손상된 참고 행이 별도 키로 남아 있을 수 있다. 테스트 DB 전용이며 테스트 결과에는 영향이 없었다.
+
+## 코디네이터 검토·실제 브라우저 확인 — 2026-10-19
+
+- 독립 검토(읽기 전용, 공식 페이지 4건 대조): 차단 지적 없음. lifefitness.com 공식 페이지와 비교해 Iso-Lateral Bench Press 7 lb 편측, Hack Squat 125 lb 편측, Linear Leg Press 118 lb(기준 미표기 → `unspecified`), Iso-Lateral Kneeling Leg Curl 8 lb 편측이 일치했다. 모든 확인값의 lb→kg(×0.45359237, 소수 2자리) 재계산이 맞고 문서 표와 SQL 시드가 일치한다. 009는 `UNIQUE … ON CONFLICT DO UPDATE`로 재실행해도 중복되지 않으며, `ON DELETE SET NULL`, 기본중량·세트를 쓰는 경로 없음, 파라미터 쿼리를 확인했다. 지적 P3 2건(부분 수정 시 연결 해제, 없는 id 오류 문구)과 한글 인코딩 위험은 위 `fix:` 커밋에서 처리했다.
+- 테스트 DB 정리: 예전 ASCII 파이프 적용으로 `workout_test_29`에 깨진 온힘 중복 행 1개가 남아 있었다(테스트 DB 한정). 삭제한 뒤 UTF-8로 009를 다시 적용했고, 56행·verified 27행·온힘 한글 정상, 재적용 후에도 중복이 없음을 확인했다.
+- 실제 브라우저(Playwright, 전용 DB의 dev 서버):
+  - 모바일 390px 머신 등록: Arsenal Strength 선택 시 참고값 후보는 모두 "공식값 미확인". Hammer Strength로 바꾸면 44개 후보가 나오고, "Iso-Lateral Bench Press — 7 lb = 3.18 kg · 편측"을 선택하면 출처 링크(lifefitness.com)와 "기본중량에 자동 반영되지 않음 · 편측 값은 양쪽 합계 아님" 안내가 표시된다. 기본중량 칸은 빈 채로 저장돼 `base_weight=null`, `official_weight_id=1`.
+  - API: 필드를 생략한 PUT은 연결을 유지(200, id 1 유지), 없는 id 999999는 400 "선택한 공식 참고값이 존재하지 않습니다".
+  - PC 1440px: 라이브러리 행에 "공식 참고값(Iso-Lateral Bench Press): 7 lb = 3.18 kg · 편측 · 출처 (2026-10-19 확인)", 일지 머신 선택에 "아이소 벤치 (기본중량 미확인) · 공식 참고값 7 lb = 3.18 kg · 편측". 가로 스크롤 없음.

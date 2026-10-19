@@ -16,21 +16,25 @@ export function modelSelection(role) {
   return { role, model, reasoningEffort };
 }
 
-export function validateRouting({ taskKind = 'code', reviewRole = 'review' } = {}) {
+export function validateRouting({ taskKind = 'code', reviewRole = 'review', testComplexity } = {}) {
   if (!['code', 'documentation'].includes(taskKind)) throw new Error('Invalid task kind.');
   if (!['review', 'highRiskReview'].includes(reviewRole)) throw new Error('Invalid review role.');
-  return { taskKind, reviewRole };
+  if (testComplexity !== undefined && !['simple', 'complex'].includes(testComplexity))
+    throw new Error('Invalid test complexity.');
+  return { taskKind, reviewRole, ...(testComplexity === undefined ? {} : { testComplexity }) };
 }
 
 export function stageSelection(job, stage) {
-  const { taskKind, reviewRole } = validateRouting(job);
-  return modelSelection(
+  const { taskKind, reviewRole, testComplexity } = validateRouting(job);
+  const selection = modelSelection(
     stage === 'review'
       ? reviewRole
       : taskKind === 'documentation' && stage === 'implementation'
         ? 'documentation'
         : stage,
   );
+  if (stage === 'tests' && testComplexity === 'simple') selection.model = 'gpt-6-luna';
+  return { ...selection, taskKind, ...(testComplexity ? { testComplexity } : {}) };
 }
 
 export function modelArguments(selection) {

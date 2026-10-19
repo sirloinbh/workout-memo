@@ -103,3 +103,4 @@
   - P3 (미해결): 같은 커밋·같은 오류 메시지로 다시 blocked되면 이벤트 ID가 같아 두 번째 알림이 중복 제거된다.
 - Codex가 이 worktree에 만든 docs/daily/2026-10-19.md·daily/next-steps 편집은 #26 PR의 같은 날짜 기록과 충돌하므로 이 PR에 포함하지 않았다(파일은 worktree에 보존). 해당 내용은 이 변경 기록과 #26 PR의 일일 기록에 반영한다.
 - 실제 Codex 채팅 전송·왕복은 여전히 미구현이므로 PR은 draft로 유지한다.
+- 보안 자동 검토(MEDIUM): `writeDecisionRecord`가 변경 기록 파일 자체의 심볼릭 링크만 확인해, 모델이 쓸 수 있는 worktree에서 `docs/changes`를 정션/심볼릭 링크로 바꾸거나 하드 링크를 두면 코디네이터 쓰기가 worktree 밖 파일로 향할 수 있었다. 실제 경로(`realpathSync.native`)가 worktree 실제 경로 아래 `docs/changes/<번호>-agent-task.md`와 정확히 같고, 일반 파일이며 하드 링크 수가 1인 경우에만 쓰도록 수정했다. 회귀 테스트 2개(정션된 상위 디렉터리, 하드 링크): 수정 전 **2 fail**, 수정 후 `agent-conversation-cli.test.mjs` **12 pass / 0 fail**.

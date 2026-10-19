@@ -116,6 +116,25 @@ for (const mode of ['locked', 'stale', 'agent']) {
   });
 }
 
+for (const mode of ['junction', 'hardlink']) {
+  test(`#43 CLI refuses to write a change record reached through a ${mode}`, (t) => {
+    const f = fixture(t);
+    const outside = path.join(f.root, 'outside');
+    fs.mkdirSync(outside);
+    const target = path.join(outside, '81-agent-task.md');
+    fs.writeFileSync(target, '# Outside\n');
+    const changes = path.dirname(f.note);
+    fs.rmSync(changes, { recursive: true });
+    if (mode === 'junction') fs.symlinkSync(outside, changes, 'junction');
+    else {
+      fs.mkdirSync(changes);
+      fs.linkSync(target, f.note);
+    }
+    assert.notEqual(f.invoke().status, 0);
+    assert.equal(fs.readFileSync(target, 'utf8'), '# Outside\n');
+  });
+}
+
 test('#43 accept-requirements recovers a pending question after the issue changes', (t) => {
   const f = fixture(t);
   const issue = { ...f.job.issue, updatedAt: 'version-2', body: '## Acceptance criteria\n- New' };

@@ -100,7 +100,11 @@ test(
         'switching between unknown, zero and positive machines preserves total load',
         async () => {
           for (const selectedMachineId of machineIds) {
+            const revision = await pool.query('SELECT version FROM workouts WHERE id=$1', [
+              workoutId,
+            ]);
             const updated = await call(`/workouts/${workoutId}`, 'PUT', {
+              version: revision.rows[0].version,
               date: '2026-10-14',
               title: name,
               sets: [{ exercise: name, machine_id: selectedMachineId, weight: 100, reps: 10 }],

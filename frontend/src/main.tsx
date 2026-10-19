@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import './style.css';
 import { seoulDate } from './date';
+import { Routines } from './routines';
 type SetRow = {
   exercise: string;
   machine_id: number | null;
@@ -24,7 +25,84 @@ type SetRow = {
   reps: number;
   notes: string;
 };
-type Workout = { id: number; date: string; title: string; notes: string; sets: SetRow[] };
+type Workout = {
+  id: number;
+  version?: number;
+  date: string;
+  title: string;
+  notes: string;
+  sets: SetRow[];
+};
+type Draft = {
+  format: 1;
+  savedAt: number;
+  editor: Partial<Workout>;
+  request?: { key: string; body: string; path: string; method: string };
+};
+const draftKey = 'workout-memo:draft:v1';
+const draftLifetime = 7 * 86400000;
+function retryKey() {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  // getRandomValues also works on a phone accessing a local HTTP server.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+function readDraft(): { draft: Draft | null; warning: string } {
+  try {
+    const raw = localStorage.getItem(draftKey);
+    if (!raw) return { draft: null, warning: '' };
+    const d = JSON.parse(raw) as Draft;
+    if (
+      d.format !== 1 ||
+      !Number.isFinite(d.savedAt) ||
+      d.savedAt > Date.now() ||
+      !d.editor ||
+      typeof d.editor.date !== 'string' ||
+      typeof d.editor.title !== 'string' ||
+      typeof d.editor.notes !== 'string' ||
+      (d.editor.id !== undefined && (!Number.isInteger(d.editor.id) || d.editor.id <= 0)) ||
+      (d.editor.version !== undefined &&
+        (!Number.isInteger(d.editor.version) || d.editor.version <= 0)) ||
+      !Array.isArray(d.editor.sets) ||
+      !d.editor.sets.length ||
+      d.editor.sets.length > 200 ||
+      !d.editor.sets.every(
+        (s) =>
+          s &&
+          typeof s.exercise === 'string' &&
+          (s.notes === undefined || typeof s.notes === 'string') &&
+          (s.machine_id === null || (Number.isInteger(s.machine_id) && s.machine_id > 0)) &&
+          Number.isFinite(s.weight) &&
+          Number.isFinite(s.reps),
+      ) ||
+      (d.request &&
+        (typeof d.request.key !== 'string' ||
+          typeof d.request.body !== 'string' ||
+          typeof d.request.path !== 'string' ||
+          !['POST', 'PUT'].includes(d.request.method)))
+    ) {
+      throw Error('invalid draft');
+    }
+    if (Date.now() - d.savedAt >= draftLifetime) {
+      localStorage.removeItem(draftKey);
+      return {
+        draft: null,
+        warning:
+          '7일이 지난 로컬 초안을 정리했습니다. 저장 결과가 불확실했다면 서버 기록을 확인하세요.',
+      };
+    }
+    return { draft: d, warning: '' };
+  } catch {
+    return {
+      draft: null,
+      warning:
+        '로컬 저장 공간을 읽지 못했거나 초안이 손상되었습니다. 새 입력은 계속할 수 있습니다.',
+    };
+  }
+}
 type Machine = {
   id: number;
   brand_id: number;
@@ -57,15 +135,22 @@ const dateLabel = (v: string) =>
   });
 const vol = (w: Workout) => w.sets.reduce((n, s) => n + Number(s.weight) * s.reps, 0);
 const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
-async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const res = await fetch('/api' + path, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json();
-  if (!res.ok) throw Error(data.error ?? '요청에 실패했습니다');
-  return data;
+async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch('/api' + path, {
+      method,
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json();
+    if (!res.ok) throw Error(data.error ?? '요청에 실패했습니다');
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 function App() {
   const [page, setPage] = useState('overview'),
@@ -79,9 +164,70 @@ function App() {
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true),
     [saving, setSaving] = useState(false),
-    [editor, setEditor] = useState<Partial<Workout> | null>(null),
+    [editor, updateEditor] = useState<Partial<Workout> | null>(null),
     [goalEditor, setGoalEditor] = useState(false),
     [machineEditor, setMachineEditor] = useState<Partial<Machine> | null>(null);
+  const [initialDraft] = useState(readDraft);
+  const [recovery, setRecovery] = useState(initialDraft.draft);
+  const [storageWarning, setStorageWarning] = useState(initialDraft.warning);
+  const [saveState, setSaveState] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const draft = useRef<Draft | null>(initialDraft.draft);
+  const workoutSaving = useRef(false);
+  function persist(value: Draft | null) {
+    draft.current = value;
+    try {
+      if (value) localStorage.setItem(draftKey, JSON.stringify(value));
+      else localStorage.removeItem(draftKey);
+      setStorageWarning('');
+    } catch {
+      setStorageWarning(
+        '로컬 저장 공간 오류: 초안 보관 또는 정리에 실패했습니다. 새로고침하면 입력을 잃거나 이전 초안이 다시 보일 수 있습니다.',
+      );
+    }
+  }
+  function setEditor(value: Partial<Workout> | null) {
+    if (workoutSaving.current) return;
+    updateEditor(value);
+    if (value) {
+      persist({ format: 1, savedAt: Date.now(), editor: value, request: draft.current?.request });
+      setRecovery(null);
+      setSaveState('로컬 초안 · 서버 저장 전');
+    } else setRecovery(draft.current);
+  }
+  async function saveWorkout() {
+    if (!editor || workoutSaving.current) return;
+    workoutSaving.current = true;
+    setSaving(true);
+    setSaveState('저장 중…');
+    setSaveError('');
+    const path = '/workouts' + (editor.id ? '/' + editor.id : '');
+    const method = editor.id ? 'PUT' : 'POST';
+    try {
+      const body = JSON.stringify(editor);
+      const old = draft.current?.request;
+      const request =
+        old?.body === body && old.path === path && old.method === method
+          ? old
+          : { key: retryKey(), body, path, method };
+      persist({ format: 1, savedAt: draft.current?.savedAt ?? Date.now(), editor, request });
+      await api(path, method, editor, request.key);
+      persist(null);
+      setRecovery(null);
+      updateEditor(null);
+      setSaveState('서버 저장 완료');
+      await latestRefresh.current();
+    } catch (e) {
+      setSaveState('저장 실패 · 서버 저장 여부 미확인');
+      setSaveError(
+        (e as Error).message +
+          ' 입력은 화면에 유지됩니다. 재시도하거나 서버 기록을 확인하세요. 내용을 바꾸어 저장하면 별도 요청으로 처리됩니다.',
+      );
+    } finally {
+      workoutSaving.current = false;
+      setSaving(false);
+    }
+  }
   const range = () => {
     const start = calendarDate(anchor);
     let end = new Date(start);
@@ -141,13 +287,15 @@ function App() {
       setSaving(false);
     }
   }
-  const newWorkout = () =>
+  const newWorkout = () => {
+    if (recovery) return;
     setEditor({
       date: anchor,
       title: '',
       notes: '',
       sets: [{ exercise: '', machine_id: null, weight: 0, reps: 10, notes: '' }],
     });
+  };
   const total = workouts.reduce((n, w) => n + vol(w), 0),
     totalSets = workouts.reduce((n, w) => n + w.sets.length, 0),
     days = new Set(workouts.map((w) => cleanDate(w.date))).size;
@@ -155,6 +303,7 @@ function App() {
     ['overview', '대시보드', LayoutDashboard],
     ['journal', '운동 일지', NotebookPen],
     ['goals', '나의 목표', Target],
+    ['routines', '루틴짜기', NotebookPen],
     ['machines', '머신 라이브러리', Dumbbell],
   ] as const;
   function move(dir: number) {
@@ -220,53 +369,95 @@ function App() {
           </span>
         </header>
         <div className="content">
-          <div className="page-heading">
-            <div>
-              <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>
-              <h1>
-                {page === 'overview'
-                  ? '꾸준함을 기록하는 공간'
-                  : page === 'journal'
-                    ? '오늘도 한 걸음 더'
-                    : page === 'goals'
-                      ? '다음 단계의 나를 향해'
-                      : '머신을 알면, 기록이 정확해져요'}
-                <span className="heading-dot">.</span>
-              </h1>
-              <p>
-                {page === 'overview'
-                  ? '운동의 흐름을 살펴보고, 다음 성장을 준비하세요.'
-                  : page === 'journal'
-                    ? '모든 세트에는 어제보다 나아진 내가 담겨 있어요.'
-                    : page === 'goals'
-                      ? '중량과 반복 수로 구체적인 성장 목표를 세워보세요.'
-                      : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'}
-              </p>
-            </div>
-            <button
-              className="primary"
-              onClick={
-                page === 'goals'
-                  ? () => setGoalEditor(true)
+          {page === 'routines' && <Routines />}
+          {page !== 'routines' && (
+            <div className="page-heading">
+              <div>
+                <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>
+                <h1>
+                  {page === 'overview'
+                    ? '꾸준함을 기록하는 공간'
+                    : page === 'journal'
+                      ? '오늘도 한 걸음 더'
+                      : page === 'goals'
+                        ? '다음 단계의 나를 향해'
+                        : '머신을 알면, 기록이 정확해져요'}
+                  <span className="heading-dot">.</span>
+                </h1>
+                <p>
+                  {page === 'overview'
+                    ? '운동의 흐름을 살펴보고, 다음 성장을 준비하세요.'
+                    : page === 'journal'
+                      ? '모든 세트에는 어제보다 나아진 내가 담겨 있어요.'
+                      : page === 'goals'
+                        ? '중량과 반복 수로 구체적인 성장 목표를 세워보세요.'
+                        : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'}
+                </p>
+              </div>
+              <button
+                className="primary"
+                disabled={!!recovery && (page === 'overview' || page === 'journal')}
+                onClick={
+                  page === 'goals'
+                    ? () => setGoalEditor(true)
+                    : page === 'machines'
+                      ? () =>
+                          setMachineEditor({
+                            brand_id: brand || brands[0]?.id,
+                            name: '',
+                            base_weight: null,
+                            notes: '',
+                          })
+                      : newWorkout
+                }
+              >
+                <Plus size={18} />
+                {page === 'goals'
+                  ? '목표 추가'
                   : page === 'machines'
-                    ? () =>
-                        setMachineEditor({
-                          brand_id: brand || brands[0]?.id,
-                          name: '',
-                          base_weight: null,
-                          notes: '',
-                        })
-                    : newWorkout
-              }
-            >
-              <Plus size={18} />
-              {page === 'goals' ? '목표 추가' : page === 'machines' ? '머신 등록' : '운동 기록하기'}
-            </button>
-          </div>
+                    ? '머신 등록'
+                    : '운동 기록하기'}
+              </button>
+            </div>
+          )}
           {error && (
             <div role="alert" className="error">
               {error} <button onClick={() => void refresh()}>다시 연결</button>
             </div>
+          )}
+          {storageWarning && !editor && (
+            <p role="alert" className="error">
+              {storageWarning}
+            </p>
+          )}
+          {saveState && !editor && <p role="status">{saveState}</p>}
+          {recovery && !editor && (
+            <section className="card">
+              <p>
+                이 브라우저에 로컬 초안이 있습니다. 서버 기록과 별도로 보관됩니다. 복구 또는 폐기 후
+                다른 기록을 입력하세요.
+              </p>
+              <button
+                className="subtle-button"
+                onClick={() => {
+                  updateEditor(recovery.editor);
+                  setRecovery(null);
+                  setSaveState('로컬 초안 · 서버 저장 전');
+                }}
+              >
+                초안 복구
+              </button>
+              <button
+                className="text-button"
+                onClick={() => {
+                  persist(null);
+                  setRecovery(null);
+                  setSaveState('초안 폐기');
+                }}
+              >
+                초안 폐기
+              </button>
+            </section>
           )}
           {(page === 'overview' || page === 'journal') && (
             <>
@@ -437,9 +628,12 @@ function App() {
                         </div>
                         <button
                           className="text-button"
+                          disabled={!!recovery || saving}
                           onClick={() =>
+                            !recovery &&
                             setEditor({
                               ...w,
+                              version: w.version ?? 1,
                               date: cleanDate(w.date),
                               sets: w.sets.map((s) => ({ ...s, weight: Number(s.weight) })),
                             })
@@ -590,170 +784,183 @@ function App() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              void action(
-                () =>
-                  api(
-                    '/workouts' + (editor.id ? '/' + editor.id : ''),
-                    editor.id ? 'PUT' : 'POST',
-                    editor,
-                  ),
-                () => setEditor(null),
-              );
+              void saveWorkout();
             }}
           >
-            <div className="form-grid">
-              <label>
-                운동 날짜
-                <input
-                  type="date"
-                  required
-                  value={editor.date}
-                  onChange={(e) => setEditor({ ...editor, date: e.target.value })}
-                />
-              </label>
-              <label>
-                일지 제목
-                <input
-                  required
-                  maxLength={120}
-                  placeholder="예: 하체 · 대퇴사두 집중"
-                  value={editor.title}
-                  onChange={(e) => setEditor({ ...editor, title: e.target.value })}
-                />
-              </label>
-            </div>
+            {saveState && <p role="status">{saveState}</p>}
+            {storageWarning && (
+              <p role="alert" className="error">
+                {storageWarning}
+              </p>
+            )}
             <p className="form-hint">
-              세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 좌우를
-              함께 움직이는 장비는 양쪽 중량의 합계를, 편측 운동은 한쪽에서 실제로 움직인 총중량을
-              기록하세요. 기본중량을 모르면 임의로 더하지 말고 세트 메모에 남겨주세요. 머신을
-              선택해도 기본중량을 자동으로 더하지 않습니다.
+              초안은 이 기기·브라우저의 localStorage에 마지막 입력부터 7일 보관합니다. 다른 기기와
+              동기화되지 않으며 브라우저 데이터 삭제·비공개 모드에서는 사라질 수 있습니다. 서버 저장
+              기록만 통계와 목표에 반영합니다.
             </p>
-            {editor.sets?.map((s, i) => (
-              <div className="set-editor" key={i}>
-                <div className="set-number">{i + 1}</div>
-                <label>
-                  운동명
-                  <input
-                    required
-                    list="exercise-names"
-                    value={s.exercise}
-                    onChange={(e) => {
-                      const sets = [...editor.sets!];
-                      sets[i] = { ...s, exercise: e.target.value };
-                      setEditor({ ...editor, sets });
-                    }}
-                  />
-                </label>
-                <label>
-                  머신
-                  <select
-                    value={s.machine_id ?? ''}
-                    onChange={(e) => {
-                      const m = machines.find((m) => m.id === Number(e.target.value));
-                      const sets = [...editor.sets!];
-                      sets[i] = {
-                        ...s,
-                        machine_id: m?.id ?? null,
-                        exercise: s.exercise || m?.name || '',
-                      };
-                      setEditor({ ...editor, sets });
-                    }}
-                  >
-                    <option value="">자유 운동</option>
-                    {machines.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.brand} · {m.name} (기본중량{' '}
-                        {m.base_weight === null ? '미확인' : `${m.base_weight} kg`})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  총중량 kg
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    max="99999"
-                    step="0.25"
-                    value={s.weight}
-                    onChange={(e) => {
-                      const sets = [...editor.sets!];
-                      sets[i] = { ...s, weight: Number(e.target.value) };
-                      setEditor({ ...editor, sets });
-                    }}
-                  />
-                </label>
-                <label>
-                  횟수
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max="1000"
-                    value={s.reps}
-                    onChange={(e) => {
-                      const sets = [...editor.sets!];
-                      sets[i] = { ...s, reps: Number(e.target.value) };
-                      setEditor({ ...editor, sets });
-                    }}
-                  />
-                </label>
-                <label className="set-notes">
-                  세트 메모
-                  <textarea
-                    maxLength={4000}
-                    value={s.notes}
-                    placeholder="자세, 머신 설정, 편측 기록 등"
-                    onChange={(e) => {
-                      const sets = [...editor.sets!];
-                      sets[i] = { ...s, notes: e.target.value };
-                      setEditor({ ...editor, sets });
-                    }}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="icon-button"
-                  disabled={editor.sets!.length === 1}
-                  aria-label="세트 삭제"
-                  onClick={() =>
-                    setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) })
-                  }
-                >
-                  <X size={15} />
+            {saveError && (
+              <div role="alert" className="error">
+                {saveError}
+                <button type="button" disabled={saving} onClick={() => void saveWorkout()}>
+                  다시 저장 재시도
                 </button>
               </div>
-            ))}
-            <datalist id="exercise-names">
-              {Array.from(
-                new Set([...goals.map((g) => g.exercise), ...machines.map((m) => m.name)]),
-              ).map((n) => (
-                <option key={n}>{n}</option>
+            )}
+            <fieldset disabled={saving} className="workout-fields">
+              <div className="form-grid">
+                <label>
+                  운동 날짜
+                  <input
+                    type="date"
+                    required
+                    value={editor.date}
+                    onChange={(e) => setEditor({ ...editor, date: e.target.value })}
+                  />
+                </label>
+                <label>
+                  일지 제목
+                  <input
+                    required
+                    maxLength={120}
+                    placeholder="예: 하체 · 대퇴사두 집중"
+                    value={editor.title}
+                    onChange={(e) => setEditor({ ...editor, title: e.target.value })}
+                  />
+                </label>
+              </div>
+              <p className="form-hint">
+                세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 좌우를
+                함께 움직이는 장비는 양쪽 중량의 합계를, 편측 운동은 한쪽에서 실제로 움직인 총중량을
+                기록하세요. 기본중량을 모르면 임의로 더하지 말고 세트 메모에 남겨주세요. 머신을
+                선택해도 기본중량을 자동으로 더하지 않습니다.
+              </p>
+              {editor.sets?.map((s, i) => (
+                <div className="set-editor" key={i}>
+                  <div className="set-number">{i + 1}</div>
+                  <label>
+                    운동명
+                    <input
+                      required
+                      list="exercise-names"
+                      value={s.exercise}
+                      onChange={(e) => {
+                        const sets = [...editor.sets!];
+                        sets[i] = { ...s, exercise: e.target.value };
+                        setEditor({ ...editor, sets });
+                      }}
+                    />
+                  </label>
+                  <label>
+                    머신
+                    <select
+                      value={s.machine_id ?? ''}
+                      onChange={(e) => {
+                        const m = machines.find((m) => m.id === Number(e.target.value));
+                        const sets = [...editor.sets!];
+                        sets[i] = {
+                          ...s,
+                          machine_id: m?.id ?? null,
+                          exercise: s.exercise || m?.name || '',
+                        };
+                        setEditor({ ...editor, sets });
+                      }}
+                    >
+                      <option value="">자유 운동</option>
+                      {machines.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.brand} · {m.name} (기본중량{' '}
+                          {m.base_weight === null ? '미확인' : `${m.base_weight} kg`})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    총중량 kg
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      max="99999"
+                      step="0.25"
+                      value={s.weight}
+                      onChange={(e) => {
+                        const sets = [...editor.sets!];
+                        sets[i] = { ...s, weight: Number(e.target.value) };
+                        setEditor({ ...editor, sets });
+                      }}
+                    />
+                  </label>
+                  <label>
+                    횟수
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      max="1000"
+                      value={s.reps}
+                      onChange={(e) => {
+                        const sets = [...editor.sets!];
+                        sets[i] = { ...s, reps: Number(e.target.value) };
+                        setEditor({ ...editor, sets });
+                      }}
+                    />
+                  </label>
+                  <label className="set-notes">
+                    세트 메모
+                    <textarea
+                      maxLength={4000}
+                      value={s.notes}
+                      placeholder="자세, 머신 설정, 편측 기록 등"
+                      onChange={(e) => {
+                        const sets = [...editor.sets!];
+                        sets[i] = { ...s, notes: e.target.value };
+                        setEditor({ ...editor, sets });
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    disabled={editor.sets!.length === 1}
+                    aria-label="세트 삭제"
+                    onClick={() =>
+                      setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) })
+                    }
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
               ))}
-            </datalist>
-            <button
-              type="button"
-              className="subtle-button"
-              onClick={() =>
-                setEditor({ ...editor, sets: [...editor.sets!, { ...editor.sets!.at(-1)! }] })
-              }
-            >
-              <Plus size={16} />
-              세트 추가
-            </button>
-            <label>
-              운동 메모
-              <textarea
-                maxLength={4000}
-                value={editor.notes}
-                placeholder="컨디션, 자세, 다음 운동에서 기억할 것…"
-                onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
-              />
-            </label>
-            <button className="primary full" disabled={saving}>
-              {saving ? '저장 중…' : '기록 저장하기'}
-            </button>
+              <datalist id="exercise-names">
+                {Array.from(
+                  new Set([...goals.map((g) => g.exercise), ...machines.map((m) => m.name)]),
+                ).map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </datalist>
+              <button
+                type="button"
+                className="subtle-button"
+                onClick={() =>
+                  setEditor({ ...editor, sets: [...editor.sets!, { ...editor.sets!.at(-1)! }] })
+                }
+              >
+                <Plus size={16} />
+                세트 추가
+              </button>
+              <label>
+                운동 메모
+                <textarea
+                  maxLength={4000}
+                  value={editor.notes}
+                  placeholder="컨디션, 자세, 다음 운동에서 기억할 것…"
+                  onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
+                />
+              </label>
+              <button className="primary full" disabled={saving}>
+                {saving ? '저장 중…' : '기록 저장하기'}
+              </button>
+            </fieldset>
           </form>
         </Modal>
       )}

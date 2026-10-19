@@ -1,13 +1,52 @@
 import express from 'express';
+import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { types } from 'pg';
 import { ZodError, z } from 'zod';
-import { date, workoutSchema, machineSchema, goalSchema } from './domain.js';
+import {
+  date,
+  workoutSchema,
+  machineSchema,
+  goalSchema,
+  routineSchema,
+  routineSchedule,
+  type RoutinePlan,
+} from './domain.js';
 types.setTypeParser(1082, (value) => value);
 export function createApp(pool: Pool) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '256kb' }));
+  app.post('/api/routines', async (req, res) => {
+    const plan = routineSchema.parse(req.body);
+    const result = await pool.query('INSERT INTO routines(plan) VALUES($1::jsonb) RETURNING id', [
+      JSON.stringify(plan),
+    ]);
+    res.status(201).json(result.rows[0]);
+  });
+  app.get('/api/routines', async (_req, res) => {
+    const result = await pool.query('SELECT id, plan FROM routines ORDER BY id DESC');
+    res.json(
+      result.rows.map((row: { id: number; plan: RoutinePlan }) => ({
+        ...row.plan,
+        id: row.id,
+        schedule: routineSchedule(row.plan),
+      })),
+    );
+  });
+  app.get('/api/routines/:id', async (req, res) => {
+    const result = await pool.query('SELECT id, plan FROM routines WHERE id=$1', [
+      id(req.params.id),
+    ]);
+    const row = result.rows[0] as { id: number; plan: RoutinePlan } | undefined;
+    res
+      .status(row ? 200 : 404)
+      .json(
+        row
+          ? { ...row.plan, id: row.id, schedule: routineSchedule(row.plan) }
+          : { error: '루틴을 찾을 수 없습니다' },
+      );
+  });
   app.get('/api/health', async (_req, res) => {
     await pool.query('SELECT 1');
     res.json({ status: 'ok' });
@@ -62,10 +101,38 @@ export function createApp(pool: Pool) {
   for (const method of ['post', 'put'] as const)
     app[method]('/api/workouts' + (method === 'put' ? '/:id' : ''), async (req, res) => {
       const w = workoutSchema.parse(req.body);
+      const key = req.get('Idempotency-Key');
+      if (key !== undefined) z.string().uuid().parse(key);
+      const target = method === 'put' ? id(req.params.id) : null;
+      if (method === 'put') z.number().int().positive().parse(w.version);
+      const fingerprint = createHash('sha256')
+        .update(JSON.stringify([method, target, w]))
+        .digest('hex');
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+        if (key) {
+          // Serialize identical keys across connections, including their first use.
+          await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [key]);
+          const previous = await client.query(
+            'SELECT *, expires_at <= now() expired FROM workout_requests WHERE key=$1',
+            [key],
+          );
+          if (previous.rowCount) {
+            const saved = previous.rows[0];
+            await client.query('ROLLBACK');
+            if (saved.expired)
+              res
+                .status(409)
+                .json({ error: '재시도 키의 7일 유효기간이 지났습니다. 서버 기록을 확인하세요.' });
+            else if (saved.fingerprint !== fingerprint)
+              res.status(409).json({ error: '같은 재시도 키의 요청 내용이 다릅니다.' });
+            else res.status(saved.status).json(saved.response);
+            return;
+          }
+        }
         let workoutId: number;
+        let version = 1;
         if (method === 'post')
           workoutId = (
             await client.query(
@@ -74,9 +141,25 @@ export function createApp(pool: Pool) {
             )
           ).rows[0].id;
         else {
-          workoutId = id(req.params.id);
+          workoutId = target!;
+          const existing = await client.query(
+            'SELECT version FROM workouts WHERE id=$1 FOR UPDATE',
+            [workoutId],
+          );
+          if (!existing.rowCount) {
+            await client.query('ROLLBACK');
+            res.status(404).json({ error: '일지를 찾을 수 없습니다' });
+            return;
+          }
+          if (existing.rows[0].version !== w.version) {
+            await client.query('ROLLBACK');
+            res.status(409).json({
+              error: '다른 기기에서 수정된 기록입니다. 초안을 보관하고 최신 기록을 확인하세요.',
+            });
+            return;
+          }
           const r = await client.query(
-            'UPDATE workouts SET date=$1,title=$2,notes=$3 WHERE id=$4 RETURNING id',
+            'UPDATE workouts SET date=$1,title=$2,notes=$3,version=version+1 WHERE id=$4 RETURNING id,version',
             [w.date, w.title, w.notes, workoutId],
           );
           if (!r.rowCount) {
@@ -84,6 +167,7 @@ export function createApp(pool: Pool) {
             res.status(404).json({ error: '일지를 찾을 수 없습니다' });
             return;
           }
+          version = r.rows[0].version;
           await client.query('DELETE FROM sets WHERE workout_id=$1', [workoutId]);
         }
         for (const [i, s] of w.sets.entries())
@@ -91,8 +175,15 @@ export function createApp(pool: Pool) {
             'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes) VALUES($1,$2,$3,$4,$5,$6,$7)',
             [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes],
           );
+        const status = method === 'post' ? 201 : 200;
+        const response = { id: workoutId, version };
+        if (key)
+          await client.query(
+            'INSERT INTO workout_requests(key,fingerprint,status,response) VALUES($1,$2,$3,$4)',
+            [key, fingerprint, status, response],
+          );
         await client.query('COMMIT');
-        res.status(method === 'post' ? 201 : 200).json({ id: workoutId });
+        res.status(status).json(response);
       } catch (e) {
         await client.query('ROLLBACK');
         throw e;

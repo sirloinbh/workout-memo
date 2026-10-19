@@ -104,3 +104,15 @@
 - Codex가 이 worktree에 만든 docs/daily/2026-10-19.md·daily/next-steps 편집은 #26 PR의 같은 날짜 기록과 충돌하므로 이 PR에 포함하지 않았다(파일은 worktree에 보존). 해당 내용은 이 변경 기록과 #26 PR의 일일 기록에 반영한다.
 - 실제 Codex 채팅 전송·왕복은 여전히 미구현이므로 PR은 draft로 유지한다.
 - 보안 자동 검토(MEDIUM): `writeDecisionRecord`가 변경 기록 파일 자체의 심볼릭 링크만 확인해, 모델이 쓸 수 있는 worktree에서 `docs/changes`를 정션/심볼릭 링크로 바꾸거나 하드 링크를 두면 코디네이터 쓰기가 worktree 밖 파일로 향할 수 있었다. 실제 경로(`realpathSync.native`)가 worktree 실제 경로 아래 `docs/changes/<번호>-agent-task.md`와 정확히 같고, 일반 파일이며 하드 링크 수가 1인 경우에만 쓰도록 수정했다. 회귀 테스트 2개(정션된 상위 디렉터리, 하드 링크): 수정 전 **2 fail**, 수정 후 `agent-conversation-cli.test.mjs` **12 pass / 0 fail**.
+
+## main 병합 충돌 해소·#26 통합 검증 — 2026-10-19
+
+- #42(#26)·#45·#46·#47 병합 후 main을 이 브랜치에 병합했다. 병합 전 Codex가 남긴 미커밋 일일 기록 편집은 삭제하지 않고 `.local/agent-workflow/jobs/43/codex-daily-backup/`에 백업한 뒤 태그 stash(`claude-43-codex-daily-leftovers`)로 보관했다. 내용은 main의 2026-10-19 일일 기록에 이미 반영되어 있다.
+- 충돌 해소(양쪽 기능 유지 원칙):
+  - `workflow.mjs`: #43의 CI 지연 반환·영속 blocked 이벤트와 #26의 검증 재사용 반환·failureKind·`handlers.event` 감사 훅을 모두 유지했다.
+  - `cli.mjs`: 워커 루프는 #43 큐 순환(`runQueueCycle`)을 유지하고 #26의 `event: audit` 훅을 핸들러로 넘겼다. 결과 스키마는 #43 `decisionRequest` 스키마에 #26의 summary 길이 제한(`SUMMARY_LIMIT`)을 합쳤다. retry/accept-requirements는 #43의 awaiting_user 복구와 #26의 `preserveRetryFailure`(blocked일 때만)를 함께 적용했다. 명령 목록·사용법에 `handoff-tests`와 `respond`를 모두 두었다. #26의 delivery/ci 검증 재확인 보호는 그대로다.
+  - `agents.ps1`, `package.json`, 워커 CI: 두 명령과 두 쪽 테스트 목록을 합치고 CI는 main의 `npm run test:agents`를 사용한다.
+  - `docs/local-agent-workflow.md`: #26 절과 #43 절을 모두 유지하고 #26 통합 문구를 갱신했다.
+- 통합으로 실패한 #26 테스트 `agent-publication-resume.test.mjs` 2건: 실제 `delivery()` 소스를 VM에서 실행하는데 #43이 PR 본문에 쓰는 `safeMarkdown`·`renderPrDecisions`가 컨텍스트에 없었다. assertion은 바꾸지 않고 두 함수의 실제 구현을 컨텍스트에 넣었다(6 pass).
+- 통합 회귀 테스트 2개 추가(`agent-conversation.test.mjs`): 큐 순환에서 blocked 시 #26 감사 이벤트(kind/failureKind/stage)와 #43 영속 이벤트가 각각 한 번 기록되는지, 검증 재사용 반환 후 재진입 시 delivery가 실행되고 `pr_published` 이벤트가 한 번만 생기는지. 38 pass.
+- 병합 결과로 호스트 `npm run check`: **exit 0** — 앱·DB **209**, 워커 **212**, 스킬 **4** pass, 모두 fail/skip 0, 빌드 통과.

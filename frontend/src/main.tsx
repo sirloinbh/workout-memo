@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import './style.css';
 import { seoulDate } from './date';
+import { Routines } from './routines';
 type SetRow = {
   exercise: string;
   machine_id: number | null;
@@ -155,6 +156,7 @@ function App() {
     ['overview', '대시보드', LayoutDashboard],
     ['journal', '운동 일지', NotebookPen],
     ['goals', '나의 목표', Target],
+    ['routines', '루틴짜기', NotebookPen],
     ['machines', '머신 라이브러리', Dumbbell],
   ] as const;
   function move(dir: number) {
@@ -220,49 +222,56 @@ function App() {
           </span>
         </header>
         <div className="content">
-          <div className="page-heading">
-            <div>
-              <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>
-              <h1>
-                {page === 'overview'
-                  ? '꾸준함을 기록하는 공간'
-                  : page === 'journal'
-                    ? '오늘도 한 걸음 더'
-                    : page === 'goals'
-                      ? '다음 단계의 나를 향해'
-                      : '머신을 알면, 기록이 정확해져요'}
-                <span className="heading-dot">.</span>
-              </h1>
-              <p>
-                {page === 'overview'
-                  ? '운동의 흐름을 살펴보고, 다음 성장을 준비하세요.'
-                  : page === 'journal'
-                    ? '모든 세트에는 어제보다 나아진 내가 담겨 있어요.'
-                    : page === 'goals'
-                      ? '중량과 반복 수로 구체적인 성장 목표를 세워보세요.'
-                      : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'}
-              </p>
-            </div>
-            <button
-              className="primary"
-              onClick={
-                page === 'goals'
-                  ? () => setGoalEditor(true)
+          {page === 'routines' && <Routines />}
+          {page !== 'routines' && (
+            <div className="page-heading">
+              <div>
+                <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>
+                <h1>
+                  {page === 'overview'
+                    ? '꾸준함을 기록하는 공간'
+                    : page === 'journal'
+                      ? '오늘도 한 걸음 더'
+                      : page === 'goals'
+                        ? '다음 단계의 나를 향해'
+                        : '머신을 알면, 기록이 정확해져요'}
+                  <span className="heading-dot">.</span>
+                </h1>
+                <p>
+                  {page === 'overview'
+                    ? '운동의 흐름을 살펴보고, 다음 성장을 준비하세요.'
+                    : page === 'journal'
+                      ? '모든 세트에는 어제보다 나아진 내가 담겨 있어요.'
+                      : page === 'goals'
+                        ? '중량과 반복 수로 구체적인 성장 목표를 세워보세요.'
+                        : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'}
+                </p>
+              </div>
+              <button
+                className="primary"
+                onClick={
+                  page === 'goals'
+                    ? () => setGoalEditor(true)
+                    : page === 'machines'
+                      ? () =>
+                          setMachineEditor({
+                            brand_id: brand || brands[0]?.id,
+                            name: '',
+                            base_weight: null,
+                            notes: '',
+                          })
+                      : newWorkout
+                }
+              >
+                <Plus size={18} />
+                {page === 'goals'
+                  ? '목표 추가'
                   : page === 'machines'
-                    ? () =>
-                        setMachineEditor({
-                          brand_id: brand || brands[0]?.id,
-                          name: '',
-                          base_weight: null,
-                          notes: '',
-                        })
-                    : newWorkout
-              }
-            >
-              <Plus size={18} />
-              {page === 'goals' ? '목표 추가' : page === 'machines' ? '머신 등록' : '운동 기록하기'}
-            </button>
-          </div>
+                    ? '머신 등록'
+                    : '운동 기록하기'}
+              </button>
+            </div>
+          )}
           {error && (
             <div role="alert" className="error">
               {error} <button onClick={() => void refresh()}>다시 연결</button>

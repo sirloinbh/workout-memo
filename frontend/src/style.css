@@ -1028,3 +1028,23 @@ footer > span:last-child {
     gap: 0 12px;
   }
 }
+.routine-page fieldset {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #dfe3e8;
+  border-radius: 12px;
+}
+.routine-page button {
+  margin: 4px;
+}
+.routine-page input[type='checkbox'] {
+  width: auto;
+  margin-right: 8px;
+}
+.routine-page li {
+  margin: 8px 0;
+}
+.routine-exercise {
+  padding: 12px 0;
+  border-bottom: 1px solid #dfe3e8;
+}

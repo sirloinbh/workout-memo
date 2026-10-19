@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { kindLabel, previewTargets } from './progression';
+import { byWeek, kindLabel, previewTargets } from './progression';
 
 const parts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'];
 const days = ['일', '월', '화', '수', '목', '금', '토'];
@@ -55,7 +55,7 @@ const newPlan = (): Plan => ({
   })),
 });
 const autoRule =
-  '현재 수행 능력(총중량·반복 수)을 입력하면 12주 목표를 자동으로 만듭니다. 매주 반복 수를 1회씩 늘리고, 상한을 넘으면 중량을 약 5%(2.5 kg 단위, 최소 2.5 kg) 올리고 반복 수를 하한으로 되돌립니다. 0 kg(맨몸) 종목은 반복 수만 늘립니다. 4·8·12주차는 직전 주 중량의 90%(2.5 kg 단위)·같은 반복 수로 디로딩하고 다음 주에 이어서 진행합니다. 저장한 일지에서 목표를 달성하지 못하면 같은 목표를 유지합니다.';
+  '현재 수행 능력(총중량·반복 수)을 입력하면 12주 목표를 자동으로 만듭니다. 종목이 들어 있는 분할의 세션(운동일)마다 반복 수를 1회씩 늘리고, 상한을 넘으면 중량을 약 5%(2.5 kg 단위, 최소 2.5 kg) 올리고 반복 수를 하한으로 되돌립니다. 주 2~3번 하는 분할은 한 주에 2~3단계 진행합니다. 0 kg(맨몸) 종목은 반복 수만 늘립니다. 4·8·12주차의 세션은 모두 직전 목표 중량의 90%(2.5 kg 단위)·같은 반복 수로 디로딩하며 진행하지 않고, 다음 세션은 디로딩 직전 목표에서 이어갑니다. 세션 날짜부터 같은 분할의 다음 세션 전까지 저장한 일지에서 목표를 달성하지 못하면 다음 세션도 같은 목표를 유지합니다.';
 // The server receives only the fields of the chosen mode.
 function payload(plan: Plan) {
   const auto = plan.progression === 'auto';
@@ -86,9 +86,15 @@ function Preview({ plan }: { plan: Plan }) {
                 {plan.splits[i].name} · {ex.exercise}
               </summary>
               <ol>
-                {ex.rows.map((r) => (
-                  <li key={r.week} className={r.kind === 'deload' ? 'deload' : ''}>
-                    {r.week}주차 · {String(r.weight)} kg × {r.reps}회 · {kindLabel(r)}
+                {byWeek(ex.rows).map((w) => (
+                  <li key={w.week} className={w.week % 4 === 0 ? 'deload' : ''}>
+                    {`${w.week}주차${w.week % 4 === 0 ? ' 디로딩' : ''}: `}
+                    {w.rows
+                      .map(
+                        (r) =>
+                          `${r.session}번째 ${String(r.weight)} kg × ${r.reps}회(${kindLabel(r)})`,
+                      )
+                      .join(', ')}
                   </li>
                 ))}
               </ol>

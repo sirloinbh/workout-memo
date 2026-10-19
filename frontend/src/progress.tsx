@@ -15,6 +15,7 @@ type Change = { week: number; kind: string; amount: number; deload_metric: strin
 export type Target = {
   order: number;
   week: number;
+  session?: number;
   is_deload: boolean;
   split_index: number;
   split_name: string;
@@ -75,6 +76,11 @@ export const changeLabel = (c: Change | null, deload = false) =>
       : `${c.kind === 'increase_weight' ? '총중량' : '반복 수'} ${c.amount}${c.kind === 'increase_weight' ? ' kg' : ''} 증가`;
 const targetLabel = (t: { week: number; is_deload: boolean; split_name: string }) =>
   `${t.week}주차${t.is_deload ? ' 디로딩' : ''} · ${t.split_name}`;
+// Auto routines advance per session, so label the session within its week.
+const sessionLabel = (t: Target, auto: boolean) =>
+  auto && t.session
+    ? `${t.week}주차 ${t.session}번째${t.is_deload ? ' 디로딩' : ''} · ${t.split_name}`
+    : targetLabel(t);
 export const exerciseText = (e: {
   exercise: string;
   sets: number;
@@ -152,6 +158,7 @@ export function RoutineProgress({
 }) {
   const today = progress?.today_plan;
   const preview = progress?.rest_preview;
+  const auto = progress?.progression === 'auto';
   return (
     <section className="card routine-progress" aria-label="루틴 목표">
       <div className="section-title">
@@ -184,8 +191,9 @@ export function RoutineProgress({
             </p>
             {progress.progression === 'auto' && (
               <p className="form-hint">
-                자동 목표(이중 점진 과부하): 저장한 일지에서 계획 세트를 모두 목표 이상으로 수행하면
-                다음 목표로 진행하고, 못하면 같은 목표를 유지합니다. 기록이 없는 앞으로의 목표는
+                자동 목표(이중 점진 과부하): 분할의 세션(운동일)마다 진행합니다. 세션 날짜부터 같은
+                분할의 다음 세션 전까지 저장한 일지에서 계획 세트를 모두 목표 이상으로 수행하면 다음
+                세션에서 진행하고, 못하면 같은 목표를 유지합니다. 기록이 없는 앞으로의 목표는
                 예상입니다.
               </p>
             )}
@@ -202,7 +210,7 @@ export function RoutineProgress({
             ) : today.target ? (
               <>
                 <p>
-                  {targetLabel(today.target)} ·{' '}
+                  {sessionLabel(today.target, auto)} ·{' '}
                   {changeLabel(today.target.change, today.target.is_deload)}
                 </p>
                 <ul className="target-list">
@@ -277,7 +285,7 @@ export function RoutineProgress({
                     {d.rest
                       ? '휴식'
                       : d.target
-                        ? `${targetLabel(d.target)} · ${d.target.exercises.map(exerciseText).join(' / ')}`
+                        ? `${sessionLabel(d.target, auto)} · ${d.target.exercises.map(exerciseText).join(' / ')}`
                         : '목표 없음'}
                   </li>
                 ))}
@@ -304,7 +312,9 @@ export function RoutineProgress({
                         <ul>
                           {w.entries.map((e) => (
                             <li key={e.target.order} className={e.excluded ? 'excluded' : ''}>
-                              {e.excluded ? '제외됨' : e.date} · {e.target.split_name} ·{' '}
+                              {e.excluded ? '제외됨' : e.date} ·{' '}
+                              {auto && e.target.session ? `${e.target.session}번째 · ` : ''}
+                              {e.target.split_name} ·{' '}
                               {e.target.exercises.map(exerciseText).join(' / ')}
                             </li>
                           ))}

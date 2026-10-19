@@ -78,3 +78,15 @@
   - 추정 1RM: 벤치 76 kg(60 × (1 + 8/30)), 스쿼트 121 kg(110 × 3회). 12회 세트와 풀업 0 kg 세트는 1RM에서 제외하고, 0 kg 세트는 반복 PR에만 포함한다는 안내가 표시됨.
   - 10/19 주(월요일 시작): 전체 2세트 655 kg, 가슴 1세트 325 kg, 팔 1세트 325 kg(복수 부위 중복 집계 안내 표시), 미분류 1세트 330 kg.
   - 모바일 390px 가로 스크롤 없음, PC 1440px 배치 정상.
+
+## main 통합: #28 루틴 진행·#31 세트 완료와 충돌 해결 — 2026-10-19
+
+- #28(PR #50)·#31(PR #51) 병합 후 `backend/src/app.ts`, `backend/src/domain.ts`, `backend/test/workout-draft-ui.test.ts`, `database/README.md`, `frontend/src/main.tsx`, `frontend/src/style.css`가 충돌했다. 각 기능이 추가한 import·스타일·문서 절을 모두 유지했다.
+  - `app.ts`: #28의 `progress.js`가 `seoulToday()` 함수를 내보내므로 이 작업의 SQL 상수는 `seoulTodaySql`로 이름을 바꿨다. 목표 판정 쿼리는 #31의 `s.completed` 조건과 이 작업의 `exerciseKeySql` 동일성 규칙을 함께 적용한다.
+  - `domain.ts`: 루틴 분할 부위는 `bodyParts` 목록을 쓰고 #27/#28의 오류 문구를 유지한다.
+  - `database/README.md`: 005(#28) 절 뒤에 007 절을 둔다.
+- git이 감지하지 못한 의미 충돌을 고쳤다. `/api/analysis`가 미완료(`completed=false`) 계획 세트까지 읽어 PR·추정 1RM·추이·주간 운동량에 반영할 수 있었다. 조회에 `s.completed` 조건을 추가했고 README에 명시했다.
+- 테스트: `analysis.integration.test.ts`에 1987-03-08 일지의 미완료 200 kg × 10 세트를 추가했다. 기존 PR·추이·주간 합계 검증이 그대로 유지돼야 한다. 필터를 임시로 제거하면 이 테스트가 **fail**(최고 중량 PR이 200 kg)하고, 필터 적용 시 pass함을 확인했다. `set-completion-ui.test.ts`는 `./analysis` 페이지를 다른 UI 테스트와 같이 빈 컴포넌트로 대체한다.
+- 전용 테스트 DB에 `007_exercise_body_parts.sql`을 `psql -f`로 적용했다(005·006은 #31 통합 때 적용).
+- `npm run check`(Node 24, `TEST_DATABASE_URL` 설정): **EXIT=0**. 포맷·lint·typecheck·build 통과, `npm test` **287 pass / 0 fail / 0 skip**(DB 통합 포함), `test:agents` **162 pass**, `test:skills` **4 pass**.
+- 통합 후 실제 브라우저 확인은 하지 않았다.

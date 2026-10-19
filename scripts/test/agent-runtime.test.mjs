@@ -212,6 +212,10 @@ function modelFixture(t, overrides = {}) {
   fs.mkdirSync(worktree, { recursive: true });
   fs.writeFileSync(path.join(worktree, 'source.txt'), 'unchanged source\n');
   fs.writeFileSync(path.join(worktree, 'behavior.test.mjs'), 'unchanged test\n');
+  // Synthetic dependency readiness only; never install packages or inspect real DB settings.
+  saveJson(path.join(worktree, 'package.json'), { private: true });
+  saveJson(path.join(worktree, 'package-lock.json'), { lockfileVersion: 3 });
+  fs.mkdirSync(path.join(worktree, 'node_modules'), { recursive: true });
   saveJson(path.join(home, 'jobs/21/job.json'), job);
   saveJson(path.join(home, 'result-schema.json'), { sentinel: 'worker schema' });
   saveJson(path.join(home, 'config.json'), {
@@ -223,6 +227,8 @@ function modelFixture(t, overrides = {}) {
     `
 const fs = require('node:fs');
 const path = require('node:path');
+if (process.argv.includes('--version')) { console.log('11.19.0'); process.exit(0); }
+fs.appendFileSync(${JSON.stringify(path.join(root, 'npm-check-calls.jsonl'))}, JSON.stringify({ check: true }) + '\\n');
 fs.writeFileSync('npm-observed.json', JSON.stringify({ dbInherited: process.env.TEST_DATABASE_URL === 'fixture-only-db-marker' }));
 fs.writeFileSync(path.resolve(process.cwd(), '../../stop'), 'stop');
 console.log('Synthetic npm check complete');
@@ -237,6 +243,10 @@ import path from 'node:path';
 import { command as launch } from './real-process.mjs';
 const root = process.cwd();
 export async function command(bin, args, options = {}) {
+  if (args.includes('--version')) {
+    if (process.env.FIXTURE_MISSING_TOOL && bin.includes(process.env.FIXTURE_MISSING_TOOL)) throw new Error('Synthetic missing tool: ' + process.env.FIXTURE_MISSING_TOOL);
+    return bin.includes('git') ? 'git version 2.50.0' : bin === 'fixture-codex' ? 'codex-cli fixture' : '11.19.0';
+  }
   if (bin === 'fixture-codex') {
     return launch(process.execPath, [path.join(root, 'fake-codex.mjs'), ...args], options);
   }
@@ -279,9 +289,10 @@ if (process.env.FIXTURE_CHANGE_SOURCE === '1') {
 }
 const output = args[args.indexOf('--output-last-message') + 1];
 if (process.env.FIXTURE_SUCCESS === '1') fs.writeFileSync(path.join(root, '.local/agent-workflow/stop'), 'stop');
-fs.writeFileSync(output, JSON.stringify({ ready: true, blocked: process.env.FIXTURE_SUCCESS !== '1', approved: false,
+fs.writeFileSync(output, JSON.stringify({ ready: true, blocked: process.env.FIXTURE_SUCCESS !== '1', approved: process.env.FIXTURE_APPROVED === '1',
   summary: 'Fixture stops before further stages; evidence and recovery suggestion.' }));
 console.log(JSON.stringify({ type: 'thread.started', thread_id: 'fixture-thread-21' }));
+console.log(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 123, cached_input_tokens: 45, output_tokens: 67 } }));
 `,
     'utf8',
   );
@@ -681,3 +692,372 @@ test('#24 worker records unavailable model failure without an automatic second c
     !(result.stdout + result.stderr + JSON.stringify(saved)).includes('fixture-only-db-marker'),
   );
 });
+
+// #26 public configuration proposals: testComplexity = simple|complex;
+// validationRequirements = { database: boolean, browser: boolean }.
+// These fixtures exercise the CLI boundary, not private prompt/cache helpers.
+const fixtureJob = (f) => readJson(path.join(f.home, 'jobs/21/job.json'));
+
+test('#26 enqueue persists explicit simple test classification without model work', (t) => {
+  const f = modelFixture(t);
+  fs.rmSync(path.join(f.home, 'jobs/21'), { recursive: true });
+  const result = f.invoke(['enqueue', '21', '--test-complexity', 'simple']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fixtureJob(f).testComplexity, 'simple');
+  assert.equal(f.calls().length, 0);
+});
+
+test('#26 simple tests execute Luna and expose their classification in status and result', (t) => {
+  const f = modelFixture(t, { testComplexity: 'simple' });
+  const result = f.invoke(['work', '--once'], { FIXTURE_SUCCESS: '1' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(f.calls().length, 1);
+  const call = f.calls()[0];
+  assert.equal(call.args[call.args.indexOf('--model') + 1], 'gpt-6-luna');
+  assert.ok(call.args.includes('model_reasoning_effort="medium"'));
+  const job = fixtureJob(f);
+  assert.equal(job.testComplexity, 'simple');
+  assert.equal(job.results.tests.model, 'gpt-6-luna');
+  const status = JSON.parse(f.invoke(['status']).stdout);
+  assert.equal(status.jobs[0].testComplexity, 'simple');
+});
+
+for (const tool of ['fixture-codex', 'git']) {
+  test(`#26 missing ${tool} preflight records an environment blocker with zero model calls`, (t) => {
+    const f = modelFixture(t);
+    const result = f.invoke(['work', '--once'], { FIXTURE_MISSING_TOOL: tool });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(f.calls().length, 0, 'tool availability checks must precede model work');
+    const job = fixtureJob(f);
+    assert.equal(job.stage, 'blocked');
+    assert.match(JSON.stringify(job), /environment|preflight/i);
+    assert.match(JSON.stringify(job), /Synthetic missing tool/);
+  });
+}
+
+test('#26 missing dependencies block before the model and do not auto-install', (t) => {
+  const f = modelFixture(t);
+  fs.rmSync(path.join(f.worktree, 'node_modules'), { recursive: true });
+  const result = f.invoke(['work', '--once']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(f.calls().length, 0);
+  assert.equal(fixtureJob(f).stage, 'blocked');
+  assert.match(JSON.stringify(fixtureJob(f)), /dependenc|node_modules/i);
+  assert.equal(fs.existsSync(path.join(f.worktree, 'npm-observed.json')), false);
+});
+
+test('#26 required DB without a dedicated URL stops before any model call', (t) => {
+  const f = modelFixture(t, { validationRequirements: { database: true } });
+  const result = f.invoke(['work', '--once'], { TEST_DATABASE_URL: '' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(f.calls().length, 0);
+  assert.equal(fixtureJob(f).stage, 'blocked');
+  assert.match(JSON.stringify(fixtureJob(f)), /TEST_DATABASE_URL/);
+});
+
+test('#26 documentation needs neither DB nor browser and still records preflight', (t) => {
+  const f = modelFixture(t, { taskKind: 'documentation' });
+  const result = f.invoke(['work', '--once'], { TEST_DATABASE_URL: '' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(f.calls().length, 1);
+  const artifacts = fs
+    .readdirSync(path.join(f.home, 'jobs/21'))
+    .filter((name) => name.endsWith('.json'))
+    .map((name) => fs.readFileSync(path.join(f.home, 'jobs/21', name), 'utf8'))
+    .join('\n');
+  assert.match(artifacts, /preflight/i, 'structured readiness evidence must be retained');
+  assert.match(f.calls()[0].input, /documentation|문서/i);
+});
+
+for (const stage of ['tests', 'implementation', 'review']) {
+  test(`#26 ${stage} handoff bounds history while preserving requirements and unresolved findings`, (t) => {
+    const noise = 'OLD_CI_LOG_NOISE_'.repeat(20000);
+    const hashes = Object.fromEntries(
+      Array.from({ length: 1000 }, (_, n) => [`old-test-${n}.mjs`, 'b'.repeat(64)]),
+    );
+    const results = {
+      tests: { summary: 'Regression: duplicate save must be atomic.', testHashes: hashes },
+      implementation: {
+        summary: 'Changed source.txt to handle duplicate saves.',
+        threadId: 'implementation-thread-private',
+      },
+      review: { approved: false, summary: 'UNRESOLVED_R26: preserve transaction rollback.' },
+      ci: { failed: true, summary: 'CI_EXIT_23: rollback regression failed.', logs: [noise] },
+    };
+    const f = modelFixture(t, { stage, results });
+    const before = JSON.stringify(fixtureJob(f).results);
+    const result = f.invoke(['work', '--once']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(f.calls().length, 1);
+    const prompt = f.calls()[0].input;
+    const legacyPayload = JSON.stringify({ issue: f.job.issue, results });
+    t.diagnostic(
+      `legacy payload characters=${legacyPayload.length}; handoff characters=${prompt.length}; reduction=${legacyPayload.length - prompt.length}`,
+    );
+    // Character counts, deliberately not estimated tokens. Bound unrelated history
+    // independently of original acceptance criteria, which must remain complete.
+    assert.ok(prompt.length < 24000, `handoff had ${prompt.length} characters`);
+    assert.ok(prompt.length < legacyPayload.length / 4);
+    assert.ok(!prompt.includes('old-test-999.mjs'), 'hash dictionary stays in durable state');
+    assert.ok(!prompt.includes('OLD_CI_LOG_NOISE_'));
+    for (const line of f.job.issue.body.split('\n')) assert.ok(prompt.includes(line));
+    assert.ok(prompt.includes(f.job.baseSha));
+    assert.match(prompt, /UNRESOLVED_R26/);
+    assert.match(prompt, /CI_EXIT_23/);
+    assert.match(prompt, /duplicate save/);
+    assert.match(prompt, /source\.txt/);
+    assert.match(prompt, /truncat|omitt|축약|생략/i);
+    assert.match(prompt, /\.local[\\/]agent-workflow|jobs[\\/]21/);
+    assert.match(prompt, /Do not access or print credentials/);
+    // The current role may replace its own result; unrelated full CI evidence
+    // must remain unchanged and accessible outside the prompt.
+    assert.equal(fixtureJob(f).results.ci.logs[0], noise);
+    assert.ok(before.includes('old-test-999.mjs'));
+  });
+}
+
+test('#26 independent review never resumes the implementation thread', (t) => {
+  const f = modelFixture(t, {
+    stage: 'review',
+    results: {
+      implementation: { threadId: 'implementation-thread-private', summary: 'Ready for review.' },
+    },
+  });
+  const result = f.invoke(['work', '--once']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(f.calls().length, 1);
+  assertModelCall(f.calls()[0], 'review', 'read-only');
+  assert.ok(!f.calls()[0].args.includes('resume'));
+  assert.ok(!f.calls()[0].args.includes('implementation-thread-private'));
+  assert.match(f.calls()[0].input, /ALL acceptance criteria/);
+});
+
+test('#26 implementation cannot change protected test content even with a successful result', (t) => {
+  const f = modelFixture(t, {
+    stage: 'implementation',
+    results: {
+      tests: { summary: 'Tests prepared.', testHashes: { 'behavior.test.mjs': '0'.repeat(64) } },
+    },
+  });
+  const result = f.invoke(['work', '--once'], { FIXTURE_SUCCESS: '1' });
+  assert.equal(result.status, 0, result.stderr);
+  const saved = fixtureJob(f);
+  assert.equal(saved.stage, 'blocked');
+  assert.match(saved.error, /changed tests|protected test|test.*hash/i);
+  assert.equal(saved.results.tests.testHashes['behavior.test.mjs'], '0'.repeat(64));
+});
+
+function reviewedFixture(t) {
+  const f = modelFixture(t);
+  for (const expectedStage of ['implementation', 'review', 'verification']) {
+    fs.rmSync(path.join(f.home, 'stop'), { force: true });
+    const result = f.invoke(['work', '--once'], { FIXTURE_SUCCESS: '1', FIXTURE_APPROVED: '1' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(fixtureJob(f).stage, expectedStage);
+  }
+  fs.rmSync(path.join(f.home, 'stop'), { force: true });
+  const job = fixtureJob(f);
+  job.stage = 'blocked';
+  job.blockedStage = 'verification';
+  job.error = 'Environment: dedicated DB unavailable';
+  job.failureKind = 'environment';
+  saveJson(path.join(f.home, 'jobs/21/job.json'), job);
+  return f;
+}
+
+test('#26 retry after host environment failure preserves passed code stages with unchanged evidence', (t) => {
+  const f = reviewedFixture(t);
+  const results = fixtureJob(f).results;
+  const beforeCalls = f.calls().length;
+  const result = f.invoke(['retry', '21']);
+  assert.equal(result.status, 0, result.stderr);
+  const saved = fixtureJob(f);
+  assert.equal(
+    saved.stage,
+    'verification',
+    'environment recovery must not unconditionally restart implementation',
+  );
+  assert.deepEqual(saved.results.tests, results.tests);
+  assert.deepEqual(saved.results.implementation, results.implementation);
+  assert.deepEqual(saved.results.review, results.review);
+  assert.equal(f.calls().length, beforeCalls);
+});
+
+for (const change of ['source', 'protected-test', 'requirements', 'base', 'branch']) {
+  test(`#26 retry invalidates passed evidence after ${change} changes`, (t) => {
+    const f = reviewedFixture(t);
+    const job = fixtureJob(f);
+    if (change === 'source') fs.appendFileSync(path.join(f.worktree, 'source.txt'), 'new behavior');
+    if (change === 'protected-test')
+      fs.appendFileSync(path.join(f.worktree, 'behavior.test.mjs'), 'new assertion');
+    if (change === 'requirements') job.issue.body += '\n- New required behavior';
+    if (change === 'base') job.baseSha = 'c'.repeat(40);
+    if (change === 'branch') job.branch = 'feat/21-other';
+    saveJson(path.join(f.home, 'jobs/21/job.json'), job);
+    const result = f.invoke(['retry', '21']);
+    const saved = fixtureJob(f);
+    assert.ok(result.status !== 0 || ['blocked', 'tests', 'implementation'].includes(saved.stage));
+    assert.notEqual(
+      saved.stage,
+      'verification',
+      'changed evidence cannot bypass fresh code validation',
+    );
+    assert.equal(f.calls().length, 3, 'retry scheduling itself is deterministic');
+  });
+}
+
+test('#26 required unavailable browser blocks before a model call', (t) => {
+  const f = modelFixture(t, { validationRequirements: { browser: true } });
+  const result = f.invoke(['work', '--once']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(f.calls().length, 0);
+  assert.equal(fixtureJob(f).stage, 'blocked');
+  assert.match(JSON.stringify(fixtureJob(f)), /browser|브라우저/i);
+});
+
+test('#26 model output schema bounds the summary for the next role', (t) => {
+  const f = modelFixture(t);
+  const result = f.invoke(['work', '--once']);
+  assert.equal(result.status, 0, result.stderr);
+  const call = f.calls()[0];
+  const schema = readJson(call.args[call.args.indexOf('--output-schema') + 1]);
+  assert.ok(Number.isSafeInteger(schema.properties.summary.maxLength));
+  assert.ok(
+    schema.properties.summary.maxLength > 0 && schema.properties.summary.maxLength <= 12000,
+  );
+});
+
+test('#26 provided usage is retained locally with the selected model and effort', (t) => {
+  const f = modelFixture(t);
+  const result = f.invoke(['work', '--once'], { FIXTURE_SUCCESS: '1' });
+  assert.equal(result.status, 0, result.stderr);
+  const artifacts = fs
+    .readdirSync(f.home, { recursive: true })
+    .filter((name) => /\.(?:json|jsonl)$/.test(name))
+    .map((name) => fs.readFileSync(path.join(f.home, name), 'utf8'))
+    .join('\n');
+  assert.match(artifacts, /"(?:input_tokens|inputTokens)"\s*:\s*123/);
+  assert.match(artifacts, /"(?:cached_input_tokens|cachedInputTokens)"\s*:\s*45/);
+  assert.match(artifacts, /"(?:output_tokens|outputTokens)"\s*:\s*67/);
+  assert.match(artifacts, /gpt-6\.1-sol/);
+  assert.match(artifacts, /medium/);
+});
+
+test('#26 protected tests have an explicit handoff command without manual hash edits', (t) => {
+  const f = modelFixture(t, {
+    stage: 'blocked',
+    blockedStage: 'implementation',
+    results: {
+      tests: { testHashes: { 'behavior.test.mjs': 'd'.repeat(64) }, summary: 'Old tests.' },
+    },
+  });
+  const before = fixtureJob(f).results.tests;
+  const result = f.invoke(['handoff-tests', '21']);
+  assert.equal(result.status, 0, result.stderr);
+  const saved = fixtureJob(f);
+  assert.equal(saved.stage, 'tests');
+  assert.equal(
+    saved.results.tests.testHashes?.['behavior.test.mjs'],
+    before.testHashes['behavior.test.mjs'],
+    'handoff must not forge replacement hashes',
+  );
+  assert.equal(f.calls().length, 0);
+  assert.match(JSON.stringify(saved.history), /handoff|tests/);
+});
+
+// pg boundary stub lives exclusively in a disposable fixture. A real connection
+// is impossible: both connect and schema queries are controlled here.
+function fakeDatabase(f, failure) {
+  const source = `const fs = require('node:fs');
+const trace = ${JSON.stringify(path.join(f.root, 'db-probes.jsonl'))};
+const failure = ${JSON.stringify(failure)};
+class Client {
+  async connect() {
+    fs.appendFileSync(trace, JSON.stringify({ phase: 'connect' }) + '\\n');
+    if (failure === 'connection') throw new Error('Synthetic dedicated DB connection unavailable');
+    return this;
+  }
+  async query() {
+    fs.appendFileSync(trace, JSON.stringify({ phase: 'schema' }) + '\\n');
+    return { rows: [], rowCount: 0 };
+  }
+  async end() {}
+  release() {}
+}
+module.exports = { Client, Pool: Client };`;
+  for (const base of [f.root, f.worktree, path.join(f.worktree, 'backend')]) {
+    const directory = path.join(base, 'node_modules/pg');
+    fs.mkdirSync(directory, { recursive: true });
+    saveJson(path.join(directory, 'package.json'), { name: 'pg', main: 'index.cjs' });
+    fs.writeFileSync(path.join(directory, 'index.cjs'), source, 'utf8');
+  }
+}
+
+for (const failure of ['connection', 'schema']) {
+  test(`#26 dedicated DB ${failure} failure is checked before a model and redacted`, (t) => {
+    const f = modelFixture(t, { validationRequirements: { database: true } });
+    fakeDatabase(f, failure);
+    const result = f.invoke(['work', '--once']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(f.calls().length, 0);
+    const job = fixtureJob(f);
+    assert.equal(job.stage, 'blocked');
+    assert.match(JSON.stringify(job), /database|schema|DB/i);
+    const trace = fs.readFileSync(path.join(f.root, 'db-probes.jsonl'), 'utf8');
+    assert.match(trace, /connect/);
+    if (failure === 'schema') assert.match(trace, /schema/);
+    assert.ok(
+      !(JSON.stringify(job) + result.stdout + result.stderr + trace).includes(
+        'fixture-only-db-marker',
+      ),
+    );
+  });
+}
+
+test('#26 explicit complexity configuration preserves legacy results under the worker lock', (t) => {
+  const f = modelFixture(t, { stage: 'queued' });
+  const result = f.invoke(['configure', '21', '--test-complexity', 'simple']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fixtureJob(f).testComplexity, 'simple');
+  assert.deepEqual(fixtureJob(f).results, f.job.results);
+  fs.writeFileSync(path.join(f.home, 'worker.lock'), String(process.pid));
+  const before = fs.readFileSync(path.join(f.home, 'jobs/21/job.json'), 'utf8');
+  const locked = f.invoke(['configure', '21', '--test-complexity', 'complex']);
+  assert.notEqual(locked.status, 0);
+  assert.equal(fs.readFileSync(path.join(f.home, 'jobs/21/job.json'), 'utf8'), before);
+  assert.equal(f.calls().length, 0);
+});
+
+for (const change of ['none', 'source', 'environment', 'command']) {
+  test(`#26 host verification ${change === 'none' ? 'reuses identical passed evidence' : `invalidates evidence after ${change} change`}`, (t) => {
+    const f = modelFixture(t, { stage: 'verification' });
+    const first = f.invoke(['work', '--once']);
+    assert.equal(first.status, 0, first.stderr);
+    assert.equal(fixtureJob(f).stage, 'delivery');
+    assert.ok(fixtureJob(f).results.verification.fingerprint);
+    const count = () =>
+      fs.readFileSync(path.join(f.root, 'npm-check-calls.jsonl'), 'utf8').trim().split('\n').length;
+    assert.equal(count(), 1);
+    const job = fixtureJob(f);
+    job.stage = 'verification';
+    saveJson(path.join(f.home, 'jobs/21/job.json'), job);
+    fs.rmSync(path.join(f.home, 'stop'), { force: true });
+    if (change === 'source') fs.appendFileSync(path.join(f.worktree, 'source.txt'), 'new behavior');
+    if (change === 'command') {
+      const alternate = path.join(f.root, 'alternate/fake-npm.cjs');
+      fs.mkdirSync(path.dirname(alternate), { recursive: true });
+      fs.copyFileSync(path.join(f.root, 'fake-npm.cjs'), alternate);
+      const config = readJson(path.join(f.home, 'config.json'));
+      config.npmCli = alternate;
+      saveJson(path.join(f.home, 'config.json'), config);
+    }
+    const second = f.invoke(
+      ['work', '--once'],
+      change === 'environment' ? { TEST_DATABASE_URL: 'other-synthetic-test-db' } : {},
+    );
+    assert.equal(second.status, 0, second.stderr);
+    assert.equal(fixtureJob(f).stage, 'delivery');
+    assert.equal(count(), change === 'none' ? 1 : 2);
+    assert.equal(f.calls().length, 0, 'checks and reuse never require a model');
+  });
+}

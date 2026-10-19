@@ -17,3 +17,8 @@
 - `node --test scripts/test/claude-skills.test.mjs`: **4 pass / 0 fail / 0 skip** (동기화, 변경·초과 감지와 정리, 줄바꿈 무시, 실제 저장소 일치).
 - skill-creator `quick_validate.py`(PYTHONUTF8=1)를 `.claude/skills/` 세 스킬에 실행: 모두 `Skill is valid!`. UTF-8 모드가 아니면 Windows cp949 기본 인코딩으로 읽기 오류가 난다.
 - 호스트 Node 24.21.0 / npm 11.19.0, 전용 테스트 DB로 `npm run check`: **exit 0**. 앱·DB 118 pass, 워커 86 pass, 스킬 4 pass, 모두 fail/skip 0, frontend/backend 빌드 통과. (ignore 추가 후 재실행 결과는 PR에 기록한다.)
+
+## main 병합 충돌 해소 — 2026-10-19
+
+- PR #42(#26) 병합으로 main의 `test:agents` 목록이 늘어나 `package.json`이 충돌했다. main의 전체 `test:agents` 목록을 유지하고 이 작업의 `test:skills`·`skills:sync`·`skills:check`와 `check` 연결을 함께 남겼다.
+- 병합 결과로 호스트 `npm run check`: **exit 0** — 앱·DB 118 pass, 워커 162 pass, 스킬 4 pass, 모두 fail/skip 0, 빌드 통과.

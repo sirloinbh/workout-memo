@@ -15,6 +15,27 @@ test('routing rejects inherited object names and invalid persisted choices', () 
   assert.equal(stageSelection({ taskKind: 'documentation' }, 'implementation').model, 'gpt-6-luna');
 });
 
+for (const [complexity, model] of [
+  [undefined, 'gpt-6.1-sol'],
+  ['simple', 'gpt-6-luna'],
+  ['complex', 'gpt-6.1-sol'],
+]) {
+  test(`#26 tests complexity ${complexity ?? 'legacy'} selects only the explicitly approved model`, () => {
+    const job = complexity === undefined ? {} : { testComplexity: complexity };
+    const selection = stageSelection(job, 'tests');
+    assert.equal(selection.model, model);
+    assert.equal(selection.reasoningEffort, 'medium');
+    assert.equal(stageSelection(job, 'implementation').model, 'gpt-6.1-sol');
+    assert.equal(stageSelection(job, 'review').model, 'gpt-6.1-sol');
+  });
+}
+
+for (const testComplexity of [null, '', 'automatic', 'toString']) {
+  test(`#26 invalid explicit test complexity ${JSON.stringify(testComplexity)} is rejected`, () => {
+    assert.throws(() => validateRouting({ testComplexity }), /complexity|invalid|unsupported/i);
+  });
+}
+
 test('child stdout, stderr, logs and failures redact a DB value spanning chunks', async (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'workout-model-redaction-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));

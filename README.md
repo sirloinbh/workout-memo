@@ -64,7 +64,7 @@ http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세�
 
 `npm run check`는 TypeScript 빌드와 테스트입니다. 실제 DB 테스트는 `TEST_DATABASE_URL`을 설정하세요. GitHub 통합 CI는 전용 PostgreSQL 서비스에서 전체 빌드와 DB 통합 테스트를 수행합니다. 프론트엔드·백엔드 저장소에서는 개별 빌드 및 Docker 이미지 빌드도 검사합니다.
 
-`docker compose logs --tail 100 api`로 오류 확인, `./scripts/backup.ps1`로 SQL 백업. 백업은 PC 외부의 별도 안전한 저장소에도 보관하고 정기적으로 복원 확인을 하세요. AWS 초안·비용 관리는 `infrastructure/README.md`를 참고하세요. 자동 운영 배포는 아직 연결되지 않았습니다.
+`docker compose logs --tail 100 api`로 오류 확인, `./scripts/backup.ps1`로 SQL 백업. 앱의 `백업·내보내기` 화면은 분석용 CSV와 앱 복원용 JSON 백업(검증·미리보기·전체 취소 복원)을 제공합니다. 형식과 정책은 `database/README.md`를 참고하세요. SQL 백업은 DB 전체 복구, JSON 백업은 앱 기록 이전·복원용으로 역할이 다릅니다. 백업은 PC 외부의 별도 안전한 저장소에도 보관하고 정기적으로 복원 확인을 하세요. AWS 초안·비용 관리는 `infrastructure/README.md`를 참고하세요. 자동 운영 배포는 아직 연결되지 않았습니다.
 
 실제 AWS 배포에는 계정, 실행 환경, 도메인, 비용 한도 결정이 필요합니다. 이 앱의 포트는 localhost에만 바인딩됩니다.
 

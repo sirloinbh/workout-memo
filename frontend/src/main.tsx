@@ -14,10 +14,12 @@ import {
   Trash2,
   ArrowRight,
   Activity,
+  DatabaseBackup,
 } from 'lucide-react';
 import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
+import { Backup } from './backup';
 type SetRow = {
   exercise: string;
   machine_id: number | null;
@@ -305,6 +307,7 @@ function App() {
     ['goals', '나의 목표', Target],
     ['routines', '루틴짜기', NotebookPen],
     ['machines', '머신 라이브러리', Dumbbell],
+    ['backup', '백업·내보내기', DatabaseBackup],
   ] as const;
   function move(dir: number) {
     const d = calendarDate(anchor);
@@ -370,7 +373,8 @@ function App() {
         </header>
         <div className="content">
           {page === 'routines' && <Routines />}
-          {page !== 'routines' && (
+          {page === 'backup' && <Backup onRestored={() => void latestRefresh.current()} />}
+          {page !== 'routines' && page !== 'backup' && (
             <div className="page-heading">
               <div>
                 <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>

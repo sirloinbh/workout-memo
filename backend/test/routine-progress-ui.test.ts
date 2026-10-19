@@ -425,13 +425,16 @@ test('auto routine targets show firm values today and label future sessions as p
   const card = ui.all((e) => e.props['aria-label'] === '루틴 목표')[0];
   const content = ui.text(card);
   assert.match(content, /자동 목표/);
+  assert.match(content, /1주차 1번째 · 전신/, "today's session label");
   assert.match(content, /벤치프레스 3세트 · 총중량 100 kg · 10회/);
   const today = ui.all((e) => e.props.className === 'target-list')[0];
   assert.doesNotMatch(ui.text(today), /예상/, "today's target is not a projection");
   const rows = ui.all((e) => e.type === 'tr' && /^\d+주차/.test(ui.text(e)));
   assert.match(ui.text(rows[1]), /예상/);
   assert.match(ui.text(rows[3]), /4주차디로딩 · 자동/);
-  assert.match(ui.text(rows[4]), /벤치프레스 3세트 · 총중량 105 kg · 8회/);
+  // Per-session progression: week 5 resumes at 110 kg × 9 after the week-4 deload.
+  assert.match(ui.text(rows[4]), /1번째 · 전신 · 벤치프레스 3세트 · 총중량 110 kg · 9회/);
+  assert.match(ui.text(rows[0]), /3번째 · 전신 · 벤치프레스 3세트 · 총중량 100 kg · 12회/);
   await ui.click('오늘 루틴으로 기록하기');
   assert.equal(ui.setRows().length, 9, '3 exercises × 3 sets');
   assert.equal(Number(ui.field(ui.setRows()[0], '총중량').props.value), 100);

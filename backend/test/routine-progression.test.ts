@@ -7,10 +7,12 @@ import { routineSchema, type RoutinePlan } from '../src/domain.js';
 import * as progress from '../src/progress.js';
 import { autoRoutineInput, routineInput } from './routine-fixture.js';
 
-// #28 rule change (issue comment "규칙 변경 — 자동 점진 과부하와 기본 3세트"):
+// #28 rule changes (issue comments "규칙 변경 — 자동 점진 과부하와 기본 3세트" and
+// "규칙 변경 — 주 단위가 아니라 분할(운동일) 단위로 진행"): one step per session of
+// the exercise's split,
 // double progression from the entered current performance, ~5% weight steps in
 // 2.5 kg units (min 2.5 kg), bodyweight adds reps only, deloads at 4/8/12 are 90%
-// of the previous week's target weight with the same reps, and real records
+// of the previous non-deload target weight with the same reps, and real records
 // decide whether a target advances or is held.
 type Records = {
   date: string;
@@ -32,6 +34,9 @@ type Api = {
       rest: boolean;
       target: {
         order: number;
+        session?: number;
+        split_index: number;
+        split_name: string;
         week: number;
         is_deload: boolean;
         exercises: {
@@ -55,16 +60,38 @@ const plan = () => {
   return parsed.data as RoutinePlan;
 };
 const beforeStart = '2024-03-01';
-const weekly = (name: string, records: Records = [], today = beforeStart, rests: string[] = []) => {
-  const { days } = api.arrangeTargets(plan(), rests, records, today);
-  const byWeek = new Map<number, string>();
-  for (const d of days)
-    if (d.target && !byWeek.has(d.target.week)) {
-      const e = d.target.exercises.find((x) => x.exercise === name)!;
-      byWeek.set(d.target.week, `${e.weight}x${e.reps}`);
-    }
-  return [...byWeek.values()];
-};
+// 2-split variant: three workouts a week alternate A/B/A, then B/A/B.
+const twoSplitInput = () => ({
+  ...autoRoutineInput(),
+  split_count: 2,
+  splits: [
+    {
+      name: '분할 A',
+      body_parts: ['가슴'],
+      exercises: [
+        { exercise: '벤치프레스', sets: 3, weight: 100, reps: 10, rep_min: 8, rep_max: 12 },
+      ],
+    },
+    {
+      name: '분할 B',
+      body_parts: ['하체-앞'],
+      exercises: [{ exercise: '스쿼트', sets: 3, weight: 50, reps: 10, rep_min: 8, rep_max: 12 }],
+    },
+  ],
+});
+const twoSplit = () => routineSchema.parse(twoSplitInput()) as RoutinePlan;
+// Targets of one exercise in date order, as "weekxreps@week" strings.
+const sessions = (
+  name: string,
+  records: Records = [],
+  today = beforeStart,
+  rests: string[] = [],
+  routine = plan(),
+) =>
+  api.arrangeTargets(routine, rests, records, today).days.flatMap((d) => {
+    const e = d.target?.exercises.find((x) => x.exercise === name);
+    return e ? [`${e.weight}x${e.reps}`] : [];
+  });
 const at = (
   date: string,
   name: string,
@@ -80,6 +107,12 @@ const benchSets = (date: string, sets: [number, number, (boolean | null)?][]) =>
   exercise: '벤치프레스',
   sets: sets.map(([weight, reps, completed]) => ({ weight, reps, completed })),
 });
+const three = (date: string, w: number, r: number) =>
+  benchSets(date, [
+    [w, r],
+    [w, r],
+    [w, r],
+  ]);
 
 test('auto routines validate a rep range and reject manual week amounts; manual stays compatible', () => {
   const auto = autoRoutineInput();
@@ -111,189 +144,219 @@ test('weight increment is about 5% in 2.5 kg steps with a 2.5 kg minimum', () =>
   assert.equal(api.deloadWeight(0), 0);
 });
 
-test('projected targets add a rep weekly, reset to the minimum with a heavier weight, and deload', () => {
-  assert.deepEqual(weekly('벤치프레스'), [
-    '100x10',
+test('a full-body routine trained 3x a week advances one step per session', () => {
+  const bench = sessions('벤치프레스');
+  assert.equal(bench.length, 36);
+  assert.deepEqual(bench.slice(0, 9), [
+    '100x10', // week 1, session 1: the entered current performance
     '100x11',
     '100x12',
-    '90x12', // deload: 90% of week 3, same reps
-    '105x8', // resumes from week 3: 13 reps exceed 12, so +5 kg and back to 8
+    '105x8', // 13 reps exceed 12: +5 kg (5% of 100) and back to 8
     '105x9',
     '105x10',
-    '95x10',
     '105x11',
     '105x12',
     '110x8',
-    '100x8',
   ]);
-  assert.deepEqual(weekly('덤벨 컬'), [
+  assert.deepEqual(
+    bench.slice(9, 12),
+    ['100x8', '100x8', '100x8'],
+    'every week-4 session is a deload at 90% of 110 kg rounded to 2.5 kg, same reps',
+  );
+  assert.deepEqual(
+    bench.slice(12, 15),
+    ['110x9', '110x10', '110x11'],
+    'week 5 resumes from the pre-deload target',
+  );
+  assert.deepEqual(bench.slice(21, 24), ['102.5x12', '102.5x12', '102.5x12'], 'week 8 deload');
+  assert.deepEqual(bench.slice(33), ['112.5x11', '112.5x11', '112.5x11'], 'week 12 deload');
+  assert.deepEqual(sessions('덤벨 컬').slice(0, 15), [
     '40x12',
     '42.5x8',
     '42.5x9',
-    '37.5x9',
     '42.5x10',
     '42.5x11',
     '42.5x12',
-    '37.5x12',
     '45x8',
     '45x9',
     '45x10',
     '40x10',
+    '40x10',
+    '40x10',
+    '45x11',
+    '45x12',
+    '47.5x8',
   ]);
-  assert.deepEqual(
-    weekly('맨몸 풀업'),
-    [
-      '0x10',
-      '0x11',
-      '0x12',
-      '0x12',
-      '0x12',
-      '0x12',
-      '0x12',
-      '0x12',
-      '0x12',
-      '0x12',
-      '0x12',
-      '0x12',
-    ],
-    'bodyweight only adds reps up to the maximum, then holds',
+  const pullUp = sessions('맨몸 풀업');
+  assert.deepEqual(pullUp.slice(0, 4), ['0x10', '0x11', '0x12', '0x12']);
+  assert.ok(
+    pullUp.every((t) => t.startsWith('0x')),
+    'bodyweight only adds reps up to the max, then holds',
   );
   const { days } = api.arrangeTargets(plan(), [], [], beforeStart);
   assert.ok(days.every((d) => d.target!.exercises.every((e) => e.sets === 3)));
   assert.ok(days.every((d) => d.target!.exercises.every((e) => e.projected === true)));
 });
 
-test('a met target advances and a missed target is held, shifting the remaining weeks', () => {
-  const today = '2024-03-11'; // Monday of week 2; week 1's window has closed.
-  const met = [
-    benchSets('2024-03-06', [
-      [100, 10],
-      [100, 11],
-      [102.5, 10],
-    ]),
-  ];
-  assert.deepEqual(weekly('벤치프레스', met, today).slice(0, 3), ['100x10', '100x11', '100x12']);
-  assert.equal(at('2024-03-04', '벤치프레스', met, today).exercise?.result, 'achieved');
-  const missed = [
-    benchSets('2024-03-06', [
+test('a 2-split routine 3x a week advances each exercise only on its own split sessions', () => {
+  const { days } = api.arrangeTargets(twoSplit(), [], [], beforeStart);
+  assert.deepEqual(
+    days.slice(0, 6).map((d) => d.target!.split_name),
+    ['분할 A', '분할 B', '분할 A', '분할 B', '분할 A', '분할 B'],
+    'A/B/A in week 1, then B/A/B in week 2',
+  );
+  assert.deepEqual(sessions('벤치프레스', [], beforeStart, [], twoSplit()).slice(0, 7), [
+    '100x10', // w1 #1
+    '100x11', // w1 #3
+    '100x12', // w2 #2
+    '105x8', // w3 #1
+    '105x9', // w3 #3
+    '95x9', // w4 #2 deload
+    '105x10', // w5 #1 resumes
+  ]);
+  assert.deepEqual(sessions('스쿼트', [], beforeStart, [], twoSplit()).slice(0, 7), [
+    '50x10', // w1 #2
+    '50x11', // w2 #1
+    '50x12', // w2 #3
+    '52.5x8', // w3 #2: 5% of 50 rounds to 2.5 kg
+    '47.5x8', // w4 #1 deload
+    '47.5x8', // w4 #3 deload
+    '52.5x9', // w5 #2
+  ]);
+});
+
+test('each session window decides whether the next session advances or holds', () => {
+  const friday = '2024-03-08'; // week 1, session 3
+  const metFirst = [three('2024-03-05', 100, 10)]; // inside session 1's window (Mon–Tue)
+  assert.deepEqual(
+    sessions('벤치프레스', metFirst, friday).slice(0, 4),
+    ['100x10', '100x11', '100x11', '100x12'],
+    'session 1 met → session 2 advances; session 2 has no record → session 3 holds',
+  );
+  assert.equal(at('2024-03-04', '벤치프레스', metFirst, friday).exercise?.result, 'achieved');
+  assert.equal(at('2024-03-06', '벤치프레스', metFirst, friday).exercise?.result, 'missed');
+  assert.equal(at(friday, '벤치프레스', metFirst, friday).exercise?.projected, false);
+  assert.equal(at('2024-03-11', '벤치프레스', metFirst, friday).exercise?.projected, true);
+  const short = [
+    benchSets('2024-03-04', [
       [100, 10],
       [100, 10],
       [100, 9],
     ]),
   ];
   assert.deepEqual(
-    weekly('벤치프레스', missed, today).slice(0, 6),
-    ['100x10', '100x10', '100x11', '90x11', '100x12', '105x8'],
-    'one set short of the reps keeps the same target and recomputes later weeks',
+    sessions('벤치프레스', short, '2024-03-06').slice(0, 3),
+    ['100x10', '100x10', '100x11'],
+    'one set short holds the target; the open session is projected as met',
   );
-  assert.equal(at('2024-03-04', '벤치프레스', missed, today).exercise?.result, 'missed');
-  const none = weekly('벤치프레스', [], today);
-  assert.deepEqual(none.slice(0, 2), ['100x10', '100x10'], 'no record in a closed week holds');
-  const todayTarget = at(today, '벤치프레스', missed, today).exercise!;
-  assert.equal(todayTarget.projected, false, "today's target is firm");
-  assert.equal(at('2024-03-13', '벤치프레스', missed, today).exercise?.projected, true);
+  assert.deepEqual(
+    sessions('벤치프레스', [], '2024-03-06').slice(0, 2),
+    ['100x10', '100x10'],
+    'a closed window without a record holds',
+  );
+  // A record on the next session's day belongs to that next session.
+  const recordToday = [three('2024-03-06', 100, 10)];
+  assert.equal(
+    at('2024-03-04', '벤치프레스', recordToday, '2024-03-06').exercise?.result,
+    'missed',
+  );
+  assert.equal(
+    at('2024-03-06', '벤치프레스', recordToday, '2024-03-06').exercise?.result,
+    'achieved',
+  );
 });
 
 test('only completed sets count when the completed flag is present', () => {
-  const today = '2024-03-11';
+  const today = '2024-03-06';
   const oneIncomplete = [
-    benchSets('2024-03-06', [
+    benchSets('2024-03-04', [
       [100, 10],
       [100, 10],
       [100, 10, false],
     ]),
   ];
-  assert.deepEqual(weekly('벤치프레스', oneIncomplete, today).slice(0, 2), ['100x10', '100x10']);
+  assert.deepEqual(sessions('벤치프레스', oneIncomplete, today).slice(0, 2), ['100x10', '100x10']);
   const extra = [
-    benchSets('2024-03-06', [
+    benchSets('2024-03-04', [
       [100, 10, true],
       [100, 10, false],
       [100, 10, true],
       [100, 10, true],
     ]),
   ];
-  assert.deepEqual(weekly('벤치프레스', extra, today).slice(0, 2), ['100x10', '100x11']);
+  assert.deepEqual(sessions('벤치프레스', extra, today).slice(0, 2), ['100x10', '100x11']);
   const legacy = [
-    benchSets('2024-03-06', [
+    benchSets('2024-03-04', [
       [100, 10, null],
       [100, 10],
       [100, 10],
     ]),
   ];
   assert.deepEqual(
-    weekly('벤치프레스', legacy, today).slice(0, 2),
+    sessions('벤치프레스', legacy, today).slice(0, 2),
     ['100x10', '100x11'],
     'sets without the column count as performed',
   );
 });
 
-test('an open week is projected as met until its window closes', () => {
-  const wednesday = '2024-03-06';
-  assert.deepEqual(weekly('벤치프레스', [], wednesday).slice(0, 2), ['100x10', '100x11']);
-  assert.equal(at('2024-03-04', '벤치프레스', [], wednesday).exercise?.result ?? null, null);
-  const recordToday = [
-    benchSets(wednesday, [
-      [100, 10],
-      [100, 10],
-      [100, 10],
-    ]),
-  ];
-  assert.equal(at('2024-03-04', '벤치프레스', recordToday, wednesday).exercise?.result, 'achieved');
-});
-
-test('deload pauses progression even when its own week is missed', () => {
-  const today = '2024-04-08'; // Monday of week 6
-  const met = (date: string, w: number, r: number) =>
-    benchSets(date, [
-      [w, r],
-      [w, r],
-      [w, r],
-    ]);
+test('deload sessions are not judged and the session after them resumes', () => {
+  const today = '2024-04-03'; // week 5, session 2
   const records = [
-    met('2024-03-04', 100, 10),
-    met('2024-03-11', 100, 11),
-    met('2024-03-18', 100, 12),
+    three('2024-03-04', 100, 10),
+    three('2024-03-06', 100, 11),
+    three('2024-03-08', 100, 12),
+    three('2024-03-11', 105, 8),
+    three('2024-03-13', 105, 9),
+    three('2024-03-15', 105, 10),
+    three('2024-03-18', 105, 11),
+    three('2024-03-20', 105, 12),
+    three('2024-03-22', 110, 8),
   ];
-  assert.deepEqual(weekly('벤치프레스', records, today).slice(0, 6), [
-    '100x10',
-    '100x11',
-    '100x12',
-    '90x12',
-    '105x8',
-    '105x8', // week 5 had no record, so week 6 holds 105x8
-  ]);
+  const bench = sessions('벤치프레스', records, today);
+  assert.deepEqual(bench.slice(9, 12), ['100x8', '100x8', '100x8'], 'no deload records needed');
+  assert.deepEqual(
+    bench.slice(12, 15),
+    ['110x9', '110x9', '110x10'],
+    'week 5 starts from the pre-deload step; its missed first session holds',
+  );
+  const deload = at('2024-03-25', '벤치프레스', records, today).exercise!;
+  assert.equal(deload.result ?? null, null, 'deload sessions have no outcome');
 });
 
-test('rest-day shifts keep each target week and its progression values', () => {
-  const rest = '2024-03-08'; // Friday of week 1
+test('rest-day shifts keep plan order, deload attribution and per-session values', () => {
+  const rest = '2024-03-08'; // week 1, session 3
   const shifted = api.arrangeTargets(plan(), [rest], [], beforeStart);
   const moved = shifted.days.find((d) => d.date === '2024-03-11')!;
   assert.equal(moved.target?.week, 1, 'the third week-1 target slides to Monday');
-  assert.equal(moved.target?.exercises[0].weight, 100);
-  assert.equal(moved.target?.exercises[0].reps, 10);
-  const next = shifted.days.find((d) => d.date === '2024-03-13')!;
-  assert.equal(next.target?.week, 2);
-  assert.equal(next.target?.exercises[0].reps, 11);
+  assert.deepEqual([moved.target?.exercises[0].weight, moved.target?.exercises[0].reps], [100, 12]);
   assert.deepEqual(
     shifted.excluded.map((t) => t.order),
     [36],
   );
-  assert.deepEqual(weekly('벤치프레스', [], beforeStart, [rest]), weekly('벤치프레스'));
-  // A record on the shifted Monday still belongs to week 1's window.
-  const lateRecord = [
-    benchSets('2024-03-11', [
-      [100, 10],
-      [100, 10],
-      [100, 10],
-    ]),
-  ];
+  assert.deepEqual(
+    sessions('벤치프레스', [], beforeStart, [rest]),
+    sessions('벤치프레스').slice(0, 35),
+    'without records the shifted sessions keep their values in plan order',
+  );
+  // A record on the shifted Monday belongs to the moved session's window.
+  const late = [three('2024-03-11', 100, 12)];
   assert.equal(
-    at('2024-03-04', '벤치프레스', lateRecord, '2024-03-13', [rest]).exercise?.result,
+    at('2024-03-11', '벤치프레스', late, '2024-03-13', [rest]).exercise?.result,
     'achieved',
   );
+  // Resting the first week-3 session pushes a week-3 target into calendar week 4
+  // and a week-4 deload target into calendar week 5; each keeps its own role.
+  const later = api.arrangeTargets(plan(), ['2024-03-18'], [], beforeStart);
+  const intoWeek4 = later.days.find((d) => d.date === '2024-03-25')!;
+  assert.equal(intoWeek4.target?.week, 3);
+  assert.equal(intoWeek4.target?.is_deload, false);
+  assert.equal(intoWeek4.target?.exercises[0].weight, 110);
+  const intoWeek5 = later.days.find((d) => d.date === '2024-04-01')!;
+  assert.equal(intoWeek5.target?.is_deload, true);
+  assert.equal(intoWeek5.target?.exercises[0].weight, 100);
 });
 
-test('the routine form preview uses the same progression as the server', () => {
+test('the routine form preview uses the same per-session progression as the server', () => {
   const exports: Record<string, unknown> = {};
   runInNewContext(
     ts.transpileModule(
@@ -302,35 +365,38 @@ test('the routine form preview uses the same progression as the server', () => {
     ).outputText,
     { exports, Date, Math },
   );
-  const preview = exports.previewTargets as (plan: unknown) => {
-    exercise: string;
-    rows: { week: number; weight: number; reps: number; sets: number; kind: string }[];
-  }[][];
+  type Row = { week: number; session: number; weight: number; reps: number; kind: string };
+  const preview = exports.previewTargets as (
+    plan: unknown,
+  ) => { exercise: string; rows: Row[] }[][];
   assert.equal(typeof preview, 'function', 'frontend exposes previewTargets');
-  const input = autoRoutineInput();
-  // JSON round trip: arrays from the vm context have a different realm prototype.
-  const rows = JSON.parse(JSON.stringify(preview(input)[0])) as ReturnType<typeof preview>[0];
-  for (const [i, name] of input.splits[0].exercises.map((e) => e.exercise).entries())
+  for (const [input, routine] of [
+    [autoRoutineInput(), plan()],
+    [twoSplitInput(), twoSplit()],
+  ] as const) {
+    // JSON round trip: arrays from the vm context have a different realm prototype.
+    const splits = JSON.parse(JSON.stringify(preview(input))) as ReturnType<typeof preview>;
+    for (const split of splits)
+      for (const ex of split)
+        assert.deepEqual(
+          ex.rows.map((r) => `${r.weight}x${r.reps}`),
+          sessions(ex.exercise, [], beforeStart, [], routine),
+          `${ex.exercise} preview matches the server`,
+        );
+    const { days } = api.arrangeTargets(routine, [], [], beforeStart);
+    const first = splits[0][0].rows;
+    const serverFirst = days.filter((d) => d.target?.split_index === 0);
     assert.deepEqual(
-      rows[i].rows.map((r) => `${r.weight}x${r.reps}`),
-      weekly(name),
-      `${name} preview matches the server`,
+      first.map((r) => `${r.week}-${r.session}`),
+      serverFirst.map((d) => `${d.target!.week}-${(d.target as { session?: number }).session}`),
+      'week and session labels match',
     );
+  }
+  const firstEx = (
+    JSON.parse(JSON.stringify(preview(autoRoutineInput()))) as ReturnType<typeof preview>
+  )[0][0];
   assert.deepEqual(
-    rows[0].rows.map((r) => r.kind),
-    [
-      'start',
-      'reps',
-      'reps',
-      'deload',
-      'weight',
-      'reps',
-      'reps',
-      'deload',
-      'reps',
-      'reps',
-      'weight',
-      'deload',
-    ],
+    firstEx.rows.slice(0, 4).map((r) => r.kind),
+    ['start', 'reps', 'reps', 'weight'],
   );
 });

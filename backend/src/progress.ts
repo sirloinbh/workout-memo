@@ -19,6 +19,7 @@ export type WeekChange = NonNullable<RoutinePlan['weeks']>[number];
 export type PlanTarget = {
   order: number;
   week: number;
+  session: number;
   is_deload: boolean;
   split_index: number;
   split_name: string;
@@ -105,12 +106,14 @@ export function progressionStep(level: Level, ex: AutoExercise) {
 type Skeleton = Omit<PlanTarget, 'exercises'>;
 type Placed = { target: Skeleton; date: string | null };
 
-// For every exercise, walk the weeks in which its split is scheduled. A week's
-// window runs from its first session to the next later-week session of the same
-// split. A saved workout in the window with at least the planned number of sets
-// at or above the target advances the target; a closed window without one holds
-// it; an open window is projected as met. Deload weeks pause progression at 90%
-// of the previous target weight with the same reps.
+// Progression advances once per session (workout day) of the exercise's split,
+// in plan order. A session's window runs from its date until the next session of
+// the same split (exclusive; the last one until the plan end). A saved workout in
+// the window with at least the planned number of sets at or above the target
+// advances the next session; a closed window without one holds it; an open window
+// is projected as met. Sessions of weeks 4/8/12 (by their planned week) are
+// deloads at 90% of the previous non-deload target with the same reps; they are
+// not judged and do not advance, so the next session resumes from before them.
 function autoExercises(
   plan: RoutinePlan,
   placed: Placed[],
@@ -120,20 +123,20 @@ function autoExercises(
   const out = new Map<number, TargetExercise[]>();
   const end = addDays(planEndDate(plan), 1);
   plan.splits.forEach((split, splitIndex) => {
-    const occ = placed.filter((p) => p.target.split_index === splitIndex);
-    const weeks = [...new Set(occ.map((o) => o.target.week))].sort((a, b) => a - b);
+    const occ = placed
+      .filter((p) => p.target.split_index === splitIndex)
+      .sort((a, b) => a.target.order - b.target.order);
     for (const o of occ) out.set(o.target.order, []);
     split.exercises.forEach((ex) => {
       const key = exerciseKey(ex.exercise);
       let level: Level = { weight: ex.weight, reps: ex.reps };
       let kind: NonNullable<TargetExercise['kind']> = 'start';
       let previous: Level | null = null;
-      for (const week of weeks) {
-        const inWeek = occ.filter((o) => o.target.week === week);
+      occ.forEach((o, index) => {
         let target: Level;
         let result: TargetExercise['result'] = null;
         let shown: NonNullable<TargetExercise['kind']> = kind;
-        if (week % 4 === 0) {
+        if (o.target.is_deload) {
           const ref = previous ?? level;
           target = { weight: deloadWeight(ref.weight), reps: ref.reps };
           shown = 'deload';
@@ -141,16 +144,12 @@ function autoExercises(
           const goal = level;
           target = goal;
           previous = goal;
-          const dates = inWeek
-            .map((o) => o.date)
-            .filter((d): d is string => !!d)
-            .sort();
-          const start = dates[0];
+          const start = o.date;
           const stop =
             occ
-              .filter((o) => o.target.week > week && o.date)
-              .map((o) => o.date!)
-              .sort()[0] ?? end;
+              .slice(index + 1)
+              .map((n) => n.date)
+              .find((d): d is string => !!d) ?? end;
           const met =
             !!start &&
             records.some(
@@ -171,32 +170,38 @@ function autoExercises(
             kind = step.kind;
           }
         }
-        for (const o of inWeek)
-          out.get(o.target.order)!.push({
-            exercise: ex.exercise,
-            sets: ex.sets,
-            weight: target.weight,
-            reps: target.reps,
-            base: { sets: ex.sets, weight: ex.weight, reps: ex.reps },
-            projected: !o.date || o.date > today,
-            result,
-            kind: shown,
-          });
-      }
+        out.get(o.target.order)!.push({
+          exercise: ex.exercise,
+          sets: ex.sets,
+          weight: target.weight,
+          reps: target.reps,
+          base: { sets: ex.sets, weight: ex.weight, reps: ex.reps },
+          projected: !o.date || o.date > today,
+          result,
+          kind: shown,
+        });
+      });
     });
   });
   return out;
 }
 
 function skeletons(plan: RoutinePlan): Skeleton[] {
-  return routineSchedule(plan).map((slot, index) => ({
-    order: index + 1,
-    week: slot.week,
-    is_deload: slot.is_deload,
-    split_index: slot.split_index,
-    split_name: plan.splits[slot.split_index].name,
-    change: plan.weeks?.find((w) => w.week === slot.week) ?? null,
-  }));
+  const perWeek = new Map<number, number>();
+  return routineSchedule(plan).map((slot, index) => {
+    // n-th training day of its planned week, e.g. "3주차 2번째".
+    const session = (perWeek.get(slot.week) ?? 0) + 1;
+    perWeek.set(slot.week, session);
+    return {
+      order: index + 1,
+      week: slot.week,
+      session,
+      is_deload: slot.is_deload,
+      split_index: slot.split_index,
+      split_name: plan.splits[slot.split_index].name,
+      change: plan.weeks?.find((w) => w.week === slot.week) ?? null,
+    };
+  });
 }
 
 // Targets keep plan order; rests only move which slot each target lands on.

@@ -433,11 +433,19 @@ test('new routines default to automatic double progression with a 12-week previe
     await ui.change('현재 반복 수', String(ex.reps), i);
   }
   const preview = ui.text();
-  assert.match(preview, /1주차 · 100 kg × 10회 · 시작/);
-  assert.match(preview, /4주차 · 90 kg × 12회 · 디로딩/);
-  assert.match(preview, /5주차 · 105 kg × 8회 · 증량 \+5 kg/);
-  assert.match(preview, /2주차 · 42\.5 kg × 8회 · 증량 \+2\.5 kg/);
-  assert.match(preview, /12주차 · 0 kg × 12회 · 디로딩/);
+  // #28: targets advance per session of the split (here 3 sessions a week), grouped by week.
+  assert.match(
+    preview,
+    /1주차: 1번째 100 kg × 10회\(시작\), 2번째 100 kg × 11회\(반복 \+1\), 3번째 100 kg × 12회\(반복 \+1\)/,
+  );
+  assert.match(preview, /2주차: 1번째 105 kg × 8회\(증량 \+5 kg\)/);
+  assert.match(preview, /4주차 디로딩: 1번째 100 kg × 8회\(디로딩\), 2번째 100 kg × 8회\(디로딩\)/);
+  assert.match(
+    preview,
+    /1주차: 1번째 40 kg × 12회\(시작\), 2번째 42\.5 kg × 8회\(증량 \+2\.5 kg\)/,
+  );
+  assert.match(preview, /12주차 디로딩: 1번째 0 kg × 12회\(디로딩\)/);
+  assert.match(preview, /세션\(운동일\)마다/, 'the per-session rule is explained');
   assert.equal(ui.requests.filter((r) => r.method !== 'GET').length, 0, 'preview sends nothing');
   await ui.submit();
   const post = ui.requests.find((r) => r.method === 'POST');
@@ -445,5 +453,5 @@ test('new routines default to automatic double progression with a 12-week previe
   assert.deepEqual(post.body, expected);
   await ui.settle();
   assert.match(ui.text(), /자동 · 이중 점진 과부하/);
-  assert.match(ui.text(), /11주차 · 110 kg × 8회 · 증량 \+5 kg/);
+  assert.match(ui.text(), /5주차: 1번째 110 kg × 9회\(반복 \+1\)/);
 });

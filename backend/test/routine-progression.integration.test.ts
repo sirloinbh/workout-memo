@@ -23,7 +23,7 @@ test(
       return e.exercise;
     });
     const slots = routineSchedule(input as unknown as RoutinePlan);
-    const week2 = slots.find((s) => s.week === 2)!.date;
+    const third = slots[2].date; // week 1, session 3
     let today = slots[0].date;
     const server = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
     await new Promise<void>((resolve) => server.once('listening', resolve));
@@ -64,7 +64,7 @@ test(
 
       const set = (exercise: string, weight: number, reps: number) => ({ exercise, weight, reps });
       const workout = await call('/workouts', 'POST', {
-        date: slots[1].date,
+        date: slots[0].date,
         title: prefix,
         sets: [
           set(bench, 100, 10),
@@ -80,20 +80,29 @@ test(
         await pool.query('SELECT * FROM sets WHERE workout_id=$1 ORDER BY id', [workout.data.id])
       ).rows;
 
-      today = week2;
+      // Session 1 is judged by the record above; session 2's window closed without one.
+      today = third;
       const next = await call('/routine-progress');
       assert.equal(next.status, 200);
       const benchTarget = targetOf(next.data, bench);
-      assert.deepEqual([benchTarget.weight, benchTarget.reps], [100, 11], 'met target advances');
+      assert.deepEqual(
+        [benchTarget.weight, benchTarget.reps],
+        [100, 11],
+        'session 1 met → session 2 advanced, session 2 missed → today holds',
+      );
       assert.equal(benchTarget.projected, false);
       const curlTarget = targetOf(next.data, curl);
-      assert.deepEqual([curlTarget.weight, curlTarget.reps], [40, 12], 'one short set holds');
+      assert.deepEqual(
+        [curlTarget.weight, curlTarget.reps],
+        [40, 12],
+        'one short set holds for every later session',
+      );
       const pullTarget = targetOf(next.data, pullUp);
       assert.deepEqual([pullTarget.weight, pullTarget.reps], [0, 10], 'no record holds');
       const week1 = next.data.weeks[0].entries[0].target.exercises as Ex[];
       assert.equal(week1.find((e) => e.exercise === bench)!.result, 'achieved');
       assert.equal(week1.find((e) => e.exercise === curl)!.result, 'missed');
-      const later = next.data.this_week.find((d: { date: string }) => d.date > week2);
+      const later = next.data.days.find((d: { date: string }) => d.date > third);
       assert.equal(
         later.target.exercises.find((e: Ex) => e.exercise === bench).projected,
         true,
@@ -105,23 +114,25 @@ test(
           week5.find((e) => e.exercise === curl)!.weight,
           week5.find((e) => e.exercise === curl)!.reps,
         ],
-        [42.5, 9],
-        'held curl shifts later weeks: 40x12 → 42.5x8 → deload → 42.5x9',
+        [45, 9],
+        'held curl shifts later sessions: today 40x12, then 42.5x8…45x8, deload, then 45x9',
       );
 
-      // Rest today still shifts plan order with adaptive values in place.
+      // Rest today shifts plan order. Session 2's window now runs until the moved
+      // session, so it is open again and the moved session is projected one step up.
       const rest = await call(`/routines/${routineId}/rests`, 'POST', { date: today });
       assert.equal(rest.status, 201);
       const shifted = rest.data.days.find(
-        (d: { date: string; rest: boolean }) => d.date > week2 && !d.rest,
+        (d: { date: string; rest: boolean }) => d.date > third && !d.rest,
       );
-      assert.equal(shifted.target.week, 2);
+      assert.equal(shifted.target.week, 1);
+      assert.equal(shifted.target.order, 3);
       assert.deepEqual(
         [
           shifted.target.exercises.find((e: Ex) => e.exercise === bench).weight,
           shifted.target.exercises.find((e: Ex) => e.exercise === bench).reps,
         ],
-        [100, 11],
+        [100, 12],
       );
       assert.deepEqual(
         (await pool.query('SELECT * FROM sets WHERE workout_id=$1 ORDER BY id', [workout.data.id]))

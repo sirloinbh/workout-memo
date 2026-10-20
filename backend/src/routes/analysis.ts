@@ -7,19 +7,20 @@ import { seoulTodaySql } from './shared.js';
 
 const partOrder = `array_position(ARRAY[${bodyParts.map((p) => `'${p}'`).join(',')}]::text[], body_part)`;
 
+export const analysisQuery = z
+  .object({ from: date, to: date })
+  .refine((value) => value.from <= value.to, '조회 종료일은 시작일 이후여야 합니다')
+  .refine(
+    (value) => +new Date(value.to) - +new Date(value.from) <= 370 * 86400000,
+    '분석 기간은 371일 이하로 선택하세요',
+  );
+
 export function registerAnalysisRoutes(app: express.Express, pool: Pool) {
   // PRs, estimates and weekly body-part totals are recomputed from saved sets on
   // every read. Like goal judgment, sets dated after the Seoul service date are
   // excluded; unsaved browser drafts never reach the server.
   app.get('/api/analysis', async (req, res) => {
-    const q = z
-      .object({ from: date, to: date })
-      .refine((value) => value.from <= value.to, '조회 종료일은 시작일 이후여야 합니다')
-      .refine(
-        (value) => +new Date(value.to) - +new Date(value.from) <= 370 * 86400000,
-        '분석 기간은 371일 이하로 선택하세요',
-      )
-      .parse(req.query);
+    const q = analysisQuery.parse(req.query);
     const today: string = (await pool.query(`SELECT ${seoulTodaySql} AS today`)).rows[0].today;
     // Only completed sets are performance (#31); planned sets never set a PR or volume.
     const sets = await pool.query(

@@ -9,7 +9,8 @@
     "build": "tsc",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.check.json",
-    "db:migrate": "tsx --env-file-if-exists=../.env src/migrate.ts"
+    "db:migrate": "tsx --env-file-if-exists=../.env src/migrate.ts",
+    "openapi": "tsx src/openapi-cli.ts"
   },
   "dependencies": {
     "express": "^5.1.0",

@@ -10,7 +10,7 @@
 - 3단계에서 React Router·TanStack Query·React Hook Form을 도입하는 것처럼 내부 구현만 바꿔도 테스트가 깨진다.
 - 실제 DOM, 이벤트, React 스케줄링, 브라우저 동작을 검증하지 못한다.
 
-## 변경 — 2026-10-21
+## 변경 — 2026-10-20
 
 ### 패키지
 
@@ -101,7 +101,7 @@
 - 화면 레이아웃·포커스 이동은 이번 e2e 범위가 아니다. 일지 CRUD 흐름만 검증한다.
 - 3단계(React Router·TanStack Query·React Hook Form·디자인 토큰)는 이 테스트를 안전망으로 별도 PR에서 진행한다.
 
-## CI docker-build 수정 — 2026-10-21
+## CI docker-build 수정 — 2026-10-20
 
 - PR 이후 CI의 `docker-build`가 실패했다. 원인은 두 가지였다.
   - subtree 배포용 `frontend/package-lock.json`에 새 devDependencies가 없어 Docker의 `npm ci`가 실패했다.

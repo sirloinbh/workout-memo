@@ -1,8 +1,7 @@
 param(
-    [ValidateSet('start', 'stop', 'status', 'doctor', 'smoke', 'enqueue', 'configure', 'diagnose', 'retry', 'accept-requirements', 'cancel', 'handoff-tests', 'respond')]
+    [ValidateSet('start', 'stop', 'status', 'doctor', 'smoke', 'enqueue', 'configure', 'diagnose', 'retry', 'accept-requirements', 'cancel', 'handoff-tests')]
     [string]$Action = 'status',
     [int]$Issue = 0,
-    [string]$ResponseFile,
     [ValidateSet('code', 'documentation')][string]$TaskKind,
     [ValidateSet('review', 'highRiskReview')][string]$ReviewRole,
     [ValidateSet('simple', 'complex')][string]$TestComplexity,
@@ -13,7 +12,6 @@ param(
 $ErrorActionPreference = 'Stop'
 if (($TaskKind -or $ReviewRole -or $TestComplexity -or $RequireDatabase -or $RequireBrowser) -and $Action -notin @('enqueue', 'configure')) { throw 'Routing options require enqueue or configure.' }
 if ($Role -and $Action -ne 'smoke') { throw '-Role requires smoke.' }
-if ($ResponseFile -and $Action -ne 'respond') { throw '-ResponseFile requires respond.' }
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $localRoot = Join-Path $projectRoot '.local/agent-workflow'
 $cliPath = Join-Path $projectRoot 'scripts/agents/cli.mjs'
@@ -33,13 +31,9 @@ if ($Action -eq 'start') {
     if (Test-Path -LiteralPath $stopPath) { Remove-Item -LiteralPath $stopPath }
     $workerProcess = Start-Process -FilePath $nodeExecutable -ArgumentList @('"' + $cliPath + '"', 'work') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $localRoot 'worker.stdout.log') -RedirectStandardError (Join-Path $localRoot 'worker.stderr.log')
     Write-Output "Worker launched (PID $($workerProcess.Id)). Use scripts/agents.ps1 status to inspect jobs."
-} elseif ($Action -in @('enqueue', 'configure', 'diagnose', 'retry', 'accept-requirements', 'cancel', 'handoff-tests', 'respond')) {
+} elseif ($Action -in @('enqueue', 'configure', 'diagnose', 'retry', 'accept-requirements', 'cancel', 'handoff-tests')) {
     if ($Issue -lt 1) { throw '-Issue must be a positive GitHub issue number.' }
     $cliArguments = @($Action, "$Issue")
-    if ($Action -eq 'respond') {
-        if (-not $ResponseFile) { throw '-ResponseFile is required for an actual user response.' }
-        $cliArguments += @($ResponseFile)
-    }
     if ($TaskKind) { $cliArguments += @('--task-kind', $TaskKind) }
     if ($ReviewRole) { $cliArguments += @('--review-role', $ReviewRole) }
     if ($TestComplexity) { $cliArguments += @('--test-complexity', $TestComplexity) }

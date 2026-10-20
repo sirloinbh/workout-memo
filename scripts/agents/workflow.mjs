@@ -1,6 +1,3 @@
-import { appendEvent, validateDecision } from './conversation.mjs';
-export { respondToDecision, renderDecisions, flushEvents } from './conversation.mjs';
-
 export const stages = [
   'queued',
   'tests',
@@ -57,7 +54,7 @@ export function nextStage(stage) {
 }
 
 export async function runStages(job, handlers) {
-  if (['done', 'blocked', 'cancelled', 'awaiting_user'].includes(job.stage)) return job;
+  if (['done', 'blocked', 'cancelled'].includes(job.stage)) return job;
   while (job.stage !== 'done') {
     const stage = job.stage;
     try {
@@ -68,16 +65,6 @@ export async function runStages(job, handlers) {
       const result = await handlers[stage === 'queued' ? 'prepare' : stage](job);
       if (result?.blocked || (result?.failed && stage !== 'ci'))
         throw new Error(result.summary || `${stage} failed`);
-      if (result?.decisionRequest) {
-        validateDecision(job, result.decisionRequest);
-        job.pendingDecision = structuredClone(result.decisionRequest);
-        job.decisionStage = stage;
-        job.stage = 'awaiting_user';
-        job.runningStage = null;
-        appendEvent(job, 'awaiting_user', result.summary || result.decisionRequest.question);
-        await handlers.save(job);
-        return job;
-      }
       job.results ??= {};
       job.results[stage] = result;
       job.runningStage = null;
@@ -99,20 +86,13 @@ export async function runStages(job, handlers) {
       } else {
         job.stage = nextStage(stage);
       }
-      if (stage === 'delivery')
-        appendEvent(job, 'pr_published', 'PR published; CI pending; user merge required');
-      if (job.stage === 'done')
-        appendEvent(job, 'completed', result?.summary || 'CI passed; user merge required');
       await handlers.save(job);
-      // The CLI can release this job immediately after publication and poll CI separately.
-      if (stage === 'delivery' && handlers.deferCi) return job;
       if (stage === 'verification' && result?.reused) return job;
     } catch (error) {
       job.stage = 'blocked';
       job.blockedStage = stage;
       job.runningStage = null;
       job.error = error.message;
-      appendEvent(job, 'blocked', error.message);
       job.failureKind =
         error.failureKind ||
         (stage === 'verification'
@@ -133,70 +113,4 @@ export async function runStages(job, handlers) {
     }
   }
   return job;
-}
-
-export function selectNextJob(jobs) {
-  const skipped = [];
-  const eligible = [];
-  const active = new Set(
-    jobs
-      .filter(
-        (j) => j.runningStage || !['queued', 'done', 'cancelled', 'blocked'].includes(j.stage),
-      )
-      .map((j) => j.id),
-  );
-  const seen = new Set();
-  for (const job of jobs) {
-    const s = job.scheduling;
-    let reason;
-    if (seen.has(job.id) || active.has(job.id)) reason = 'Duplicate or in-progress issue';
-    else if (job.stage !== 'queued' || job.runningStage) reason = `Stage ${job.stage}`;
-    else if (job.issue.state && job.issue.state !== 'OPEN') reason = 'Issue closed';
-    else if (!s?.authorized || !s.requirementsConfirmed)
-      reason = 'Explicit authorization and confirmed requirements required';
-    else if (s.kind !== 'feature') reason = 'Aggregate, roadmap or non-feature issue';
-    else if (!Array.isArray(s.dependencies) || s.dependencies.some((d) => d.merged !== true))
-      reason = 'Dependency PR not merged or unresolved';
-    seen.add(job.id);
-    if (reason) skipped.push({ issue: job.id, reason });
-    else eligible.push(job);
-  }
-  eligible.sort(
-    (a, b) =>
-      (a.scheduling.priority ?? 100) - (b.scheduling.priority ?? 100) ||
-      (a.scheduling.order ?? Number(a.id)) - (b.scheduling.order ?? Number(b.id)) ||
-      Number(a.id) - Number(b.id),
-  );
-  return eligible.length
-    ? {
-        job: eligible[0],
-        reason: 'Selected by explicit authorization, merged dependencies, priority then order',
-        skipped,
-      }
-    : {
-        job: null,
-        idle: true,
-        reason: 'No authorized independent queued issue with confirmed requirements',
-        skipped,
-      };
-}
-
-export async function runQueueCycle(jobs, handlers) {
-  if (jobs.some((j) => j.runningStage)) return { job: null, reason: 'A stage is already running' };
-  // CI checks never run model implementations concurrently. Repairs and resumable work
-  // take precedence, while pending CI and unanswered questions do not hold the queue.
-  for (const job of jobs.filter((j) => j.stage === 'ci')) {
-    if (handlers.stopping?.()) return;
-    await runStages(job, { ...handlers, deferCi: true });
-  }
-  const resumable = jobs.find((j) =>
-    ['tests', 'implementation', 'review', 'verification', 'delivery'].includes(j.stage),
-  );
-  const selection = resumable
-    ? { job: resumable, reason: `Resume ${resumable.stage}`, skipped: [] }
-    : selectNextJob(jobs);
-  await handlers.audit?.(selection);
-  if (selection.job && !handlers.stopping?.())
-    await runStages(selection.job, { ...handlers, deferCi: true });
-  return selection;
 }

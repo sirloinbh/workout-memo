@@ -10,6 +10,7 @@ description: Establish or improve the repeatable development foundation of the w
 ## 범위와 선택
 
 - [기술 추천과 적용 순서](references/stack.md)를 읽고 해당 요청에 필요한 영역만 적용한다.
+- 패키지 도입, 영역별 독립 빌드, 화면 리팩터링, 연속 PR, 생성 산출물은 [검증된 반복 절차](references/procedures.md)를 따른다.
 - 현재 package.json, 잠금 파일, API·SQL, Compose, CI와 운영 문서를 확인해 실제 구현과 추천을 구분한다. 추천 목록 전체를 자동 설치하거나 앱을 다시 만들지 않는다.
 - 사용자는 본인 한 명이며 로그인 기능은 현재 요구사항에 없다. 날짜는 Asia/Seoul 기준, 중량은 기본중량 포함 총중량 kg, 미확인 기본중량은 NULL이다.
 - 실행 환경과 의존성 버전은 적용 시점의 공식 지원·호환성을 확인해 선택한다. 기존 잠금 파일과 설치 환경을 함께 갱신하며, 날짜에 따라 달라지는 추천을 영구 고정값처럼 적용하지 않는다.

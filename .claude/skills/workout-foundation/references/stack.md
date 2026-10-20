@@ -26,7 +26,7 @@
 
 ## DB 접근과 계약
 
-현재 pg + SQL을 활용하고 마이그레이션 적용 이력부터 정리한다. Prisma는 ORM 전환을 요청받았을 때 검토할 후보이다. 전환 시 기존 DB baseline과 데이터 보존을 검증하고, database와 backend에서 서로 다른 마이그레이션 원본을 동시에 운영하지 않는다.
+현재 pg + SQL을 활용한다. 마이그레이션 적용 이력은 #58에서 `schema_migrations`와 `npm run db:migrate`로 도입했다. 기능별 라우트 모듈(`backend/src/routes/`)과 REST 계약 문서(`docs/api.md`)도 같은 작업에서 정리했다. OpenAPI 생성과 공유 Zod 계약 패키지는 실제 중복 제거가 필요할 때 별도 이슈로 도입한다. Prisma는 ORM 전환을 요청받았을 때 검토할 후보이다. 전환 시 기존 DB baseline과 데이터 보존을 검증하고, database와 backend에서 서로 다른 마이그레이션 원본을 동시에 운영하지 않는다.
 
 날짜는 `YYYY-MM-DD`, 서비스 시간대는 `Asia/Seoul`. 머신 기본중량은 확인된 값만 입력한다. 운동 중량은 기본중량 포함 총중량 kg이며, 목표는 기간 내 동일 운동의 한 세트가 목표 중량과 횟수를 모두 충족했는지 서버에서 판단한다.
 

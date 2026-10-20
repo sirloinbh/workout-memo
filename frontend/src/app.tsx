@@ -19,6 +19,9 @@ import {
 } from 'lucide-react';
 import { BrowserRouter, NavLink, useLocation, useNavigate } from 'react-router';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { fieldErrors, goalSchema, machineSchema, workoutSchema, type GoalInput } from './contract';
 import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
@@ -220,6 +223,7 @@ const dateLabel = (v: string) =>
   });
 const vol = (w: Workout) => w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * s.reps, 0);
 const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
+const issueId = (key: string) => 'issue-' + key.replace(/\./g, '-');
 async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
@@ -295,6 +299,16 @@ function Workspace() {
   const [storageWarning, setStorageWarning] = useState(initialDraft.warning);
   const [saveState, setSaveState] = useState('');
   const [saveError, setSaveError] = useState('');
+  // Per-field messages from the shared contract, keyed like "sets.0.weight" (#64).
+  const [issues, setIssues] = useState<Record<string, string>>({});
+  const invalid = (key: string) =>
+    issues[key] ? { 'aria-invalid': true, 'aria-describedby': issueId(key) } : {};
+  const issue = (key: string) =>
+    issues[key] && (
+      <span className="field-error" id={issueId(key)}>
+        {issues[key]}
+      </span>
+    );
   const draft = useRef<Draft | null>(initialDraft.draft);
   const workoutSaving = useRef(false);
   const [timer, setTimerState] = useState(readTimer);
@@ -413,6 +427,13 @@ function Workspace() {
   }
   async function saveWorkout() {
     if (!editor || workoutSaving.current) return;
+    // #64: the server's schema checks the input first; nothing is sent while it is invalid.
+    const checked = workoutSchema.safeParse(editor);
+    setIssues(checked.success ? {} : fieldErrors(checked.error));
+    if (!checked.success) {
+      setSaveState('입력을 확인하세요 · 서버로 보내지 않았습니다');
+      return;
+    }
     workoutSaving.current = true;
     setSaving(true);
     setSaveState('저장 중…');
@@ -1168,7 +1189,10 @@ function Workspace() {
       {editor && (
         <Modal
           title={editor.id ? '운동 일지 수정' : '새로운 운동 기록'}
-          close={() => setEditor(null)}
+          close={() => {
+            setIssues({});
+            setEditor(null);
+          }}
         >
           <form
             onSubmit={(e) => {
@@ -1205,8 +1229,10 @@ function Workspace() {
                     required
                     value={editor.date}
                     onChange={(e) => setEditor({ ...editor, date: e.target.value })}
+                    {...invalid('date')}
                   />
                 </label>
+                {issue('date')}
                 <label>
                   일지 제목
                   <input
@@ -1215,9 +1241,12 @@ function Workspace() {
                     placeholder="예: 하체 · 대퇴사두 집중"
                     value={editor.title}
                     onChange={(e) => setEditor({ ...editor, title: e.target.value })}
+                    {...invalid('title')}
                   />
                 </label>
+                {issue('title')}
               </div>
+              {issue('sets')}
               <p className="form-hint">
                 세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 좌우를
                 함께 움직이는 장비는 양쪽 중량의 합계를, 편측 운동은 한쪽에서 실제로 움직인 총중량을
@@ -1244,6 +1273,7 @@ function Workspace() {
                         sets[i] = { ...s, exercise: e.target.value };
                         setEditor({ ...editor, sets });
                       }}
+                      {...invalid(`sets.${i}.exercise`)}
                     />
                   </label>
                   <label>
@@ -1293,6 +1323,7 @@ function Workspace() {
                         sets[i] = { ...s, weight: Number(e.target.value) };
                         setEditor({ ...editor, sets });
                       }}
+                      {...invalid(`sets.${i}.weight`)}
                     />
                   </label>
                   <label>
@@ -1308,6 +1339,7 @@ function Workspace() {
                         sets[i] = { ...s, reps: Number(e.target.value) };
                         setEditor({ ...editor, sets });
                       }}
+                      {...invalid(`sets.${i}.reps`)}
                     />
                   </label>
                   <div className="set-actions">
@@ -1338,9 +1370,13 @@ function Workspace() {
                           };
                           setEditor({ ...editor, sets });
                         }}
+                        {...invalid(`sets.${i}.rpe`)}
                       />
                     </label>
                   </div>
+                  {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
+                    <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
+                  ))}
                   <label className="set-notes">
                     세트 메모
                     <textarea
@@ -1441,67 +1477,32 @@ function Workspace() {
       )}
       {goalEditor && (
         <Modal title="점진적 과부하 목표" close={() => setGoalEditor(false)}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const f = new FormData(e.currentTarget);
+          <GoalForm
+            deadline={to}
+            saving={saving}
+            onSave={(goal) =>
               void action(
-                () =>
-                  api('/goals', 'POST', {
-                    exercise: f.get('exercise'),
-                    target_weight: Number(f.get('weight')),
-                    target_reps: Number(f.get('reps')),
-                    start_date: f.get('start'),
-                    deadline: f.get('deadline'),
-                  }),
+                () => api('/goals', 'POST', goal),
                 () => setGoalEditor(false),
-              );
-            }}
-          >
-            <label>
-              운동명
-              <input
-                name="exercise"
-                required
-                maxLength={120}
-                placeholder="일지와 같은 운동명을 입력하세요"
-              />
-            </label>
-            <div className="form-grid">
-              <label>
-                목표 총중량 (kg)
-                <input name="weight" type="number" min="0" max="99999" step="0.25" required />
-              </label>
-              <label>
-                목표 반복 수
-                <input name="reps" type="number" min="1" max="1000" defaultValue="10" required />
-              </label>
-              <label>
-                시작일
-                <input name="start" type="date" defaultValue={today()} required />
-              </label>
-              <label>
-                종료일
-                <input name="deadline" type="date" defaultValue={to} required />
-              </label>
-            </div>
-            <p className="form-hint">
-              기간 안에 한 세트에서 목표 중량 이상, 목표 반복 수 이상을 수행하면 달성 처리됩니다.
-            </p>
-            <button className="primary full" disabled={saving}>
-              목표 저장하기
-            </button>
-          </form>
+              )
+            }
+          />
         </Modal>
       )}
       {machineEditor && (
         <Modal
           title={machineEditor.id ? '머신 정보 수정' : '머신 등록'}
-          close={() => setMachineEditor(null)}
+          close={() => {
+            setIssues({});
+            setMachineEditor(null);
+          }}
         >
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              const checked = machineSchema.safeParse(machineEditor);
+              setIssues(checked.success ? {} : fieldErrors(checked.error));
+              if (!checked.success) return;
               void action(
                 () =>
                   api(
@@ -1518,6 +1519,7 @@ function Workspace() {
               <select
                 required
                 value={machineEditor.brand_id ?? ''}
+                {...invalid('brand_id')}
                 onChange={(e) => {
                   const brandId = Number(e.target.value);
                   const name = brands.find((b) => b.id === brandId)?.name;
@@ -1543,6 +1545,7 @@ function Workspace() {
                 ))}
               </select>
             </label>
+            {issue('brand_id')}
             {(() => {
               const brandName = brands.find((b) => b.id === machineEditor.brand_id)?.name;
               const refs = (officialWeights ?? []).filter((r) => r.brand === brandName);
@@ -1611,8 +1614,10 @@ function Workspace() {
                 maxLength={120}
                 value={machineEditor.name}
                 onChange={(e) => setMachineEditor({ ...machineEditor, name: e.target.value })}
+                {...invalid('name')}
               />
             </label>
+            {issue('name')}
             <label>
               기본중량 (kg) · 모르면 비워두세요
               <input
@@ -1627,8 +1632,10 @@ function Workspace() {
                     base_weight: e.target.value === '' ? null : Number(e.target.value),
                   })
                 }
+                {...invalid('base_weight')}
               />
             </label>
+            {issue('base_weight')}
             <p className="form-hint">
               확인하지 못한 기본중량은 비워두세요. 확인된 0 kg과 구분하여 저장하며, 기본중량을
               수정해도 과거 세트의 총중량은 변경되지 않습니다.
@@ -1648,6 +1655,91 @@ function Workspace() {
         </Modal>
       )}
     </div>
+  );
+}
+// #64: React Hook Form with the shared goal schema. Messages come from the same
+// contract the server uses, and each one is linked to its field for screen readers.
+function GoalForm({
+  deadline,
+  saving,
+  onSave,
+}: {
+  deadline: string;
+  saving: boolean;
+  onSave: (goal: GoalInput) => void;
+}) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<GoalInput>({
+    resolver: zodResolver(goalSchema),
+    defaultValues: { exercise: '', target_reps: 10, start_date: today(), deadline },
+  });
+  const field = (name: keyof GoalInput) => ({
+    'aria-invalid': errors[name] ? true : undefined,
+    'aria-describedby': errors[name] ? issueId(name) : undefined,
+  });
+  const message = (name: keyof GoalInput) =>
+    errors[name] && (
+      <span className="field-error" id={issueId(name)}>
+        {errors[name]?.message}
+      </span>
+    );
+  return (
+    <form noValidate onSubmit={handleSubmit(onSave)}>
+      <label>
+        운동명
+        <input
+          maxLength={120}
+          placeholder="일지와 같은 운동명을 입력하세요"
+          {...register('exercise')}
+          {...field('exercise')}
+        />
+      </label>
+      {message('exercise')}
+      <div className="form-grid">
+        <label>
+          목표 총중량 (kg)
+          <input
+            type="number"
+            min="0"
+            max="99999"
+            step="0.25"
+            {...register('target_weight', { valueAsNumber: true })}
+            {...field('target_weight')}
+          />
+        </label>
+        <label>
+          목표 반복 수
+          <input
+            type="number"
+            min="1"
+            max="1000"
+            {...register('target_reps', { valueAsNumber: true })}
+            {...field('target_reps')}
+          />
+        </label>
+        <label>
+          시작일
+          <input type="date" {...register('start_date')} {...field('start_date')} />
+        </label>
+        <label>
+          종료일
+          <input type="date" {...register('deadline')} {...field('deadline')} />
+        </label>
+      </div>
+      {message('target_weight')}
+      {message('target_reps')}
+      {message('start_date')}
+      {message('deadline')}
+      <p className="form-hint">
+        기간 안에 한 세트에서 목표 중량 이상, 목표 반복 수 이상을 수행하면 달성 처리됩니다.
+      </p>
+      <button className="primary full" disabled={saving}>
+        목표 저장하기
+      </button>
+    </form>
   );
 }
 function Stat({

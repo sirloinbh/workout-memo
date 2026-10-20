@@ -157,3 +157,31 @@ export function routineSchedule(plan: RoutinePlan) {
   }
   return schedule;
 }
+
+export const dateRange = z
+  .object({ from: date, to: date })
+  .refine((value) => value.from <= value.to, '조회 종료일은 시작일 이후여야 합니다');
+// Body metrics are stored as NUMERIC(5,2). Values with more than two decimals are
+// rejected instead of silently rounded, so the stored value is exactly what was entered.
+const twoDecimals = (v: number) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
+const metric = (label: string, min: number, max: number, minInclusive: boolean) =>
+  z
+    .number({ invalid_type_error: `${label}은 숫자로 입력하세요` })
+    .finite(`${label}은 유한한 숫자여야 합니다`)
+    .refine((v) => (minInclusive ? v >= min : v > min) && v <= max, `${label} 범위를 확인하세요`)
+    .refine(twoDecimals, `${label}은 소수점 둘째 자리까지 입력하세요`)
+    .nullable()
+    .default(null);
+export const bodyMeasurementSchema = z
+  .object({
+    date,
+    body_weight_kg: metric('체중', 0, 999.99, false),
+    body_fat_percent: metric('체지방률', 0, 100, true),
+    skeletal_muscle_kg: metric('골격근량', 0, 999.99, false),
+  })
+  .refine(
+    (v) =>
+      v.body_weight_kg !== null || v.body_fat_percent !== null || v.skeletal_muscle_kg !== null,
+    '체중, 체지방률, 골격근량 중 하나 이상을 입력하세요',
+  );
+export type BodyMeasurementInput = z.infer<typeof bodyMeasurementSchema>;

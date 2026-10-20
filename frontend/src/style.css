@@ -1054,6 +1054,67 @@ fieldset.workout-fields {
   padding: 12px 0;
   border-bottom: 1px solid #dfe3e8;
 }
+.body-form {
+  margin-bottom: 18px;
+}
+.body-form fieldset {
+  border: 0;
+  margin: 0 0 8px;
+  padding: 0;
+  min-width: 0;
+}
+.body-trends {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0 8px;
+}
+.body-trend {
+  position: relative;
+  margin: 0;
+  padding: 16px;
+}
+.body-trend figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #6f7a63;
+  margin-bottom: 8px;
+}
+.body-trend svg {
+  display: block;
+  width: 100%;
+  height: 120px;
+  border-top: 1px dashed #edf0e7;
+  border-bottom: 1px dashed #edf0e7;
+}
+.body-trend polyline {
+  stroke: #708c4e;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.body-trend circle {
+  fill: #708c4e;
+}
+.body-trend-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 9px;
+  color: #9ca68e;
+  margin-top: 6px;
+}
+.body-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+@media (max-width: 760px) {
+  .body-trends {
+    grid-template-columns: 1fr;
+  }
+}
 .analysis-page > .card {
   margin-top: 20px;
 }

@@ -155,6 +155,8 @@ function mount(
     if (name === './routines') return { Routines: () => null };
     // The exercise analysis page (#32) is covered by analysis-ui.test.ts.
     if (name === './analysis') return { Analysis: () => null };
+    // The body measurement page (#35) is covered by body-ui.test.ts.
+    if (name === './body') return { BodyMeasurements: () => null };
     // Routine goals (#28) are hook-free helpers and views; load the real module.
     if (name === './date' || name === './rest-timer' || name === './progress') {
       if (!modules.has(name)) {

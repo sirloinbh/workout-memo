@@ -4,7 +4,6 @@ import path from 'node:path';
 import vm from 'node:vm';
 import test from 'node:test';
 import { checkEvidence } from '../agents/optimization.mjs';
-import { renderPrDecisions, safeMarkdown } from '../agents/conversation.mjs';
 
 // Execute the actual CLI publication entry point with fake IO. No GitHub,
 // filesystem publication or model call is performed by these recovery tests.
@@ -73,9 +72,6 @@ for (const stage of ['delivery', 'ci']) {
         repo: 'fixture/repo',
         jobDir: () => '/fixture/job',
         path,
-        // #43 renders PR text through the real escaping/decision helpers.
-        safeMarkdown,
-        renderPrDecisions,
         fs: { writeFileSync: () => calls.push('write-body') },
       });
       if (change === 'command-fails') {

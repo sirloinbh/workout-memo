@@ -69,3 +69,23 @@ test('운동 일지를 브라우저에서 생성·조회·수정·삭제하고 D
   await expect(row(page)).toHaveCount(0);
   await expect(stat(page, '누적 볼륨')).toHaveText('0kg');
 });
+
+test('페이지 주소는 새로고침과 뒤로 가기에서 유지된다', async ({ page }) => {
+  await page.goto('/');
+  const menu = page.getByRole('navigation', { name: '주요 메뉴' });
+  await menu.getByRole('link', { name: '나의 목표' }).click();
+  await expect(page).toHaveURL(/\/goals$/);
+  await page.reload();
+  await expect(menu.getByRole('link', { name: '나의 목표' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await menu.getByRole('link', { name: '루틴짜기' }).click();
+  await expect(page).toHaveURL(/\/routines$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/goals$/);
+  await expect(menu.getByRole('link', { name: '나의 목표' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+});

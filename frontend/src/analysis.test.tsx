@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 import { analyze, type AnalysisSet } from '../../backend/src/analysis';
 import { App } from './app';
 import { fixClock, mockApi } from './test/api';
+import { openPage } from './test/nav';
 
 // Ported from backend/test/analysis-ui.test.ts (vm hook harness) to a real DOM. The
 // in-memory API reuses the real server-side analysis function on fixed rows.
@@ -89,7 +90,7 @@ const row = (
 
 test('empty analysis shows Monday-start week totals, 미분류 and the 1RM policy', async () => {
   const ui = mount();
-  await ui.user.click(screen.getByRole('button', { name: '종목 분석' }));
+  await openPage('종목 분석', ui.user);
   await loaded();
   expect(ui.analysisRequests()).toEqual(['/api/analysis?from=2026-10-12&to=2026-10-18']);
   expect(page()).toMatch(/분석할 기록이 없습니다/);
@@ -104,7 +105,7 @@ test('empty analysis shows Monday-start week totals, 미분류 and the 1RM polic
 
 test('4 and 12 week tabs request Monday-aligned ranges ending with the anchor week', async () => {
   const ui = mount();
-  await ui.user.click(screen.getByRole('button', { name: '종목 분석' }));
+  await openPage('종목 분석', ui.user);
   await loaded();
   await ui.user.click(screen.getByRole('button', { name: '4주' }));
   await ui.user.click(screen.getByRole('button', { name: '12주' }));
@@ -128,7 +129,7 @@ test('PRs show ties, exclusions and trends; mapping and journal changes recomput
     row('2026-10-14', 'Row', 80, 8),
     row('2026-10-16', 'Bench Press', 300, 1),
   ]);
-  await ui.user.click(screen.getByRole('button', { name: '종목 분석' }));
+  await openPage('종목 분석', ui.user);
   await loaded();
   const bench = exercise('Bench Press');
   const text = bench.textContent;
@@ -161,8 +162,8 @@ test('PRs show ties, exclusions and trends; mapping and journal changes recomput
   ui.server.rows = ui.server.rows
     .filter((r) => r.date !== '2026-10-12')
     .map((r) => (r.exercise === 'Row' ? { ...r, weight: 90 } : r));
-  await ui.user.click(screen.getByRole('button', { name: '운동 일지' }));
-  await ui.user.click(screen.getByRole('button', { name: '종목 분석' }));
+  await openPage('운동 일지', ui.user);
+  await openPage('종목 분석', ui.user);
   await loaded();
   const updated = exercise('Bench Press').textContent;
   // The former tie is gone.

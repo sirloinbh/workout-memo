@@ -7,6 +7,11 @@
 # forward-only; restoring data from the pre-deploy dump is a separate, manual step.
 set -euo pipefail
 cd /opt/workout-memo
+# One deploy at a time: the autodeploy timer (#75) holds this lock and sets the flag.
+if [ -z "${WORKOUT_DEPLOY_LOCKED:-}" ]; then
+  exec 9> /run/lock/workout-deploy.lock
+  flock -w 1800 9 || { echo "another deploy is running" >&2; exit 4; }
+fi
 
 health() {
   for _ in $(seq 1 30); do
@@ -54,6 +59,8 @@ case "${1:-}" in
       docker image ls "$image" --format '{{.Tag}}' | { grep -vxE "$keep" || true; } |
         xargs -r -I{} docker image rm "$image:{}" > /dev/null
     done
+    # Repeated deploys must not grow the disk (and so the snapshot size) without bound.
+    docker builder prune -f --filter until=168h > /dev/null
     echo "deployed $tag"
     ;;
   rollback)
@@ -63,6 +70,9 @@ case "${1:-}" in
     health
     echo "$current" > .previous
     echo "$previous" > .deployed
+    # Keep the autodeploy timer (#75) from redeploying the same main commit right away;
+    # it resumes with the next commit on main.
+    git rev-parse --short=12 origin/main > .autodeploy-failed
     echo "rolled back to $previous"
     ;;
   *)

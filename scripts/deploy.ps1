@@ -19,9 +19,11 @@ $action = if ($Rollback) { 'rollback' } else { "deploy $Ref" }
 $remote = '(cloud-init status --wait > /dev/null || true) && ' +
   'test -x /usr/local/bin/workout-backup || { echo "server setup incomplete: see /var/log/cloud-init-output.log" >&2; exit 3; }; ' +
   'cd /opt/workout-memo && ' +
-  'git fetch --quiet --tags origin && git checkout --quiet --detach ' +
+  # The checkout happens under the shared lock so a running autodeploy (#75) is never
+  # disturbed; remote-deploy.sh is told the lock is already held.
+  "flock -w 1800 /run/lock/workout-deploy.lock bash -c 'git fetch --quiet --tags origin && git checkout --quiet --detach " +
   $(if ($Rollback) { 'HEAD' } else { $Ref }) +
-  " && bash deploy/remote-deploy.sh $action"
+  " && WORKOUT_DEPLOY_LOCKED=1 bash deploy/remote-deploy.sh $action'"
 # ssh writes progress and host-key notices to stderr; Windows PowerShell 5.1 would turn
 # them into terminating errors under 'Stop', so only the exit code decides failure.
 $ErrorActionPreference = 'Continue'

@@ -903,17 +903,23 @@ div.official-ref p {
     width: 29px;
     height: 29px;
   }
+  /* #71: eight links in one row needed ~404px and pushed the page to 424px at 390px.
+     Two rows of four fit any phone width; the icon sits above the label. */
   nav {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     margin-top: 15px;
     gap: 4px;
   }
   nav a {
+    flex-direction: column;
     justify-content: center;
-    padding: 10px 7px;
+    min-width: 0;
+    padding: 8px 4px;
     font-size: 10px;
-    gap: 5px;
-    flex: 1;
+    line-height: 1.25;
+    text-align: center;
+    gap: 4px;
   }
   .nav-dot,
   .workspace-label,
@@ -952,6 +958,10 @@ div.official-ref p {
   }
   .tabs button {
     padding: 7px 12px;
+  }
+  /* #71: on narrow phones (e.g. 320px) the date control moves under the period tabs. */
+  .period-bar {
+    flex-wrap: wrap;
   }
   .date-control {
     gap: 0;

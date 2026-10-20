@@ -16,6 +16,9 @@ description: Write or update behavior-focused tests with workout-memo implementa
 - 업무 로직은 단위, API·DB 저장·트랜잭션은 통합, 화면 입력·저장 흐름은 컴포넌트 또는 브라우저 테스트를 선택한다. 모든 변경에 모든 종류를 추가하지 않는다.
 - 현재 도구: 백엔드 단위·DB 통합은 node:test(`backend/test`), 화면 컴포넌트는 Vitest·jsdom·React Testing Library(`frontend/src/*.test.tsx`), 실제 브라우저 흐름은 Playwright(`e2e/`, `npm run test:e2e`)다. 화면 테스트는 내부 hook이 아니라 사용자에게 보이는 역할·라벨·텍스트로 검증한다. 날짜는 `frontend/src/test/api.ts`의 `fixClock`으로 고정하고 API는 `mockApi`로 대체한다.
 - 현재 설치된 테스트 도구와 명령을 확인한다. 설치하지 않은 도구를 사용했다고 보고하지 않는다.
+- 화면 흐름·주소·실제 DB 저장이 바뀌면 `e2e/`의 Playwright 시나리오를 추가하거나 갱신한다. 테스트 DB(`E2E_DATABASE_URL`)로 `npm run test:e2e`를 실행하고, 개인 DB는 쓰지 않는다.
+- 모양을 바꾸지 않아야 하는 화면 변경(토큰화·컴포넌트 추출·CSS 도구 도입)은 실제 Chrome에서 전후 픽셀 비교로 확인한다. 기준을 두 번 찍어 차이가 0인지 먼저 확인한 뒤 비교하고, 비교한 장수와 차이 픽셀을 기록한다. 절차는 workout-foundation의 [검증된 반복 절차](../workout-foundation/references/procedures.md)를 따른다.
+- 목업 API가 실제 서버라면 거부할 입력을 받아주고 있으면, 목업이 아니라 테스트 데이터를 실제 계약(`shared/contract.ts`)에 맞춘다.
 - 테스트 데이터는 운영·사용자 데이터와 분리한다. 시간·날짜·무작위 값에 의존하는 검사는 실행 환경이 바뀌어도 같은 의미를 검증하도록 작성한다.
 
 ## 커밋 전

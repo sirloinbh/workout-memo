@@ -28,6 +28,13 @@ Get-Content -Raw -Encoding UTF8 database/migrations/007_exercise_body_parts.sql 
 Get-Content -Raw -Encoding UTF8 database/migrations/002_set_notes.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
 ```
 
+신체 기록 API를 사용하기 전에는 `008_body_measurements.sql`도 적용하세요. 재실행해도 안전합니다(`CREATE TABLE IF NOT EXISTS`).
+`body_measurements`는 날짜(`date`, UNIQUE)마다 한 행이며 `body_weight_kg`·`skeletal_muscle_kg`(kg, 0 초과)와 `body_fat_percent`(%, 0~100)를 `NUMERIC(5,2)`로 저장합니다. 측정하지 않은 값은 NULL이며 세 값이 모두 NULL인 행은 CHECK 제약으로 거부합니다. API는 소수점 셋째 자리 이상의 입력을 반올림하지 않고 400으로 거부합니다. 같은 날짜의 생성 요청은 409이며 수정(PUT)으로 바꿉니다. 운동 일지와 외래키로 연결하지 않으므로 일지 삭제가 신체 기록에 영향을 주지 않습니다.
+
+```powershell
+Get-Content -Raw -Encoding UTF8 database/migrations/008_body_measurements.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+```
+
 위 명령은 기본 DB 사용자·이름 기준이며 별도로 설정했다면 해당 이름으로 바꾸세요.
 
 일지 초안·안전한 재시도 API 실행 전에는 `003_workout_retries.sql`도 적용하세요.

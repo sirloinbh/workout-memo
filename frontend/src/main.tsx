@@ -14,11 +14,13 @@ import {
   Trash2,
   ArrowRight,
   Activity,
+  Scale,
   Trophy,
 } from 'lucide-react';
 import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
+import { BodyMeasurements } from './body';
 import { Analysis } from './analysis';
 import { RoutineProgress, routineDraft, setReference, type Progress } from './progress';
 import {
@@ -447,6 +449,7 @@ function App() {
     ['goals', '나의 목표', Target],
     ['analysis', '종목 분석', Trophy],
     ['routines', '루틴짜기', NotebookPen],
+    ['body', '신체 기록', Scale],
     ['machines', '머신 라이브러리', Dumbbell],
   ] as const;
   function move(dir: number) {
@@ -461,6 +464,47 @@ function App() {
       );
     setAnchor(iso(d));
   }
+  // #17 period selection, shared by the dashboard, journal and body measurements.
+  const periodControls = (
+    <>
+      <div className="period-bar">
+        <div className="tabs">
+          {[
+            ['day', '1일'],
+            ['week', '1주'],
+            ['month', '1달'],
+            ['4weeks', '4주'],
+            ['12weeks', '12주'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setPeriod(key)}
+              className={period === key ? 'selected' : ''}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="date-control">
+          <button aria-label="이전 기간" onClick={() => move(-1)}>
+            <ChevronLeft size={17} />
+          </button>
+          <input
+            aria-label="기준 날짜"
+            type="date"
+            value={anchor}
+            onChange={(e) => e.target.value && setAnchor(e.target.value)}
+          />
+          <button aria-label="다음 기간" onClick={() => move(1)}>
+            <ChevronRight size={17} />
+          </button>
+        </div>
+      </div>
+      <div className="range-label">
+        {from} — {to} <span>선택한 기간의 기록</span>
+      </div>
+    </>
+  );
   const timerPanel = (
     <section className="rest-timer" aria-label="휴식 타이머">
       <strong role="timer" aria-live="polite" className={timerEnded ? 'ended' : ''}>
@@ -598,8 +642,11 @@ function App() {
         </header>
         <div className="content">
           {page === 'routines' && <Routines />}
+          {page === 'body' && (
+            <BodyMeasurements from={from} to={to} workouts={workouts} controls={periodControls} />
+          )}
           {page === 'analysis' && <Analysis />}
-          {page !== 'routines' && page !== 'analysis' && (
+          {page !== 'routines' && page !== 'body' && page !== 'analysis' && (
             <div className="page-heading">
               <div>
                 <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>
@@ -691,42 +738,7 @@ function App() {
           {!editor && timer.state !== 'idle' && timerPanel}
           {(page === 'overview' || page === 'journal') && (
             <>
-              <div className="period-bar">
-                <div className="tabs">
-                  {[
-                    ['day', '1일'],
-                    ['week', '1주'],
-                    ['month', '1달'],
-                    ['4weeks', '4주'],
-                    ['12weeks', '12주'],
-                  ].map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => setPeriod(key)}
-                      className={period === key ? 'selected' : ''}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="date-control">
-                  <button aria-label="이전 기간" onClick={() => move(-1)}>
-                    <ChevronLeft size={17} />
-                  </button>
-                  <input
-                    aria-label="기준 날짜"
-                    type="date"
-                    value={anchor}
-                    onChange={(e) => e.target.value && setAnchor(e.target.value)}
-                  />
-                  <button aria-label="다음 기간" onClick={() => move(1)}>
-                    <ChevronRight size={17} />
-                  </button>
-                </div>
-              </div>
-              <div className="range-label">
-                {from} — {to} <span>선택한 기간의 기록</span>
-              </div>
+              {periodControls}
               <div className="stats">
                 <Stat
                   label="운동한 날"

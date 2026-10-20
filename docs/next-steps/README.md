@@ -23,7 +23,6 @@
 - 신체 기록·루틴 폼에 공유 계약 화면 검증을 적용한다(#64 후속).
 - 페이지 본문 버튼·입력을 `components/ui`로 옮기고, 1회성 장식 색을 토큰화한다. Preflight 도입은 전체 화면 비교와 함께 별도로 진행한다(#66 후속).
 - OpenAPI 응답 스키마: 응답 Zod 스키마를 먼저 정의해야 한다(#68 후속).
-- [#43](https://github.com/sirloinbh/workout-memo/issues/43) 워커 알림·판단: 실제 Codex 채팅 전송은 미연결 상태다. 워커 실행 중 respond 잠금 분리(P2)와 blocked 알림 중복 제거(P3)가 남아 있다.
 - [#20](https://github.com/sirloinbh/workout-memo/issues/20)은 MVP 종합 카드다. 개별 기능의 병합 상태로 집계한다.
 
 ## 실행 경계

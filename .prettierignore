@@ -10,3 +10,5 @@ infrastructure/.terraform/
 backups/
 .bkit/
 .playwright-mcp/
+test-results/
+playwright-report/

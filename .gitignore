@@ -9,3 +9,5 @@ backups/
 .local/
 .bkit/
 .playwright-mcp/
+test-results/
+playwright-report/

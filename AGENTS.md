@@ -41,7 +41,8 @@
 ## 검증 명령
 
 - 현재 전체 빌드·테스트: `npm run check`.
-- 단위 테스트: `npm test`.
+- 단위 테스트: `npm test`. 백엔드는 node:test(`backend/test`), 화면은 Vitest·jsdom·React Testing Library(`frontend/src/*.test.tsx`, `npm run test -w frontend`)로 실행한다.
+- 브라우저 검증: `npm run test:e2e`(Playwright, 설치된 Chrome 사용). `db:migrate`로 준비한 테스트 DB를 `E2E_DATABASE_URL`(없으면 `TEST_DATABASE_URL`)로 지정한다. API 3101·화면 5174 포트를 띄우며 개인 DB를 지정하지 않는다. CI의 `e2e` 작업이 PR마다 실행한다.
 - DB 통합 테스트: 전용 테스트 DB를 `DATABASE_URL`로 지정해 `npm run db:migrate`로 스키마를 준비하고, 같은 DB의 `TEST_DATABASE_URL`을 설정해 `npm test`. 환경변수가 없으면 통합 테스트는 건너뛰므로 DB 검증 완료로 보고하지 않는다.
 - DB 스키마 변경: `database/migrations/`에 새 번호 파일을 재실행 안전하게 추가한다. 적용된 파일은 수정하지 않는다. 절차는 [database/README.md](database/README.md)를 따른다.
 - API 라우트 변경: `backend/src/routes/`의 기능 모듈과 [REST API 계약](docs/api.md)을 함께 고친다. `api-contract.test.ts`가 둘의 불일치를 실패로 처리한다.

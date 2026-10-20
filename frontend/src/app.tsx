@@ -22,6 +22,10 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tan
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { fieldErrors, goalSchema, machineSchema, workoutSchema, type GoalInput } from './contract';
+import { Button } from './components/ui/button';
+import { Dialog } from './components/ui/dialog';
+import { FieldError, invalidProps, Input } from './components/ui/field';
+import './theme.css';
 import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
@@ -223,7 +227,6 @@ const dateLabel = (v: string) =>
   });
 const vol = (w: Workout) => w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * s.reps, 0);
 const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
-const issueId = (key: string) => 'issue-' + key.replace(/\./g, '-');
 async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
@@ -301,14 +304,8 @@ function Workspace() {
   const [saveError, setSaveError] = useState('');
   // Per-field messages from the shared contract, keyed like "sets.0.weight" (#64).
   const [issues, setIssues] = useState<Record<string, string>>({});
-  const invalid = (key: string) =>
-    issues[key] ? { 'aria-invalid': true, 'aria-describedby': issueId(key) } : {};
-  const issue = (key: string) =>
-    issues[key] && (
-      <span className="field-error" id={issueId(key)}>
-        {issues[key]}
-      </span>
-    );
+  const invalid = (key: string) => invalidProps(key, issues[key]);
+  const issue = (key: string) => <FieldError name={key}>{issues[key]}</FieldError>;
   const draft = useRef<Draft | null>(initialDraft.draft);
   const workoutSaving = useRef(false);
   const [timer, setTimerState] = useState(readTimer);
@@ -1187,7 +1184,7 @@ function Workspace() {
         </div>
       </main>
       {editor && (
-        <Modal
+        <Dialog
           title={editor.id ? '운동 일지 수정' : '새로운 운동 기록'}
           close={() => {
             setIssues({});
@@ -1468,15 +1465,15 @@ function Workspace() {
                   onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
                 />
               </label>
-              <button className="primary full" disabled={saving}>
+              <Button full disabled={saving}>
                 {saving ? '저장 중…' : '기록 저장하기'}
-              </button>
+              </Button>
             </fieldset>
           </form>
-        </Modal>
+        </Dialog>
       )}
       {goalEditor && (
-        <Modal title="점진적 과부하 목표" close={() => setGoalEditor(false)}>
+        <Dialog title="점진적 과부하 목표" close={() => setGoalEditor(false)}>
           <GoalForm
             deadline={to}
             saving={saving}
@@ -1487,10 +1484,10 @@ function Workspace() {
               )
             }
           />
-        </Modal>
+        </Dialog>
       )}
       {machineEditor && (
-        <Modal
+        <Dialog
           title={machineEditor.id ? '머신 정보 수정' : '머신 등록'}
           close={() => {
             setIssues({});
@@ -1648,11 +1645,11 @@ function Workspace() {
                 onChange={(e) => setMachineEditor({ ...machineEditor, notes: e.target.value })}
               />
             </label>
-            <button className="primary full" disabled={saving}>
+            <Button full disabled={saving}>
               머신 저장하기
-            </button>
+            </Button>
           </form>
-        </Modal>
+        </Dialog>
       )}
     </div>
   );
@@ -1676,21 +1673,15 @@ function GoalForm({
     resolver: zodResolver(goalSchema),
     defaultValues: { exercise: '', target_reps: 10, start_date: today(), deadline },
   });
-  const field = (name: keyof GoalInput) => ({
-    'aria-invalid': errors[name] ? true : undefined,
-    'aria-describedby': errors[name] ? issueId(name) : undefined,
-  });
-  const message = (name: keyof GoalInput) =>
-    errors[name] && (
-      <span className="field-error" id={issueId(name)}>
-        {errors[name]?.message}
-      </span>
-    );
+  const field = (name: keyof GoalInput) => invalidProps(name, errors[name]?.message);
+  const message = (name: keyof GoalInput) => (
+    <FieldError name={name}>{errors[name]?.message}</FieldError>
+  );
   return (
     <form noValidate onSubmit={handleSubmit(onSave)}>
       <label>
         운동명
-        <input
+        <Input
           maxLength={120}
           placeholder="일지와 같은 운동명을 입력하세요"
           {...register('exercise')}
@@ -1701,7 +1692,7 @@ function GoalForm({
       <div className="form-grid">
         <label>
           목표 총중량 (kg)
-          <input
+          <Input
             type="number"
             min="0"
             max="99999"
@@ -1712,7 +1703,7 @@ function GoalForm({
         </label>
         <label>
           목표 반복 수
-          <input
+          <Input
             type="number"
             min="1"
             max="1000"
@@ -1722,11 +1713,11 @@ function GoalForm({
         </label>
         <label>
           시작일
-          <input type="date" {...register('start_date')} {...field('start_date')} />
+          <Input type="date" {...register('start_date')} {...field('start_date')} />
         </label>
         <label>
           종료일
-          <input type="date" {...register('deadline')} {...field('deadline')} />
+          <Input type="date" {...register('deadline')} {...field('deadline')} />
         </label>
       </div>
       {message('target_weight')}
@@ -1736,9 +1727,9 @@ function GoalForm({
       <p className="form-hint">
         기간 안에 한 세트에서 목표 중량 이상, 목표 반복 수 이상을 수행하면 달성 처리됩니다.
       </p>
-      <button className="primary full" disabled={saving}>
+      <Button full disabled={saving}>
         목표 저장하기
-      </button>
+      </Button>
     </form>
   );
 }
@@ -1821,46 +1812,6 @@ function Chart({ workouts, from, to }: { workouts: Workout[]; from: string; to: 
         </div>
         {!workouts.length && <div className="chart-empty">첫 기록부터 그래프가 채워져요</div>}
       </div>
-    </div>
-  );
-}
-function Modal({
-  title,
-  close,
-  children,
-}: {
-  title: string;
-  close: () => void;
-  children: React.ReactNode;
-}) {
-  useEffect(() => {
-    const old = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = old;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [close]);
-  return (
-    <div
-      className="modal-backdrop"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-    >
-      <section className="modal" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="modal-title">
-          <h2>{title}</h2>
-          <button autoFocus className="icon-button" aria-label="닫기" onClick={close}>
-            <X size={21} />
-          </button>
-        </div>
-        {children}
-      </section>
     </div>
   );
 }

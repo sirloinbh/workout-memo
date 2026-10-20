@@ -386,7 +386,10 @@ async function snapshot<T>(pool: Pool, read: (client: PoolClient) => Promise<T>)
 
 const seoulToday = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
-const restoreRequest = z.object({
+export const exportQuery = z
+  .object({ from: date.optional(), to: date.optional() })
+  .refine((v) => !v.from || !v.to || v.from <= v.to, '조회 종료일은 시작일 이후여야 합니다');
+export const restoreRequest = z.object({
   mode: z.enum(['merge', 'replace']).default('merge'),
   confirm: z.string().optional(),
   backup: z.unknown(),
@@ -395,10 +398,7 @@ const restoreRequest = z.object({
 // Registered before the app-wide 256kb JSON parser so a backup may be up to 10MB.
 export function registerBackupRoutes(app: express.Express, pool: Pool) {
   app.get('/api/export/workouts.csv', async (req, res) => {
-    const q = z
-      .object({ from: date.optional(), to: date.optional() })
-      .refine((v) => !v.from || !v.to || v.from <= v.to, '조회 종료일은 시작일 이후여야 합니다')
-      .parse(req.query);
+    const q = exportQuery.parse(req.query);
     const rows = await snapshot(
       pool,
       async (client) =>

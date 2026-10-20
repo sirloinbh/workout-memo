@@ -1,7 +1,16 @@
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path "$PSScriptRoot/../backups" | Out-Null
 $backupPath = Join-Path "$PSScriptRoot/../backups" ("workout-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.sql')
-$dump = & docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-acl'
+# pg_dump writes inside the container and the file is copied byte for byte (#55).
+# Capturing its stdout in Windows PowerShell decodes UTF-8 with the console code page
+# (CP949 on Korean Windows), which corrupted Korean text in the backup file.
+$tmp = '/tmp/workout-backup.sql'
+& docker compose exec -T db sh -c "pg_dump -U `"`$POSTGRES_USER`" -d `"`$POSTGRES_DB`" --no-owner --no-acl -f $tmp"
 if ($LASTEXITCODE -ne 0) { throw 'pg_dump failed' }
-[System.IO.File]::WriteAllText($backupPath, ($dump -join "`n"), [System.Text.UTF8Encoding]::new($false))
+try {
+  & docker compose cp "db:$tmp" $backupPath
+  if ($LASTEXITCODE -ne 0) { throw 'copying the backup out of the container failed' }
+} finally {
+  & docker compose exec -T db rm -f $tmp
+}
 Write-Output "Backup: $backupPath"

@@ -19,7 +19,7 @@
 - 개발 기준 저장소: `sirloinbh/workout-memo`. 코드 원본은 이 우산 모노레포에서 관리한다.
 - 이 저장소의 GitHub 작업은 개인 계정 `sirloinbh`의 `ghp` 또는 `scripts/gh-project.ps1` 프로젝트 래퍼를 사용한다. 기본 회사 계정 `gh`로 원격 변경을 수행하지 않는다. 개인 인증 설정은 `%USERPROFILE%/.config/gh-personal`을 재사용하며, 설치 스크립트 위치 `%LOCALAPPDATA%/gh-workout-memo`와 구분한다.
 - `frontend`, `backend`, `database`, `infrastructure`의 별도 저장소는 subtree 배포 대상이다. 일상적인 PR 작업 중 별도 저장소나 `main`에 직접 푸시하지 않는다. `scripts/push-repositories.ps1`은 별도 동기화 요청 시에만 사용한다.
-- 현재 구현: React + Vite + TypeScript, Express + pg + Zod, PostgreSQL 17, npm workspaces, Docker Compose, GitHub Actions.
+- 현재 구현: React + Vite + TypeScript(React Router 페이지 URL, TanStack Query 서버 조회), Express + pg + Zod, PostgreSQL 17, npm workspaces, Docker Compose, GitHub Actions.
 - 웹 포트: `8088`. 호스트 DB 포트: `55432`. 사용자 요청 없이 `8080`으로 변경하지 않는다.
 - 운동 날짜는 `YYYY-MM-DD`, 서비스 시간대는 `Asia/Seoul`. 중량은 머신 기본중량을 포함한 총중량 kg이다. 확인하지 못한 머신 기본중량은 NULL로 보관한다.
 - 입력 검증과 목표 판정은 서버에서도 수행한다. 일지 및 세트 수정은 트랜잭션으로 처리한다.

@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
 import { App } from './app';
 import { json, mockApi } from './test/api';
+import { openPage } from './test/nav';
 
 // Ported from backend/test/routines-ui.test.ts (vm hook harness) to a real DOM.
 // Like the legacy harness, forms are submitted with fireEvent.submit, which skips
@@ -59,9 +60,8 @@ function mount(failPost = false, failReadAfterPost = false, initialPlan: Plan = 
   const nonGet = () => requests.filter((r) => r.method !== 'GET');
   return { requests, user, text, labels, click, change, submit, form, nonGet };
 }
-type UI = ReturnType<typeof mount>;
-async function openRoutines(ui: UI) {
-  await ui.click('루틴짜기');
+async function openRoutines() {
+  await openPage('루틴짜기');
   await screen.findByRole('button', { name: '새 루틴 만들기' });
 }
 // A save is finished once the form has left its saving state.
@@ -70,7 +70,7 @@ const saveSettled = () =>
 
 test('routine screen re-queries saved plans and displays all 12 manual weeks with distinct deloads', async () => {
   const ui = mount();
-  await openRoutines(ui);
+  await openRoutines();
   expect(ui.requests.some((r) => r.path === '/api/routines' && r.method === 'GET')).toBe(true);
   await waitFor(() => expect(ui.text()).toMatch(/수동 12주 루틴/));
   // The list may show the complete plan or expose a detail button.
@@ -104,7 +104,7 @@ test('routine screen re-queries saved plans and displays all 12 manual weeks wit
   // A fresh mount has no component state and must recover the same server plan.
   cleanup();
   const reopened = mount();
-  await openRoutines(reopened);
+  await openRoutines();
   await waitFor(() => expect(reopened.text()).toMatch(/수동 12주 루틴/));
 });
 
@@ -115,7 +115,7 @@ for (const failRead of [false, true]) {
     expected.name = '새로 작성한 루틴 27';
     expected.weeks[7] = { week: 8, kind: 'deload', amount: 1, deload_metric: 'sets' };
     expected.weeks[11] = { week: 12, kind: 'deload', amount: 3, deload_metric: 'reps' };
-    await openRoutines(ui);
+    await openRoutines();
     await ui.click('새 루틴 만들기');
     // #28 rule change: new routines default to automatic targets; this test covers manual mode.
     await ui.change('주차 목표 방식', 'manual');
@@ -165,7 +165,7 @@ for (const failRead of [false, true]) {
       // Use the actual posted plan, not the default fixture, in a new component session.
       cleanup();
       const reopened = mount(false, false, post!.body as Plan);
-      await openRoutines(reopened);
+      await openRoutines();
       await reopened.click('계획 보기');
       await waitFor(() => expect(reopened.text()).toMatch(/새로 작성한 루틴 27/));
       expect(reopened.requests.some((r) => r.path === '/api/routines/27')).toBe(true);
@@ -181,7 +181,7 @@ for (const failRead of [false, true]) {
 
 test('routine editor exposes all five splits and keeps a failed save available for correction', async () => {
   const ui = mount(true);
-  await openRoutines(ui);
+  await openRoutines();
   await ui.click('새 루틴 만들기');
   for (const n of [1, 2, 3, 4, 5]) {
     await ui.change('분할 방식', String(n));
@@ -207,7 +207,7 @@ test('routine editor exposes all five splits and keeps a failed save available f
 
 test('new routine requires explicit manual amounts and removes only the selected duplicate body part', async () => {
   const ui = mount();
-  await openRoutines(ui);
+  await openRoutines();
   await ui.click('새 루틴 만들기');
   await ui.change('주차 목표 방식', 'manual');
   for (let week = 1; week <= 12; week++) {
@@ -240,7 +240,7 @@ test('new routine requires explicit manual amounts and removes only the selected
 test('new routines default to automatic double progression with a 12-week preview', async () => {
   const expected = autoRoutineInput();
   const ui = mount(false, false, expected as unknown as Plan);
-  await openRoutines(ui);
+  await openRoutines();
   await ui.click('새 루틴 만들기');
   const mode = ui.labels('주차 목표 방식')[0];
   expect(mode, 'the form offers a target mode').toBeTruthy();

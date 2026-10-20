@@ -94,7 +94,9 @@ nav {
   flex-direction: column;
   gap: 8px;
 }
-nav button {
+nav a {
+  display: flex;
+  align-items: center;
   background: none;
   border: 0;
   justify-content: flex-start;
@@ -105,7 +107,7 @@ nav button {
   font-weight: 500;
   gap: 13px;
 }
-nav button.active {
+nav a.active {
   background: #eaf0df;
   color: #30452c;
   font-weight: 700;
@@ -906,7 +908,8 @@ div.official-ref p {
     margin-top: 15px;
     gap: 4px;
   }
-  nav button {
+  nav a {
+    justify-content: center;
     padding: 10px 7px;
     font-size: 10px;
     gap: 5px;

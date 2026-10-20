@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 import { App } from './app';
 import { json, mockApi } from './test/api';
+import { openPage } from './test/nav';
 
 // Ported from backend/test/official-weights-ui.test.ts (vm hook harness) to a real DOM.
 // It checks rendered text and handlers; browser layout and link opening still need
@@ -122,7 +123,7 @@ const texts = (value: string) =>
 test('machine library shows the linked official reference with basis and source, not as base weight', async () => {
   const ui = mount();
   await ui.settle();
-  await ui.user.click(ui.button('머신 라이브러리'));
+  await openPage('머신 라이브러리', ui.user);
   const row = document.querySelector<HTMLElement>('.workout-row')!;
   expect(row).not.toBeNull();
   const rowText = row.textContent;
@@ -148,7 +149,7 @@ test('journal machine select shows the official reference next to the user base 
 test('registering a machine links a reference without filling or changing base weight', async () => {
   const ui = mount();
   await ui.settle();
-  await ui.user.click(ui.button('머신 라이브러리'));
+  await openPage('머신 라이브러리', ui.user);
   await ui.user.click(ui.button('머신 등록'));
   await ui.user.selectOptions(ui.labelled('브랜드', 'select'), '2');
   const select = ui.labelled('공식 참고값', 'select');
@@ -178,7 +179,7 @@ test('registering a machine links a reference without filling or changing base w
 test('unverified references read 공식값 미확인 and changing brand clears a mismatched link', async () => {
   const ui = mount();
   await ui.settle();
-  await ui.user.click(ui.button('머신 라이브러리'));
+  await openPage('머신 라이브러리', ui.user);
   await ui.user.click(ui.button('머신 등록'));
   await ui.user.selectOptions(ui.labelled('브랜드', 'select'), '1');
   await ui.user.selectOptions(ui.labelled('공식 참고값', 'select'), '12');
@@ -200,7 +201,7 @@ test('a reference load failure does not block machines and is reported in the fo
   const ui = mount(true);
   await ui.settle();
   expect(screen.queryAllByRole('alert')).toHaveLength(0);
-  await ui.user.click(ui.button('머신 라이브러리'));
+  await openPage('머신 라이브러리', ui.user);
   expect(document.querySelectorAll('.workout-row')).toHaveLength(1);
   await ui.user.click(ui.button('머신 등록'));
   expect(texts('공식 참고값을 불러오지 못했습니다.').length).toBeGreaterThan(0);
@@ -209,7 +210,7 @@ test('a reference load failure does not block machines and is reported in the fo
 test('Newtech is selectable on register and its references read 공식값 미확인', async () => {
   const ui = mount();
   await ui.settle();
-  await ui.user.click(ui.button('머신 라이브러리'));
+  await openPage('머신 라이브러리', ui.user);
   expect(screen.getAllByRole('button', { name: 'Newtech' }).length).toBeGreaterThan(0);
   await ui.user.click(ui.button('머신 등록'));
   const brandSelect = ui.labelled('브랜드', 'select');

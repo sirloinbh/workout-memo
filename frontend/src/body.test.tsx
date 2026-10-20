@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 import { App } from './app';
 import { json, mockApi } from './test/api';
+import { openPage } from './test/nav';
 
 // Ported from backend/test/body-ui.test.ts (vm hook harness) to a real DOM. Real browser
 // layout, SVG painting, focus and native validation are verified separately.
@@ -176,7 +177,7 @@ const page = () => document.body.textContent ?? '';
 
 async function openWeek() {
   const ui = mount();
-  await ui.click('신체 기록');
+  await openPage('신체 기록');
   await ui.loaded();
   // The period anchor is reused on the body page.
   await ui.setAnchor('2024-03-06');

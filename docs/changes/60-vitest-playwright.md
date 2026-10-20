@@ -100,3 +100,12 @@
 - CI e2e는 ubuntu-latest에 미리 설치된 Google Chrome을 사용한다. 러너 이미지에서 Chrome이 빠지면 별도 설치 단계가 필요하다.
 - 화면 레이아웃·포커스 이동은 이번 e2e 범위가 아니다. 일지 CRUD 흐름만 검증한다.
 - 3단계(React Router·TanStack Query·React Hook Form·디자인 토큰)는 이 테스트를 안전망으로 별도 PR에서 진행한다.
+
+## CI docker-build 수정 — 2026-10-21
+
+- PR 이후 CI의 `docker-build`가 실패했다. 원인은 두 가지였다.
+  - subtree 배포용 `frontend/package-lock.json`에 새 devDependencies가 없어 Docker의 `npm ci`가 실패했다.
+  - Docker 컨텍스트에는 `backend/`와 `@types/node`가 없다. 그런데 빌드 `tsc`가 이를 import하는 테스트 파일과 `vite.config.ts`까지 검사했다.
+- `frontend/package-lock.json`을 임시 디렉터리에서 다시 만들었다(`npm install --package-lock-only --ignore-scripts --before=2026-10-06`). 하위 의존성도 2026-10-06 이전 게시본만 사용했고, 새 install 스크립트는 없다.
+- `frontend/tsconfig.build.json`을 추가했다. 빌드는 앱 소스만 타입 검사하고 테스트·`vite.config.ts`는 제외한다. 전체 타입 검사는 모노레포 `npm run typecheck`가 계속 담당한다.
+- 검증: 로컬 `docker build ./frontend`, `docker build ./backend` 모두 성공.

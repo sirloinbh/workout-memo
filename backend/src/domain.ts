@@ -19,6 +19,16 @@ export const workoutSchema = z.object({
         weight: z.number().min(0).max(99999),
         reps: z.number().int().min(1).max(1000),
         notes: z.string().max(4000).default(''),
+        // Older clients only sent performed sets, so a missing state means completed.
+        completed: z.boolean().default(true),
+        // Optional effort rating; a missing value stays NULL and never becomes 0.
+        rpe: z
+          .number()
+          .min(1, 'RPE는 1~10 사이 0.5 단위로 입력하세요')
+          .max(10, 'RPE는 1~10 사이 0.5 단위로 입력하세요')
+          .refine((v) => Number.isInteger(v * 2), 'RPE는 1~10 사이 0.5 단위로 입력하세요')
+          .nullable()
+          .default(null),
       }),
     )
     .min(1)
@@ -40,12 +50,22 @@ export const goalSchema = z
   })
   .refine((v) => v.deadline >= v.start_date, '목표 종료일을 확인하세요');
 // Weight always means the total moved load, including a machine's base weight.
-export const volume = (sets: { weight: number; reps: number }[]) =>
-  sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
+// Not-completed (planned) sets are not actual performance.
+export const volume = (sets: { weight: number; reps: number; completed?: boolean }[]) =>
+  sets.reduce((sum, s) => (s.completed === false ? sum : sum + s.weight * s.reps), 0);
+
+// The seven routine body parts (#27), also used by the exercise mapping (#32).
+export const bodyParts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'] as const;
+// Same-exercise identity shared by goal judgment and exercise analysis: case and
+// outer spaces are ignored. Evaluated by PostgreSQL so both use one collation.
+export const exerciseKeySql = (column: string) => `lower(trim(${column}))`;
 
 export const routineSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
+    // #28: 'auto' computes weekly targets (double progression). A missing value
+    // is a saved #27 routine with manual weekly changes.
+    progression: z.enum(['manual', 'auto']).optional(),
     start_date: date,
     split_count: z.number().int().min(1).max(5),
     weekly_workouts: z.number().int().min(1).max(7),
@@ -55,8 +75,8 @@ export const routineSchema = z
         z.object({
           name: z.string().trim().min(1).max(120),
           body_parts: z
-            .array(z.enum(['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근']))
-            .min(1)
+            .array(z.enum(bodyParts))
+            .min(1, '분할마다 운동 부위를 1개 이상 선택하세요')
             .max(100),
           exercises: z
             .array(
@@ -65,6 +85,8 @@ export const routineSchema = z
                 sets: z.number().int().min(1).max(200),
                 weight: z.number().min(0).max(99999),
                 reps: z.number().int().min(1).max(1000),
+                rep_min: z.number().int().min(1).max(1000).optional(),
+                rep_max: z.number().int().min(1).max(1000).optional(),
               }),
             )
             .min(1)
@@ -82,7 +104,8 @@ export const routineSchema = z
           deload_metric: z.enum(['weight', 'sets', 'reps']).nullable(),
         }),
       )
-      .length(12),
+      .length(12)
+      .optional(),
   })
   .superRefine((plan, ctx) => {
     const invalid = (message: string) => ctx.addIssue({ code: 'custom', message });
@@ -92,6 +115,18 @@ export const routineSchema = z
       plan.rest_days.length + plan.weekly_workouts !== 7
     )
       invalid('휴식 요일과 주당 운동 횟수를 확인하세요');
+    if (plan.progression === 'auto') {
+      if (plan.weeks) invalid('자동 목표 루틴에는 주차별 변화량을 입력하지 않습니다');
+      for (const split of plan.splits)
+        for (const e of split.exercises)
+          if (e.rep_min === undefined || e.rep_max === undefined || e.rep_min > e.rep_max)
+            invalid('반복 범위(하한 ≤ 상한)를 확인하세요');
+      return;
+    }
+    if (!plan.weeks) {
+      invalid('1~12주차 목표를 입력하세요');
+      return;
+    }
     if (new Set(plan.weeks.map((w) => w.week)).size !== 12)
       invalid('1~12주차를 한 번씩 입력하세요');
     for (const w of plan.weeks) {

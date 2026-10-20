@@ -7,7 +7,7 @@
 
 REST 계약은 사람용 표(`docs/api.md`)와 공유 Zod 계약에만 있었다. 도구가 읽을 수 있는 OpenAPI 문서가 없었다.
 
-## 변경 — 2026-10-21
+## 변경 — 2026-10-20
 
 - `backend/src/openapi.ts`
   - `jsonSchema`: API가 쓰는 Zod v3 형식만 JSON Schema로 바꾼다.

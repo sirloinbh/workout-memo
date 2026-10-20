@@ -1,0 +1,51 @@
+/*
+ * Design tokens and Tailwind CSS (#66).
+ * Preflight is not imported: style.css keeps the existing look and base styles.
+ * Tokens are emitted as CSS variables (`static`) so style.css can use them, and
+ * Tailwind utilities read the same values (e.g. bg-primary, text-danger, rounded-md).
+ * style.css is unlayered, so where a legacy rule and a utility set the same property
+ * the legacy rule wins; new markup should use components/ui or utilities.
+ */
+@layer theme, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme static {
+  /* Brand and actions */
+  --color-primary: #294432;
+  --color-on-primary: #f3f7ec;
+  --color-accent: #98ad67;
+  --color-focus: #a1bd56;
+  /* Text */
+  --color-ink: #32472b;
+  --color-ink-muted: #6c7e5b;
+  --color-ink-subtle: #808b80;
+  --color-link: #788b61;
+  --color-icon: #91a082;
+  /* Surfaces and lines */
+  --color-surface-sidebar: #fcfcfa;
+  --color-surface-modal: #fcfdf9;
+  --color-line: #e3e7dd;
+  --color-line-soft: #e5e8e1;
+  --color-line-input: #dce3d2;
+  --color-backdrop: #14291dc0;
+  /* Navigation */
+  --color-nav-active: #eaf0df;
+  --color-nav-active-ink: #30452c;
+  /* Secondary buttons */
+  --color-subtle: #f2f5ec;
+  --color-subtle-line: #e4ebdb;
+  --color-subtle-ink: #637a4b;
+  /* Errors and invalid fields */
+  --color-danger: #b2412e;
+  --color-danger-surface: #fff0e9;
+  --color-danger-line: #ebc9b7;
+  --color-danger-ink: #8e513a;
+  /* Shape */
+  --radius-sm: 5px;
+  --radius-md: 6px;
+  --radius-lg: 9px;
+  --radius-xl: 12px;
+  --shadow-card: 0 1px 3px #27351b12;
+  --shadow-modal: 0 20px 80px #0003;
+}

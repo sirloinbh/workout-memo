@@ -55,7 +55,7 @@ jobs:
       - run: terraform fmt -check
       - run: terraform init -backend=false -input=false
       - run: terraform validate
-      - run: bash -n user-data.sh && bash -n ../deploy/remote-deploy.sh
+      - run: bash -n user-data.sh && for f in ../deploy/*.sh; do bash -n "$f"; done
 
   docker-build:
     runs-on: ubuntu-latest

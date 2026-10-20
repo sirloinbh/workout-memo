@@ -46,10 +46,11 @@ case "${1:-}" in
     fi
     if [ -n "$current" ] && [ "$current" != "$tag" ]; then echo "$current" > .previous; fi
     echo "$tag" > .deployed
-    # Keep only the current and previous images.
+    # Keep only the current and previous images. grep exits 1 when nothing is left to
+    # remove, which must not fail an otherwise successful deploy under pipefail.
     keep="$tag|$(cat .previous 2>/dev/null || echo none)"
     for image in workout-backend workout-frontend; do
-      docker image ls "$image" --format '{{.Tag}}' | grep -vxE "$keep" |
+      docker image ls "$image" --format '{{.Tag}}' | { grep -vxE "$keep" || true; } |
         xargs -r -I{} docker image rm "$image:{}" > /dev/null
     done
     echo "deployed $tag"

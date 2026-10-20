@@ -228,7 +228,7 @@ test(
       });
       assert.equal(preview.data.tables.machines.added, 2);
       assert.equal(preview.data.tables.brands.added, 0, 'Seeded brands are matched by name');
-      assert.equal(preview.data.tables.brands.skipped, 4);
+      assert.equal(preview.data.tables.brands.skipped, backup.data.brands.length);
       assert.equal(preview.data.tables.goals.added, 1);
       assert.equal(preview.data.tables.routines.added, 1);
       assert.equal(preview.data.dry_run, true);
@@ -342,7 +342,7 @@ test(
       assert.equal(preview.status, 200, 'Preview needs no confirmation');
       assert.equal(preview.data.tables.workouts.deleted, 1);
       assert.equal(preview.data.tables.sets.deleted, 1);
-      assert.equal(preview.data.tables.brands.deleted, 4);
+      assert.equal(preview.data.tables.brands.deleted, backup.data.brands.length);
       assert.deepEqual(await target.count(), before);
 
       const replaced = await target.api('/backup/restore', 'POST', {

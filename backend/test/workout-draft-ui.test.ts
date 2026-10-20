@@ -185,6 +185,7 @@ function mount(
       // The routine planner page (#27) has its own UI tests; drafts never render it.
       if (name === './routines') return { Routines: () => null };
       if (name === './backup') return { Backup: () => null };
+      if (name === './body') return { BodyMeasurements: () => null };
       // The exercise analysis page (#32) is covered by analysis-ui.test.ts.
       if (name === './analysis') return { Analysis: () => null };
       // Routine goals (#28) are hook-free helpers and views; load the real module.

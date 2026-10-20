@@ -89,3 +89,12 @@
 - `backend/test/workout-draft-ui.test.ts`에 백업·분석 import stub을 함께 유지했고, 최신 main의 세트 완료 UI 테스트도 새 백업 import를 mock하도록 `backend/test/set-completion-ui.test.ts`를 보완했다.
 - 검증: Node 24.21.0 / npm 11.19.0, 전용 테스트 DB(`127.0.0.1:55434/workout_agent_test`)에서 `npm run check` 통과. 포맷·lint·typecheck·build 통과, 앱/DB 테스트 306 pass·0 fail·0 skip, 워커 테스트 162 pass, 스킬 테스트 4 pass. 세트 완료 UI 집중 테스트는 8 pass·0 fail.
 - 충돌 통합 후 별도 실브라우저 재검증은 하지 않았다. 기존 #33의 브라우저 검증 결과는 위에 기록된 범위에 한정한다.
+
+## 병합 이후 최신 main 재통합 — 2026-10-20
+
+- 사용자가 PR #48·#49·#54를 병합한 뒤 최신 `main`이 `1ec8902`로 갱신되어, PR #53에 새 충돌이 생긴 것을 확인했다.
+- `backend/src/app.ts`와 자동 병합된 API·도메인 변경을 보존하고, `backend/test/workout-draft-ui.test.ts`, `frontend/src/main.tsx`, `frontend/src/style.css`의 충돌을 재해결했다.
+- 화면 및 테스트 로더에서 백업·내보내기와 신체 기록, 종목 분석, 루틴을 함께 유지했다. 신체 기록 스타일도 기존 백업 화면 스타일과 함께 보존했다.
+- #54의 `009_official_machine_weights.sql`이 기본 브랜드를 추가한 결과 백업 통합 테스트의 고정 브랜드 개수 기대값 2곳이 실패했다. 삭제·건너뜀 기대값을 백업 payload의 브랜드 수에 연결해 새 기본 브랜드를 포함하는 회귀를 보강했다.
+- 전용 테스트 DB에 `009_official_machine_weights.sql`을 적용한 뒤 Node 24.21.0 / npm 11.19.0에서 `npm run check`: **EXIT=0**. `format:check`, lint, typecheck, build 통과. 앱·DB 테스트 **339 pass / 0 fail / 0 skip**, 워커 테스트 **212 pass / 0 fail / 0 skip**, 스킬 테스트 **4 pass / 0 fail / 0 skip**.
+- 새 충돌 통합 뒤 실브라우저 검증은 하지 않았다. 기존 브라우저 결과의 범위는 위 기록과 동일하다.

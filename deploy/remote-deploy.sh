@@ -10,7 +10,8 @@ cd /opt/workout-memo
 
 health() {
   for _ in $(seq 1 30); do
-    if curl -fsS http://127.0.0.1/api/health > /dev/null; then return 0; fi
+    # Connection resets while containers start are expected; only the final result matters.
+    if curl -fsS http://127.0.0.1/api/health > /dev/null 2>&1; then return 0; fi
     sleep 2
   done
   return 1

@@ -47,7 +47,7 @@ terraform output                      # static_ip, url, ssh
 ```
 
 - 만들어지는 것: SSH 키 등록, 인스턴스, 고정 IP와 연결, 방화벽(22·80을 허용 IP에만 개방, IPv6 비활성), 월 예산 알림.
-- 첫 부팅 때 `user-data.sh`가 실행됩니다. swap 2GB, Docker·Compose 설치, 저장소 clone, DB 비밀번호 생성(서버 `.env`, 외부로 나가지 않음), 백업 cron을 설정합니다. 몇 분 걸립니다.
+- 첫 부팅 때 `user-data.sh`가 실행됩니다. Lightsail은 user_data를 `/bin/sh`로 실행하므로, 이 파일은 sh 래퍼가 bash 스크립트(`/usr/local/sbin/workout-init`)를 써서 실행하는 구조입니다. swap 2GB, Docker·Compose 설치, 저장소 clone, DB 비밀번호 생성(서버 `.env`, 외부로 나가지 않음), 백업 cron을 설정합니다. 몇 분 걸립니다.
 - Terraform state(`terraform.tfstate`)는 이 PC의 `infrastructure/`에만 있고 git에서 제외됩니다. state를 잃으면 리소스를 Terraform으로 관리할 수 없으므로 안전한 곳에 따로 백업합니다.
 
 ## 3. 앱 배포·롤백

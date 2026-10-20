@@ -63,13 +63,33 @@
 
 `npm run check`: **EXIT=0** (백엔드 279, 프론트 89, 워커 212, 스킬 4 모두 pass, fail·skip 0).
 
-## 아직 하지 않은 것
+## 실제 적용과 서버 검증 — 2026-10-20
 
-- **실제 AWS 적용**(`terraform plan/apply`)과 서버 배포를 하지 않았다. 현재 이 PC의 AWS CLI 프로필(`default`=964952656220, `qesg`=인증 실패)에 배포 계정 327230665171이 없다. 개인 계정 프로필을 설정한 뒤 plan을 사용자에게 확인받고 apply한다.
-- 적용 후 확인할 것
-  - 허용 IP에서 웹·health 응답, 허용하지 않은 IP에서는 접속 차단
-  - 일지 CRUD
-  - cron 백업 파일 생성과 스냅샷 생성
-  - 의도적으로 실패하는 배포에서 자동 복원, 수동 롤백
-- `remote-deploy.sh`의 롤백 분기(health 실패 시 이전 이미지 재시작)는 서버에서만 실행할 수 있다. 로컬에서는 문법만 검사했다.
-- 이 PR은 위 확인이 끝날 때까지 draft로 둔다.
+사용자가 개인 계정 프로필 `workout-personal`을 설정했다. 계정 327230665171임을 `sts get-caller-identity`로 확인한 뒤 진행했다.
+
+- 배포 전용 SSH 키 `~/.ssh/workout-memo-lightsail`을 만들었다(빈 암호 확인). `terraform.tfvars`가 git 제외 대상인 것도 확인했다.
+- `terraform plan`: 생성 7, 변경·삭제 0. 계정 가드를 통과했다. 사용자 확인 후 `terraform apply`로 7개를 모두 생성했다. 고정 IP는 3.38.114.136이다.
+- **첫 배포 실패와 수정**
+  - **user_data**: Lightsail은 자체 명령을 앞에 붙여 user_data를 `/bin/sh`로 실행한다. 그래서 `set -o pipefail`에서 중단됐다(`Illegal option -o pipefail`). 로컬 `bash -n`으로는 잡을 수 없는 문제였다. sh 래퍼가 bash 스크립트를 파일로 쓰고 `bash`로 실행하도록 바꿨다. 같은 렌더 결과를 서버에서 `sudo sh`로 실행해 exit 0을 확인했다. 기존 인스턴스는 `ignore_changes` 덕분에 다시 만들어지지 않았다.
+  - **deploy.ps1**: ssh의 known-hosts 알림(stderr)이 PowerShell 5.1의 `Stop` 설정에서 종료 오류가 됐다. ssh 실행 구간은 종료 코드로만 판단하도록 바꿨다. cloud-init이 `error` 상태로 남아도, 초기화 결과물(`/usr/local/bin/workout-backup`)이 있으면 진행한다.
+  - **remote-deploy.sh**: 지울 이미지가 없을 때 `grep`의 종료 코드 1이 `pipefail` 때문에 실패로 처리됐다. 배포 자체는 health를 통과해 `.deployed`까지 기록된 상태였다. `{ grep … || true; }`로 고쳤다. health 재시도 중 나오는 curl 메시지도 숨겼다.
+- **서버 검증**
+
+| 검사                                           | 결과                                                                                          |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 서버 초기화                                    | Docker 29.1.3, Compose 2.40.3, swap 2GB, `.env` 600 권한, 백업 cron, 시간대 Asia/Seoul        |
+| 방화벽(`get-instance-port-states`)             | 22·80만 `1.215.143.251/32`에 개방, IPv6 규칙 없음, `ipAddressType=ipv4`                       |
+| 자동 스냅샷 add-on                             | Enabled, 18:00 UTC(서울 03:00)                                                                |
+| 첫 배포 `db2385dd8e29`                         | 빈 볼륨 초기화 후 마이그레이션 기준선 9건, health `{"status":"ok"}`                           |
+| 허용 IP(이 PC)에서 접속                        | `/api/health` 200, `/` 200, `/journal` 직접 접근 200                                          |
+| 서버 대상 Playwright(임시 설정, 커밋하지 않음) | **2 passed**: 일지 CRUD와 새로고침·뒤로 가기. 종료 후 일지 0건                                |
+| 수동 백업 `workout-backup`                     | 덤프 생성, exit 0                                                                             |
+| 두 번째 배포 `7be918e12d36`                    | 배포 전 덤프 생성, 마이그레이션 "적용할 것 없음", `.previous=db2385dd8e29`, 이미지 2개만 보관 |
+| 수동 롤백                                      | 다시 빌드하지 않고 `db2385dd8e29`로 전환, health ok, `.deployed`·`.previous` 교체             |
+
+## 아직 확인하지 못한 것
+
+- **허용하지 않은 IP에서의 차단**: 다른 네트워크에서 접속해 보지는 않았다. 방화벽 규칙이 허용 CIDR 하나만 열려 있다는 것을 API로 확인한 것이 근거다.
+- **health 실패 시 자동 복원 분기**: 실패하는 버전을 배포해 보지 않았다. 같은 `start` 함수를 쓰는 수동 롤백은 실제로 확인했다.
+- **매일 03:30 cron 백업과 03:00 자동 스냅샷의 실제 생성**: 첫 실행 시각이 지나야 확인할 수 있다.
+- **배포 대상**: 지금은 미병합 PR이 모두 포함된 `feat/73-lightsail-deploy`다. PR들이 병합되면 `./scripts/deploy.ps1 -Server 3.38.114.136 -Ref origin/main`으로 다시 배포한다.

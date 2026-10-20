@@ -66,9 +66,10 @@ async function openNew(ui: UI) {
   fireEvent.change(document.querySelector('input[maxlength="120"]')!, {
     target: { value: '하체' },
   });
-  fireEvent.change(document.querySelector('input[list="exercise-names"]')!, {
-    target: { value: 'Squat' },
-  });
+  // Every one of the three starting sets needs a name: the shared contract (#64) checks
+  // the whole journal before anything is sent, exactly as the server would.
+  for (const name of document.querySelectorAll('input[list="exercise-names"]'))
+    fireEvent.change(name, { target: { value: 'Squat' } });
   fireEvent.change(document.querySelector('input[step="0.25"]')!, { target: { value: '100' } });
   await loaded();
 }

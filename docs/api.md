@@ -1,6 +1,6 @@
 # REST API 계약
 
-Workout Memo API(`backend`)의 요청·응답 규칙입니다. 서버 입력 검증의 원본은 [domain.ts](../backend/src/domain.ts)의 Zod 스키마이며, 이 문서는 그 의미와 엔드포인트 목록을 정리합니다. 아래 엔드포인트 표는 `backend/test/api-contract.test.ts`가 실제 등록된 Express 라우트와 비교하므로, 라우트를 추가·삭제하면 이 표도 함께 고쳐야 `npm test`가 통과합니다.
+Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·머신·목표·신체 기록의 입력 검증 원본은 [shared/contract.ts](../shared/contract.ts)의 Zod 스키마입니다. 서버(400 응답)와 화면(저장 전 항목별 오류)이 같은 스키마와 한국어 메시지를 사용합니다. 루틴 등 나머지 스키마는 [domain.ts](../backend/src/domain.ts)에 있습니다. 이 문서는 그 의미와 엔드포인트 목록을 정리합니다. 아래 엔드포인트 표는 `backend/test/api-contract.test.ts`가 실제 등록된 Express 라우트와 비교하므로, 라우트를 추가·삭제하면 이 표도 함께 고쳐야 `npm test`가 통과합니다.
 
 ## 공통 규칙
 
@@ -114,9 +114,9 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 서버 입력 검
 
 ## 변경 절차
 
-1. 요청 검증은 `domain.ts`(또는 기능 모듈의 Zod 스키마)에서 먼저 바꾸고, 해당 기능의 단위·DB 통합 테스트를 함께 고칩니다.
+1. 공유 입력 스키마는 `shared/contract.ts`에서 바꾸고 `npm run contract:sync`로 `backend/src/contract.ts`·`frontend/src/contract.ts`에 복제합니다(복제본 직접 수정 금지, `npm run check`가 불일치를 실패 처리). 그 밖의 스키마는 `domain.ts`(또는 기능 모듈)에서 바꾸고, 해당 기능의 단위·DB 통합 테스트를 함께 고칩니다.
 2. 라우트는 `backend/src/routes/<기능>.ts`에 둡니다. 백업 라우트는 별도 요청 크기 한도 때문에 `backup.ts`에서 JSON 파서보다 먼저 등록합니다.
 3. 이 문서의 엔드포인트 표와 해당 요청 규칙을 갱신합니다. 표가 실제 라우트와 다르면 `api-contract.test.ts`가 실패합니다.
 4. 기존 클라이언트를 깨는 변경(필드 삭제, 의미 변경)은 이슈에 영향과 이전 방법을 적은 뒤 진행합니다.
 
-OpenAPI 문서 생성과 프론트엔드·백엔드 공유 Zod 계약 패키지는 아직 도입하지 않았습니다(로드맵 #3 후속).
+프론트엔드·백엔드 공유 Zod 계약은 #64에서 복제 방식으로 도입했습니다. 각 영역이 Docker와 subtree 저장소에서 따로 빌드되므로 workspace 패키지 대신 복제본을 둡니다.

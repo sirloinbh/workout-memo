@@ -1370,3 +1370,15 @@ fieldset.workout-fields {
     grid-column: 2 / -1;
   }
 }
+/* #64: per-field messages from the shared input contract. */
+.field-error {
+  display: block;
+  grid-column: 1 / -1;
+  color: #b2412e;
+  font-size: 12px;
+  font-weight: 600;
+  margin: -4px 0 6px;
+}
+[aria-invalid='true'] {
+  border-color: #b2412e;
+}

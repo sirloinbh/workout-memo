@@ -76,7 +76,7 @@ http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세�
 
 `docker compose logs --tail 100 api`로 오류 확인, `./scripts/backup.ps1`로 SQL 백업. 앱의 `백업·내보내기` 화면은 분석용 CSV와 앱 복원용 JSON 백업(검증·미리보기·전체 취소 복원)을 제공합니다. 형식과 정책은 `database/README.md`를 참고하세요. SQL 백업은 DB 전체 복구, JSON 백업은 앱 기록 이전·복원용으로 역할이 다릅니다. 백업은 PC 외부의 별도 안전한 저장소에도 보관하고 정기적으로 복원 확인을 하세요. AWS 초안·비용 관리는 `infrastructure/README.md`를 참고하세요. 자동 운영 배포는 아직 연결되지 않았습니다.
 
-실제 AWS 배포에는 계정, 실행 환경, 도메인, 비용 한도 결정이 필요합니다. 이 앱의 포트는 localhost에만 바인딩됩니다.
+운영 배포는 개인 AWS 계정의 Lightsail 서버 한 대(월 약 $7~8, $10 예산 알림)에서 허용한 IP만 접속하도록 구성합니다. 준비·적용·배포·롤백·백업·복원 절차는 [배포·운영 문서](docs/deployment.md)를 따릅니다. 로컬 실행 시 포트는 계속 localhost에만 바인딩됩니다.
 
 개인용 앱 8개의 공유 서버·DB 운영 대안과 가정별 월 예산은 [공유 호스팅 비용 문서](docs/shared-hosting-costs.md)를 참고하세요.
 

@@ -45,6 +45,18 @@ jobs:
         if: failure()
         with: { name: playwright-report, path: playwright-report, retention-days: 7 }
 
+  # Lightsail deployment code (#73): format and provider schema validation, no AWS access.
+  terraform:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: infrastructure } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
+      - run: bash -n user-data.sh && bash -n ../deploy/remote-deploy.sh
+
   docker-build:
     runs-on: ubuntu-latest
     steps:

@@ -8,20 +8,22 @@
   "scripts": {
     "dev": "concurrently -k \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "build": "npm run build -w frontend && npm run build -w backend",
-    "test": "npm run test -w backend",
+    "test": "npm run test -w backend && npm run test -w frontend",
     "db:migrate": "npm run db:migrate -w backend --",
     "test:agents": "node --test scripts/test/agent-workflow.test.mjs scripts/test/agent-runtime.test.mjs scripts/test/agent-models.test.mjs scripts/test/agent-review-regressions.test.mjs scripts/test/agent-optimization.test.mjs scripts/test/agent-process-output.test.mjs scripts/test/agent-npm.test.mjs scripts/test/agent-preflight-handoff.test.mjs scripts/test/agent-recovery.test.mjs scripts/test/agent-publication-resume.test.mjs scripts/test/agent-conversation-cli.test.mjs",
     "test:skills": "node --test scripts/test/claude-skills.test.mjs",
+    "test:e2e": "playwright test",
     "skills:sync": "node scripts/claude-skills.mjs sync",
     "skills:check": "node scripts/claude-skills.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:agents && npm run test:skills && npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "npm run typecheck --workspaces"
+    "typecheck": "npm run typecheck --workspaces && tsc -p e2e/tsconfig.json"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
     "concurrently": "^9.2.0",
     "eslint": "10.12.0",
     "eslint-config-prettier": "10.1.8",

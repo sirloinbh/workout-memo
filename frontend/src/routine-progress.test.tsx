@@ -6,6 +6,7 @@ import { routineProgress } from '../../backend/src/progress';
 import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
 import { App } from './app';
 import { deferred, json, mockApi } from './test/api';
+import { openPage } from './test/nav';
 
 // Ported from backend/test/routine-progress-ui.test.ts (vm hook harness) to a real
 // DOM. The server is simulated with the real progress functions so previews match
@@ -101,8 +102,8 @@ type UI = ReturnType<typeof mount>;
 const card = () => document.querySelector('[aria-label="루틴 목표"]');
 const progressLoads = (ui: UI) =>
   ui.requests.filter((r) => r.path === '/api/routine-progress').length;
-async function openJournal(ui: UI) {
-  await ui.click('운동 일지');
+async function openJournal() {
+  await openPage('운동 일지');
   // Wait until the routine goals are loaded (no loading status inside the card).
   await waitFor(() => expect(card()?.textContent).not.toMatch(/루틴 목표를 불러오는 중/));
 }
@@ -113,7 +114,7 @@ const weekRows = () =>
 
 test('journal shows per-exercise targets for today, this week and all 12 weeks', async () => {
   const ui = mount();
-  await openJournal(ui);
+  await openJournal();
   expect(card(), 'routine goals card is on the journal page').toBeTruthy();
   const content = ui.text(card()!);
   expect(content).toMatch(/오늘 목표 · 2024-03-04/);
@@ -137,10 +138,10 @@ test('journal shows per-exercise targets for today, this week and all 12 weeks',
 
 test('returning to the journal reloads routine goals so a routine saved elsewhere appears', async () => {
   const ui = mount();
-  await openJournal(ui);
+  await openJournal();
   const before = progressLoads(ui);
-  await ui.click('대시보드');
-  await ui.click('운동 일지');
+  await openPage('대시보드');
+  await openPage('운동 일지');
   await waitFor(() =>
     expect(progressLoads(ui), 'switching pages fetches the active routine again').toBeGreaterThan(
       before,
@@ -150,14 +151,14 @@ test('returning to the journal reloads routine goals so a routine saved elsewher
 
 test('without a started routine the journal shows guidance to create one', async () => {
   const ui = mount({ routine: false });
-  await openJournal(ui);
+  await openJournal();
   expect(ui.text()).toMatch(/진행 중인 루틴이 없습니다\. 루틴짜기에서/);
   expect(screen.queryAllByRole('button', { name: '오늘 루틴으로 기록하기' })).toHaveLength(0);
 });
 
 test('prefilled routine draft saves unchanged values with one confirm', async () => {
   const ui = mount();
-  await openJournal(ui);
+  await openJournal();
   await ui.click('오늘 루틴으로 기록하기');
   const rows = ui.setRows();
   expect(rows, 'one row per planned set: 3 squat + 2 lunge').toHaveLength(5);
@@ -210,7 +211,7 @@ test('prefilled routine draft saves unchanged values with one confirm', async ()
 
 test('prefilled draft lets the user edit reps and add a non-routine exercise', async () => {
   const ui = mount();
-  await openJournal(ui);
+  await openJournal();
   await ui.click('오늘 루틴으로 기록하기');
   ui.change(ui.setRows()[2], '횟수', '8');
   await ui.click('다른 운동 추가');
@@ -243,7 +244,7 @@ test('prefilled draft lets the user edit reps and add a non-routine exercise', a
 
 test('rest shows the preview first, applies once on rapid clicks and can be cancelled today', async () => {
   const ui = mount();
-  await openJournal(ui);
+  await openJournal();
   await ui.click('오늘 하루 휴식하기');
   const preview = document.querySelector('[aria-label="휴식 전 확인"]');
   expect(preview, 'preview is shown before any change').toBeTruthy();
@@ -280,7 +281,7 @@ test('rest shows the preview first, applies once on rapid clicks and can be canc
 test('auto routine targets show firm values today and label future sessions as projected', async () => {
   // Auto fixture starts Monday 2024-03-04, so today is its first session.
   const ui = mount({ plan: routineSchema.parse(autoRoutineInput()) as RoutinePlan });
-  await openJournal(ui);
+  await openJournal();
   const content = ui.text(card()!);
   expect(content).toMatch(/자동 목표/);
   expect(content, "today's session label").toMatch(/1주차 1번째 · 전신/);

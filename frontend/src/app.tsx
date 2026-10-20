@@ -17,6 +17,8 @@ import {
   Scale,
   Trophy,
 } from 'lucide-react';
+import { BrowserRouter, NavLink, useLocation, useNavigate } from 'react-router';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
@@ -235,18 +237,55 @@ async function api<T>(path: string, method = 'GET', body?: unknown, key?: string
     clearTimeout(timer);
   }
 }
+// #62: every page has its own URL, so refresh, links and back navigation keep it.
+const pages = {
+  overview: '/',
+  journal: '/journal',
+  goals: '/goals',
+  analysis: '/analysis',
+  routines: '/routines',
+  body: '/body',
+  machines: '/machines',
+  backup: '/backup',
+} as const;
+type Page = keyof typeof pages;
+const pageOf = (path: string) =>
+  (Object.keys(pages) as Page[]).find((key) => pages[key] === path.replace(/(.)\/$/, '$1'));
+
 export function App() {
-  const [page, setPage] = useState('overview'),
-    [period, setPeriod] = useState('week'),
+  // One client per mounted app keeps browser tabs and tests independent. Retries and
+  // focus refetches stay off: failures are shown with an explicit reconnect button.
+  const [client] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false },
+        },
+      }),
+  );
+  return (
+    <QueryClientProvider client={client}>
+      <BrowserRouter>
+        <Workspace />
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+
+function Workspace() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const page: Page = pageOf(location.pathname) ?? 'overview';
+  const setPage = (next: Page) => void navigate(pages[next]);
+  useEffect(() => {
+    // An unknown address falls back to the dashboard instead of an empty screen.
+    if (!pageOf(location.pathname)) void navigate(pages.overview, { replace: true });
+  }, [location.pathname, navigate]);
+  const queryClient = useQueryClient();
+  const [period, setPeriod] = useState('week'),
     [anchor, setAnchor] = useState(today()),
-    [workouts, setWorkouts] = useState<Workout[]>([]),
-    [goals, setGoals] = useState<Goal[]>([]),
-    [machines, setMachines] = useState<Machine[]>([]),
-    [brands, setBrands] = useState<{ id: number; name: string }[]>([]),
-    [officialWeights, setOfficialWeights] = useState<OfficialWeight[] | null>([]),
     [brand, setBrand] = useState(0),
-    [error, setError] = useState(''),
-    [loading, setLoading] = useState(true),
+    [actionError, setError] = useState(''),
     [saving, setSaving] = useState(false),
     [editor, updateEditor] = useState<Partial<Workout> | null>(null),
     [goalEditor, setGoalEditor] = useState(false),
@@ -394,7 +433,7 @@ export function App() {
       updateEditor(null);
       setSaveState('서버 저장 완료');
       void loadProgress();
-      await latestRefresh.current();
+      await refreshAll();
     } catch (e) {
       setSaveState('저장 실패 · 서버 저장 여부 미확인');
       setSaveError(
@@ -423,45 +462,51 @@ export function App() {
     return { from: iso(start), to: iso(end) };
   };
   const { from, to } = range();
-  const refreshVersion = useRef(0);
-  const refresh = useCallback(async () => {
-    const version = ++refreshVersion.current;
-    setLoading(true);
-    try {
-      const [w, g, m, b, o] = await Promise.all([
-        api<Workout[]>(`/workouts?from=${from}&to=${to}`),
-        api<Goal[]>('/goals'),
-        api<Machine[]>('/machines'),
-        api<{ id: number; name: string }[]>('/brands'),
-        // Reference data is optional: its failure must not block journal data.
-        api<OfficialWeight[]>('/official-machine-weights').catch(() => null),
-      ]);
-      // Only the newest refresh may update data, errors, or loading state.
-      if (version !== refreshVersion.current) return;
-      setWorkouts(w);
-      setGoals(g);
-      setMachines(m);
-      setBrands(b);
-      setOfficialWeights(o);
-      setError('');
-    } catch (e) {
-      if (version === refreshVersion.current) setError((e as Error).message);
-    } finally {
-      if (version === refreshVersion.current) setLoading(false);
-    }
-  }, [from, to]);
-  const latestRefresh = useRef(refresh);
-  useEffect(() => {
-    latestRefresh.current = refresh;
-    void refresh();
-  }, [refresh]);
+  // #62: the period is part of the query key, so a late response for an earlier
+  // period can never replace the selected one's data, error or loading state.
+  const workoutsQuery = useQuery({
+    queryKey: ['workouts', from, to],
+    queryFn: () => api<Workout[]>(`/workouts?from=${from}&to=${to}`),
+  });
+  const goalsQuery = useQuery({ queryKey: ['goals'], queryFn: () => api<Goal[]>('/goals') });
+  const machinesQuery = useQuery({
+    queryKey: ['machines'],
+    queryFn: () => api<Machine[]>('/machines'),
+  });
+  const brandsQuery = useQuery({
+    queryKey: ['brands'],
+    queryFn: () => api<{ id: number; name: string }[]>('/brands'),
+  });
+  const officialQuery = useQuery({
+    queryKey: ['official-machine-weights'],
+    // Reference data is optional: its failure must not block journal data.
+    queryFn: () => api<OfficialWeight[]>('/official-machine-weights').catch(() => null),
+  });
+  const workouts = workoutsQuery.data ?? [],
+    goals = goalsQuery.data ?? [],
+    machines = machinesQuery.data ?? [],
+    brands = brandsQuery.data ?? [],
+    officialWeights = officialQuery.data === undefined ? [] : officialQuery.data;
+  const journalQueries = [workoutsQuery, goalsQuery, machinesQuery, brandsQuery];
+  const loading = [...journalQueries, officialQuery].some((q) => q.isFetching);
+  const loadError = journalQueries.find((q) => q.error)?.error?.message ?? '';
+  // A later successful load clears an earlier failed action, as a full refresh did.
+  const loadedAt = workoutsQuery.dataUpdatedAt;
+  useEffect(() => setError(''), [loadedAt]);
+  const error = actionError || loadError;
+  // Saving refetches only active queries: the selected period and the shared lists.
+  const refreshAll = () => queryClient.invalidateQueries();
+  const reconnect = () => {
+    setError('');
+    void Promise.all(journalQueries.map((q) => q.refetch()));
+  };
   async function action(fn: () => Promise<unknown>, done?: () => void) {
     setSaving(true);
     try {
       await fn();
       done?.();
       // A mutation may finish after the user has selected a different period.
-      await latestRefresh.current();
+      await refreshAll();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -645,20 +690,21 @@ export function App() {
   return (
     <div className="shell">
       <aside>
-        <a className="logo" href="#" onClick={() => setPage('overview')}>
+        <NavLink className="logo" to={pages.overview}>
           <span className="logo-mark">
             <Activity size={24} />
           </span>
           form<span className="logo-dot">.</span>
-        </a>
+        </NavLink>
         <div className="workspace-label">MY WORKSPACE</div>
-        <nav>
+        <nav aria-label="주요 메뉴">
           {nav.map(([key, label, Icon]) => (
-            <button key={key} className={page === key ? 'active' : ''} onClick={() => setPage(key)}>
+            // NavLink marks the current page with aria-current="page" and .active.
+            <NavLink key={key} to={pages[key]} end>
               <Icon size={19} />
               {label}
               {page === key && <span className="nav-dot" />}
-            </button>
+            </NavLink>
           ))}
         </nav>
         <div className="sidebar-note">
@@ -694,7 +740,7 @@ export function App() {
         </header>
         <div className="content">
           {page === 'routines' && <Routines />}
-          {page === 'backup' && <Backup onRestored={() => void latestRefresh.current()} />}
+          {page === 'backup' && <Backup onRestored={() => void refreshAll()} />}
           {page === 'body' && (
             <BodyMeasurements from={from} to={to} workouts={workouts} controls={periodControls} />
           )}
@@ -752,7 +798,7 @@ export function App() {
           )}
           {error && (
             <div role="alert" className="error">
-              {error} <button onClick={() => void refresh()}>다시 연결</button>
+              {error} <button onClick={reconnect}>다시 연결</button>
             </div>
           )}
           {storageWarning && !editor && (

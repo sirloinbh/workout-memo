@@ -48,7 +48,7 @@
 - DB 스키마 변경: `database/migrations/`에 새 번호 파일을 재실행 안전하게 추가한다. 적용된 파일은 수정하지 않는다. 절차는 [database/README.md](database/README.md)를 따른다.
 - 입력 스키마 변경: 일지·세트·머신·목표·신체 기록 스키마의 원본은 `shared/contract.ts`이다. 수정 후 `npm run contract:sync`로 `backend/src/contract.ts`·`frontend/src/contract.ts`를 갱신하고 복제본은 직접 수정하지 않는다. `npm run check`의 `contract:check`가 불일치를 실패로 처리한다. 화면 폼은 React Hook Form + `zodResolver` 또는 저장 전 `safeParse`로 같은 스키마를 사용한다.
 - API 라우트 변경: `backend/src/routes/`의 기능 모듈과 [REST API 계약](docs/api.md)을 함께 고친다. `api-contract.test.ts`가 둘의 불일치를 실패로 처리한다. `backend/src/openapi.ts`의 `operations`를 맞추고 `npm run openapi`로 `docs/openapi.json`을 다시 생성한다(`openapi.test.ts`가 오래된 파일을 실패 처리).
-- 인프라 변경: 초기화된 `infrastructure`에서 `terraform validate`. 실제 AWS 적용은 배포 요청 범위에 한정한다.
+- 인프라 변경: 초기화된 `infrastructure`에서 `terraform fmt -check`·`terraform validate`, 셸 스크립트는 `bash -n`. 실제 AWS 적용은 배포 요청 범위에 한정하고, 개인 계정 프로필(`aws_profile`·`expected_account_id`)로 plan을 사용자에게 확인받은 뒤 apply한다. 회사 기본 AWS 프로필로 적용하지 않는다. 절차는 [배포·운영](docs/deployment.md)을 따른다.
 - 문서·스킬만 변경: 링크·절차를 검토하고 각 스킬에 skill-creator의 `quick_validate.py`를 실행한다. 앱 전체 검사를 생략했다면 그 사유를 PR에 적는다.
 - npm 패키지 도입은 사용자 위험 인지 확인 후 [검증된 반복 절차](skills/workout-foundation/references/procedures.md)의 고정 버전·14일 경과·`--ignore-scripts`·subtree lockfile 재생성·Docker 빌드 확인을 따른다.
 - 추가 도구를 도입하면 실제 실행 가능한 검사 명령을 package.json, CI, 이 문서에 함께 반영한다. 아직 설치하지 않은 도구의 명령을 실행 가능한 것으로 표시하지 않는다.

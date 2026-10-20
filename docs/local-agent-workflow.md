@@ -1,10 +1,10 @@
 # 로컬 AI 작업 자동화
 
-PC가 켜져 있고 워커 프로세스가 실행 중이면, 큐에 등록한 GitHub 이슈를 테스트 → 구현 → 독립 검토 → 실제 검사 → 커밋·푸시·PR → CI 확인 순서로 처리한다. 워커는 한 번에 이슈 하나를 처리하며, 사용자는 주 대화에서 다음 요구사항을 계속 논의할 수 있다.
+PC가 켜져 있고 워커 프로세스가 실행 중이면, 큐에 등록한 GitHub 이슈를 테스트 → 구현 → 독립 검토 → 실제 검사 → 커밋·푸시·PR → CI 확인 순서로 처리한다. 한 번에 구현 역할 하나를 실행하며 PR 게시 후 CI를 별도로 확인하고 다음 독립 이슈를 선택한다. 사용자는 주 대화에서 다음 요구사항을 계속 논의할 수 있다.
 
 ## 대화와 작업의 연결
 
-주 대화가 스레드 1이다. 요구사항과 완료 기준을 정리해 `sirloinbh/workout-memo`에 이슈를 만들고 큐에 등록한다. 대화 내용을 자동으로 수집하지 않으며, 이슈에 기록한 확정 내용만 작업 대상으로 삼는다. 사용자가 진행 상황을 물으면 주 에이전트가 상태·작업 기록을 읽어 답한다. 완료 결과를 이 채팅에 무인으로 삽입하는 기능은 없다.
+주 대화가 스레드 1이다. 요구사항과 완료 기준을 정리해 `sirloinbh/workout-memo`에 이슈를 만들고 큐에 등록한다. 대화 내용을 자동으로 수집하지 않으며, 이슈에 기록한 확정 내용만 작업 대상으로 삼는다. 사용자가 진행 상황을 물으면 주 에이전트가 상태·작업 기록을 읽어 답한다. 완료·질문·blocked 이벤트는 영속 outbox에 기록하지만 실제 IDE 채팅 전송 어댑터는 미연결이다. 무인 채팅 알림은 미구현이며 전송 상태는 pending이다.
 
 스레드 2·3·4에 해당하는 테스트·구현·검토는 역할마다 독립적인 `codex exec` 세션으로 실행된다. 테스트 코드와 단계 요약을 다음 역할에 전달한다. 이슈별 브랜치와 worktree는 주 에이전트가 큐에 등록할 때 준비한다. 역할별 영구 채팅창 네 개를 유지하는 방식은 아니다.
 
@@ -169,3 +169,43 @@ review 사전검사의 환경 실패도 완료된 구현 증거가 동일하면 
 `status`는 명시 분류, 필수 검증 설정, 최근 preflight, failureKind와 기존 역할별 모델/effort/thread를 표시한다. job의 `usage.jsonl`은 실제 모델 호출, CLI가 보고한 input/cached input/output 토큰, 환경 중단, 모델 실패, 수정 재시도와 수동 retry 사건을 누적한다. 실패 전에 보고한 usage도 stream에서 보존한다. 미제공 사용량은 추정하지 않으며 계정 전체 요금·구독 사용량 절감률로 환산하지 않는다. 진단 metadata에도 제공된 usage를 보존한다. 테스트 명령 실행·결과 집계·PR 템플릿·게시·CI 대기에 새 모델 호출을 추가하지 않았다.
 
 `npm run test:agents`는 새 optimization 경계 테스트를 포함하며 기존 `npm run check`와 CI 경로로 실행한다. #26은 선행 #24/PR #25의 실행기와 진단 코드를 재사용한다. #25가 미병합이면 새 PR diff에 선행 변경이 보일 수 있으므로 사용자가 #25를 먼저 검토·병합해야 한다. 로컬 활성화는 독립 검토 후 코디네이터가 기존 큐/home/runtime/DB를 보존하여 수행한다.
+
+## #43 판단 요청·응답과 다음 이슈 선택 (부분 구현)
+
+모델 결과의 nullable `decisionRequest`는 기존 역할 호출에서 반환한다. 질문 ID, 이슈, 요구사항 버전, 질문, 후보별 장단점, 추천 근거, 영향, 의존 작업 범위를 검증한 후 `awaiting_user`로 멈춘다. 도구·환경 실패는 `blocked`다. 시간 경과나 추천안으로 답을 생성하지 않는다. 질문과 실제 사용자 답변은 `decisions`에 보존한다. 추가 모델 호출이나 모델 배정 변경은 없다.
+
+주 대화에서 실제 받은 답변만 코디네이터가 UTF-8 JSON으로 옮긴다. 아래는 합성 예시이며 실제 사용자 답변이 아니다. 워커를 stop하고 status의 `worker.running=false`를 확인한 후 실행한다. 실행 중 독립 이슈와 병행해 응답을 받아들이는 live inbox는 아직 없다. 같은 worker 잠금 아래서 응답과 상태 변경을 직렬화하므로 실행 중 응답 명령은 거부된다.
+
+```json
+{
+  "source": "user",
+  "issue": 81,
+  "questionId": "retention",
+  "requirementsVersion": "이슈 updatedAt의 정확한 값",
+  "answer": { "optionId": "long", "text": "사용자가 실제 입력한 답변" },
+  "changesRequirements": true
+}
+```
+
+```powershell
+./scripts/agents.ps1 respond -Issue 81 -ResponseFile ./answer.json
+./scripts/agents.ps1 start
+```
+
+응답 JSON은 민감정보를 넣지 않은 로컬 파일로 준비하고 커밋하지 않는다. 다른 이슈·질문·버전·후보, 중복 응답, 모델 출처, 과도한 길이, 실행 중 변경은 거부한다. 요구사항 변경은 tests부터 재인계하고 이전 테스트·구현·검토·검증·게시·CI 결과를 무효화한다. 이전 커밋과 브랜치는 보존하므로 동일 PR을 갱신할 수 있다. 답변은 PR 승인·병합 권한을 부여하지 않는다.
+
+현재 `respond`는 워커와 같은 `worker.lock`을 사용하므로 워커 실행 중에는 "Worker already running"으로 거부된다. 먼저 `stop`으로 현재 단계를 끝낸 뒤 응답하고 다시 `start`한다(별도 job 상태 잠금은 후속 과제). 질문 대기 중 이슈 본문이 수정되면 이전 답변은 스냅샷 불일치로 거부되며, `accept-requirements -Issue <번호>`로 대기 질문을 폐기하고 새 요구사항으로 tests부터 재시작한다.
+
+docs의 관리 마커 구간은 후보와 실제 답변으로 갱신하며 PR 본문도 같은 렌더러를 쓴다. 큰 자유 입력은 docs로 연결하고 최종 선택·미결 사항은 PR에 남긴다. HTML/Markdown을 escape하고 자격정보가 있는 URL과 알려진 토큰 형태를 게시 문서에서 가린다. 로컬 원문을 수정하지 않으므로 입력 자체에 민감정보를 포함하면 안 된다. 통상 구현 판단의 상세 후보·채택 구조화는 아직 별도 지원하지 않으며 구현 요약과 변경 기록을 검토해야 한다.
+
+큐는 열린 GitHub 이슈를 자동 탐색하거나 enqueue하지 않는다. 명시 등록된 기존 job만 후보이며 `priority:N`, `order:N` 라벨(낮은 수 우선)을 반영한다. #3/#20과 roadmap/aggregate/type:roadmap/type:aggregate 라벨, 닫힘·대기·중복·실행 중 후보는 제외한다. 의존성은 `depends-on:N` 라벨 또는 본문의 `Dependencies: #N`, `Depends on: #N`, `의존성: #N` 줄로 명시한다. 의존 job의 PR `mergedAt`을 GitHub에서 확인하기 전 실행하지 않는다. 등록되지 않은 의존 job은 미해결로 남긴다. 자유 서술 의존성은 코디네이터가 이 형식으로 정리해야 한다. 기존 queued job은 기존 명시 enqueue의 승인 근거를 유지한다. 현재 구현은 명시 enqueue를 확정 요구사항 인계로 취급하므로 미확정 이슈를 enqueue하지 않는다.
+
+PR 게시 직후 다음 순환을 바로 실행하며 pending CI/awaiting_user는 독립 이슈를 막지 않는다. 기존 CI는 매 순환 확인하고 실패 시 제한된 구현·검토·검증 재인계를 유지한다. 전역 worker 잠금과 게시 직전 fingerprint는 그대로다. 선택·제외·idle 사유는 selection.json과 status에 기록한다.
+
+영속 이벤트는 pr_published/completed/awaiting_user/blocked를 구분하고 이벤트 ID, 이슈 제목, PR, 실제 검증 요약, 남은 작업과 전송 상태를 보존한다. 과거 done 작업을 새 완료로 변환하지 않는다. `flushEvents` 경계는 명시 프로젝트/스레드와 일치하는 eventId/threadId/acknowledged 수신 확인만 전달 완료로 인정한다. 저장 실패는 전송 전에 멈추고 전송 실패는 pending으로 남긴다. 이 경계는 가짜 전송기로만 검증됐고 CLI에는 실제 send 어댑터가 없다. 재시작 후 실제 채팅 재전송은 미구현이다. 수신 측도 이벤트 ID를 중복 제거해야 저장 직전 프로세스 장애에서 중복 UI 표시를 막을 수 있다.
+
+### 실제 Codex 연동 차단과 인계
+
+2026-10-19 이 worktree PATH의 CLI는 `0.144.4`로 확인됐다(이슈의 `0.162.0-alpha.17.2`와 다름). app-server proxy와 로컬 생성 스키마에는 thread/resume, turn/start, thread/inject_items, item/tool/requestUserInput이 있다. ThreadInjectItemsResponse는 빈 object이며 requestUserInput은 서버→클라이언트 요청이다. 이것만으로 외부 워커가 현재 IDE UI에 임의 질문을 보내거나 수신 확인을 받을 수 있다는 증거는 아니다. 명시 대상 thread ID와 연결 endpoint도 제공되지 않았다. 관련 없는 thread 탐색·resume, 세션 DB·인증 파일 접근, 전역 설정 변경, UI 자동입력, 추가 모델 호출은 하지 않았다.
+
+[공식 App Server 문서](https://learn.chatgpt.com/docs/app-server)는 inject_items를 모델 이력 추가로 설명하며 [알림 문서](https://learn.chatgpt.com/docs/notifications)는 UI 알림 설정이다. 해당 문서나 빈 RPC 성공을 이 채팅 전달 완료로 대체하지 않는다. 지원되는 선택지는 명시적으로 연결한 App Server 클라이언트에서 UI 수신·질문 요청·실제 사용자 응답을 처리하는 연결을 준비하거나, 현재 IDE의 공식 외부 연결을 확인하는 것이다. 별도 클라이언트는 현재 IDE 채팅이라는 완료 기준과 다르므로 사용자 판단 없이 대체하지 않는다. #43 PR은 CI가 통과해도 draft를 유지하고 코디네이터가 실제 대상 수신→질문→답변→재개 왕복을 검증해야 한다. #26 변경(검증 키 재확인·handoff-tests·실패 유형·usage 감사)과의 통합은 2026-10-19 main 병합으로 반영했다. 다른 이슈 PR의 기존 CI 통과 후 ready 동작은 유지한다.

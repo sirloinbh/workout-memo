@@ -9,7 +9,7 @@
     "dev": "concurrently -k \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "build": "npm run build -w frontend && npm run build -w backend",
     "test": "npm run test -w backend",
-    "test:agents": "node --test scripts/test/agent-workflow.test.mjs scripts/test/agent-runtime.test.mjs scripts/test/agent-models.test.mjs scripts/test/agent-review-regressions.test.mjs scripts/test/agent-optimization.test.mjs scripts/test/agent-process-output.test.mjs scripts/test/agent-npm.test.mjs scripts/test/agent-preflight-handoff.test.mjs scripts/test/agent-recovery.test.mjs scripts/test/agent-publication-resume.test.mjs",
+    "test:agents": "node --test scripts/test/agent-workflow.test.mjs scripts/test/agent-runtime.test.mjs scripts/test/agent-models.test.mjs scripts/test/agent-review-regressions.test.mjs scripts/test/agent-optimization.test.mjs scripts/test/agent-process-output.test.mjs scripts/test/agent-npm.test.mjs scripts/test/agent-preflight-handoff.test.mjs scripts/test/agent-recovery.test.mjs scripts/test/agent-publication-resume.test.mjs scripts/test/agent-conversation-cli.test.mjs",
     "test:skills": "node --test scripts/test/claude-skills.test.mjs",
     "skills:sync": "node scripts/claude-skills.mjs sync",
     "skills:check": "node scripts/claude-skills.mjs",

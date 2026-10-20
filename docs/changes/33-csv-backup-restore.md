@@ -81,3 +81,11 @@
   - 전체 교체 선택: 삭제 수와 "진행 중이던 저장 재시도 기록도 초기화됩니다(1건)" 경고, 확인 문구 미입력·`전체교체`(띄어쓰기 없음)에서는 실행 버튼 비활성, 미리보기 후에도 서버 기록 유지. 정확히 `전체 교체` 입력 후 실행 → 기록이 같은 내용(따옴표·줄바꿈·특수문자 포함)으로 복원됐다.
   - API: 확인 문구 없는 교체 400, 미지원 버전(v99) 400.
   - 모바일 390px 가로 스크롤 없음.
+
+## 최신 main 통합·충돌 해결 — 2026-10-20
+
+- PR 충돌 상태를 해소하기 위해 현재 `main` (`6e339ab`)을 이슈 브랜치에 통합했다. `backend/src/app.ts`에서 백업 라우트와 main의 루틴 진행·종목 분석 라우트를 함께 보존했다.
+- `frontend/src/main.tsx`의 아이콘·화면 import와 화면 분기를 합쳐 분석·루틴·백업 화면을 모두 유지했다. `frontend/src/style.css`에도 백업 및 분석 스타일을 함께 보존했다.
+- `backend/test/workout-draft-ui.test.ts`에 백업·분석 import stub을 함께 유지했고, 최신 main의 세트 완료 UI 테스트도 새 백업 import를 mock하도록 `backend/test/set-completion-ui.test.ts`를 보완했다.
+- 검증: Node 24.21.0 / npm 11.19.0, 전용 테스트 DB(`127.0.0.1:55434/workout_agent_test`)에서 `npm run check` 통과. 포맷·lint·typecheck·build 통과, 앱/DB 테스트 306 pass·0 fail·0 skip, 워커 테스트 162 pass, 스킬 테스트 4 pass. 세트 완료 UI 집중 테스트는 8 pass·0 fail.
+- 충돌 통합 후 별도 실브라우저 재검증은 하지 않았다. 기존 #33의 브라우저 검증 결과는 위에 기록된 범위에 한정한다.

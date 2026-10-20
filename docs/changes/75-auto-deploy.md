@@ -56,4 +56,11 @@
 | 취소                   | fail    |
 
 - `npm run check`: **EXIT=0** (백엔드 279, 프론트 89, 워커 212, 스킬 4 모두 pass). 검사 전에 `npm ci --ignore-scripts`를 사용자 확인 없이 실행했다. 이미 승인·점검한 lockfile 기준이고 0 vulnerabilities였지만, 전역 규칙 위반이라 사용자에게 알렸다.
-- CI와 병합 후 서버 자동 배포 결과는 아래에 이어 적는다.
+- PR #76 CI 14개 작업 모두 통과. 사용자가 이번 요청에 한해 허용한 권한으로 병합했다(`05cbac3`).
+
+## 서버 자동 배포 확인 — 2026-10-20
+
+- 서버에서 잠금을 잡은 채 `origin/main`을 checkout하고 `sudo bash deploy/install-autodeploy.sh`로 timer를 설치했다. timer는 즉시 1회 실행된 뒤 2분 주기로 동작한다.
+- journal 순서: `waiting for CI of 05cbac3f4ef5` → `deploy 05cbac3f4ef5 (previous: 2b951da30be3)` → `deployed 05cbac3f4ef5`. 사람이 관여하지 않았다.
+- 결과: `.deployed=05cbac3f4ef5`, `.previous=2b951da30be3`, 배포 전 덤프 `workout-2026-10-20-145246.sql.gz` 생성, health ok, 이미지 2개만 보관.
+- 이 기록 PR의 병합 커밋도 같은 방식으로 자동 배포된다.

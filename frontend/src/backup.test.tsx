@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 import { App } from './app';
 import { json, mockApi } from './test/api';
+import { openPage } from './test/nav';
 
 // Ported from backend/test/backup-ui.test.ts (vm hook harness) to a real DOM. Real file
 // pickers, downloads, layout and focus still need separate browser verification.
@@ -64,7 +65,7 @@ function mount(previewError?: string) {
 const page = () => document.body.textContent ?? '';
 
 async function openBackup(ui: ReturnType<typeof mount>) {
-  await ui.user.click(screen.getByRole('button', { name: '백업·내보내기' }));
+  await openPage('백업·내보내기', ui.user);
 }
 
 test('backup page separates the analysis CSV from the restore backup and states the policy', async () => {

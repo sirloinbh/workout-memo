@@ -8,4 +8,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   localStorage.clear();
+  // Pages are URLs (#62); each test starts on the dashboard.
+  window.history.replaceState(null, '', '/');
 });

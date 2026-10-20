@@ -15,11 +15,8 @@ jobs:
         with: { node-version: '24.21.0', cache: npm }
       - run: npm install --global npm@11.19.0
       - run: npm ci
-      - run: |
-          for migration in database/migrations/*.sql; do
-            psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration" || exit 1
-          done
-        env: { TEST_DATABASE_URL: 'postgres://workout:test@localhost:5432/workout' }
+      - run: npm run db:migrate
+        env: { DATABASE_URL: 'postgres://workout:test@localhost:5432/workout' }
       - run: npm run check
         env: { TEST_DATABASE_URL: 'postgres://workout:test@localhost:5432/workout' }
 

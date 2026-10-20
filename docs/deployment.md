@@ -71,6 +71,48 @@ terraform output                      # static_ip, url, ssh
 - 마이그레이션은 되돌리지 않습니다. 새 스키마에서 이전 앱이 동작하지 않거나 데이터를 되돌려야 하면, 배포 직전 덤프로 복원합니다(아래 5).
 - 로컬 동작은 바뀌지 않습니다. `compose.yaml`은 `IMAGE_TAG`·`WEB_BIND`·`WEB_PORT`·`DB_PORT` 변수를 쓰고, 기본값은 기존과 같습니다(이미지 `local`, 웹 `127.0.0.1:8088`, DB `127.0.0.1:55432`). 서버 `.env`만 웹을 `0.0.0.0:80`으로 엽니다.
 
+## 3-1. main 자동 배포 (#75)
+
+main에 병합되면 서버가 직접 확인해서 배포합니다(pull 방식). 서버 방화벽은 GitHub에 열지 않고, GitHub에도 AWS·SSH 키를 저장하지 않습니다.
+
+- `workout-autodeploy.timer`가 2분마다 `deploy/autodeploy.sh`를 실행합니다(부팅 3분 후 시작).
+  1. `origin/main`을 fetch합니다. 이미 배포한 커밋이면 끝납니다.
+  2. 그 커밋의 GitHub Actions check-run을 공개 API로 조회합니다(인증 없이 시간당 60회, 대기 중일 때만 호출).
+     - 실행 중이거나 결과가 아직 없으면 다음 회차에 다시 확인합니다.
+     - 실패·취소가 하나라도 있으면 그 커밋은 배포하지 않습니다.
+     - 모두 성공(또는 skipped·neutral)이면 3번으로 갑니다.
+  3. 새 커밋의 `deploy/remote-deploy.sh deploy`를 실행합니다. 순서는 수동 배포와 같습니다(배포 전 덤프 → 마이그레이션 → health → 실패 시 이전 이미지).
+  4. 실패한 커밋은 `.autodeploy-failed`에 기록하고 다시 시도하지 않습니다. 다음 커밋이 오면 다시 시작합니다.
+- 수동 배포·롤백과 자동 배포는 같은 잠금(`/run/lock/workout-deploy.lock`)을 써서 동시에 실행되지 않습니다.
+- 수동 롤백은 현재 main 커밋을 건너뛸 커밋으로 기록합니다. 그래서 자동 배포가 그 커밋을 곧바로 다시 올리지 않고, 다음 main 커밋부터 다시 배포합니다.
+- 병합부터 배포까지 걸리는 시간은 CI(약 2~3분), 확인 주기(최대 2분), 서버 빌드(수 분)를 더한 정도입니다.
+- 상태 확인과 제어(서버에서):
+  ```bash
+  systemctl list-timers workout-autodeploy.timer          # 다음 실행 시각
+  journalctl -u workout-autodeploy -n 50 --no-pager       # 최근 기록
+  cat /opt/workout-memo/.deployed                          # 배포 중인 커밋
+  sudo systemctl stop workout-autodeploy.timer             # 일시 중지
+  sudo systemctl start workout-autodeploy.timer            # 재개
+  rm /opt/workout-memo/.autodeploy-failed                  # 건너뛴 커밋 다시 시도
+  ```
+- 새 서버는 user-data가 timer를 설치합니다. 기존 서버는 `sudo bash /opt/workout-memo/deploy/install-autodeploy.sh`로 설치합니다.
+
+### 여러 번 배포할 때의 비용
+
+배포 횟수 자체로 추가되는 요금은 없습니다. 근거는 다음과 같습니다.
+
+| 항목               | 반복 배포의 영향                                                                                                                                                                                    | 과금                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Lightsail 인스턴스 | 정액 월 $7. 빌드 중 CPU를 많이 써도 요금은 같고, 버스트 한도를 넘으면 느려질 뿐입니다                                                                                                               | 없음                                          |
+| 데이터 전송        | 빌드 때 받는 이미지·npm 패키지·git은 인바운드 트래픽입니다. 2TB 허용량에는 포함되지만, 초과 과금은 아웃바운드에만 적용됩니다                                                                        | 없음(아웃바운드 2TB 초과 시에만 $0.09/GB부터) |
+| 스냅샷             | 하루 1회 고정이며 배포 횟수와 무관합니다. 다만 디스크 변경량이 크면 증분 크기가 늘어 $0.05/GB-month가 조금 늘 수 있습니다. 그래서 배포마다 현재·직전 이미지만 남기고, 7일 지난 빌드 캐시를 지웁니다 | 미미                                          |
+| 배포 전 DB 덤프    | 서버 디스크에 14일 보관. 수 KB~MB 수준입니다                                                                                                                                                        | 없음                                          |
+| GitHub Actions     | 공개 저장소라 표준 러너가 무료입니다                                                                                                                                                                | 없음                                          |
+| GitHub API 조회    | 공개 API, 인증 없음                                                                                                                                                                                 | 없음                                          |
+| ECR·S3·CloudWatch  | 사용하지 않음                                                                                                                                                                                       | 없음                                          |
+
+[Lightsail 요금](https://aws.amazon.com/lightsail/pricing/), [Lightsail 데이터 전송](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-faq-data-transfer-allowance.html). 예상 밖의 비용은 월 $10 예산 알림(50%·80%·예상 100%)으로 확인합니다.
+
 ## 4. 접속
 
 - **브라우저**: `http://<static_ip>`. 허용 IP에서만 열립니다.

@@ -788,6 +788,20 @@ footer > span:last-child {
   padding: 12px;
   border-radius: 5px;
 }
+.official-ref {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+div.official-ref {
+  border: 1px solid #c9d4b0;
+  background: #f7f9f2;
+  padding: 12px;
+  border-radius: 5px;
+  margin-bottom: 12px;
+}
+div.official-ref p {
+  margin: 6px 0 0;
+}
 .set-editor {
   display: grid;
   grid-template-columns: 22px 1.5fr 1.5fr 85px 65px 26px;

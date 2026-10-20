@@ -37,6 +37,12 @@ Get-Content -Raw -Encoding UTF8 database/migrations/008_body_measurements.sql | 
 
 위 명령은 기본 DB 사용자·이름 기준이며 별도로 설정했다면 해당 이름으로 바꾸세요.
 
+머신 공식 참고값을 사용하는 새 API 실행 전에는 `009_official_machine_weights.sql`도 적용하세요. 제조사 공식 시작 저항(공무게) 참고 테이블 `official_machine_weights`를 만들고 조사 결과를 넣으며, `machines.official_weight_id` 선택 연결 열과 `Newtech` 브랜드(이미 있으면 건너뜀)를 추가합니다. 기존 머신의 기본중량과 과거 세트 총중량은 변경하지 않고 기존 머신의 연결은 NULL로 시작합니다. 재실행하면 참고 행을 같은 키로 갱신하며 안전합니다. 이 마이그레이션 없이 새 API를 실행하면 머신 목록 조회가 실패합니다. 조사 기준과 출처는 [docs/machine-official-weights.md](../docs/machine-official-weights.md)를 참고하세요. 이 파일은 한글 값을 포함하므로 파이프 대신 compose가 마운트한 컨테이너 안의 파일을 직접 실행하세요. Windows PowerShell 5.1은 네이티브 프로그램으로 파이프할 때 텍스트를 ASCII로 보내 한글(온힘·뉴텍·비고)을 손상시키고, 손상된 값은 재실행 시 UNIQUE 키 일치도 깨뜨립니다.
+
+```powershell
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/009_official_machine_weights.sql
+```
+
 일지 초안·안전한 재시도 API 실행 전에는 `003_workout_retries.sql`도 적용하세요.
 기존 일지는 `version=1`로 유지되고, 수정할 때 버전이 증가합니다. 마이그레이션은 재실행해도 안전합니다.
 

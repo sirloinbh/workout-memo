@@ -1,60 +1,17 @@
 import { z } from 'zod';
-export const date = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine((v) => {
-    const d = new Date(v + 'T00:00:00Z');
-    return !Number.isNaN(+d) && d.toISOString().slice(0, 10) === v;
-  }, '올바른 날짜를 입력하세요');
-export const workoutSchema = z.object({
-  version: z.number().int().positive().optional(),
+import { date } from './contract.js';
+// Input schemas shared with the frontend live in contract.ts (synced from shared/contract.ts).
+export {
   date,
-  title: z.string().trim().min(1).max(120),
-  notes: z.string().max(4000).default(''),
-  sets: z
-    .array(
-      z.object({
-        exercise: z.string().trim().min(1).max(120),
-        machine_id: z.number().int().positive().nullable().default(null),
-        weight: z.number().min(0).max(99999),
-        reps: z.number().int().min(1).max(1000),
-        notes: z.string().max(4000).default(''),
-        // Older clients only sent performed sets, so a missing state means completed.
-        completed: z.boolean().default(true),
-        // Optional effort rating; a missing value stays NULL and never becomes 0.
-        rpe: z
-          .number()
-          .min(1, 'RPE는 1~10 사이 0.5 단위로 입력하세요')
-          .max(10, 'RPE는 1~10 사이 0.5 단위로 입력하세요')
-          .refine((v) => Number.isInteger(v * 2), 'RPE는 1~10 사이 0.5 단위로 입력하세요')
-          .nullable()
-          .default(null),
-      }),
-    )
-    .min(1)
-    .max(200),
-});
-export const machineSchema = z.object({
-  brand_id: z.number().int().positive(),
-  name: z.string().trim().min(1).max(120),
-  base_weight: z.number().min(0).max(99999).nullable(),
-  notes: z.string().max(2000).default(''),
-  // A link to a manufacturer reference row; it never sets or changes base_weight.
-  // Omitted keeps the stored link on update (none on create); explicit null unlinks.
-  official_weight_id: z.number().int().positive().max(2147483647).nullable().optional(),
-});
+  workoutSchema,
+  machineSchema,
+  goalSchema,
+  bodyMeasurementSchema,
+  type BodyMeasurementInput,
+} from './contract.js';
 export const officialWeightQuery = z
   .object({ brand: z.string().trim().min(1).max(120).optional() })
   .strict();
-export const goalSchema = z
-  .object({
-    exercise: z.string().trim().min(1).max(120),
-    target_weight: z.number().min(0).max(99999),
-    target_reps: z.number().int().min(1).max(1000),
-    start_date: date,
-    deadline: date,
-  })
-  .refine((v) => v.deadline >= v.start_date, '목표 종료일을 확인하세요');
 // Weight always means the total moved load, including a machine's base weight.
 // Not-completed (planned) sets are not actual performance.
 export const volume = (sets: { weight: number; reps: number; completed?: boolean }[]) =>
@@ -167,27 +124,3 @@ export function routineSchedule(plan: RoutinePlan) {
 export const dateRange = z
   .object({ from: date, to: date })
   .refine((value) => value.from <= value.to, '조회 종료일은 시작일 이후여야 합니다');
-// Body metrics are stored as NUMERIC(5,2). Values with more than two decimals are
-// rejected instead of silently rounded, so the stored value is exactly what was entered.
-const twoDecimals = (v: number) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
-const metric = (label: string, min: number, max: number, minInclusive: boolean) =>
-  z
-    .number({ invalid_type_error: `${label}은 숫자로 입력하세요` })
-    .finite(`${label}은 유한한 숫자여야 합니다`)
-    .refine((v) => (minInclusive ? v >= min : v > min) && v <= max, `${label} 범위를 확인하세요`)
-    .refine(twoDecimals, `${label}은 소수점 둘째 자리까지 입력하세요`)
-    .nullable()
-    .default(null);
-export const bodyMeasurementSchema = z
-  .object({
-    date,
-    body_weight_kg: metric('체중', 0, 999.99, false),
-    body_fat_percent: metric('체지방률', 0, 100, true),
-    skeletal_muscle_kg: metric('골격근량', 0, 999.99, false),
-  })
-  .refine(
-    (v) =>
-      v.body_weight_kg !== null || v.body_fat_percent !== null || v.skeletal_muscle_kg !== null,
-    '체중, 체지방률, 골격근량 중 하나 이상을 입력하세요',
-  );
-export type BodyMeasurementInput = z.infer<typeof bodyMeasurementSchema>;

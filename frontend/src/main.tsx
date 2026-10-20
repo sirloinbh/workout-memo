@@ -14,12 +14,14 @@ import {
   Trash2,
   ArrowRight,
   Activity,
+  DatabaseBackup,
   Scale,
   Trophy,
 } from 'lucide-react';
 import './style.css';
 import { seoulDate } from './date';
 import { Routines } from './routines';
+import { Backup } from './backup';
 import { BodyMeasurements } from './body';
 import { Analysis } from './analysis';
 import { RoutineProgress, routineDraft, setReference, type Progress } from './progress';
@@ -501,6 +503,7 @@ function App() {
     ['routines', '루틴짜기', NotebookPen],
     ['body', '신체 기록', Scale],
     ['machines', '머신 라이브러리', Dumbbell],
+    ['backup', '백업·내보내기', DatabaseBackup],
   ] as const;
   function move(dir: number) {
     const d = calendarDate(anchor);
@@ -692,11 +695,12 @@ function App() {
         </header>
         <div className="content">
           {page === 'routines' && <Routines />}
+          {page === 'backup' && <Backup onRestored={() => void latestRefresh.current()} />}
           {page === 'body' && (
             <BodyMeasurements from={from} to={to} workouts={workouts} controls={periodControls} />
           )}
           {page === 'analysis' && <Analysis />}
-          {page !== 'routines' && page !== 'body' && page !== 'analysis' && (
+          {page !== 'routines' && page !== 'body' && page !== 'analysis' && page !== 'backup' && (
             <div className="page-heading">
               <div>
                 <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>

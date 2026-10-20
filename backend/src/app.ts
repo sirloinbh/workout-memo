@@ -17,6 +17,7 @@ import {
   bodyMeasurementSchema,
   dateRange,
 } from './domain.js';
+import { registerBackupRoutes } from './backup.js';
 import { analyze, bodyPartMappingSchema, type AnalysisSet } from './analysis.js';
 import {
   exerciseKey,
@@ -124,6 +125,7 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
   const today = options.today ?? (() => seoulToday());
   const app = express();
   app.disable('x-powered-by');
+  registerBackupRoutes(app, pool);
   app.use(express.json({ limit: '256kb' }));
   app.post('/api/routines', async (req, res) => {
     const plan = routineSchema.parse(req.body);
@@ -567,6 +569,10 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
       }
       if (error.code === '23503') {
         res.status(400).json({ error: '선택한 머신 또는 브랜드가 존재하지 않습니다' });
+        return;
+      }
+      if (error.status === 413) {
+        res.status(413).json({ error: '요청 크기 제한을 초과했습니다 (백업 파일은 최대 10MB).' });
         return;
       }
       if (error.status === 400) {

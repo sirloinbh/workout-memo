@@ -21,6 +21,21 @@ npm run db:migrate -- --status  # 적용됨/대기 목록만 확인(DB 변경 �
 
 아래의 파일별 psql 명령은 `db:migrate` 도입 전 절차이며 이력을 남기지 않습니다. 이미 그렇게 적용한 DB도 `db:migrate`를 한 번 실행하면 기준선으로 기록됩니다.
 
+## PowerShell 파이프를 쓰지 않는 이유 (#55)
+
+Windows PowerShell 5.1은 외부 프로그램과 파이프로 텍스트를 주고받을 때 UTF-8을 그대로 전달하지 않습니다. 보낼 때는 `$OutputEncoding`(기본 ASCII)으로, 받을 때는 콘솔 코드 페이지(한국어 Windows 기본 CP949)로 변환합니다. 그래서 `Get-Content … | docker compose exec … psql`로 마이그레이션을 적용하면 001의 `'기타'`가 `'??'` 브랜드로 추가되고, 009의 한글 참고 데이터가 깨진 중복 행으로 들어갑니다. 백업도 `pg_dump` 출력을 변수로 받으면 `기타`가 `湲고?`로 깨진 채 저장됩니다.
+
+- 마이그레이션은 `npm run db:migrate`(Node가 UTF-8로 직접 읽음)를 씁니다. 파일 하나만 적용해야 하면 compose가 마운트한 컨테이너 안의 파일을 `psql -f`로 실행합니다(아래 명령들).
+- 백업은 `scripts/backup.ps1`이 컨테이너 안에서 파일로 덤프한 뒤 `docker compose cp`로 바이트 그대로 꺼냅니다. 복원도 파일을 컨테이너로 복사한 뒤 `-f`로 실행합니다.
+- 문서의 PowerShell 예시에 파이프 방식이 다시 들어오면 `npm run test:docs`가 실패합니다.
+
+예전에 파이프 방식으로 적용한 DB에 깨진 행이 남아 있는지는 아래 조회로 확인합니다. 조회만 하며 자동으로 삭제하지 않습니다. 결과가 있으면 백업을 먼저 만들고, 깨진 행을 참조하는 머신이 없는지 확인한 뒤 직접 정리하세요.
+
+```powershell
+docker compose exec -T db psql -U workout -d workout -c "SELECT id, name FROM brands WHERE name LIKE '%?%'"
+docker compose exec -T db psql -U workout -d workout -c "SELECT id, brand, lineup, model_name FROM official_machine_weights WHERE concat_ws(' ', brand, lineup, model_name, setting, notes) LIKE '%?%'"
+```
+
 기존 볼륨에는 세트 메모를 추가하는 `002_set_notes.sql`을 새 API 실행 전에 적용하세요.
 기존 일지와 세트는 유지되며 기존 세트 메모는 빈 문자열로 초기화됩니다. 재실행해도 안전합니다.
 빈 볼륨과 CI는 모든 마이그레이션을 파일명 순서로 적용합니다.
@@ -28,30 +43,30 @@ npm run db:migrate -- --status  # 적용됨/대기 목록만 확인(DB 변경 �
 루틴 계획 API를 사용하기 전에는 `004_routines.sql`도 적용하세요. 루틴은 부위 순서와 중복, 수동 주차 목표를 보존하는 JSON 문서로 원자적으로 저장합니다. 실제 일지나 달성 목표를 생성하지 않습니다.
 
 ```powershell
-Get-Content -Raw -Encoding UTF8 database/migrations/004_routines.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/004_routines.sql
 ```
 
 루틴 목표·오늘 하루 휴식하기 API(#28) 전에는 `004_routines.sql` 다음에 `005_routine_progress.sql`을 적용하세요. `routine_rests`에 루틴별 휴식 날짜만 한 행씩 저장하며(같은 날 중복 불가), 이동된 일정과 '제외됨' 목표는 이 날짜로부터 계산합니다. 기존 일지·세트·루틴은 바뀌지 않으며 재실행해도 안전합니다. 루틴을 삭제하면 휴식 기록도 함께 삭제됩니다.
 
 ```powershell
-Get-Content -Raw -Encoding UTF8 database/migrations/005_routine_progress.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/005_routine_progress.sql
 ```
 
 종목 분석(종목별 PR·추정 1RM·부위별 주간 운동량) API를 사용하기 전에는 `007_exercise_body_parts.sql`도 적용하세요. 사용자가 직접 지정한 운동→부위 매핑만 보관합니다. 운동명은 목표 판정과 같은 규칙(`lower(trim(운동명))`)으로 정규화한 값으로 저장하며 운동명에서 부위를 추측하지 않습니다. 매핑이 없는 운동은 `미분류`로 집계합니다. 기존 일지·세트는 변경하지 않으며 재실행해도 안전합니다. PR과 주간 통계는 저장하지 않고 조회할 때마다 계산합니다. 완료하지 않은(`completed=false`) 계획 세트는 PR·추정 1RM·주간 운동량에 반영하지 않습니다.
 
 ```powershell
-Get-Content -Raw -Encoding UTF8 database/migrations/007_exercise_body_parts.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/007_exercise_body_parts.sql
 ```
 
 ```powershell
-Get-Content -Raw -Encoding UTF8 database/migrations/002_set_notes.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/002_set_notes.sql
 ```
 
 신체 기록 API를 사용하기 전에는 `008_body_measurements.sql`도 적용하세요. 재실행해도 안전합니다(`CREATE TABLE IF NOT EXISTS`).
 `body_measurements`는 날짜(`date`, UNIQUE)마다 한 행이며 `body_weight_kg`·`skeletal_muscle_kg`(kg, 0 초과)와 `body_fat_percent`(%, 0~100)를 `NUMERIC(5,2)`로 저장합니다. 측정하지 않은 값은 NULL이며 세 값이 모두 NULL인 행은 CHECK 제약으로 거부합니다. API는 소수점 셋째 자리 이상의 입력을 반올림하지 않고 400으로 거부합니다. 같은 날짜의 생성 요청은 409이며 수정(PUT)으로 바꿉니다. 운동 일지와 외래키로 연결하지 않으므로 일지 삭제가 신체 기록에 영향을 주지 않습니다.
 
 ```powershell
-Get-Content -Raw -Encoding UTF8 database/migrations/008_body_measurements.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/008_body_measurements.sql
 ```
 
 위 명령은 기본 DB 사용자·이름 기준이며 별도로 설정했다면 해당 이름으로 바꾸세요.
@@ -66,7 +81,7 @@ docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /dock
 기존 일지는 `version=1`로 유지되고, 수정할 때 버전이 증가합니다. 마이그레이션은 재실행해도 안전합니다.
 
 ```powershell
-Get-Content -Raw -Encoding UTF8 database/migrations/003_workout_retries.sql | docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/003_workout_retries.sql
 ```
 
 일지 POST/PUT의 UUID `Idempotency-Key`는 최초 성공 커밋부터 7일 동안 같은 메서드·대상·정규화된 내용의 결과를 재전송합니다.
@@ -94,7 +109,10 @@ docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /dock
 백업은 우산 저장소 `scripts/backup.ps1`, 복원은 아래 명령으로 수행합니다. 복원 대상은 비어 있는 별도 데이터베이스로 준비하세요.
 
 ```powershell
-Get-Content -Raw backups/FILE.sql | docker compose exec -T db psql -U workout -d workout_restore -v ON_ERROR_STOP=1
+docker compose exec -T db createdb -U workout workout_restore
+docker compose cp backups/FILE.sql db:/tmp/restore.sql
+docker compose exec -T db psql -U workout -d workout_restore -v ON_ERROR_STOP=1 -f /tmp/restore.sql
+docker compose exec -T db rm -f /tmp/restore.sql
 ```
 
 ## 앱 내보내기·백업 (#33)

@@ -19,7 +19,7 @@
 - 개발 기준 저장소: `sirloinbh/workout-memo`. 코드 원본은 이 우산 모노레포에서 관리한다.
 - 이 저장소의 GitHub 작업은 개인 계정 `sirloinbh`의 `ghp` 또는 `scripts/gh-project.ps1` 프로젝트 래퍼를 사용한다. 기본 회사 계정 `gh`로 원격 변경을 수행하지 않는다. 개인 인증 설정은 `%USERPROFILE%/.config/gh-personal`을 재사용하며, 설치 스크립트 위치 `%LOCALAPPDATA%/gh-workout-memo`와 구분한다.
 - `frontend`, `backend`, `database`, `infrastructure`의 별도 저장소는 subtree 배포 대상이다. 일상적인 PR 작업 중 별도 저장소나 `main`에 직접 푸시하지 않는다. `scripts/push-repositories.ps1`은 별도 동기화 요청 시에만 사용한다.
-- 현재 구현: React + Vite + TypeScript(React Router 페이지 URL, TanStack Query 서버 조회), Express + pg + Zod, PostgreSQL 17, npm workspaces, Docker Compose, GitHub Actions.
+- 현재 구현: React + Vite + TypeScript(React Router 페이지 URL, TanStack Query 서버 조회, React Hook Form, Tailwind CSS 4 토큰·`components/ui` 공통 컴포넌트), Express + pg + Zod, PostgreSQL 17, npm workspaces, Docker Compose, GitHub Actions.
 - 웹 포트: `8088`. 호스트 DB 포트: `55432`. 사용자 요청 없이 `8080`으로 변경하지 않는다.
 - 운동 날짜는 `YYYY-MM-DD`, 서비스 시간대는 `Asia/Seoul`. 중량은 머신 기본중량을 포함한 총중량 kg이다. 확인하지 못한 머신 기본중량은 NULL로 보관한다.
 - 입력 검증과 목표 판정은 서버에서도 수행한다. 일지 및 세트 수정은 트랜잭션으로 처리한다.
@@ -34,6 +34,7 @@
 - 실행·운영: [README.md](README.md).
 - 기술 추천과 적용 순서: [stack.md](skills/workout-foundation/references/stack.md). 추천 목록은 설치 완료 목록이 아니다.
 - 스킬 원본은 `skills/`이다. Claude Code용 복제본 `.claude/skills/`는 직접 수정하지 않고 원본 변경 후 `npm run skills:sync`로 갱신한다. `npm run check`의 `test:skills`가 불일치를 실패로 처리한다.
+- 화면 디자인: [디자인 시스템](docs/design-system.md). 새 요소는 `frontend/src/components/ui`를 먼저 쓰고 색·모서리는 `theme.css` 토큰을 쓴다. Preflight와 기존 스타일 전면 교체는 전체 화면 비교와 함께 별도 이슈로 진행한다.
 - 작업 기록: `docs/changes/`.
 - 일일 총정리: `docs/daily/YYYY-MM-DD.md`. Asia/Seoul 기준 작업일마다 새 파일을 누적하고 같은 날 추가 작업은 해당 파일에 반영한다. 목록은 `docs/daily/README.md`에 추가하며 과거 상태를 오늘 상태로 덮어쓰지 않는다.
 - 최신 다음 작업: `docs/next-steps/README.md`. 주 에이전트는 작업일 마무리·총정리 시 일일 기록과 함께 갱신하며 우선순위·의존성·차단 원인·다음 행동을 적는다. 복구 상세도 `docs/next-steps/`에 둔다. 자동 일일 스케줄러나 큐 등록을 전제하지 않으며 기존 커밋별 변경 기록도 유지한다.

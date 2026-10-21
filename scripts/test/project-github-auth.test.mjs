@@ -9,6 +9,46 @@ const windows = process.platform === 'win32';
 // Hosted Windows runners can take over 20 seconds to start the first PowerShell process.
 // Keep a bounded startup allowance without retrying or changing behavior assertions.
 const processTimeoutMs = 60000;
+// Harness scripts never embed the checkout path. Windows PowerShell 5.1 reads a
+// BOM-less .ps1 as the system ANSI code page, and cmd.exe treats a UTF-8 BOM as a
+// command instead of skipping it, so a non-ASCII checkout path breaks either
+// interpreter. The paths travel through the environment, which stays UTF-16 end to
+// end, and the harness bodies stay ASCII-only.
+const harnesses = {
+  restore: `
+$beforeConfig=$env:GH_CONFIG_DIR
+$beforeGh=$env:GH_TOKEN
+$beforeGithub=$env:GITHUB_TOKEN
+$result=& $env:TEST_WRAPPER api user
+$status=$LASTEXITCODE
+@{status=$status;restored=($env:GH_CONFIG_DIR -eq $beforeConfig -and $env:GH_TOKEN -eq $beforeGh -and $env:GITHUB_TOKEN -eq $beforeGithub);result=($result | ConvertFrom-Json)} | ConvertTo-Json -Depth 5
+`,
+  terminal: `
+. $env:TEST_TERMINAL_INIT
+$company = gh api user --jq .login | ConvertFrom-Json
+$personal = ghp api user --jq .login | ConvertFrom-Json
+$after = gh api user --jq .login | ConvertFrom-Json
+@{company=$company;personal=$personal;after=$after;ghFunction=[bool](Get-Command gh -CommandType Function -ErrorAction SilentlyContinue);ghpFunction=[bool](Get-Command ghp -CommandType Function -ErrorAction SilentlyContinue)} | ConvertTo-Json -Depth 5
+`,
+  restoreFailure: `
+$beforeConfig=$env:GH_CONFIG_DIR
+$beforeGh=$env:GH_TOKEN
+$beforeGithub=$env:GITHUB_TOKEN
+$beforeCodex=$env:CODEX_HOME
+$failed=$false
+try { $result=& $env:TEST_WRAPPER api user; $status=$LASTEXITCODE } catch { $failed=$true; $status=1 }
+@{status=$status;failed=$failed;restored=($env:GH_CONFIG_DIR -eq $beforeConfig -and $env:GH_TOKEN -eq $beforeGh -and $env:GITHUB_TOKEN -eq $beforeGithub -and $env:CODEX_HOME -eq $beforeCodex)} | ConvertTo-Json
+`,
+  ghpFailure: `
+$ErrorActionPreference='Stop'
+. $env:TEST_TERMINAL_INIT
+$personal=ghp api user --jq '.login + suffix' | ConvertFrom-Json
+$status=$LASTEXITCODE
+@{status=$status;personal=$personal;config=$env:GH_CONFIG_DIR;ghToken=[bool]$env:GH_TOKEN;githubToken=[bool]$env:GITHUB_TOKEN;codex=$env:CODEX_HOME} | ConvertTo-Json -Depth 5
+`,
+  otherProject:
+    '@echo off\r\ncall "%TEST_LAUNCHER%" "%TEST_OTHER_PROJECT%"\r\nexit /b %errorlevel%\r\n',
+};
 function fixture() {
   const dir = mkdtempSync(join(tmpdir(), 'workout-gh-test-'));
   const bin = join(dir, 'bin');
@@ -178,23 +218,16 @@ test(
 test('project gh restores the calling PowerShell environment', { skip: !windows }, () => {
   const f = fixture();
   try {
-    const wrapper = resolve('scripts/gh-project.ps1').replaceAll("'", "''");
     const harness = join(f.dir, 'restore.ps1');
-    writeFileSync(
-      harness,
-      `
-$beforeConfig=$env:GH_CONFIG_DIR
-$beforeGh=$env:GH_TOKEN
-$beforeGithub=$env:GITHUB_TOKEN
-$result=& '${wrapper}' api user
-$status=$LASTEXITCODE
-@{status=$status;restored=($env:GH_CONFIG_DIR -eq $beforeConfig -and $env:GH_TOKEN -eq $beforeGh -and $env:GITHUB_TOKEN -eq $beforeGithub);result=($result | ConvertFrom-Json)} | ConvertTo-Json -Depth 5
-`,
-    );
+    writeFileSync(harness, harnesses.restore);
     const r = spawnSync(
       'powershell.exe',
       ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', harness],
-      { env: f.env, encoding: 'utf8', timeout: processTimeoutMs },
+      {
+        env: { ...f.env, TEST_WRAPPER: resolve('scripts/gh-project.ps1') },
+        encoding: 'utf8',
+        timeout: processTimeoutMs,
+      },
     );
     assert.ifError(r.error);
     assert.equal(r.status, 0, r.stderr);
@@ -238,22 +271,16 @@ test(
         join(installed, 'gh-project.ps1'),
         readFileSync(resolve('scripts/gh-project.ps1')),
       );
-      const init = resolve('scripts/project-terminal.ps1').replaceAll("'", "''");
       const harness = join(f.dir, 'terminal.ps1');
-      writeFileSync(
-        harness,
-        `
-. '${init}'
-$company = gh api user --jq .login | ConvertFrom-Json
-$personal = ghp api user --jq .login | ConvertFrom-Json
-$after = gh api user --jq .login | ConvertFrom-Json
-@{company=$company;personal=$personal;after=$after;ghFunction=[bool](Get-Command gh -CommandType Function -ErrorAction SilentlyContinue);ghpFunction=[bool](Get-Command ghp -CommandType Function -ErrorAction SilentlyContinue)} | ConvertTo-Json -Depth 5
-`,
-      );
+      writeFileSync(harness, harnesses.terminal);
       const r = spawnSync(
         'powershell.exe',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', harness],
-        { env: f.env, encoding: 'utf8', timeout: processTimeoutMs },
+        {
+          env: { ...f.env, TEST_TERMINAL_INIT: resolve('scripts/project-terminal.ps1') },
+          encoding: 'utf8',
+          timeout: processTimeoutMs,
+        },
       );
       assert.ifError(r.error);
       assert.equal(r.status, 0, r.stderr);
@@ -289,6 +316,31 @@ test('VS Code terminal settings select company gh and personal Codex', () => {
       '${env:LOCALAPPDATA}\\gh-workout-memo\\project-terminal.ps1',
     ),
   );
+});
+
+test('harness scripts stay ASCII-only so a non-ASCII checkout path still runs them', () => {
+  const checkout = resolve('.');
+  for (const [name, body] of Object.entries(harnesses)) {
+    const nonAscii = [...body].find((character) => character.codePointAt(0) > 0x7f);
+    assert.equal(nonAscii, undefined, name + ' harness must stay ASCII-only');
+    assert.ok(!body.includes(checkout), name + ' harness must not embed the checkout path');
+    assert.match(
+      body,
+      /%TEST_(LAUNCHER|OTHER_PROJECT)%|\$env:TEST_(WRAPPER|TERMINAL_INIT)\b/,
+      name + ' harness must read its paths from the environment',
+    );
+  }
+  // Inline harness templates would bypass the checks above, so every harness write
+  // must come from the shared constant.
+  const source = readFileSync(new URL(import.meta.url), 'utf8');
+  // Prettier wraps long calls, so the arguments may span several lines.
+  const writes = [...source.matchAll(/writeFileSync\(\s*harness\s*,\s*([\s\S]*?)\s*,?\s*\);/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(writes.length >= Object.keys(harnesses).length, 'harness writes were not found');
+  for (const content of writes) {
+    assert.match(content, /^harnesses\.\w+$/, 'harness content must come from harnesses');
+  }
 });
 
 test(
@@ -330,12 +382,14 @@ test(
       mkdirSync(other);
       const config = join(f.env.LOCALAPPDATA, 'gh-workout-memo');
       const harness = join(f.dir, 'other-project.cmd');
-      writeFileSync(
-        harness,
-        `@echo off\r\ncall "${resolve('scripts/open-vscode-account-b.cmd')}" "${other}"\r\nexit /b %errorlevel%\r\n`,
-      );
+      writeFileSync(harness, harnesses.otherProject);
       const r = spawnSync('cmd.exe', ['/d', '/c', harness], {
-        env: { ...f.env, GH_CONFIG_DIR: config },
+        env: {
+          ...f.env,
+          GH_CONFIG_DIR: config,
+          TEST_LAUNCHER: resolve('scripts/open-vscode-account-b.cmd'),
+          TEST_OTHER_PROJECT: other,
+        },
         encoding: 'utf8',
         timeout: processTimeoutMs,
       });
@@ -356,26 +410,15 @@ for (const mode of ['command failure', 'missing personal account', 'unset parent
   test(`project wrapper restores parent environment after ${mode}`, { skip: !windows }, () => {
     const f = fixture();
     try {
-      const wrapper = resolve('scripts/gh-project.ps1').replaceAll("'", "''");
       const harness = join(f.dir, 'restore-failure.ps1');
-      writeFileSync(
-        harness,
-        `
-$beforeConfig=$env:GH_CONFIG_DIR
-$beforeGh=$env:GH_TOKEN
-$beforeGithub=$env:GITHUB_TOKEN
-$beforeCodex=$env:CODEX_HOME
-$failed=$false
-try { $result=& '${wrapper}' api user; $status=$LASTEXITCODE } catch { $failed=$true; $status=1 }
-@{status=$status;failed=$failed;restored=($env:GH_CONFIG_DIR -eq $beforeConfig -and $env:GH_TOKEN -eq $beforeGh -and $env:GITHUB_TOKEN -eq $beforeGithub -and $env:CODEX_HOME -eq $beforeCodex)} | ConvertTo-Json
-`,
-      );
+      writeFileSync(harness, harnesses.restoreFailure);
       const r = spawnSync(
         'powershell.exe',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', harness],
         {
           env: {
             ...f.env,
+            TEST_WRAPPER: resolve('scripts/gh-project.ps1'),
             ...(mode === 'command failure'
               ? { TEST_EXIT: '17' }
               : mode === 'missing personal account'
@@ -413,23 +456,17 @@ test(
         join(installed, 'gh-project.ps1'),
         readFileSync(resolve('scripts/gh-project.ps1')),
       );
-      const init = resolve('scripts/project-terminal.ps1').replaceAll("'", "''");
       const harness = join(f.dir, 'ghp-failure.ps1');
-      writeFileSync(
-        harness,
-        `
-$ErrorActionPreference='Stop'
-. '${init}'
-$personal=ghp api user --jq '.login + suffix' | ConvertFrom-Json
-$status=$LASTEXITCODE
-@{status=$status;personal=$personal;config=$env:GH_CONFIG_DIR;ghToken=[bool]$env:GH_TOKEN;githubToken=[bool]$env:GITHUB_TOKEN;codex=$env:CODEX_HOME} | ConvertTo-Json -Depth 5
-`,
-      );
+      writeFileSync(harness, harnesses.ghpFailure);
       const r = spawnSync(
         'powershell.exe',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', harness],
         {
-          env: { ...f.env, TEST_EXIT: '17' },
+          env: {
+            ...f.env,
+            TEST_EXIT: '17',
+            TEST_TERMINAL_INIT: resolve('scripts/project-terminal.ps1'),
+          },
           encoding: 'utf8',
           timeout: processTimeoutMs,
         },

@@ -39,8 +39,15 @@ export function registerMachineRoutes(app: express.Express, pool: Pool) {
       .json(
         (
           await pool.query(
-            'INSERT INTO machines(brand_id,name,base_weight,notes,official_weight_id) VALUES($1,$2,$3,$4,$5) RETURNING *',
-            [m.brand_id, m.name, m.base_weight, m.notes, m.official_weight_id ?? null],
+            'INSERT INTO machines(brand_id,name,base_weight,notes,official_weight_id,single_joint) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
+            [
+              m.brand_id,
+              m.name,
+              m.base_weight,
+              m.notes,
+              m.official_weight_id ?? null,
+              m.single_joint ?? false,
+            ],
           )
         ).rows[0],
       );
@@ -48,7 +55,7 @@ export function registerMachineRoutes(app: express.Express, pool: Pool) {
   app.put('/api/machines/:id', async (req, res) => {
     const m = machineSchema.parse(req.body);
     const r = await pool.query(
-      'UPDATE machines SET brand_id=$1,name=$2,base_weight=$3,notes=$4,official_weight_id=CASE WHEN $7::boolean THEN $5::integer ELSE official_weight_id END WHERE id=$6 RETURNING *',
+      'UPDATE machines SET brand_id=$1,name=$2,base_weight=$3,notes=$4,official_weight_id=CASE WHEN $7::boolean THEN $5::integer ELSE official_weight_id END,single_joint=COALESCE($8::boolean,single_joint) WHERE id=$6 RETURNING *',
       [
         m.brand_id,
         m.name,
@@ -57,6 +64,7 @@ export function registerMachineRoutes(app: express.Express, pool: Pool) {
         m.official_weight_id ?? null,
         id(req.params.id),
         m.official_weight_id !== undefined,
+        m.single_joint ?? null,
       ],
     );
     res.status(r.rowCount ? 200 : 404).json(r.rows[0] ?? { error: '머신을 찾을 수 없습니다' });

@@ -22,13 +22,21 @@ import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fieldErrors, goalSchema, machineSchema, workoutSchema, type GoalInput } from './contract';
+import {
+  feedbackLevels,
+  fieldErrors,
+  goalSchema,
+  machineSchema,
+  workoutSchema,
+  type Feedback,
+  type GoalInput,
+} from './contract';
 import { Button } from './components/ui/button';
 import { Dialog } from './components/ui/dialog';
 import { FieldError, invalidProps, Input } from './components/ui/field';
 import './theme.css';
 import './style.css';
-import { seoulDate } from './date';
+import { dateTitle, seoulDate } from './date';
 import { Routines } from './routines';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
@@ -40,16 +48,34 @@ import {
   formatRemaining,
   maxRest,
   minRest,
+  parseRestDurations,
   parseTimer,
   pauseTimer,
   remainingMs,
+  restDurationsKey,
+  restKind,
+  restKinds,
   restTimerKey,
   resumeTimer,
   startTimer,
   validDuration,
   withDuration,
+  type RestDurations,
+  type RestKind,
   type RestTimer,
 } from './rest-timer';
+const restKindLabels: Record<RestKind, string> = {
+  lower: '하체',
+  upper: '상체',
+  single: '단관절',
+};
+function readRestDurations(): RestDurations {
+  try {
+    return parseRestDurations(localStorage.getItem(restDurationsKey));
+  } catch {
+    return parseRestDurations(null);
+  }
+}
 type SetRow = {
   exercise: string;
   machine_id: number | null;
@@ -76,8 +102,11 @@ type Workout = {
   date: string;
   title: string;
   notes: string;
+  // #83: how the whole workout felt; null or missing means not recorded.
+  feedback?: Feedback | null;
   sets: SetRow[];
 };
+const feedbackLabels: Record<Feedback, string> = { hard: '힘듦', medium: '중간', easy: '쉬움' };
 type Draft = {
   format: 1;
   savedAt: number;
@@ -108,6 +137,7 @@ function readDraft(): { draft: Draft | null; warning: string } {
       typeof d.editor.date !== 'string' ||
       typeof d.editor.title !== 'string' ||
       typeof d.editor.notes !== 'string' ||
+      (d.editor.feedback != null && !feedbackLevels.includes(d.editor.feedback)) ||
       (d.editor.id !== undefined && (!Number.isInteger(d.editor.id) || d.editor.id <= 0)) ||
       (d.editor.version !== undefined &&
         (!Number.isInteger(d.editor.version) || d.editor.version <= 0)) ||
@@ -167,6 +197,8 @@ type Machine = {
   official_basis?: OfficialWeight['basis'];
   official_source_url?: string | null;
   official_checked_date?: string | null;
+  // #84: single-joint machines use the single-joint rest.
+  single_joint?: boolean;
 };
 // Manufacturer starting resistance (no plates). Reference only: never added to a set total.
 type OfficialWeight = {
@@ -320,6 +352,25 @@ function Workspace() {
   const [timer, setTimerState] = useState(readTimer);
   const [durationInput, setDurationInput] = useState(String(timer.duration));
   const [timerWarning, setTimerWarning] = useState('');
+  const [restDurations, setRestDurations] = useState(readRestDurations);
+  const [restInputs, setRestInputs] = useState(() =>
+    Object.fromEntries(restKinds.map((k) => [k, String(restDurations[k])])),
+  );
+  function updateRestDuration(kind: RestKind, value: string) {
+    setRestInputs({ ...restInputs, [kind]: value });
+    const seconds = Number(value);
+    if (!validDuration(seconds)) return;
+    const next = { ...restDurations, [kind]: seconds };
+    setRestDurations(next);
+    try {
+      localStorage.setItem(restDurationsKey, JSON.stringify(next));
+      setTimerWarning('');
+    } catch {
+      setTimerWarning(
+        '휴식 시간 설정을 이 브라우저에 보관하지 못했습니다. 새로고침하면 기본값으로 돌아갑니다.',
+      );
+    }
+  }
   const [tick, setTick] = useState(0);
   const timerNow = Date.now();
   const timerLeft = remainingMs(timer, timerNow);
@@ -370,7 +421,9 @@ function Workspace() {
   // user comes back to the journal without a full page refresh.
   useEffect(() => {
     void loadProgress();
-  }, [loadProgress, page]);
+    // Body parts mapped on 종목 분석 must apply to the rest timer when the user returns.
+    void queryClient.invalidateQueries({ queryKey: ['exercise-body-parts'] });
+  }, [loadProgress, page, queryClient]);
   // Rest changes only the plan. A pending request blocks repeated clicks and the
   // server applies the same day's rest at most once.
   async function changeRest(method: 'POST' | 'DELETE') {
@@ -429,7 +482,7 @@ function Workspace() {
     sets[i] = { ...current, completed };
     setEditor({ ...latest, sets });
     if (completed && timer.autoStart && !workoutSaving.current)
-      updateTimer(startTimer(timer, Date.now()));
+      updateTimer(startTimer(timer, Date.now(), restSeconds(current)));
   }
   async function saveWorkout() {
     if (!editor || workoutSaving.current) return;
@@ -510,6 +563,20 @@ function Workspace() {
     // Reference data is optional: its failure must not block journal data.
     queryFn: () => api<OfficialWeight[]>('/official-machine-weights').catch(() => null),
   });
+  // #84: the user's exercise → body part mapping (#32) picks the rest of a completed set.
+  // It is optional: a failed load only falls back to the configured rest.
+  const bodyPartsQuery = useQuery({
+    queryKey: ['exercise-body-parts'],
+    queryFn: () =>
+      api<{ exercise: string; body_parts: string[] }[]>('/exercise-body-parts').catch(() => []),
+  });
+  const restSeconds = (s: SetRow) => {
+    const machine = machines.find((m) => m.id === s.machine_id);
+    const key = s.exercise.trim().toLowerCase();
+    const parts = bodyPartsQuery.data?.find((m) => m.exercise === key)?.body_parts ?? [];
+    const kind = restKind(machine?.single_joint === true, parts);
+    return kind ? restDurations[kind] : timer.duration;
+  };
   const workouts = workoutsQuery.data ?? [],
     goals = goalsQuery.data ?? [],
     machines = machinesQuery.data ?? [],
@@ -541,26 +608,33 @@ function Workspace() {
       setSaving(false);
     }
   }
+  const machineIds = () => new Set(machines.map((m) => m.id));
+  // #82: a new journal is dated today (Asia/Seoul) even when another day is browsed,
+  // and starts with today's routine sets when a routine plans a workout today.
   const newWorkout = () => {
     if (recovery) return;
+    const date = today();
     setEditor({
-      date: anchor,
-      title: '',
+      date,
+      title: dateTitle(date),
       notes: '',
-      // #28: a new journal starts with three sets.
-      sets: Array.from({ length: 3 }, () => ({
-        exercise: '',
-        machine_id: null,
-        weight: 0,
-        reps: 10,
-        notes: '',
-        completed: false,
-        rpe: null,
-      })),
+      feedback: null,
+      // #28: otherwise a new journal starts with three sets.
+      sets:
+        routineDraft(progress, machineIds())?.sets ??
+        Array.from({ length: 3 }, () => ({
+          exercise: '',
+          machine_id: null,
+          weight: 0,
+          reps: 10,
+          notes: '',
+          completed: false,
+          rpe: null,
+        })),
     });
   };
   const quickWorkout = () => {
-    const value = routineDraft(progress);
+    const value = routineDraft(progress, machineIds());
     if (recovery || !value) return;
     setEditor(value);
   };
@@ -778,9 +852,32 @@ function Workspace() {
         />
         세트 완료 시 자동 시작
       </label>
+      <fieldset className="rest-kinds">
+        <legend>운동별 기본 휴식(초) · 세트 완료로 시작할 때 적용</legend>
+        {restKinds.map((kind) => (
+          <label key={kind}>
+            {restKindLabels[kind]}
+            <input
+              type="number"
+              aria-label={`${restKindLabels[kind]} 휴식(초)`}
+              min={minRest}
+              max={maxRest}
+              step="1"
+              inputMode="numeric"
+              value={restInputs[kind]}
+              onChange={(e) => updateRestDuration(kind, e.target.value)}
+            />
+          </label>
+        ))}
+      </fieldset>
       <p className="form-hint">
         종료 시각 기준으로 이 브라우저에만 보관합니다. 탭을 다시 열면 남은 시간이 맞춰지며,
         브라우저를 닫은 동안에는 알림이 없습니다.
+      </p>
+      <p className="form-hint">
+        세트를 완료하면 단관절 머신 → 하체 → 상체 순서로 운동의 기본 휴식을 씁니다. 단관절은 머신
+        라이브러리, 하체·상체는 종목 분석의 부위 지정을 따르며 운동명으로 추측하지 않습니다. 지정이
+        없으면 위의 휴식 시간을 씁니다.
       </p>
       {timerWarning && (
         <p role="alert" className="error">
@@ -1073,6 +1170,7 @@ function Workspace() {
                             {dateLabel(w.date)} ·{' '}
                             {Array.from(new Set(w.sets.map((s) => s.exercise))).join(', ')}
                           </p>
+                          {w.feedback && <p>체감 {feedbackLabels[w.feedback]}</p>}
                           {w.notes && <p>{w.notes}</p>}
                           <details>
                             <summary>세트 기록 보기</summary>
@@ -1226,7 +1324,8 @@ function Workspace() {
                         <div className="workout-info">
                           <h3>{m.name}</h3>
                           <p>
-                            {m.brand} · {m.notes || '메모 없음'}
+                            {m.brand}
+                            {m.single_joint ? ' · 단관절' : ''} · {m.notes || '메모 없음'}
                           </p>
                           {m.official_status && (
                             <p className="official-ref">
@@ -1335,6 +1434,29 @@ function Workspace() {
                 </label>
                 {issue('title')}
               </div>
+              <div className="feedback-field">
+                <span id="workout-feedback">체감 피드백 (선택)</span>
+                <div className="tabs" role="group" aria-labelledby="workout-feedback">
+                  {feedbackLevels.map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      className={editor.feedback === level ? 'selected' : ''}
+                      aria-pressed={editor.feedback === level}
+                      // Pressing the selected level again clears it back to not recorded.
+                      onClick={() =>
+                        setEditor({
+                          ...editor,
+                          feedback: editor.feedback === level ? null : level,
+                        })
+                      }
+                    >
+                      {feedbackLabels[level]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {issue('feedback')}
               {issue('sets')}
               <p className="form-hint">
                 세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 좌우를
@@ -1344,8 +1466,9 @@ function Workspace() {
               </p>
               <p className="form-hint">
                 수행한 세트는 완료로 표시하세요. 완료한 세트만 통계와 목표 달성에 반영하며 미완료
-                세트는 계획으로 함께 보관합니다. RPE는 1~10의 0.5 단위이며 비워두면 미입력으로
-                남습니다. 완료 {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0}
+                세트는 계획으로 함께 보관합니다. 운동 전체가 어땠는지는 체감
+                피드백(힘듦·중간·쉬움)으로 남기고, 고르지 않으면 미입력으로 남습니다. 완료{' '}
+                {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0}
                 세트
               </p>
               {editor.sets?.map((s, i) => (
@@ -1441,27 +1564,6 @@ function Workspace() {
                     >
                       {done(s) ? '완료됨 · 취소하려면 다시 누르기' : '완료'}
                     </button>
-                    <label>
-                      RPE (선택)
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        step="0.5"
-                        inputMode="decimal"
-                        placeholder="미입력"
-                        value={s.rpe ?? ''}
-                        onChange={(e) => {
-                          const sets = [...editor.sets!];
-                          sets[i] = {
-                            ...s,
-                            rpe: e.target.value === '' ? null : Number(e.target.value),
-                          };
-                          setEditor({ ...editor, sets });
-                        }}
-                        {...invalid(`sets.${i}.rpe`)}
-                      />
-                    </label>
                   </div>
                   {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
                     <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
@@ -1736,6 +1838,16 @@ function Workspace() {
                 value={machineEditor.notes}
                 onChange={(e) => setMachineEditor({ ...machineEditor, notes: e.target.value })}
               />
+            </label>
+            <label className="rest-auto">
+              <input
+                type="checkbox"
+                checked={machineEditor.single_joint === true}
+                onChange={(e) =>
+                  setMachineEditor({ ...machineEditor, single_joint: e.target.checked })
+                }
+              />
+              단관절 운동 머신 (세트 완료 시 단관절 기본 휴식 사용)
             </label>
             <Button full disabled={saving}>
               머신 저장하기

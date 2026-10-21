@@ -97,6 +97,7 @@ async function seed(api: Api) {
     name: '레그 프레스',
     base_weight: null,
     notes: '기본중량 미확인',
+    single_joint: true,
   });
   const row = await api('/machines', 'POST', {
     brand_id: hammer.id,
@@ -110,6 +111,7 @@ async function seed(api: Api) {
     date: '2024-02-29',
     title: '=SUM(A1) 하체',
     notes: tricky,
+    feedback: 'hard',
     sets: [
       { exercise: '레그 프레스', machine_id: press.data.id, weight: 100.25, reps: 10, notes: '' },
       { exercise: '레그 프레스', machine_id: press.data.id, weight: 120, reps: 8, notes: '+힘듦' },
@@ -166,6 +168,7 @@ function normalize(backup: Backup) {
         key: machine.get(m.id),
         base_weight: m.base_weight,
         notes: m.notes,
+        single_joint: m.single_joint,
       })),
     ),
     workouts: sort(
@@ -173,6 +176,7 @@ function normalize(backup: Backup) {
         date: w.date,
         title: w.title,
         notes: w.notes,
+        feedback: w.feedback,
         created_at: w.created_at,
         sets: w.sets.map((s) => ({
           ...s,
@@ -210,6 +214,10 @@ test(
         'Unknown base weight stays null',
       );
       assert.equal('workout_requests' in backup.data, false);
+      assert.ok(
+        backup.data.machines.some((m) => m.single_joint),
+        'single-joint flag is exported (#84)',
+      );
 
       const before = await target.count();
       const preview = await target.api('/backup/preview', 'POST', { mode: 'merge', backup });
@@ -512,6 +520,7 @@ test(
         'brand',
         'machine_name',
         'machine_base_weight_kg',
+        'workout_feedback',
       ]);
       assert.equal(rows.length, 1 + 6, 'One row per set');
       const col = (name: string) => rows[0].indexOf(name);
@@ -536,6 +545,9 @@ test(
       assert.equal(bodyweight[col('set_notes')], tricky);
       assert.equal(rows[4][col('machine_name')], 'Iso Row, "와이드"');
       assert.equal(rows[4][col('machine_base_weight_kg')], '20.5');
+      // #83: workout feedback repeats on each set row; not recorded is an empty cell.
+      assert.equal(first[col('workout_feedback')], 'hard');
+      assert.equal(rows[4][col('workout_feedback')], '');
       const ranged = parseCsv(
         (await db.api('/export/workouts.csv?from=2024-03-01&to=2024-03-01')).text,
       );
@@ -639,3 +651,36 @@ async function fetchJson(
   });
   return { status: response.status, data: (await response.json()) as { id: number } };
 }
+
+test(
+  'restoring a routine maps its machine to the restored machine id (#82)',
+  { skip },
+  async () => {
+    await isolated(async (source, target) => {
+      const brand = ((await source.api('/brands')).data as unknown as { id: number }[])[0];
+      const machine = { brand_id: brand.id, name: '루틴 머신', base_weight: 30, notes: '' };
+      const created = await source.api('/machines', 'POST', machine);
+      assert.equal(created.status, 201);
+      const plan = routineInput(1) as ReturnType<typeof routineInput> & {
+        splits: { exercises: { machine_id?: number }[] }[];
+      };
+      plan.splits[0].exercises[0].machine_id = created.data.id;
+      assert.equal((await source.api('/routines', 'POST', plan)).status, 201);
+      // The target already has another machine, so the restored one gets a different id.
+      await target.api('/machines', 'POST', { ...machine, name: '먼저 있던 머신' });
+      const backup = (await source.api('/backup')).data;
+      const restored = await target.api('/backup/restore', 'POST', { mode: 'merge', backup });
+      assert.equal(restored.status, 200);
+      const targetMachine = (
+        await target.pool.query('SELECT id FROM machines WHERE name=$1', ['루틴 머신'])
+      ).rows[0].id as number;
+      assert.notEqual(targetMachine, created.data.id);
+      const routine = (await target.pool.query('SELECT plan FROM routines')).rows[0].plan;
+      assert.equal(routine.splits[0].exercises[0].machine_id, targetMachine);
+      // Restoring again recognizes the remapped plan as the same routine.
+      const again = await target.api('/backup/restore', 'POST', { mode: 'merge', backup });
+      assert.equal(again.data.tables.routines.added, 0);
+      assert.equal(again.data.tables.routines.skipped, 1);
+    }, 2);
+  },
+);

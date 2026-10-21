@@ -91,6 +91,24 @@ test(
         [created.rows[0].id],
       );
       assert.deepEqual(sets.rows, [{ weight: '100.25', reps: 5, completed: true, rpe: '8.5' }]);
+      // #83: an existing workout has no feedback; only the three levels are accepted.
+      const workout = await client.query('SELECT feedback FROM workouts WHERE id=$1', [
+        created.rows[0].id,
+      ]);
+      assert.deepEqual(workout.rows, [{ feedback: null }]);
+      // #84: existing machines are not single-joint.
+      const brand = await client.query('INSERT INTO brands(name) VALUES ($1) RETURNING id', [
+        'baseline',
+      ]);
+      const machine = await client.query(
+        `INSERT INTO machines(brand_id, name) VALUES ($1, 'baseline') RETURNING single_joint`,
+        [brand.rows[0].id],
+      );
+      assert.equal(machine.rows[0].single_joint, false);
+      await assert.rejects(
+        client.query(`UPDATE workouts SET feedback='0' WHERE id=$1`, [created.rows[0].id]),
+        /workouts_feedback_check/,
+      );
       assert.deepEqual(await migrate(client, files), []);
     });
   },

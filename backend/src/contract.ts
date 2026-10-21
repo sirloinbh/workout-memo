@@ -39,11 +39,21 @@ const reps = (label: string) =>
     .max(1000, `${topic(label)} 1~1000의 정수로 입력하세요`);
 const rpeMessage = 'RPE는 1~10 사이 0.5 단위로 입력하세요';
 
+export const feedbackLevels = ['hard', 'medium', 'easy'] as const;
+export type Feedback = (typeof feedbackLevels)[number];
+
 export const workoutSchema = z.object({
   version: z.number().int().positive().optional(),
   date,
   title: text('일지 제목', 120),
   notes: memo(4000).default(''),
+  // #83: how the whole workout felt. Missing stays NULL and is never a default level.
+  feedback: z
+    .enum(feedbackLevels, {
+      errorMap: () => ({ message: '체감 피드백은 힘듦·중간·쉬움 중에서 선택하세요' }),
+    })
+    .nullable()
+    .default(null),
   sets: z
     .array(
       z.object({
@@ -81,6 +91,9 @@ export const machineSchema = z.object({
   // A link to a manufacturer reference row; it never sets or changes base_weight.
   // Omitted keeps the stored link on update (none on create); explicit null unlinks.
   official_weight_id: z.number().int().positive().max(2147483647).nullable().optional(),
+  // #84: single-joint machines use the single-joint rest. Omitted keeps the stored value
+  // on update (false on create), so older clients do not clear it.
+  single_joint: z.boolean({ invalid_type_error: '단관절 여부를 확인하세요' }).optional(),
 });
 
 export const goalSchema = z

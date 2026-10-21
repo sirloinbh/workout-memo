@@ -93,6 +93,24 @@ test('backup validation accepts a well-formed v1 backup', () => {
   assert.equal(parsed.data.machines[0].base_weight, null);
 });
 
+test('backups without workout feedback stay valid and keep it null (#83)', () => {
+  const parsed = parseBackup(validBackup());
+  assert.equal(parsed.data.workouts[0].feedback, null);
+  const backup = validBackup();
+  (backup.data.workouts[0] as { feedback?: string }).feedback = 'easy';
+  assert.equal(parseBackup(backup).data.workouts[0].feedback, 'easy');
+  rejects((b) => {
+    (b.data.workouts[0] as { feedback?: string }).feedback = 'tired';
+  }, /workouts\.0\.feedback/);
+});
+
+test('backups without the single-joint flag restore machines as not single-joint (#84)', () => {
+  assert.equal(parseBackup(validBackup()).data.machines[0].single_joint, false);
+  rejects((b) => {
+    (b.data.machines[0] as { single_joint?: unknown }).single_joint = 'yes';
+  }, /machines\.0\.single_joint/);
+});
+
 test('backup validation rejects other files and unsupported versions first', () => {
   rejects(() => 'not an object', /백업 파일 형식이 아닙니다/);
   rejects(() => [], /백업 파일 형식이 아닙니다/);
@@ -132,4 +150,14 @@ test('backup validation rejects broken references, duplicate ids and invalid val
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).goals;
   }, /data\.goals/);
+  // #82: a routine plan may name a machine, which must be in the same backup.
+  rejects((b) => {
+    (b.data.routines[0].plan.splits[0].exercises[0] as { machine_id?: number }).machine_id = 404;
+  }, /routines\[0\].*머신 404/);
+});
+
+test('backup validation accepts a routine that names a machine in the backup (#82)', () => {
+  const backup = validBackup();
+  (backup.data.routines[0].plan.splits[0].exercises[0] as { machine_id?: number }).machine_id = 5;
+  assert.equal(parseBackup(backup).data.routines[0].plan.splits[0].exercises[0].machine_id, 5);
 });

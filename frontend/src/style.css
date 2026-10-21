@@ -290,6 +290,29 @@ p {
   align-items: center;
   gap: 8px;
 }
+/* #85: start/end inputs for a directly chosen range. */
+.custom-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+}
+.custom-range label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.custom-range .form-hint {
+  margin: 0;
+  padding: 6px 10px;
+}
+/* Six period tabs wrap instead of widening narrow screens. */
+.tabs {
+  flex-wrap: wrap;
+}
 .date-control button {
   background: transparent;
   border: 0;

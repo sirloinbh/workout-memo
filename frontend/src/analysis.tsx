@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { seoulDate } from './date';
 
-const parts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'];
+// #88: 이두·삼두 replace 팔 for new choices; a saved 팔 is still listed so it can be cleared.
+const parts = ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'];
+const legacyParts = ['팔'];
 type PersonalRecord = { value: number; weight: number; reps: number; date: string; ties: number };
 type Exercise = {
   key: string;
@@ -96,7 +98,7 @@ export function Analysis() {
     try {
       await request('/exercise-body-parts', {
         exercise: editing.exercise,
-        body_parts: parts.filter((p) => editing.parts.includes(p)),
+        body_parts: [...legacyParts, ...parts].filter((p) => editing.parts.includes(p)),
       });
       setEditing(null);
       await load();
@@ -218,24 +220,26 @@ export function Analysis() {
                 </p>
                 {editing?.key === x.key && (
                   <div className="part-editor">
-                    {parts.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        aria-pressed={editing.parts.includes(p)}
-                        className={editing.parts.includes(p) ? 'selected' : ''}
-                        onClick={() =>
-                          setEditing({
-                            ...editing,
-                            parts: editing.parts.includes(p)
-                              ? editing.parts.filter((q) => q !== p)
-                              : [...editing.parts, p],
-                          })
-                        }
-                      >
-                        {p}
-                      </button>
-                    ))}
+                    {[...parts, ...legacyParts.filter((p) => editing.parts.includes(p))].map(
+                      (p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          aria-pressed={editing.parts.includes(p)}
+                          className={editing.parts.includes(p) ? 'selected' : ''}
+                          onClick={() =>
+                            setEditing({
+                              ...editing,
+                              parts: editing.parts.includes(p)
+                                ? editing.parts.filter((q) => q !== p)
+                                : [...editing.parts, p],
+                            })
+                          }
+                        >
+                          {p}
+                        </button>
+                      ),
+                    )}
                     <button
                       className="subtle-button"
                       disabled={saving}

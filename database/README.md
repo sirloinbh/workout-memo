@@ -108,6 +108,8 @@ docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /dock
 
 운동별 증량 단위(#86)를 쓰는 API 실행 전에는 `012_exercise_weight_steps.sql`을 적용하세요. `exercise_weight_steps`는 정규화한 운동명(`lower(trim(name))`)별 증량 단위(0 초과 100 kg 이하)이며, 행이 없으면 기본 5 kg입니다. 재실행해도 안전합니다. 부위 지정(`exercise_body_parts`)과 같이 앱 백업 파일에는 아직 포함하지 않습니다.
 
+이두·삼두 부위(#88)를 쓰는 API 실행 전에는 `014_biceps_triceps.sql`을 적용하세요. `exercise_body_parts`의 부위 CHECK를 이두·삼두를 포함하도록 교체하며, 이전에 저장한 `팔`은 그대로 허용합니다. 데이터는 바꾸지 않고 재실행해도 안전합니다.
+
 휴식 타이머는 서버에 저장하지 않습니다. 이 브라우저의 localStorage(`workout-memo:rest-timer:v1`)에 시간 설정·자동 시작 여부·종료 시각만 보관하며, 남은 시간은 종료 시각으로 다시 계산합니다. 운동 종류별 기본 휴식(하체·상체·단관절, #84)은 `workout-memo:rest-durations:v1`에 따로 보관합니다.
 
 중량은 kg 단위 총중량(머신 기본중량 포함), 반복 수는 양의 정수입니다. 기본중량 미확인은 NULL로 유지합니다. 일지 삭제 시 세트는 CASCADE 삭제됩니다. 목표 달성은 같은 운동명의 완료한 한 세트가 설정 기간 내 중량·횟수를 모두 충족한 경우입니다.

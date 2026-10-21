@@ -21,8 +21,31 @@ export const officialWeightQuery = z
 export const volume = (sets: { weight: number; reps: number; completed?: boolean }[]) =>
   sets.reduce((sum, s) => (s.completed === false ? sum : sum + s.weight * s.reps), 0);
 
-// The seven routine body parts (#27), also used by the exercise mapping (#32).
-export const bodyParts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'] as const;
+// Routine body parts (#27), also used by the exercise mapping (#32). #88 split 팔 into
+// 이두·삼두 for new choices; 팔 stays valid so saved routines and mappings keep working.
+export const bodyParts = [
+  '가슴',
+  '등',
+  '어깨',
+  '이두',
+  '삼두',
+  '하체-앞',
+  '하체-뒤',
+  '복근',
+] as const;
+export const legacyBodyParts = ['팔'] as const;
+// Display and validation order, with the legacy part next to its successors.
+export const allBodyParts = [
+  '가슴',
+  '등',
+  '어깨',
+  '팔',
+  '이두',
+  '삼두',
+  '하체-앞',
+  '하체-뒤',
+  '복근',
+] as const;
 // Same-exercise identity shared by goal judgment and exercise analysis: case and
 // outer spaces are ignored. Evaluated by PostgreSQL so both use one collation.
 export const exerciseKeySql = (column: string) => `lower(trim(${column}))`;
@@ -37,12 +60,21 @@ export const routineSchema = z
     split_count: z.number().int().min(1).max(5),
     weekly_workouts: z.number().int().min(1).max(7),
     rest_days: z.array(z.number().int().min(0).max(6)).max(6),
+    // #88: 'cycle' repeats N training days then M rest days from the start date.
+    // A missing mode is a saved weekday routine (rest_days are weekdays).
+    schedule_mode: z.enum(['weekday', 'cycle']).optional(),
+    cycle: z
+      .object({
+        train_days: z.number().int().min(1).max(7),
+        rest_days: z.number().int().min(0).max(7),
+      })
+      .optional(),
     splits: z
       .array(
         z.object({
           name: z.string().trim().min(1).max(120),
           body_parts: z
-            .array(z.enum(bodyParts))
+            .array(z.enum(allBodyParts))
             .min(1, '분할마다 운동 부위를 1개 이상 선택하세요')
             .max(100),
           exercises: z
@@ -79,7 +111,11 @@ export const routineSchema = z
   .superRefine((plan, ctx) => {
     const invalid = (message: string) => ctx.addIssue({ code: 'custom', message });
     if (plan.splits.length !== plan.split_count) invalid('분할 개수를 확인하세요');
-    if (
+    if (plan.schedule_mode === 'cycle') {
+      if (!plan.cycle) invalid('운동일과 휴식일 수를 입력하세요');
+      if (plan.rest_days.length) invalid('주기 방식에는 휴식 요일을 지정하지 않습니다');
+    } else if (plan.cycle) invalid('요일 방식에는 운동·휴식 주기를 지정하지 않습니다');
+    else if (
       new Set(plan.rest_days).size !== plan.rest_days.length ||
       plan.rest_days.length + plan.weekly_workouts !== 7
     )
@@ -110,12 +146,19 @@ export const routineSchema = z
     }
   });
 export type RoutinePlan = z.infer<typeof routineSchema>;
+// Weekday routines rest on the chosen weekdays; cycle routines (#88) rest on the last
+// M days of every N + M day cycle counted from the start date.
+function isRestDay(plan: RoutinePlan, offset: number, weekday: number) {
+  if (plan.schedule_mode === 'cycle' && plan.cycle)
+    return offset % (plan.cycle.train_days + plan.cycle.rest_days) >= plan.cycle.train_days;
+  return plan.rest_days.includes(weekday);
+}
 export function routineSchedule(plan: RoutinePlan) {
   const schedule: { date: string; week: number; split_index: number; is_deload: boolean }[] = [];
   for (let offset = 0; offset < 84; offset++) {
     const day = new Date(plan.start_date + 'T00:00:00Z');
     day.setUTCDate(day.getUTCDate() + offset);
-    if (plan.rest_days.includes(day.getUTCDay())) continue;
+    if (isRestDay(plan, offset, day.getUTCDay())) continue;
     const week = Math.floor(offset / 7) + 1;
     schedule.push({
       date: day.toISOString().slice(0, 10),

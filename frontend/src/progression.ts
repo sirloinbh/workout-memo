@@ -18,6 +18,9 @@ export type AutoExercise = {
 type PreviewPlan = {
   start_date: string;
   rest_days: number[];
+  // #88: 'cycle' repeats train_days then rest_days from the start date.
+  schedule_mode?: 'weekday' | 'cycle';
+  cycle?: { train_days: number | string; rest_days: number | string };
   split_count: number;
   splits: { exercises: AutoExercise[] }[];
 };
@@ -38,7 +41,14 @@ export const deloadWeight = (weight: number) => Math.max(0, to25(weight * 0.9));
 export type Session = { week: number; session: number };
 // Sessions of each split in plan order; `session` is the n-th training day of its week.
 export function splitSessions(plan: PreviewPlan) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(plan.start_date) || plan.rest_days.length >= 7) return null;
+  const cycle = plan.schedule_mode === 'cycle' ? plan.cycle : undefined;
+  const train = Number(cycle?.train_days);
+  const period = train + Number(cycle?.rest_days);
+  if (
+    plan.schedule_mode === 'cycle' ? !(train >= 1 && period >= train) : plan.rest_days.length >= 7
+  )
+    return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(plan.start_date)) return null;
   const sessions: Session[][] = Array.from({ length: plan.split_count }, () => []);
   const perWeek: Record<number, number> = {};
   let count = 0;
@@ -46,7 +56,7 @@ export function splitSessions(plan: PreviewPlan) {
     const day = new Date(plan.start_date + 'T00:00:00Z');
     if (Number.isNaN(+day)) return null;
     day.setUTCDate(day.getUTCDate() + offset);
-    if (plan.rest_days.includes(day.getUTCDay())) continue;
+    if (cycle ? offset % period >= train : plan.rest_days.includes(day.getUTCDay())) continue;
     const week = Math.floor(offset / 7) + 1;
     perWeek[week] = (perWeek[week] ?? 0) + 1;
     sessions[count++ % plan.split_count].push({ week, session: perWeek[week] });

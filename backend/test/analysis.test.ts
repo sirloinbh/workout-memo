@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Pool } from 'pg';
 import { createApp } from '../src/app.js';
-import { analyze, estimatedOneRepMax, type AnalysisSet } from '../src/analysis.js';
+import {
+  analyze,
+  bodyPartMappingSchema,
+  estimatedOneRepMax,
+  type AnalysisSet,
+} from '../src/analysis.js';
 
 let nextId = 1;
 const set = (
@@ -35,7 +40,8 @@ test('empty records produce no PRs and zero Monday-start weeks for every part', 
   );
   assert.deepEqual(
     result.weeks[0].parts.map((p) => p.body_part),
-    ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근', '미분류'],
+    // #88: 이두·삼두 replace 팔, which is listed only while some exercise uses it.
+    ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근', '미분류'],
   );
   assert.ok(result.weeks.every((w) => w.parts.every((p) => p.sets === 0 && p.volume === 0)));
 });
@@ -300,7 +306,10 @@ test('analysis API limits sets to the Seoul service date and returns computed re
     assert.equal(data.exercises[0].exercise, 'squat');
     assert.deepEqual(data.exercises[0].body_parts, ['하체-앞']);
     assert.equal(data.exercises[0].prs.estimated_1rm.value, 107.2);
-    assert.equal(data.weeks[0].parts[4].sets, 2);
+    assert.equal(
+      data.weeks[0].parts.find((p: { body_part: string }) => p.body_part === '하체-앞').sets,
+      2,
+    );
     assert.equal(data.weeks[0].volume, 471);
   });
   const sets = calls.find((c) => c.sql.includes('FROM sets'))!;
@@ -308,4 +317,30 @@ test('analysis API limits sets to the Seoul service date and returns computed re
   assert.deepEqual(sets.params, ['2024-01-03']);
   assert.match(sets.sql, /lower\(trim\(s\.exercise\)\)/);
   assert.match(calls[0].sql, /Asia\/Seoul/);
+});
+
+test('a legacy 팔 mapping is still counted and listed next to 이두·삼두 (#88)', () => {
+  const result = analyze(
+    [{ ...set('2025-01-06', 'Curl', '20', 10), exercise_key: 'curl' }],
+    [
+      { exercise: 'curl', body_part: '이두' },
+      { exercise: 'curl', body_part: '팔' },
+    ],
+    '2025-01-06',
+    '2025-01-12',
+  );
+  assert.deepEqual(result.exercises[0].body_parts, ['팔', '이두']);
+  const names = result.weeks[0].parts.map((p) => p.body_part);
+  assert.deepEqual(names.slice(3, 6), ['팔', '이두', '삼두']);
+  for (const name of ['팔', '이두'])
+    assert.equal(result.weeks[0].parts.find((p) => p.body_part === name)!.sets, 1);
+});
+
+test('body part mappings accept 이두·삼두 and the legacy 팔 (#88)', () => {
+  for (const body_parts of [['이두'], ['삼두', '이두'], ['팔']])
+    assert.equal(bodyPartMappingSchema.safeParse({ exercise: 'Curl', body_parts }).success, true);
+  assert.equal(
+    bodyPartMappingSchema.safeParse({ exercise: 'Curl', body_parts: ['전완'] }).success,
+    false,
+  );
 });

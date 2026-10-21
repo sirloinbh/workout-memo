@@ -108,7 +108,8 @@ export function parseRestDurations(raw: string | null): RestDurations {
   }
 }
 const lowerParts = ['하체-앞', '하체-뒤'];
-const upperParts = ['가슴', '등', '어깨', '팔'];
+// 이두·삼두 (#88) and the legacy 팔 are upper body.
+const upperParts = ['가슴', '등', '어깨', '팔', '이두', '삼두'];
 // A single-joint machine wins, then lower body, then upper body. Kinds come only from
 // what the user set (machine flag, #32 body parts); exercise names are never guessed.
 // Abs-only or unmapped exercises have no kind and keep the configured rest.

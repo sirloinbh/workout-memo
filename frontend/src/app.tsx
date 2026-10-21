@@ -27,7 +27,7 @@ import { Dialog } from './components/ui/dialog';
 import { FieldError, invalidProps, Input } from './components/ui/field';
 import './theme.css';
 import './style.css';
-import { seoulDate } from './date';
+import { dateTitle, seoulDate } from './date';
 import { Routines } from './routines';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
@@ -531,26 +531,32 @@ function Workspace() {
       setSaving(false);
     }
   }
+  const machineIds = () => new Set(machines.map((m) => m.id));
+  // #82: a new journal is dated today (Asia/Seoul) even when another day is browsed,
+  // and starts with today's routine sets when a routine plans a workout today.
   const newWorkout = () => {
     if (recovery) return;
+    const date = today();
     setEditor({
-      date: anchor,
-      title: '',
+      date,
+      title: dateTitle(date),
       notes: '',
-      // #28: a new journal starts with three sets.
-      sets: Array.from({ length: 3 }, () => ({
-        exercise: '',
-        machine_id: null,
-        weight: 0,
-        reps: 10,
-        notes: '',
-        completed: false,
-        rpe: null,
-      })),
+      // #28: otherwise a new journal starts with three sets.
+      sets:
+        routineDraft(progress, machineIds())?.sets ??
+        Array.from({ length: 3 }, () => ({
+          exercise: '',
+          machine_id: null,
+          weight: 0,
+          reps: 10,
+          notes: '',
+          completed: false,
+          rpe: null,
+        })),
     });
   };
   const quickWorkout = () => {
-    const value = routineDraft(progress);
+    const value = routineDraft(progress, machineIds());
     if (recovery || !value) return;
     setEditor(value);
   };

@@ -1446,3 +1446,32 @@ fieldset.workout-fields {
 .modal .goal-step label {
   margin-bottom: 0;
 }
+
+/* #89: InBody import entry, column mapping and the editable preview table. */
+.heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.inbody-import {
+  margin: 0 0 18px;
+}
+.inbody-import label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-bottom: 12px;
+}
+.inbody-import pre {
+  white-space: pre-wrap;
+  font-size: 11px;
+}
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.inbody-preview input[type='number'] {
+  max-width: 90px;
+}

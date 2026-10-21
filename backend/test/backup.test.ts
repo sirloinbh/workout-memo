@@ -143,4 +143,14 @@ test('backup validation rejects broken references, duplicate ids and invalid val
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).goals;
   }, /data\.goals/);
+  // #82: a routine plan may name a machine, which must be in the same backup.
+  rejects((b) => {
+    (b.data.routines[0].plan.splits[0].exercises[0] as { machine_id?: number }).machine_id = 404;
+  }, /routines\[0\].*머신 404/);
+});
+
+test('backup validation accepts a routine that names a machine in the backup (#82)', () => {
+  const backup = validBackup();
+  (backup.data.routines[0].plan.splits[0].exercises[0] as { machine_id?: number }).machine_id = 5;
+  assert.equal(parseBackup(backup).data.routines[0].plan.splits[0].exercises[0].machine_id, 5);
 });

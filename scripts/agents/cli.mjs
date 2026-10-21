@@ -700,6 +700,13 @@ async function delivery(job) {
     job.commit = await git(cwd, 'rev-parse', 'HEAD');
     job.commitIntent = null;
     save(job);
+  } else if (job.failureKind === 'merge-conflict' && job.commit) {
+    // The coordinator resolved a main conflict with a merge commit on this branch.
+    const head = await git(cwd, 'rev-parse', 'HEAD');
+    await git(cwd, 'merge-base', '--is-ancestor', job.commit, head);
+    job.commit = head;
+    job.failureKind = null;
+    save(job);
   }
   if (!job.commit) throw new Error('No verified changes to publish.');
   if (job.ciCommit !== job.commit) {
@@ -727,7 +734,7 @@ async function delivery(job) {
   const body = path.join(jobDir(job.id), 'pr-body.md');
   fs.writeFileSync(
     body,
-    `## 문제와 결과\n\n${job.issue.title}\n\n## 변경\n\n${job.results.implementation.summary}\n\n## 독립 검토\n\n${job.results.review.summary}\n\n## 검증\n\n- ${job.results.verification.summary}\n- DB 통합 테스트: ${job.results.verification.db ? '전용 TEST_DATABASE_URL 설정, 상세 결과는 작업 기록 참고' : '로컬 미실행; CI 결과 확인 필요'}\n- 화면 증거·검증 한계: docs/changes/${job.id}-agent-task.md 참고\n- CI 통과 확인 전 draft 유지. 병합은 사용자가 수행합니다.\n\nCloses #${job.id}\n`,
+    `## 문제와 결과\n\n${job.issue.title}\n\n## 변경\n\n${job.results.implementation.summary}\n\n## 독립 검토\n\n${job.results.review.summary}\n\n## 검증\n\n- ${job.results.verification.summary}\n- DB 통합 테스트: ${job.results.verification.db ? '전용 TEST_DATABASE_URL 설정, 상세 결과는 작업 기록 참고' : '로컬 미실행; CI 결과 확인 필요'}\n- 화면 증거·검증 한계: docs/changes/${job.id}-agent-task.md 참고\n- CI 통과 확인 전 draft 유지. CI 통과 후 워커가 병합합니다.\n\nCloses #${job.id}\n`,
   );
   let url;
   if (prs.length) {
@@ -769,7 +776,7 @@ async function ci(job) {
       '--repo',
       repo,
       '--json',
-      'headRefOid,statusCheckRollup,url,isDraft',
+      'headRefOid,statusCheckRollup,url,isDraft,mergeable,mergeStateStatus',
     ),
   );
   if (pr.headRefOid !== job.commit) throw new Error('PR head differs from verified commit.');
@@ -848,7 +855,32 @@ async function ci(job) {
     return { pending: true, summary: 'Waiting for conclusive CI results.' };
   }
   if (pr.isDraft) await gh('pr', 'ready', pr.url, '--repo', repo);
-  return { summary: 'CI passed; PR ready for user review. No merge performed.', url: pr.url };
+  if (pr.mergeable === 'CONFLICTING' || pr.mergeStateStatus === 'BEHIND') {
+    // An earlier PR (e.g. a stacked one) moved main. Bring it in, then re-verify and wait for CI.
+    const cwd = worktree(job);
+    await git(cwd, 'fetch', 'origin', 'main');
+    try {
+      await git(cwd, 'merge', '--no-edit', 'origin/main');
+    } catch {
+      await git(cwd, 'merge', '--abort').catch(() => {});
+      throw Object.assign(
+        new Error(
+          'Merge conflict with main. Resolve it with a merge commit in the worktree, then retry.',
+        ),
+        { failureKind: 'merge-conflict' },
+      );
+    }
+    job.commit = await git(cwd, 'rev-parse', 'HEAD');
+    job.ciCommit = job.commit;
+    job.ciStartedAt = null;
+    save(job);
+    await git(cwd, 'push', 'origin', `${job.branch}:refs/heads/${job.branch}`);
+    return { pending: true, summary: 'Merged main into the branch; waiting for checks and CI.' };
+  }
+  if (pr.mergeable !== 'MERGEABLE')
+    return { pending: true, summary: 'Waiting for GitHub mergeability.' };
+  await gh('pr', 'merge', pr.url, '--repo', repo, '--merge', '--match-head-commit', job.commit);
+  return { summary: 'CI passed; PR merged into main.', url: pr.url, merged: true };
 }
 
 async function worker(once = false) {

@@ -1,11 +1,11 @@
 ---
 name: workout-implementation
-description: Follow the user's issue, numbered branch, implementation with docs, tests, and PR workflow for changes to the sirloinbh workout-memo project. Use for code, configuration, documentation, and skill edits; exclude read-only questions and recommendations. Leave all PR merging to the user.
+description: Follow the user's issue, numbered branch, implementation with docs, tests, PR, and merge-after-CI workflow for changes to the sirloinbh workout-memo project. Use for code, configuration, documentation, and skill edits; exclude read-only questions and recommendations. Merge PRs once required CI passes and resolve conflicts between stacked PRs.
 ---
 
 # Workout Memo 구현 절차
 
-이 스킬은 `sirloinbh/workout-memo` 변경 작업에 적용한다. 다른 프로젝트에 이 계정·저장소·정책을 적용하지 않는다. 프로젝트 루트의 `AGENTS.md`와 관련 문서를 먼저 읽는다. 아래 순서를 지키고 사용자가 병합할 수 있는 PR을 결과로 제공한다.
+이 스킬은 `sirloinbh/workout-memo` 변경 작업에 적용한다. 다른 프로젝트에 이 계정·저장소·정책을 적용하지 않는다. 프로젝트 루트의 `AGENTS.md`와 관련 문서를 먼저 읽는다. 아래 순서를 지키고 CI를 통과한 PR을 병합까지 완료한다.
 
 ## 1. 이슈카드 등록
 
@@ -42,12 +42,19 @@ description: Follow the user's issue, numbered branch, implementation with docs,
 - PR 본문은 UTF-8 파일로 전달한다. 문제와 변경 후 동작, 주요 변경, 실제 검사 명령·결과, 화면 변경 시 가능한 증거, `Closes #<number>`를 포함한다. 이미지가 없으면 없는 이유와 검증 한계를 적는다.
 - GitHub Actions 결과를 확인하고 관련 실패를 해결한다. 아직 실행 중인 검사는 실행 중이라고 알린다. PR 생성 후 코드를 수정했으면 영향받는 검사를 다시 실행하고 docs·PR 결과를 갱신한다.
 
-## 5. 사용자에게 병합 맡기기
+## 5. CI 통과 후 병합
 
-- 이슈 URL, 브랜치 이름, PR URL, 검증 결과와 남은 작업을 전달하고 PR을 열린 상태로 둔다.
-- **에이전트는 PR을 병합하지 않는다. 자동 병합, merge queue 등록, 병합 API, `gh pr merge`, main에 직접 통합하는 작업도 하지 않는다.**
-- 이슈는 PR 병합으로 닫히게 두고, 작업 브랜치는 사용자의 병합 전에 삭제하지 않는다. 에이전트가 자신의 PR을 승인해 사용자 검토를 대신하지 않는다.
-- 작업 완료 요청이나 일반적인 “계속해”를 PR 병합 권한으로 해석하지 않는다. 사용자가 기존 정책을 명시적으로 바꾸면 그 지시를 따른다.
+- **필수 CI 검사가 모두 통과하면 사용자 확인 없이 PR을 병합한다.** 프로젝트 GitHub 래퍼로 `pr merge <url> --merge --match-head-commit <검증한 head SHA>`를 실행한다. merge 커밋 방식은 연속 PR의 이력을 보존한다.
+- 실패하거나 진행 중인 검사가 있으면 병합하지 않는다. `--admin` 등 브랜치 보호 우회, 자기 PR 승인, main 직접 커밋·푸시, force push는 하지 않는다.
+- 병합 후 `Closes #<number>`로 이슈가 닫혔는지 확인한다. main 병합은 서버 timer가 CI 통과 후 자동 배포하므로(#75) 배포 결과를 확인하고, 실패하면 원인과 함께 알린다.
+- 이슈 URL, 브랜치 이름, PR URL, 검증 결과, 병합 커밋과 남은 작업을 전달한다.
+
+### 연속 PR 병합
+
+- 병합 순서대로 하나씩 병합한다. 앞 PR이 병합되면 다음 PR 브랜치에 `origin/main`을 merge한다.
+- 충돌이 나면 두 변경의 의도를 모두 살려 해결한다. 의도가 서로 맞지 않아 판단이 필요하면 사용자에게 묻는다.
+- 해결 후 관련 테스트를 다시 실행하고 docs 기록을 갱신해 일반 push한다. CI가 다시 통과하면 병합하고, 스택 끝까지 반복한다.
+- 내용이 이미 main에 모두 반영된 PR은 사유를 남기고 닫는다.
 
 ## 인증·실패 처리
 

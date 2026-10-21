@@ -42,3 +42,18 @@
 - `node --test scripts/test/project-github-auth.test.mjs`: 18 pass / 0 fail / 0 skip
 - 회귀 확인: `restore` 테스트의 `writeFileSync(harness, harnesses.restore)`를 인라인 템플릿으로 바꾸면 `harness content must come from harnesses`로 실패했다. 원복 후 통과.
 - `prettier --check`·`eslint`: 변경 파일 통과
+
+## 자동 리뷰 2차 — 2026-10-22
+
+별도 읽기 전용 리뷰 에이전트가 1차 반영(`85d75d9`)과 최종 전체 diff를 검토했다. 지적 2·3은 적절히 처리됐다. 지적 1은 일부만 반영됐다.
+
+- **minor**: 소스 검사 정규식이 `writeFileSync(harness, `가 한 줄에 있어야 맞았다. prettier는 긴 인라인 하네스를 `writeFileSync(\n  harness,\n  ...\n);`로 나누므로 실제 커밋될 형태를 놓쳤다. 1차 "회귀 확인"도 prettier가 거부하는 한 줄 형태로만 검증했다.
+  - 반영: 공백·줄바꿈을 허용하는 `/writeFileSync\(\s*harness\s*,\s*([\s\S]*?)\s*,?\s*\);/g`로 바꿨다.
+- 남은 한계: `harness`가 아닌 이름의 변수로 하네스를 쓰면 이 검사에서 빠진다. 기록으로 남긴다.
+- 리뷰는 최대 2회이므로 이 보완 뒤 추가 리뷰는 하지 않는다.
+
+### 2차 보완 검증
+
+- 회귀 확인: `restore` 테스트를 저장소 경로를 넣은 여러 줄 인라인 템플릿으로 바꾸고 `prettier --write`로 여러 줄 형태가 되게 했다. 회귀 테스트가 `harness content must come from harnesses`로 실패했다. 원복 후 통과.
+- `node --test scripts/test/project-github-auth.test.mjs`: 18 pass / 0 fail / 0 skip
+- 변경 파일 prettier·eslint 통과

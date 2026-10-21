@@ -114,8 +114,9 @@ test(
           week5.find((e) => e.exercise === curl)!.weight,
           week5.find((e) => e.exercise === curl)!.reps,
         ],
-        [45, 9],
-        'held curl shifts later sessions: today 40x12, then 42.5x8…45x8, deload, then 45x9',
+        [50, 9],
+        // #86: the default increment is 5 kg (was ~5% in 2.5 kg steps).
+        'held curl shifts later sessions: today 40x12, then 45x8…50x8, deload, then 50x9',
       );
 
       // Rest today shifts plan order. Session 2's window now runs until the moved

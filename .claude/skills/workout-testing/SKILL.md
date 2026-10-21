@@ -19,7 +19,7 @@ description: Write or update behavior-focused tests with workout-memo implementa
 - 화면 흐름·주소·실제 DB 저장이 바뀌면 `e2e/`의 Playwright 시나리오를 추가하거나 갱신한다. 테스트 DB(`E2E_DATABASE_URL`)로 `npm run test:e2e`를 실행하고, 개인 DB는 쓰지 않는다.
 - 화면 공통 검사(#113): `e2e/ui-*.spec.ts`는 `e2e/support/ui-fixtures.ts`의 고정 데이터·시계로 모든 페이지와 주요 모달을 검사한다. 페이지·모달·API 응답이 추가되면 이 고정 데이터와 목록을 함께 갱신한다.
   - 반응형: 360·390·768·1280px에서 가로 넘침이 없고, 고정·sticky 요소(사이드바, 하단 탭)가 조작 요소를 가리지 않는다.
-  - 접근성: axe WCAG 2.1 A/AA. 기존 저대비 색 조합만 `e2e/a11y-known-contrast.json`에 화면별로 허용한다. 새 조합이나 다른 규칙 위반은 실패한다. 색을 고치면 해당 항목을 지우고, 새 저대비 색을 목록에 추가해 통과시키지 않는다.
+  - 접근성: axe WCAG 2.1 A/AA. 기존 저대비 색 조합만 `e2e/a11y-known-contrast.json`에 화면별로 허용한다. 새 조합이나 다른 규칙 위반은 실패한다. 색을 고치면 해당 항목을 지우고, 새 저대비 색을 목록에 추가해 통과시키지 않는다. 화면별 검사는 390·1280px 두 폭에서 한 번도 나타나지 않은 허용 조합과 검사하지 않는 화면 이름을 실패로 처리하므로 목록은 줄어들기만 한다(#131).
   - 시각 회귀: `e2e/ui-visual.spec.ts`의 기준선은 `e2e/__screenshots__/`이다. 글꼴 렌더링을 맞추려고 CI `e2e` 작업의 고정 컨테이너(`mcr.microsoft.com/playwright:v1.63.0-noble`, `E2E_VISUAL=1`)에서만 비교하고, Windows 등 로컬 실행에서는 건너뛴다. CI는 기준선을 쓰지 않는다. 이미지는 `.github/workflows/ci.yml`에 digest로 고정한다. `@playwright/test`를 올리면 같은 버전 이미지의 digest로 바꾸고 기준선을 다시 만든다.
 - 의도한 화면 변경으로 기준선을 갱신할 때:
   1. PR을 push하면 CI `e2e`가 화면 차이로 실패한다. `playwright-report` 아티팩트의 diff 이미지로 바뀐 화면이 의도한 것뿐인지 확인한다.

@@ -113,6 +113,19 @@ const fail = (status: number, error: string): Outcome => ({
 export function registerRoutineRoutes(app: express.Express, pool: Pool, today: () => string) {
   app.post('/api/routines', async (req, res) => {
     const plan = routineSchema.parse(req.body);
+    // jsonb has no foreign key, so a referenced machine is checked here (#82).
+    const machineIds = [
+      ...new Set(plan.splits.flatMap((s) => s.exercises.map((e) => e.machine_id ?? null))),
+    ].filter((v): v is number => v !== null);
+    if (machineIds.length) {
+      const found = await pool.query('SELECT count(*)::int n FROM machines WHERE id = ANY($1)', [
+        machineIds,
+      ]);
+      if (found.rows[0].n !== machineIds.length) {
+        res.status(400).json({ error: '루틴에 지정한 머신을 찾을 수 없습니다' });
+        return;
+      }
+    }
     const result = await pool.query('INSERT INTO routines(plan) VALUES($1::jsonb) RETURNING id', [
       JSON.stringify(plan),
     ]);

@@ -143,3 +143,58 @@ test(
     }
   },
 );
+
+test(
+  'a routine names an existing machine and an unknown machine is rejected without saving (#82)',
+  { skip: !process.env.TEST_DATABASE_URL },
+  async () => {
+    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    const name = `Routine82-${randomUUID()}`;
+    const routineIds: number[] = [];
+    let machineId: number | undefined;
+    try {
+      await withApi(pool, async (call) => {
+        const brand = ((await call('/brands')).data as { id: number }[])[0];
+        const machine = await call('/machines', 'POST', {
+          brand_id: brand.id,
+          name,
+          base_weight: 40,
+          notes: '',
+        });
+        assert.equal(machine.status, 201);
+        machineId = (machine.data as { id: number }).id;
+        const input = routineInput(1);
+        input.name = name;
+        const withMachine = structuredClone(input) as RoutineInput & {
+          splits: { exercises: { machine_id?: number }[] }[];
+        };
+        withMachine.splits[0].exercises[0].machine_id = machineId;
+        const created = await call('/routines', 'POST', withMachine);
+        assert.equal(created.status, 201);
+        routineIds.push((created.data as { id: number }).id);
+        const detail = (await call(`/routines/${routineIds[0]}`)).data as typeof withMachine;
+        assert.equal(detail.splits[0].exercises[0].machine_id, machineId);
+        assert.equal('machine_id' in detail.splits[0].exercises[1], false);
+
+        const missing = (await pool.query('SELECT coalesce(max(id), 0) + 1000 id FROM machines'))
+          .rows[0].id as number;
+        withMachine.splits[0].exercises[0].machine_id = missing;
+        const rejected = await call('/routines', 'POST', withMachine);
+        assert.equal(rejected.status, 400);
+        assert.match((rejected.data as { error: string }).error, /머신을 찾을 수 없습니다/);
+        assert.equal(
+          (await pool.query("SELECT id FROM routines WHERE plan->>'name' = $1", [name])).rowCount,
+          1,
+          'the rejected plan is not stored',
+        );
+      });
+    } finally {
+      try {
+        await pool.query("DELETE FROM routines WHERE plan->>'name' = $1", [name]);
+        if (machineId) await pool.query('DELETE FROM machines WHERE id=$1', [machineId]);
+      } finally {
+        await pool.end();
+      }
+    }
+  },
+);

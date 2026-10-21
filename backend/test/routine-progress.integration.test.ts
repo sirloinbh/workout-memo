@@ -98,6 +98,7 @@ test(
         assert.equal(target.split_name, '분할 2');
         assert.deepEqual(target.exercises[0], {
           exercise: `${prefix}-운동0`,
+          machine_id: null,
           sets: 3,
           weight: 102.75,
           reps: 10,

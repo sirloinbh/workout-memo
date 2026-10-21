@@ -17,7 +17,11 @@ description: Write every explanation addressed to the workout-memo user in Korea
 
 - 명령, 파일 경로, 브랜치·커밋·PR 식별자, 코드 식별자, 설정 키
 - 오류 메시지와 로그 원문. 인용할 때는 원문을 두고 한국어로 의미를 덧붙인다.
-- 커밋 제목·PR 제목처럼 기존 규칙이 형식을 정한 텍스트
+
+## 저장소 산출물
+
+- 커밋·PR 제목의 형식(`<type>: ... (#번호)`)은 workout-implementation 규칙을 따르고, 설명부는 한국어로 쓴다.
+- 이슈·PR 본문, 리뷰 코멘트, 새 `docs` 문서는 저장소 관례대로 한국어로 쓴다.
 
 ## 범위 밖
 

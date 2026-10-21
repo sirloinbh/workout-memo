@@ -1,4 +1,4 @@
-import { routineSchedule, type Feedback, type RoutinePlan } from './domain.js';
+import { defaultWeightStep, routineSchedule, type Feedback, type RoutinePlan } from './domain.js';
 
 // Routine progress (#28). A plan's targets keep their original order; a rest day
 // only changes which training slot (date) a target lands on. The 12-week end
@@ -61,6 +61,19 @@ export function seoulToday(now = new Date()) {
 }
 
 export const planEndDate = (plan: RoutinePlan) => addDays(plan.start_date, 83);
+// #86: a copy of the plan whose exercises carry the user's increment for computing.
+export function withWeightSteps(plan: RoutinePlan, steps: Readonly<Record<string, number>>) {
+  return {
+    ...plan,
+    splits: plan.splits.map((s) => ({
+      ...s,
+      exercises: s.exercises.map((e) => ({
+        ...e,
+        weight_step: steps[exerciseKey(e.exercise)] ?? defaultWeightStep,
+      })),
+    })),
+  };
+}
 export const isAuto = (plan: RoutinePlan) => plan.progression === 'auto';
 
 // Manual (#27) routines: each week's change applies once to the base values.
@@ -88,10 +101,13 @@ export function weekExercises(plan: RoutinePlan, splitIndex: number, week: numbe
 // Auto routines: double progression (#28 rule change). Keep in sync with
 // frontend/src/progression.ts; a parity test compares the two.
 const to25 = (value: number) => Math.round(value / 2.5) * 2.5;
-export const incrementFor = (weight: number) => Math.max(2.5, to25(weight * 0.05));
 export const deloadWeight = (weight: number) => Math.max(0, to25(weight * 0.9));
 type Level = { weight: number; reps: number };
-type AutoExercise = RoutinePlan['splits'][number]['exercises'][number];
+// #86: weight_step is the exercise's increment, attached by the caller from the user's
+// per-exercise settings (never stored in the plan). Missing means the 5 kg default.
+type AutoExercise = RoutinePlan['splits'][number]['exercises'][number] & {
+  weight_step?: number;
+};
 export function progressionStep(level: Level, ex: AutoExercise) {
   const max = ex.rep_max ?? 12;
   if (level.reps + 1 <= max)
@@ -100,7 +116,7 @@ export function progressionStep(level: Level, ex: AutoExercise) {
   if (level.weight === 0) return { level, kind: 'hold' as const };
   return {
     level: {
-      weight: clamp(round(level.weight + incrementFor(level.weight)), 0, 99999),
+      weight: clamp(round(level.weight + (ex.weight_step ?? defaultWeightStep)), 0, 99999),
       reps: ex.rep_min ?? 8,
     },
     kind: 'weight' as const,

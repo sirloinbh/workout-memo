@@ -458,6 +458,44 @@
         }
       }
     },
+    "/api/exercise-weight-steps": {
+      "get": {
+        "summary": "운동별 증량 단위(#86). 지정한 운동만",
+        "responses": {
+          "200": {
+            "description": "성공"
+          }
+        }
+      },
+      "put": {
+        "summary": "운동 1개의 증량 단위 저장. null은 기본 5 kg으로 되돌림",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeightStep"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/export/workouts.csv": {
       "get": {
         "summary": "분석용 CSV(?from&to 선택). 복원에 사용할 수 없음",
@@ -491,6 +529,38 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/goal-suggestion": {
+      "get": {
+        "summary": "?exercise=의 다음 목표 제안(저장하지 않음)",
+        "parameters": [
+          {
+            "name": "exercise",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
           },
           "400": {
             "description": "입력 검증 실패 또는 존재하지 않는 참조",
@@ -1490,6 +1560,28 @@
         "required": [
           "exercise",
           "body_parts"
+        ]
+      },
+      "WeightStep": {
+        "type": "object",
+        "properties": {
+          "exercise": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "weight_step": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "exercise",
+          "weight_step"
         ]
       }
     }

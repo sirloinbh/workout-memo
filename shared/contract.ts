@@ -135,6 +135,19 @@ export const bodyMeasurementSchema = z
   );
 export type BodyMeasurementInput = z.infer<typeof bodyMeasurementSchema>;
 
+// #86: progressive overload adds this much total kg per exercise. A missing setting is
+// the default; null in a request resets the exercise back to the default.
+export const defaultWeightStep = 5;
+export const weightStepSchema = z.object({
+  exercise: text('운동명', 120),
+  weight_step: z
+    .number({ invalid_type_error: '증량 단위를 숫자로 입력하세요' })
+    .positive('증량 단위는 0보다 커야 합니다')
+    .max(100, '증량 단위는 100 kg 이하로 입력하세요')
+    .refine(twoDecimals, '증량 단위는 소수점 둘째 자리까지 입력하세요')
+    .nullable(),
+});
+export type WeightStepInput = z.infer<typeof weightStepSchema>;
 // Issues keyed by their dotted path (e.g. "sets.0.weight") for per-field messages.
 export function fieldErrors(error: z.ZodError) {
   const errors: Record<string, string> = {};

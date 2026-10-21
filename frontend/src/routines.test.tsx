@@ -280,9 +280,8 @@ test('new routines default to automatic double progression with a 12-week previe
   expect(preview).toMatch(
     /4주차 디로딩: 1번째 100 kg × 8회\(디로딩\), 2번째 100 kg × 8회\(디로딩\)/,
   );
-  expect(preview).toMatch(
-    /1주차: 1번째 40 kg × 12회\(시작\), 2번째 42\.5 kg × 8회\(증량 \+2\.5 kg\)/,
-  );
+  // #86: light weights also go up by the 5 kg default increment.
+  expect(preview).toMatch(/1주차: 1번째 40 kg × 12회\(시작\), 2번째 45 kg × 8회\(증량 \+5 kg\)/);
   expect(preview).toMatch(/12주차 디로딩: 1번째 0 kg × 12회\(디로딩\)/);
   expect(preview, 'the per-session rule is explained').toMatch(/세션\(운동일\)마다/);
   expect(ui.nonGet(), 'preview sends nothing').toHaveLength(0);

@@ -9,6 +9,7 @@ import { registerGoalRoutes } from './routes/goals.js';
 import { registerMachineRoutes } from './routes/machines.js';
 import { registerRoutineRoutes } from './routes/routines.js';
 import { errorHandler } from './routes/shared.js';
+import { registerWeightStepRoutes } from './routes/weight-steps.js';
 import { registerWorkoutRoutes } from './routes/workouts.js';
 // DATE columns stay `YYYY-MM-DD` strings instead of being shifted through JS Date.
 types.setTypeParser(1082, (value) => value);
@@ -31,6 +32,7 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
   registerBodyMeasurementRoutes(app, pool);
   registerGoalRoutes(app, pool);
   registerAnalysisRoutes(app, pool);
+  registerWeightStepRoutes(app, pool);
   app.use(errorHandler);
   return app;
 }

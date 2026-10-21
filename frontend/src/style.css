@@ -1448,3 +1448,24 @@ fieldset.workout-fields {
 [aria-invalid='true'] {
   border-color: var(--color-danger);
 }
+
+/* #86: next goal suggestion and the exercise's increment in the goal form. */
+.goal-suggestion {
+  margin: 0 0 17px;
+  padding: 12px;
+  border: 1px solid var(--color-line-input);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.goal-suggestion p {
+  margin: 0 0 8px;
+}
+.goal-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+.modal .goal-step label {
+  margin-bottom: 0;
+}

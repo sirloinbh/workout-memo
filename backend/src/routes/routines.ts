@@ -13,6 +13,7 @@ import {
   isAuto,
   planEndDate,
   routineProgress,
+  withWeightSteps,
   type WorkoutRecord,
 } from '../progress.js';
 import { id, type Db } from './shared.js';
@@ -71,9 +72,20 @@ async function planRecords(db: Db, plan: RoutinePlan, today: string) {
   }
   return [...grouped.values()];
 }
+// #86: the user's per-exercise increments, keyed by the normalized exercise name.
+async function weightSteps(db: Db) {
+  const result = await db.query('SELECT exercise, weight_step FROM exercise_weight_steps');
+  return Object.fromEntries(
+    result.rows.map((r: { exercise: string; weight_step: string }) => [
+      r.exercise,
+      Number(r.weight_step),
+    ]),
+  );
+}
 async function progressResponse(db: Db, routine: ActiveRoutine, rests: string[], today: string) {
-  const records = await planRecords(db, routine.plan, today);
-  const progress = routineProgress(routine.plan, rests, today, records);
+  const plan = withWeightSteps(routine.plan, await weightSteps(db));
+  const records = await planRecords(db, plan, today);
+  const progress = routineProgress(plan, rests, today, records);
   const names = [
     ...new Set(
       (progress.today_plan?.target?.exercises ?? []).map((e) => e.exercise.trim().toLowerCase()),

@@ -56,6 +56,9 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 | GET    | `/api/analysis`                 | `?from&to`(최대 371일) 종목별 PR·추정 1RM·부위별 주간 운동량              |
 | GET    | `/api/exercise-body-parts`      | 운동별 부위 매핑                                                          |
 | PUT    | `/api/exercise-body-parts`      | 운동 1개의 부위 매핑 교체. 빈 배열은 매핑 삭제                            |
+| GET    | `/api/exercise-weight-steps`    | 운동별 증량 단위(#86). 지정한 운동만                                      |
+| PUT    | `/api/exercise-weight-steps`    | 운동 1개의 증량 단위 저장. `null`은 기본 5 kg으로 되돌림                  |
+| GET    | `/api/goal-suggestion`          | `?exercise=`의 다음 목표 제안(저장하지 않음)                              |
 | GET    | `/api/export/workouts.csv`      | 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                        |
 | GET    | `/api/backup`                   | 복원용 JSON 백업 파일                                                     |
 | POST   | `/api/backup/preview`           | 복원 미리보기(같은 절차 후 ROLLBACK)                                      |
@@ -104,6 +107,14 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 `{ "exercise": "벤치프레스", "target_weight": 80, "target_reps": 5, "start_date": "2026-10-01", "deadline": "2026-12-31" }`
 
 - `deadline`은 `start_date`보다 앞설 수 없습니다. `achieved`는 기간 안에(오늘 이후 날짜 제외) 같은 운동의 완료 세트 1개가 중량과 반복 수를 모두 충족하면 `true`입니다.
+
+### 증량 단위 `PUT /api/exercise-weight-steps`, 목표 제안 `GET /api/goal-suggestion` (#86)
+
+`{ "exercise": "벤치프레스", "weight_step": 2.5 }`
+
+- 운동 식별은 목표 판정과 같은 정규화 이름(대소문자·앞뒤 공백 무시)입니다. `weight_step`은 0 초과 100 kg 이하, 소수점 둘째 자리까지이며 `null`이면 설정을 지워 기본 5 kg으로 돌아갑니다.
+- 자동 이중 진행 루틴(이미 저장된 루틴 포함)은 반복 상한을 넘으면 총중량을 이 값만큼 올립니다. 0 kg(맨몸) 운동은 반복 수만 늘립니다.
+- `GET /api/goal-suggestion?exercise=벤치프레스` → `{ exercise, weight_step, custom, base, target_weight }`. `base`는 그 운동의 가장 최근 목표(`source: "goal"`), 없으면 가장 최근 일지의 가장 무거운 완료 세트(`source: "record"`)이며 둘 다 없으면 `null`(`target_weight`도 `null`)입니다.
 
 ### 신체 기록 `POST /api/body-measurements`, `PUT /api/body-measurements/:id`
 

@@ -4,12 +4,14 @@
 import type express from 'express';
 import { z, type ZodTypeAny } from 'zod';
 import { bodyPartMappingSchema } from './analysis.js';
+import { goalSuggestionQuery } from './routes/weight-steps.js';
 import { exportQuery, restoreRequest } from './backup.js';
 import {
   bodyMeasurementSchema,
   date,
   dateRange,
   goalSchema,
+  weightStepSchema,
   machineSchema,
   officialWeightQuery,
   routineSchema,
@@ -153,6 +155,12 @@ export const operations: Record<string, Operation> = {
     body: ['BodyPartMapping', bodyPartMappingSchema],
     status: [200, 400],
   },
+  'GET /api/exercise-weight-steps': { status: [200] },
+  'PUT /api/exercise-weight-steps': {
+    body: ['WeightStep', weightStepSchema],
+    status: [200, 400],
+  },
+  'GET /api/goal-suggestion': { query: goalSuggestionQuery, status: [200, 400] },
   'GET /api/export/workouts.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
   'GET /api/backup': { status: [200] },
   'POST /api/backup/preview': {

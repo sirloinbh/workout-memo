@@ -3,6 +3,7 @@
 - 이슈: https://github.com/sirloinbh/workout-memo/issues/29
 - 확인일: 2026-10-19 (Asia/Seoul)
 - 앱 반영: `database/migrations/009_official_machine_weights.sql`의 `official_machine_weights` 참고 테이블
+- 후속 조사(#87, 2026-10-21): [machine-official-weights-followup.md](machine-official-weights-followup.md). 아래 표는 #29 당시(009) 결과이며, 미확인 28행 중 26행은 013에서 공식 값으로 갱신했다.
 
 ## 기준
 

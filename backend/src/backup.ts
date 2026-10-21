@@ -132,6 +132,14 @@ const backupSchema = z.object({
             issue(`workouts[${i}].sets[${j}]: 백업에 없는 머신 ${s.machine_id}를 참조합니다`);
         }),
       );
+      data.routines.forEach((r, i) =>
+        r.plan.splits.forEach((s) =>
+          s.exercises.forEach((e) => {
+            if (e.machine_id != null && !machineIds.has(e.machine_id))
+              issue(`routines[${i}]: 백업에 없는 머신 ${e.machine_id}를 참조합니다`);
+          }),
+        ),
+      );
     }),
 });
 export type Backup = z.infer<typeof backupSchema>;
@@ -359,12 +367,22 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   for (const r of (await client.query('SELECT plan FROM routines')).rows)
     seenRoutines.add(canonical(r.plan));
   for (const r of backup.data.routines) {
-    if (seenRoutines.take(canonical(r.plan))) {
+    // Machine ids in a plan point to the restored (or matched existing) machines (#82).
+    const plan = {
+      ...r.plan,
+      splits: r.plan.splits.map((s) => ({
+        ...s,
+        exercises: s.exercises.map((e) =>
+          e.machine_id == null ? e : { ...e, machine_id: machineMap.get(e.machine_id)! },
+        ),
+      })),
+    };
+    if (seenRoutines.take(canonical(plan))) {
       t.routines.skipped++;
       continue;
     }
     await client.query('INSERT INTO routines(plan, created_at) VALUES($1::jsonb, $2)', [
-      JSON.stringify(r.plan),
+      JSON.stringify(plan),
       r.created_at,
     ]);
     t.routines.added++;

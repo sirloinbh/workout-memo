@@ -1,3 +1,5 @@
+import { defaultWeightStep } from './contract';
+
 // Automatic double progression (#28 rule change), used for the routine form
 // preview. Mirrors backend/src/progress.ts without saved records: every session
 // is assumed met. Targets advance once per session (workout day) of the
@@ -10,6 +12,8 @@ export type AutoExercise = {
   reps: number | string;
   rep_min?: number | string;
   rep_max?: number | string;
+  // #86: the exercise's increment from the user's settings; missing means 5 kg.
+  weight_step?: number;
 };
 type PreviewPlan = {
   start_date: string;
@@ -29,7 +33,6 @@ export type PreviewRow = {
 
 const round = (value: number) => Math.round(value * 100) / 100;
 const to25 = (value: number) => Math.round(value / 2.5) * 2.5;
-export const incrementFor = (weight: number) => Math.max(2.5, to25(weight * 0.05));
 export const deloadWeight = (weight: number) => Math.max(0, to25(weight * 0.9));
 
 export type Session = { week: number; session: number };
@@ -84,7 +87,7 @@ export function projectExercise(ex: AutoExercise, sessions: Session[]): PreviewR
       kind = 'hold';
       increment = 0;
     } else {
-      increment = incrementFor(level.weight);
+      increment = ex.weight_step ?? defaultWeightStep;
       level = { weight: Math.min(99999, round(level.weight + increment)), reps: min };
       kind = 'weight';
     }

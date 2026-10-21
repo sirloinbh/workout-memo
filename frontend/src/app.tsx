@@ -23,10 +23,12 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tan
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  defaultWeightStep,
   feedbackLevels,
   fieldErrors,
   goalSchema,
   machineSchema,
+  weightStepSchema,
   workoutSchema,
   type Feedback,
   type GoalInput,
@@ -1872,6 +1874,8 @@ function GoalForm({
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<GoalInput>({
     resolver: zodResolver(goalSchema),
@@ -1893,6 +1897,10 @@ function GoalForm({
         />
       </label>
       {message('exercise')}
+      <GoalSuggestion
+        exercise={watch('exercise') ?? ''}
+        apply={(weight) => setValue('target_weight', weight, { shouldValidate: true })}
+      />
       <div className="form-grid">
         <label>
           목표 총중량 (kg)
@@ -1935,6 +1943,106 @@ function GoalForm({
         목표 저장하기
       </Button>
     </form>
+  );
+}
+type Suggestion = {
+  exercise: string;
+  weight_step: number;
+  custom: boolean;
+  base: { source: 'goal' | 'record'; weight: number; reps: number } | null;
+  target_weight: number | null;
+};
+// #86: the next goal is the latest goal or record plus the exercise's increment
+// (default 5 kg). Changing the increment saves it for this exercise right away, so
+// later suggestions and auto routines use it too.
+function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: number) => void }) {
+  const name = exercise.trim();
+  const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
+  const [step, setStep] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async (value: string, signal?: { stale: boolean }) => {
+    try {
+      const next = await api<Suggestion>(`/goal-suggestion?exercise=${encodeURIComponent(value)}`);
+      if (signal?.stale) return;
+      setSuggestion(next);
+      setStep(String(next.weight_step));
+    } catch (e) {
+      if (!signal?.stale) setMessage((e as Error).message);
+    }
+  }, []);
+  useEffect(() => {
+    setSuggestion(null);
+    setMessage('');
+    if (!name) return;
+    const signal = { stale: false };
+    const id = setTimeout(() => void load(name, signal), 300);
+    return () => {
+      signal.stale = true;
+      clearTimeout(id);
+    };
+  }, [name, load]);
+  async function save(value: number | null) {
+    const checked = weightStepSchema.safeParse({ exercise: name, weight_step: value });
+    if (!checked.success) {
+      setMessage(checked.error.issues[0].message);
+      return;
+    }
+    setBusy(true);
+    try {
+      await api('/exercise-weight-steps', 'PUT', checked.data);
+      setMessage(value === null ? '기본 증량 단위로 되돌렸습니다' : '증량 단위를 저장했습니다');
+      await load(name);
+    } catch (e) {
+      setMessage((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!name) return null;
+  return (
+    <section className="goal-suggestion" aria-label="다음 목표 제안">
+      {suggestion &&
+        (suggestion.base && suggestion.target_weight !== null ? (
+          <p>
+            제안 {fmt(suggestion.target_weight)} kg ·{' '}
+            {suggestion.base.source === 'goal' ? '최근 목표' : '직전 기록'}{' '}
+            {fmt(suggestion.base.weight)} kg + {fmt(suggestion.weight_step)} kg{' '}
+            <Button type="button" variant="subtle" onClick={() => apply(suggestion.target_weight!)}>
+              제안 적용
+            </Button>
+          </p>
+        ) : (
+          <p>이 운동의 목표나 완료 기록이 없어 제안할 수 없습니다.</p>
+        ))}
+      <div className="goal-step">
+        <label>
+          이 운동의 증량 단위 (kg)
+          <Input
+            type="number"
+            min="0.01"
+            max="100"
+            step="0.01"
+            value={step}
+            onChange={(e) => setStep(e.target.value)}
+          />
+        </label>
+        <Button
+          type="button"
+          variant="subtle"
+          disabled={busy}
+          onClick={() => void save(step === '' ? Number.NaN : Number(step))}
+        >
+          증량 단위 저장
+        </Button>
+        {suggestion?.custom && (
+          <Button type="button" variant="text" disabled={busy} onClick={() => void save(null)}>
+            기본값({defaultWeightStep} kg)으로
+          </Button>
+        )}
+      </div>
+      {message && <p role="status">{message}</p>}
+    </section>
   );
 }
 function Stat({

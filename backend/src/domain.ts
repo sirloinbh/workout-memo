@@ -3,6 +3,8 @@ import { date } from './contract.js';
 // Input schemas shared with the frontend live in contract.ts (synced from shared/contract.ts).
 export {
   date,
+  defaultWeightStep,
+  weightStepSchema,
   feedbackLevels,
   type Feedback,
   workoutSchema,

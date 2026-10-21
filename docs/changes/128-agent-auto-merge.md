@@ -43,3 +43,37 @@
 
 - 실제 GitHub 병합 동작은 이 PR이 병합된 뒤 다음 워커 job에서 처음 확인된다. 테스트는 가짜 GitHub 응답으로 경계만 검증했다.
 - 같은 정책을 다른 개인 프로젝트에도 각 저장소의 PR로 반영했다.
+
+## 변경 — 2026-10-21: PR 후 자동 코드 리뷰(최대 2회)
+
+사용자가 병합 정책을 보완했다. PR을 올린 뒤 자동 코드 리뷰를 최대 2회 거친다. 리뷰에서 보완점이 나오면 추가 커밋으로 반영하고, 1차 보완 후에는 2차 리뷰를 한 번 더 받는다. 2차 보완 커밋 뒤에는 더 리뷰하지 않고, 최종 head의 필수 CI가 통과하면 병합한다. 보완점이 없으면 바로 CI 확인 후 병합한다. 수정이 크면 새 이슈카드로 분리한다.
+
+- `AGENTS.md` 절차: 5단계(자동 리뷰 최대 2회)를 추가하고, 병합을 6단계로 옮겼다.
+- `workout-implementation`: "5. PR 후 자동 코드 리뷰(최대 2회)"를 추가했다. 담은 내용은 아래와 같다.
+  - 1차·2차 리뷰의 범위
+  - 2차 보완 뒤 재리뷰 금지
+  - 큰 수정을 분리하는 기준: 범위 밖 기능, 설계·데이터 구조 변경, 여러 모듈 수정, 별도 검증 필요
+  - 병합 보류 조건: 분리하면 main이 깨지는 결함, 보안·데이터 손상 위험
+  - 차수별 기록 위치: PR 코멘트와 `docs/changes`
+- `workout-implementation`의 병합 단계는 6단계가 됐다. 리뷰 중 새 커밋이 생기면 최종 head의 CI로만 병합한다는 문장을 더했다. description도 갱신했다.
+- 같은 문구로 맞춘 문서: `README.md`, `docs/ai-agent-project-setup.md`, `docs/development-baseline.md`, `workout-testing`, `workout-foundation`(SKILL·stack). 이어서 `npm run skills:sync`를 실행했다.
+- 로컬 워커: 기존 게시 전 독립 검토(최대 2회, 두 번째 반려 시 blocked)가 이 리뷰를 갈음한다고 `docs/local-agent-workflow.md`에 적었다.
+  - blocked job은 주 에이전트가 처리한다. 2차 보완 커밋을 반영한 뒤 CI를 거쳐 병합하거나, 큰 수정을 이슈로 분리한다.
+  - 워커 코드는 바꾸지 않았다.
+- 같은 정책을 다른 개인 프로젝트 8곳의 정책 PR에도 추가 커밋으로 반영했다.
+
+### 검증
+
+로컬(Windows, Node 24.21.0)에서 실행한 결과는 다음과 같다.
+
+| 검사                                                         | 결과            |
+| ------------------------------------------------------------ | --------------- |
+| `npm run test:skills`                                        | 4 pass          |
+| `npm run test:docs`                                          | 3 pass          |
+| `node --test scripts/test/agent-publication-resume.test.mjs` | 11 pass, 0 fail |
+| `npm run lint`                                               | 통과            |
+| `prettier --check`(변경 문서·`skills`·`.claude/skills`)      | 통과            |
+| `git diff --check`                                           | 통과            |
+| skill-creator `quick_validate.py`(`PYTHONUTF8=1`, 3개 스킬)  | 모두 valid      |
+
+이번 커밋은 문서·스킬만 바꿨다. 앱 코드와 워커 코드는 바뀌지 않았으므로 앱 전체 검사는 CI `verify`로 확인한다.

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { seoulDate } from './date';
+import { InbodyImport } from './inbody-import';
 
 export type BodyRecord = {
   id: number;
@@ -61,6 +62,7 @@ export function BodyMeasurements({
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const [importing, setImporting] = useState(false);
   const version = useRef(0);
   const load = useCallback(async () => {
     const current = ++version.current;
@@ -166,9 +168,14 @@ export function BodyMeasurements({
             보관하며 추정하지 않습니다.
           </p>
         </div>
-        <button className="primary" disabled={saving} onClick={() => edit()}>
-          신체 기록 추가
-        </button>
+        <div className="heading-actions">
+          <button className="subtle-button" onClick={() => setImporting(!importing)}>
+            인바디 가져오기
+          </button>
+          <button className="primary" disabled={saving} onClick={() => edit()}>
+            신체 기록 추가
+          </button>
+        </div>
       </div>
       {controls}
       {error && (
@@ -177,6 +184,9 @@ export function BodyMeasurements({
         </div>
       )}
       {status && <p role="status">{status}</p>}
+      {importing && (
+        <InbodyImport save={(body) => request('', 'POST', body)} done={() => void load()} />
+      )}
       {draft && (
         <form
           className="card body-form"

@@ -326,9 +326,19 @@ test('harness scripts stay ASCII-only so a non-ASCII checkout path still runs th
     assert.ok(!body.includes(checkout), name + ' harness must not embed the checkout path');
     assert.match(
       body,
-      /%TEST_|\$env:TEST_/,
+      /%TEST_(LAUNCHER|OTHER_PROJECT)%|\$env:TEST_(WRAPPER|TERMINAL_INIT)\b/,
       name + ' harness must read its paths from the environment',
     );
+  }
+  // Inline harness templates would bypass the checks above, so every harness write
+  // must come from the shared constant.
+  const source = readFileSync(new URL(import.meta.url), 'utf8');
+  const writes = [...source.matchAll(/writeFileSync\(harness, ([^)]*)\)/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(writes.length >= Object.keys(harnesses).length, 'harness writes were not found');
+  for (const content of writes) {
+    assert.match(content, /^harnesses\.\w+$/, 'harness content must come from harnesses');
   }
 });
 

@@ -1278,6 +1278,32 @@
             },
             "maxItems": 6
           },
+          "schedule_mode": {
+            "type": "string",
+            "enum": [
+              "weekday",
+              "cycle"
+            ]
+          },
+          "cycle": {
+            "type": "object",
+            "properties": {
+              "train_days": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 7
+              },
+              "rest_days": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7
+              }
+            },
+            "required": [
+              "train_days",
+              "rest_days"
+            ]
+          },
           "splits": {
             "type": "array",
             "items": {
@@ -1297,6 +1323,8 @@
                       "등",
                       "어깨",
                       "팔",
+                      "이두",
+                      "삼두",
                       "하체-앞",
                       "하체-뒤",
                       "복근"
@@ -1549,12 +1577,14 @@
                 "등",
                 "어깨",
                 "팔",
+                "이두",
+                "삼두",
                 "하체-앞",
                 "하체-뒤",
                 "복근"
               ]
             },
-            "maxItems": 7
+            "maxItems": 9
           }
         },
         "required": [

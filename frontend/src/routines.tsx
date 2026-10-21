@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { defaultWeightStep } from './contract';
 import { byWeek, kindLabel, previewTargets } from './progression';
 
-const parts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'];
+// #88: 이두·삼두 replace 팔 for new choices; a saved 팔 still shows and can be removed.
+const parts = ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'];
 const days = ['일', '월', '화', '수', '목', '금', '토'];
 type Exercise = {
   exercise: string;
@@ -23,6 +24,8 @@ type Plan = {
   split_count: number;
   weekly_workouts: number;
   rest_days: number[];
+  schedule_mode?: 'weekday' | 'cycle';
+  cycle?: { train_days: number | string; rest_days: number | string };
   splits: Split[];
   weeks?: Week[];
   schedule?: { date: string; week: number; split_index: number; is_deload: boolean }[];
@@ -42,28 +45,82 @@ const split = (i: number): Split => ({
   body_parts: [],
   exercises: [exercise()],
 });
-const newPlan = (): Plan => ({
-  name: '',
-  progression: 'auto',
-  start_date: '',
-  split_count: 1,
-  weekly_workouts: 0,
-  rest_days: [],
-  splits: [split(0)],
-  weeks: Array.from({ length: 12 }, (_, i) => ({
-    week: i + 1,
-    kind: (i + 1) % 4 === 0 ? 'deload' : 'increase_weight',
-    amount: '',
-    deload_metric: null,
-  })),
-});
+// #88: picking a split count fills its training/rest cycle and default body parts.
+const legs = ['하체-앞', '하체-뒤'];
+const splitDefaults: Record<number, { train: number; rest: number; parts: string[][] }> = {
+  1: { train: 2, rest: 1, parts: [parts] },
+  2: {
+    train: 2,
+    rest: 1,
+    parts: [
+      ['등', '가슴', '이두', '삼두'],
+      [...legs, '복근', '어깨'],
+    ],
+  },
+  3: {
+    train: 3,
+    rest: 1,
+    parts: [
+      ['등', '이두'],
+      [...legs, '복근'],
+      ['가슴', '어깨', '삼두'],
+    ],
+  },
+  4: {
+    train: 4,
+    rest: 1,
+    parts: [['등'], ['가슴', '이두'], [...legs, '복근'], ['어깨', '삼두']],
+  },
+  5: { train: 5, rest: 2, parts: [['가슴'], ['등'], legs, ['어깨'], ['이두', '삼두', '복근']] },
+};
+function withSplitDefaults(plan: Plan, count: number): Plan {
+  const d = splitDefaults[count];
+  return {
+    ...plan,
+    split_count: count,
+    cycle: { train_days: d.train, rest_days: d.rest },
+    splits: Array.from({ length: count }, (_, i) => ({
+      ...(plan.splits[i] ?? split(i)),
+      body_parts: [...d.parts[i]],
+    })),
+  };
+}
+const newPlan = (): Plan =>
+  withSplitDefaults(
+    {
+      name: '',
+      progression: 'auto',
+      start_date: '',
+      split_count: 1,
+      weekly_workouts: 0,
+      rest_days: [],
+      schedule_mode: 'cycle',
+      splits: [split(0)],
+      weeks: Array.from({ length: 12 }, (_, i) => ({
+        week: i + 1,
+        kind: (i + 1) % 4 === 0 ? 'deload' : 'increase_weight',
+        amount: '',
+        deload_metric: null,
+      })),
+    },
+    1,
+  );
 const autoRule =
   '현재 수행 능력(총중량·반복 수)을 입력하면 12주 목표를 자동으로 만듭니다. 종목이 들어 있는 분할의 세션(운동일)마다 반복 수를 1회씩 늘리고, 상한을 넘으면 총중량을 운동별 증량 단위(기본 5 kg, 나의 목표에서 운동마다 변경)만큼 올리고 반복 수를 하한으로 되돌립니다. 주 2~3번 하는 분할은 한 주에 2~3단계 진행합니다. 0 kg(맨몸) 종목은 반복 수만 늘립니다. 4·8·12주차의 세션은 모두 직전 목표 중량의 90%(2.5 kg 단위)·같은 반복 수로 디로딩하며 진행하지 않고, 다음 세션은 디로딩 직전 목표에서 이어갑니다. 세션 날짜부터 같은 분할의 다음 세션 전까지 저장한 일지에서 목표를 달성하지 못하면 다음 세션도 같은 목표를 유지합니다.';
 // The server receives only the fields of the chosen mode.
 function payload(plan: Plan) {
   const auto = plan.progression === 'auto';
+  const cycle = plan.schedule_mode === 'cycle' && plan.cycle;
   return {
     ...plan,
+    // A cycle has no rest weekdays; the weekly count is nominal (training days, at most 7).
+    ...(cycle
+      ? {
+          rest_days: [],
+          weekly_workouts: Math.min(7, Number(cycle.train_days) || 1),
+          cycle: { train_days: Number(cycle.train_days), rest_days: Number(cycle.rest_days) },
+        }
+      : { schedule_mode: plan.schedule_mode, cycle: undefined }),
     progression: auto ? 'auto' : 'manual',
     weeks: auto ? undefined : plan.weeks,
     splits: plan.splits.map((s) => ({
@@ -89,7 +146,8 @@ const withSteps = (plan: Plan, steps: Steps) => ({
 });
 function Preview({ plan, steps }: { plan: Plan; steps: Steps }) {
   const preview = previewTargets(withSteps(plan, steps));
-  if (!preview) return <p>시작일과 휴식 요일을 입력하면 12주 예상 목표를 표시합니다.</p>;
+  if (!preview)
+    return <p>시작일과 일정(주기 또는 휴식 요일)을 입력하면 12주 예상 목표를 표시합니다.</p>;
   return (
     <section className="routine-preview">
       <h4>12주 예상 목표 · 기록에 따라 바뀔 수 있음</h4>
@@ -293,14 +351,7 @@ export function Routines() {
               분할 방식
               <select
                 value={draft.split_count}
-                onChange={(e) => {
-                  const count = Number(e.target.value);
-                  setDraft({
-                    ...draft,
-                    split_count: count,
-                    splits: Array.from({ length: count }, (_, i) => draft.splits[i] ?? split(i)),
-                  });
-                }}
+                onChange={(e) => setDraft(withSplitDefaults(draft, Number(e.target.value)))}
               >
                 {[1, 2, 3, 4, 5].map((n) => (
                   <option key={n} value={n}>
@@ -310,37 +361,93 @@ export function Routines() {
               </select>
             </label>
             <label>
-              주당 운동 횟수
-              <input
-                required
-                type="number"
-                min={1}
-                max={7}
-                value={draft.weekly_workouts || ''}
-                onChange={(e) => setDraft({ ...draft, weekly_workouts: Number(e.target.value) })}
-              />
+              운동 일정 방식
+              <select
+                value={draft.schedule_mode ?? 'weekday'}
+                onChange={(e) =>
+                  setDraft({ ...draft, schedule_mode: e.target.value as 'weekday' | 'cycle' })
+                }
+              >
+                <option value="cycle">주기 · N일 운동 후 M일 휴식</option>
+                <option value="weekday">요일 · 휴식 요일 지정</option>
+              </select>
             </label>
-          </div>
-          <fieldset>
-            <legend>휴식 요일 · 운동 횟수와 합계 7일</legend>
-            {days.map((day, i) => (
-              <label key={day}>
+            {draft.schedule_mode === 'cycle' ? (
+              <>
+                <label>
+                  연속 운동일
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    max={7}
+                    value={draft.cycle?.train_days ?? ''}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        cycle: { rest_days: 1, ...draft.cycle, train_days: e.target.value },
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  이어지는 휴식일
+                  <input
+                    required
+                    type="number"
+                    min={0}
+                    max={7}
+                    value={draft.cycle?.rest_days ?? ''}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        cycle: { train_days: 1, ...draft.cycle, rest_days: e.target.value },
+                      })
+                    }
+                  />
+                </label>
+              </>
+            ) : (
+              <label>
+                주당 운동 횟수
                 <input
-                  type="checkbox"
-                  checked={draft.rest_days.includes(i)}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      rest_days: e.target.checked
-                        ? [...draft.rest_days, i].sort()
-                        : draft.rest_days.filter((d) => d !== i),
-                    })
-                  }
+                  required
+                  type="number"
+                  min={1}
+                  max={7}
+                  value={draft.weekly_workouts || ''}
+                  onChange={(e) => setDraft({ ...draft, weekly_workouts: Number(e.target.value) })}
                 />
-                {day}
               </label>
-            ))}
-          </fieldset>
+            )}
+          </div>
+          {draft.schedule_mode === 'cycle' ? (
+            <p className="form-hint">
+              시작일부터 운동일과 휴식일을 반복합니다. 분할 방식을 고르면 기본 주기와 부위를 채우며,
+              바꿀 수 있습니다.
+            </p>
+          ) : (
+            <fieldset>
+              <legend>휴식 요일 · 운동 횟수와 합계 7일</legend>
+              {days.map((day, i) => (
+                <label key={day}>
+                  <input
+                    type="checkbox"
+                    checked={draft.rest_days.includes(i)}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        rest_days: e.target.checked
+                          ? [...draft.rest_days, i].sort()
+                          : draft.rest_days.filter((d) => d !== i),
+                      })
+                    }
+                  />
+                  {day}
+                </label>
+              ))}
+            </fieldset>
+          )}
           {draft.splits.map((s, i) => (
             <fieldset key={i}>
               <legend>분할 {i + 1}</legend>
@@ -575,8 +682,12 @@ export function Routines() {
           <h3>{selected.name}</h3>
           <p>
             {selected.split_count === 1 ? '무분할' : `${selected.split_count}분할`} · 시작일{' '}
-            {selected.start_date} · 주 {selected.weekly_workouts}회 · 휴식{' '}
-            {selected.rest_days.map((d) => days[d]).join(', ') || '없음'}
+            {selected.start_date} ·{' '}
+            {selected.schedule_mode === 'cycle' && selected.cycle
+              ? `${selected.cycle.train_days}일 운동 · ${selected.cycle.rest_days}일 휴식 반복`
+              : `주 ${selected.weekly_workouts}회 · 휴식 ${
+                  selected.rest_days.map((d) => days[d]).join(', ') || '없음'
+                }`}
           </p>
           {selected.splits.map((s, i) => (
             <section key={i}>

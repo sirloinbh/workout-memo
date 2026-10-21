@@ -171,3 +171,32 @@ test('PRs show ties, exclusions and trends; mapping and journal changes recomput
   expect(exercise('Row').textContent).toMatch(/최고 중량90kg × 8회/);
   expect(partRow('2026-10-12', '미분류')).toBe('미분류1세트720kg');
 });
+
+test('the mapping editor offers 이두·삼두; a saved 팔 is shown only until it is removed (#88)', async () => {
+  const ui = mount([row('2026-10-13', 'Curl', 20, 10), row('2026-10-13', 'Dip', 0, 10)]);
+  ui.server.mappings = [{ exercise: 'curl', body_part: '팔' }];
+  await openPage('종목 분석', ui.user);
+  await loaded();
+  expect(exercise('Curl').textContent).toMatch(/부위: 팔/);
+  expect(partRow('2026-10-12', '팔')).toBe('팔1세트200kg');
+
+  await ui.user.click(screen.getByRole('button', { name: 'Dip 부위 지정' }));
+  expect(screen.getByRole('button', { name: '이두' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '삼두' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '팔' }), 'not offered for new choices').toBeNull();
+  await ui.user.click(screen.getByRole('button', { name: '삼두' }));
+  await ui.user.click(screen.getByRole('button', { name: '부위 저장' }));
+  await waitFor(() => expect(exercise('Dip').textContent).toMatch(/부위: 삼두/));
+
+  await ui.user.click(screen.getByRole('button', { name: 'Curl 부위 지정' }));
+  const legacy = screen.getByRole('button', { name: '팔' });
+  expect(legacy).toHaveAttribute('aria-pressed', 'true');
+  await ui.user.click(screen.getByRole('button', { name: '이두' }));
+  await ui.user.click(screen.getByRole('button', { name: '부위 저장' }));
+  // Saving without touching 팔 keeps it; the user decides when to remove it.
+  expect(ui.requests.filter((r) => r.method === 'PUT').at(-1)!.body).toEqual({
+    exercise: 'Curl',
+    body_parts: ['팔', '이두'],
+  });
+  await waitFor(() => expect(exercise('Curl').textContent).toMatch(/부위: 팔, 이두/));
+});

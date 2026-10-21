@@ -64,6 +64,15 @@ async function openRoutines() {
   await openPage('루틴짜기');
   await screen.findByRole('button', { name: '새 루틴 만들기' });
 }
+// #88: new routines start in cycle mode with default body parts. Tests of the weekday
+// form switch the mode and clear the prefilled parts of split 1 first.
+async function weekdayForm(ui: ReturnType<typeof mount>) {
+  await ui.change('운동 일정 방식', 'weekday');
+  while (screen.queryByRole('button', { name: '분할 1 부위 1 삭제' }))
+    await ui.click('분할 1 부위 1 삭제');
+}
+// The UI offers 이두·삼두 instead of the legacy 팔 (#88).
+const offered = (parts: string[]) => parts.map((p) => (p === '팔' ? '이두' : p));
 // A save is finished once the form has left its saving state.
 const saveSettled = () =>
   waitFor(() => expect(screen.getByRole('button', { name: '새 루틴 만들기' })).toBeEnabled());
@@ -115,10 +124,12 @@ for (const failRead of [false, true]) {
     expected.name = '새로 작성한 루틴 27';
     expected.weeks[7] = { week: 8, kind: 'deload', amount: 1, deload_metric: 'sets' };
     expected.weeks[11] = { week: 12, kind: 'deload', amount: 3, deload_metric: 'reps' };
+    expected.splits[0].body_parts = offered(expected.splits[0].body_parts);
     await openRoutines();
     await ui.click('새 루틴 만들기');
     // #28 rule change: new routines default to automatic targets; this test covers manual mode.
     await ui.change('주차 목표 방식', 'manual');
+    await weekdayForm(ui);
     await ui.change('루틴 이름', expected.name);
     await ui.change('시작일', expected.start_date);
     await ui.change('주당 운동 횟수', '3');
@@ -151,7 +162,7 @@ for (const failRead of [false, true]) {
     const post = ui.requests.find((r) => r.method === 'POST');
     expect(post).toBeTruthy();
     // #28: the form now states the mode explicitly; manual plans keep every manual week.
-    expect(post!.body).toEqual({ ...expected, progression: 'manual' });
+    expect(post!.body).toEqual({ ...expected, progression: 'manual', schedule_mode: 'weekday' });
     expect(ui.requests.some((r) => r.path === '/api/routines/27')).toBe(true);
     if (failRead) await waitFor(() => expect(ui.text()).toMatch(/저장 후 조회 실패/));
     expect(ui.text()).toMatch(/7\.25/);
@@ -190,6 +201,7 @@ test('routine editor exposes all five splits and keeps a failed save available f
     ).toHaveLength(n);
   }
   await ui.change('루틴 이름', '실패 후 보존');
+  // #88: 5분할 fills split 1 with 가슴; the clicks add two more occurrences.
   await ui.click('가슴 추가');
   await ui.click('가슴 추가');
   await ui.submit();
@@ -201,7 +213,7 @@ test('routine editor exposes all five splits and keeps a failed save available f
   ).toHaveLength(1);
   const posted = ui.requests.find((r) => r.method === 'POST')!.body as Plan;
   expect(posted.split_count).toBe(5);
-  expect(posted.splits[0].body_parts).toEqual(['가슴', '가슴']);
+  expect(posted.splits[0].body_parts).toEqual(['가슴', '가슴', '가슴']);
   expect(screen.getByRole('button', { name: '루틴 저장하기' })).toBeEnabled();
 });
 
@@ -222,6 +234,7 @@ test('new routine requires explicit manual amounts and removes only the selected
       expect(field.querySelector('select')!.value).toBe('');
     }
   }
+  await weekdayForm(ui);
   await ui.click('가슴 추가');
   await ui.click('등 추가');
   await ui.click('가슴 추가');
@@ -238,7 +251,8 @@ test('new routine requires explicit manual amounts and removes only the selected
 });
 
 test('new routines default to automatic double progression with a 12-week preview', async () => {
-  const expected = autoRoutineInput();
+  const expected = { ...autoRoutineInput(), schedule_mode: 'weekday' as const };
+  expected.splits[0].body_parts = offered(expected.splits[0].body_parts);
   const ui = mount(false, false, expected as unknown as Plan);
   await openRoutines();
   await ui.click('새 루틴 만들기');
@@ -255,6 +269,7 @@ test('new routines default to automatic double progression with a 12-week previe
   await ui.change('루틴 이름', expected.name);
   await ui.change('분할 이름', expected.splits[0].name);
   await ui.change('시작일', expected.start_date);
+  await weekdayForm(ui);
   await ui.change('주당 운동 횟수', '3');
   for (const day of ['일', '화', '목', '토']) await ui.change(day, '', 0, true);
   for (const part of expected.splits[0].body_parts) await ui.click(part + ' 추가');
@@ -291,4 +306,65 @@ test('new routines default to automatic double progression with a 12-week previe
   expect(post!.body).toEqual(expected);
   await waitFor(() => expect(ui.text()).toMatch(/자동 · 이중 점진 과부하/));
   expect(ui.text()).toMatch(/5주차: 1번째 110 kg × 9회\(반복 \+1\)/);
+});
+
+test('a new routine defaults to a cycle and fills each split count with its cycle and parts (#88)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('새 루틴 만들기');
+  const value = (label: string) =>
+    ui.labels(label)[0].querySelector<HTMLInputElement | HTMLSelectElement>('input, select')!.value;
+  expect(value('운동 일정 방식')).toBe('cycle');
+  expect(ui.labels('휴식 요일')).toHaveLength(0);
+  const partsOf = (i: number) =>
+    [...document.querySelectorAll('fieldset')]
+      .filter((el) => ui.text(el).startsWith(`분할 ${i + 1}`))[0]
+      .querySelectorAll('ol li');
+  const listed = (i: number) => [...partsOf(i)].map((li) => ui.text(li).replace('삭제', '').trim());
+  for (const [count, train, rest, parts] of [
+    [
+      2,
+      '2',
+      '1',
+      [
+        ['등', '가슴', '이두', '삼두'],
+        ['하체-앞', '하체-뒤', '복근', '어깨'],
+      ],
+    ],
+    [
+      3,
+      '3',
+      '1',
+      [
+        ['등', '이두'],
+        ['하체-앞', '하체-뒤', '복근'],
+        ['가슴', '어깨', '삼두'],
+      ],
+    ],
+    [4, '4', '1', [['등'], ['가슴', '이두'], ['하체-앞', '하체-뒤', '복근'], ['어깨', '삼두']]],
+    [5, '5', '2', [['가슴'], ['등'], ['하체-앞', '하체-뒤'], ['어깨'], ['이두', '삼두', '복근']]],
+  ] as const) {
+    await ui.change('분할 방식', String(count));
+    expect(value('연속 운동일')).toBe(train);
+    expect(value('이어지는 휴식일')).toBe(rest);
+    parts.forEach((expected, i) => expect(listed(i), `${count}분할 ${i + 1}`).toEqual(expected));
+  }
+  await ui.change('분할 방식', '1');
+  expect(listed(0)).toEqual(['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근']);
+  expect(screen.queryByRole('button', { name: '팔 추가' })).toBeNull();
+  // The defaults stay editable and the plan is sent as a cycle.
+  await ui.change('분할 방식', '3');
+  await ui.change('연속 운동일', '2');
+  await ui.change('루틴 이름', '주기 루틴');
+  await ui.change('시작일', '2026-10-21');
+  await ui.submit();
+  await saveSettled();
+  const body = ui.requests.find((r) => r.method === 'POST')!.body as Plan & {
+    schedule_mode: string;
+    cycle: object;
+  };
+  expect(body.schedule_mode).toBe('cycle');
+  expect(body.cycle).toEqual({ train_days: 2, rest_days: 1 });
+  expect(body.rest_days).toEqual([]);
+  expect(body.weekly_workouts).toBe(2);
 });

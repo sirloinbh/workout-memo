@@ -71,6 +71,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
   "date": "2026-10-20",
   "title": "하체",
   "notes": "",
+  "feedback": "medium",
   "sets": [
     {
       "exercise": "스쿼트",
@@ -86,7 +87,8 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 ```
 
 - `title`과 `exercise`는 공백을 제거한 뒤 1~120자, `notes`는 4000자 이하입니다. 세트는 1~200개이며 배열 순서대로 저장합니다.
-- `completed`를 생략하면 `true`(기존 클라이언트 호환)입니다. `rpe`는 `null` 또는 1~10의 0.5 단위입니다.
+- `completed`를 생략하면 `true`(기존 클라이언트 호환)입니다. `rpe`는 `null` 또는 1~10의 0.5 단위입니다. 화면은 #83부터 RPE를 입력받지 않으며, 저장된 값은 수정 시 그대로 다시 보냅니다.
+- `feedback`(#83)은 일지 전체의 체감으로 `hard`(힘듦)·`medium`(중간)·`easy`(쉬움) 또는 `null`(미입력)입니다. 생략하면 `null`로 저장합니다. 자동 이중 진행 루틴은 목표를 달성한 세션이라도 그 세션 기간 안에 해당 운동이 든 일지가 `hard`이면 다음 세션 목표를 유지합니다.
 - `version`은 PUT에서만 필수입니다. 조회한 값과 다르면 409이며 성공하면 1 증가합니다.
 - `Idempotency-Key`(UUID) 헤더를 보내면 첫 성공 커밋부터 7일 동안 같은 요청에 같은 응답을 재전송합니다. 저장 형식은 [database/README.md](../database/README.md)를 참고하세요.
 

@@ -39,11 +39,21 @@ const reps = (label: string) =>
     .max(1000, `${topic(label)} 1~1000의 정수로 입력하세요`);
 const rpeMessage = 'RPE는 1~10 사이 0.5 단위로 입력하세요';
 
+export const feedbackLevels = ['hard', 'medium', 'easy'] as const;
+export type Feedback = (typeof feedbackLevels)[number];
+
 export const workoutSchema = z.object({
   version: z.number().int().positive().optional(),
   date,
   title: text('일지 제목', 120),
   notes: memo(4000).default(''),
+  // #83: how the whole workout felt. Missing stays NULL and is never a default level.
+  feedback: z
+    .enum(feedbackLevels, {
+      errorMap: () => ({ message: '체감 피드백은 힘듦·중간·쉬움 중에서 선택하세요' }),
+    })
+    .nullable()
+    .default(null),
   sets: z
     .array(
       z.object({

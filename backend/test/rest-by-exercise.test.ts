@@ -24,6 +24,8 @@ test('kind comes from the single-joint flag first, then lower, then upper body p
   assert.equal(restKind(false, ['하체-뒤', '등']), 'lower');
   assert.equal(restKind(false, ['가슴', '팔']), 'upper');
   assert.equal(restKind(false, ['어깨']), 'upper');
+  assert.equal(restKind(false, ['이두']), 'upper', '#88 biceps and triceps are upper body');
+  assert.equal(restKind(false, ['삼두', '복근']), 'upper');
   assert.equal(restKind(false, ['복근']), null, 'abs only has no kind');
   assert.equal(restKind(false, []), null, 'unmapped exercises keep the configured rest');
 });

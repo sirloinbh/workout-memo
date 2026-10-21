@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { bodyParts } from './domain.js';
+import { allBodyParts, legacyBodyParts } from './domain.js';
 
 // Exercise analysis (#32). Everything is computed on read from saved sets, so
 // edits and deletes are reflected on the next request without stored PRs.
@@ -9,7 +9,7 @@ export const estimateMaxReps = 10;
 export const bodyPartMappingSchema = z
   .object({
     exercise: z.string().trim().min(1).max(120),
-    body_parts: z.array(z.enum(bodyParts)).max(bodyParts.length),
+    body_parts: z.array(z.enum(allBodyParts)).max(allBodyParts.length),
   })
   .refine((v) => new Set(v.body_parts).size === v.body_parts.length, '부위를 중복 없이 선택하세요');
 
@@ -88,7 +88,12 @@ export function analyze(
   const parts = new Map<string, string[]>();
   for (const m of mappings) parts.set(m.exercise, [...(parts.get(m.exercise) ?? []), m.body_part]);
   for (const list of parts.values())
-    list.sort((a, b) => bodyParts.indexOf(a as never) - bodyParts.indexOf(b as never));
+    list.sort((a, b) => allBodyParts.indexOf(a as never) - allBodyParts.indexOf(b as never));
+  // #88: 팔 is listed only while some exercise is still mapped to it.
+  const used = new Set(mappings.map((m) => m.body_part));
+  const shownParts = allBodyParts.filter(
+    (p) => !(legacyBodyParts as readonly string[]).includes(p) || used.has(p),
+  );
   const sets = rows
     .map((r) => ({ ...r, date: r.date.slice(0, 10), weight: Number(r.weight) }))
     .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
@@ -161,7 +166,7 @@ export function analyze(
       week_end: addDays(start, 6),
       sets: 0,
       volume: 0,
-      parts: [...bodyParts, unclassified].map((body_part) => ({ body_part, sets: 0, volume: 0 })),
+      parts: [...shownParts, unclassified].map((body_part) => ({ body_part, sets: 0, volume: 0 })),
     });
   for (const s of sets) {
     if (s.date < from || s.date > to) continue;

@@ -2,10 +2,10 @@ import type express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import { analyze, bodyPartMappingSchema, type AnalysisSet } from '../analysis.js';
-import { bodyParts, date, exerciseKeySql } from '../domain.js';
+import { allBodyParts, date, exerciseKeySql } from '../domain.js';
 import { seoulTodaySql } from './shared.js';
 
-const partOrder = `array_position(ARRAY[${bodyParts.map((p) => `'${p}'`).join(',')}]::text[], body_part)`;
+const partOrder = `array_position(ARRAY[${allBodyParts.map((p) => `'${p}'`).join(',')}]::text[], body_part)`;
 
 export const analysisQuery = z
   .object({ from: date, to: date })
@@ -55,7 +55,7 @@ export function registerAnalysisRoutes(app: express.Express, pool: Pool) {
       await client.query('COMMIT');
       res.json({
         exercise: key,
-        body_parts: bodyParts.filter((p) => m.body_parts.includes(p)),
+        body_parts: allBodyParts.filter((p) => m.body_parts.includes(p)),
       });
     } catch (e) {
       await client.query('ROLLBACK');

@@ -5,6 +5,7 @@ const parts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '�
 const days = ['일', '월', '화', '수', '목', '금', '토'];
 type Exercise = {
   exercise: string;
+  machine_id?: number | null;
   sets: number | string;
   weight: number | string;
   reps: number | string;
@@ -28,6 +29,7 @@ type Plan = {
 // #28: new exercises default to 3 sets and an 8–12 rep range.
 const exercise = (): Exercise => ({
   exercise: '',
+  machine_id: null,
   sets: 3,
   weight: '',
   reps: '',
@@ -65,9 +67,11 @@ function payload(plan: Plan) {
     weeks: auto ? undefined : plan.weeks,
     splits: plan.splits.map((s) => ({
       ...s,
-      exercises: s.exercises.map(({ rep_min, rep_max, ...rest }) =>
-        auto ? { ...rest, rep_min, rep_max } : rest,
-      ),
+      // A free exercise omits machine_id, so plans without machines keep their shape.
+      exercises: s.exercises.map(({ rep_min, rep_max, machine_id, ...rest }) => {
+        const value = machine_id == null ? rest : { ...rest, machine_id };
+        return auto ? { ...value, rep_min, rep_max } : value;
+      }),
     })),
   };
 }
@@ -114,6 +118,11 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   if (!response.ok) throw Error(data.error ?? '루틴 요청에 실패했습니다');
   return data;
 }
+type Machine = { id: number; brand: string; name: string };
+const machineName = (machines: Machine[], id: number | null | undefined) => {
+  const m = id == null ? undefined : machines.find((v) => v.id === id);
+  return m ? `${m.brand} · ${m.name}` : null;
+};
 const goalLabel = (w: Week) =>
   w.kind === 'deload'
     ? `디로딩 · ${w.deload_metric === 'weight' ? '총중량 kg' : w.deload_metric === 'sets' ? '세트 수' : '반복 수'} ${w.amount} 감소`
@@ -127,8 +136,16 @@ export function Routines() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
+  const [machines, setMachines] = useState<Machine[]>([]);
   useEffect(() => {
     let active = true;
+    // #82: machines are optional; a failed load only leaves the select empty.
+    void fetch('/api/machines')
+      .then((r) => (r.ok ? (r.json() as Promise<Machine[]>) : []))
+      .then((m) => {
+        if (active && Array.isArray(m)) setMachines(m);
+      })
+      .catch(() => undefined);
     request<Plan[]>('')
       .then((p) => {
         if (active) setPlans(p);
@@ -362,6 +379,32 @@ export function Routines() {
                       }
                     />
                   </label>
+                  <label>
+                    머신
+                    <select
+                      value={ex.machine_id ?? ''}
+                      onChange={(e) =>
+                        changeSplit(i, {
+                          ...s,
+                          exercises: s.exercises.map((v, k) =>
+                            k === j
+                              ? {
+                                  ...v,
+                                  machine_id: e.target.value ? Number(e.target.value) : null,
+                                }
+                              : v,
+                          ),
+                        })
+                      }
+                    >
+                      <option value="">자유 운동</option>
+                      {machines.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.brand} · {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   {(draft.progression === 'auto'
                     ? (['sets', 'weight', 'reps', 'rep_min', 'rep_max'] as const)
                     : (['sets', 'weight', 'reps'] as const)
@@ -522,7 +565,10 @@ export function Routines() {
               <ul>
                 {s.exercises.map((ex, j) => (
                   <li key={j}>
-                    {ex.exercise} · {ex.sets}세트 · 총중량 {ex.weight} kg · {ex.reps}회
+                    {ex.exercise}
+                    {machineName(machines, ex.machine_id) &&
+                      ` (${machineName(machines, ex.machine_id)})`}{' '}
+                    · {ex.sets}세트 · 총중량 {ex.weight} kg · {ex.reps}회
                     {selected.progression === 'auto' &&
                       ` · 반복 범위 ${ex.rep_min}~${ex.rep_max}회`}
                   </li>

@@ -1,7 +1,13 @@
 import type express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import { date, routineSchema, routineSchedule, type RoutinePlan } from '../domain.js';
+import {
+  date,
+  routineSchema,
+  routineSchedule,
+  type Feedback,
+  type RoutinePlan,
+} from '../domain.js';
 import {
   exerciseKey,
   isAuto,
@@ -37,7 +43,7 @@ async function planRecords(db: Db, plan: RoutinePlan, today: string) {
     ...new Set(plan.splits.flatMap((s) => s.exercises.map((e) => exerciseKey(e.exercise)))),
   ];
   const result = await db.query(
-    `SELECT w.id, w.date, lower(trim(s.exercise)) AS key, s.weight, s.reps,
+    `SELECT w.id, w.date, w.feedback, lower(trim(s.exercise)) AS key, s.weight, s.reps,
        to_jsonb(s)->'completed' AS completed
      FROM sets s JOIN workouts w ON w.id = s.workout_id
      WHERE lower(trim(s.exercise)) = ANY($1::text[]) AND w.date BETWEEN $2 AND $3
@@ -48,13 +54,15 @@ async function planRecords(db: Db, plan: RoutinePlan, today: string) {
   for (const row of result.rows as {
     id: number;
     date: string;
+    feedback: Feedback | null;
     key: string;
     weight: string | number;
     reps: number;
     completed: unknown;
   }[]) {
     const id = `${row.id}:${row.key}`;
-    if (!grouped.has(id)) grouped.set(id, { date: row.date, exercise: row.key, sets: [] });
+    if (!grouped.has(id))
+      grouped.set(id, { date: row.date, exercise: row.key, sets: [], feedback: row.feedback });
     grouped.get(id)!.sets.push({
       weight: Number(row.weight),
       reps: row.reps,
@@ -113,6 +121,19 @@ const fail = (status: number, error: string): Outcome => ({
 export function registerRoutineRoutes(app: express.Express, pool: Pool, today: () => string) {
   app.post('/api/routines', async (req, res) => {
     const plan = routineSchema.parse(req.body);
+    // jsonb has no foreign key, so a referenced machine is checked here (#82).
+    const machineIds = [
+      ...new Set(plan.splits.flatMap((s) => s.exercises.map((e) => e.machine_id ?? null))),
+    ].filter((v): v is number => v !== null);
+    if (machineIds.length) {
+      const found = await pool.query('SELECT count(*)::int n FROM machines WHERE id = ANY($1)', [
+        machineIds,
+      ]);
+      if (found.rows[0].n !== machineIds.length) {
+        res.status(400).json({ error: '루틴에 지정한 머신을 찾을 수 없습니다' });
+        return;
+      }
+    }
     const result = await pool.query('INSERT INTO routines(plan) VALUES($1::jsonb) RETURNING id', [
       JSON.stringify(plan),
     ]);

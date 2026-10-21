@@ -71,6 +71,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
   "date": "2026-10-20",
   "title": "하체",
   "notes": "",
+  "feedback": "medium",
   "sets": [
     {
       "exercise": "스쿼트",
@@ -86,7 +87,8 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 ```
 
 - `title`과 `exercise`는 공백을 제거한 뒤 1~120자, `notes`는 4000자 이하입니다. 세트는 1~200개이며 배열 순서대로 저장합니다.
-- `completed`를 생략하면 `true`(기존 클라이언트 호환)입니다. `rpe`는 `null` 또는 1~10의 0.5 단위입니다.
+- `completed`를 생략하면 `true`(기존 클라이언트 호환)입니다. `rpe`는 `null` 또는 1~10의 0.5 단위입니다. 화면은 #83부터 RPE를 입력받지 않으며, 저장된 값은 수정 시 그대로 다시 보냅니다.
+- `feedback`(#83)은 일지 전체의 체감으로 `hard`(힘듦)·`medium`(중간)·`easy`(쉬움) 또는 `null`(미입력)입니다. 생략하면 `null`로 저장합니다. 자동 이중 진행 루틴은 목표를 달성한 세션이라도 그 세션 기간 안에 해당 운동이 든 일지가 `hard`이면 다음 세션 목표를 유지합니다.
 - `version`은 PUT에서만 필수입니다. 조회한 값과 다르면 409이며 성공하면 1 증가합니다.
 - `Idempotency-Key`(UUID) 헤더를 보내면 첫 성공 커밋부터 7일 동안 같은 요청에 같은 응답을 재전송합니다. 저장 형식은 [database/README.md](../database/README.md)를 참고하세요.
 
@@ -95,6 +97,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 `{ "brand_id": 1, "name": "레그 프레스", "base_weight": null, "notes": "", "official_weight_id": 12 }`
 
 - `official_weight_id`는 공식 참고값 연결입니다. `base_weight`를 바꾸지 않습니다. 수정 요청에서 생략하면 기존 연결을 유지하고, `null`을 보내면 연결을 해제합니다.
+- `single_joint`(#84, boolean)는 단관절 운동 머신 여부입니다. 등록 시 생략하면 `false`, 수정 시 생략하면 기존 값을 유지합니다. 화면의 휴식 타이머가 세트 완료 시 단관절 기본 휴식을 고르는 데 씁니다.
 
 ### 목표 `POST /api/goals`
 
@@ -110,7 +113,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 
 ### 루틴, 백업
 
-루틴 계획 형식은 [domain.ts](../backend/src/domain.ts)의 `routineSchema`를 따릅니다. 수동 진행에서는 12주 변화량이 필수이며, `progression: "auto"`에서는 반복 범위가 필수입니다. 백업 파일 형식과 복원 규칙은 [database/README.md의 앱 내보내기·백업](../database/README.md#앱-내보내기백업-33)을 따릅니다.
+루틴 계획 형식은 [domain.ts](../backend/src/domain.ts)의 `routineSchema`를 따릅니다. 수동 진행에서는 12주 변화량이 필수이며, `progression: "auto"`에서는 반복 범위가 필수입니다. 운동마다 선택 필드 `machine_id`로 머신을 지정할 수 있고(#82), 존재하지 않는 머신이면 400입니다. 오늘 목표(`today_plan.target.exercises`)는 `machine_id`(없으면 `null`)를 함께 돌려주며, 새 일지는 이 값으로 세트를 채웁니다. 백업 파일 형식과 복원 규칙은 [database/README.md의 앱 내보내기·백업](../database/README.md#앱-내보내기백업-33)을 따릅니다.
 
 ## 변경 절차
 

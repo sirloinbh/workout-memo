@@ -1,7 +1,7 @@
 import express from 'express';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
-import { date, routineSchema } from './domain.js';
+import { date, feedbackLevels, routineSchema } from './domain.js';
 
 // Two deliberately separate artifacts (#33):
 // - analysis CSV: one row per set for spreadsheets; lossy (formula guard) and never restorable.
@@ -39,6 +39,8 @@ export const csvColumns = [
   'brand',
   'machine_name',
   'machine_base_weight_kg',
+  // #83: appended so existing column positions stay the same.
+  'workout_feedback',
 ];
 
 const id = z.number().int().positive();
@@ -60,6 +62,8 @@ const backupSchema = z.object({
             name,
             base_weight: kg.nullable(),
             notes: z.string().max(2000),
+            // #84: backups made before single-joint machines have no field.
+            single_joint: z.boolean().default(false),
           }),
         )
         .max(5000),
@@ -70,6 +74,8 @@ const backupSchema = z.object({
             date,
             title: name,
             notes: z.string().max(4000),
+            // #83: backups made before workout feedback have no field; it stays NULL.
+            feedback: z.enum(feedbackLevels).nullable().default(null),
             created_at: timestamp,
             sets: z
               .array(
@@ -127,6 +133,14 @@ const backupSchema = z.object({
           if (s.machine_id !== null && !machineIds.has(s.machine_id))
             issue(`workouts[${i}].sets[${j}]: 백업에 없는 머신 ${s.machine_id}를 참조합니다`);
         }),
+      );
+      data.routines.forEach((r, i) =>
+        r.plan.splits.forEach((s) =>
+          s.exercises.forEach((e) => {
+            if (e.machine_id != null && !machineIds.has(e.machine_id))
+              issue(`routines[${i}]: 백업에 없는 머신 ${e.machine_id}를 참조합니다`);
+          }),
+        ),
       );
     }),
 });
@@ -285,8 +299,8 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     }
     const inserted = (
       await client.query(
-        'INSERT INTO machines(brand_id,name,base_weight,notes) VALUES($1,$2,$3,$4) RETURNING id',
-        [brandId, m.name, m.base_weight, m.notes],
+        'INSERT INTO machines(brand_id,name,base_weight,notes,single_joint) VALUES($1,$2,$3,$4,$5) RETURNING id',
+        [brandId, m.name, m.base_weight, m.notes, m.single_joint],
       )
     ).rows[0].id;
     machines.set(brandId + '\u0000' + m.name, {
@@ -316,8 +330,8 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     // Restored workouts are new records: version starts at 1, created_at is preserved.
     const workoutId = (
       await client.query(
-        'INSERT INTO workouts(date,title,notes,created_at) VALUES($1,$2,$3,$4) RETURNING id',
-        [w.date, w.title, w.notes, w.created_at],
+        'INSERT INTO workouts(date,title,notes,feedback,created_at) VALUES($1,$2,$3,$4,$5) RETURNING id',
+        [w.date, w.title, w.notes, w.feedback, w.created_at],
       )
     ).rows[0].id;
     for (const [i, s] of sets.entries())
@@ -355,12 +369,22 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   for (const r of (await client.query('SELECT plan FROM routines')).rows)
     seenRoutines.add(canonical(r.plan));
   for (const r of backup.data.routines) {
-    if (seenRoutines.take(canonical(r.plan))) {
+    // Machine ids in a plan point to the restored (or matched existing) machines (#82).
+    const plan = {
+      ...r.plan,
+      splits: r.plan.splits.map((s) => ({
+        ...s,
+        exercises: s.exercises.map((e) =>
+          e.machine_id == null ? e : { ...e, machine_id: machineMap.get(e.machine_id)! },
+        ),
+      })),
+    };
+    if (seenRoutines.take(canonical(plan))) {
       t.routines.skipped++;
       continue;
     }
     await client.query('INSERT INTO routines(plan, created_at) VALUES($1::jsonb, $2)', [
-      JSON.stringify(r.plan),
+      JSON.stringify(plan),
       r.created_at,
     ]);
     t.routines.added++;
@@ -404,7 +428,7 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
       async (client) =>
         (
           await client.query(
-            `SELECT w.id workout_id, w.date, w.title, w.notes workout_notes,
+            `SELECT w.id workout_id, w.date, w.title, w.notes workout_notes, w.feedback workout_feedback,
               CASE WHEN s.id IS NULL THEN NULL ELSE row_number() OVER (PARTITION BY w.id ORDER BY s.position, s.id) END set_number,
               s.exercise, s.weight, s.reps, s.notes set_notes, s.machine_id, b.name brand, m.name machine_name, m.base_weight
             FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id LEFT JOIN machines m ON m.id=s.machine_id LEFT JOIN brands b ON b.id=m.brand_id
@@ -433,6 +457,7 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
           r.brand,
           r.machine_name,
           num(r.base_weight),
+          r.workout_feedback,
         ];
       }),
     ]);
@@ -451,12 +476,12 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         brands: (await client.query('SELECT id, name FROM brands ORDER BY id')).rows,
         machines: (
           await client.query(
-            'SELECT id, brand_id, name, base_weight, notes FROM machines ORDER BY id',
+            'SELECT id, brand_id, name, base_weight, notes, single_joint FROM machines ORDER BY id',
           )
         ).rows.map((m) => ({ ...m, base_weight: num(m.base_weight) })),
         workouts: (
           await client.query(
-            `SELECT w.id, w.date, w.title, w.notes, w.created_at, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id ORDER BY w.date, w.id`,
+            `SELECT w.id, w.date, w.title, w.notes, w.feedback, w.created_at, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id ORDER BY w.date, w.id`,
           )
         ).rows,
         goals: (

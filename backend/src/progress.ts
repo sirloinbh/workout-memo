@@ -1,10 +1,11 @@
-import { routineSchedule, type RoutinePlan } from './domain.js';
+import { routineSchedule, type Feedback, type RoutinePlan } from './domain.js';
 
 // Routine progress (#28). A plan's targets keep their original order; a rest day
 // only changes which training slot (date) a target lands on. The 12-week end
 // date never moves, so targets pushed past the last slot are kept as excluded.
 export type TargetExercise = {
   exercise: string;
+  machine_id: number | null;
   sets: number;
   weight: number;
   reps: number;
@@ -33,6 +34,8 @@ export type WorkoutRecord = {
   date: string;
   exercise: string;
   sets: { weight: number; reps: number; completed?: boolean | null }[];
+  // #83: the workout's overall feedback; missing or null means not recorded.
+  feedback?: Feedback | null;
 };
 
 const round = (value: number) => Math.round(value * 100) / 100;
@@ -73,6 +76,7 @@ export function weekExercises(plan: RoutinePlan, splitIndex: number, week: numbe
     else reps -= change.amount;
     return {
       exercise: base.exercise,
+      machine_id: base.machine_id ?? null,
       sets: clamp(sets, 1, 200),
       weight: clamp(round(weight), 0, 99999),
       reps: clamp(reps, 1, 1000),
@@ -150,20 +154,21 @@ function autoExercises(
               .slice(index + 1)
               .map((n) => n.date)
               .find((d): d is string => !!d) ?? end;
-          const met =
-            !!start &&
-            records.some(
-              (r) =>
-                exerciseKey(r.exercise) === key &&
-                r.date >= start &&
-                r.date < stop &&
-                r.sets.filter(
-                  (s) => s.completed !== false && s.weight >= goal.weight && s.reps >= goal.reps,
-                ).length >= ex.sets,
-            );
+          const inWindow = records.filter(
+            (r) => !!start && exerciseKey(r.exercise) === key && r.date >= start && r.date < stop,
+          );
+          const met = inWindow.some(
+            (r) =>
+              r.sets.filter(
+                (s) => s.completed !== false && s.weight >= goal.weight && s.reps >= goal.reps,
+              ).length >= ex.sets,
+          );
           if (met) result = 'achieved';
           else if (start && stop <= today) result = 'missed';
-          if (result === 'missed') kind = 'hold';
+          // #83: a workout of this exercise in the window marked 'hard' holds the next
+          // session at the same target even when the target was achieved.
+          const hard = inWindow.some((r) => r.feedback === 'hard');
+          if (result === 'missed' || (met && hard)) kind = 'hold';
           else {
             const step = progressionStep(level, ex);
             level = step.level;
@@ -172,6 +177,7 @@ function autoExercises(
         }
         out.get(o.target.order)!.push({
           exercise: ex.exercise,
+          machine_id: ex.machine_id ?? null,
           sets: ex.sets,
           weight: target.weight,
           reps: target.reps,

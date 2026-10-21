@@ -786,6 +786,16 @@ footer > span:last-child {
   color: var(--color-ink-muted);
   margin-bottom: 17px;
 }
+/* #83: workout feedback reads like a field label above the .tabs selector. */
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-bottom: 17px;
+}
 .modal input,
 .modal select,
 .modal textarea {
@@ -1310,6 +1320,29 @@ fieldset.workout-fields {
   gap: 8px;
 }
 .rest-timer .rest-auto input {
+  width: auto;
+}
+/* #84: per-kind rest inputs and the machine form's single-joint checkbox. */
+.rest-timer .rest-kinds {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 11px;
+}
+.rest-timer .rest-kinds label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.modal .rest-auto {
+  flex-direction: row;
+  align-items: center;
+}
+.modal .rest-auto input {
   width: auto;
 }
 .rest-timer .form-hint,

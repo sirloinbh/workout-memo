@@ -1159,6 +1159,9 @@
             ],
             "exclusiveMinimum": 0,
             "maximum": 2147483647
+          },
+          "single_joint": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1241,6 +1244,14 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 120
+                      },
+                      "machine_id": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "exclusiveMinimum": 0,
+                        "maximum": 2147483647
                       },
                       "sets": {
                         "type": "integer",
@@ -1375,6 +1386,18 @@
             "type": "string",
             "maxLength": 4000,
             "default": ""
+          },
+          "feedback": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "hard",
+              "medium",
+              "easy"
+            ],
+            "default": null
           },
           "sets": {
             "type": "array",

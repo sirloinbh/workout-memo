@@ -3,6 +3,8 @@ import { date } from './contract.js';
 // Input schemas shared with the frontend live in contract.ts (synced from shared/contract.ts).
 export {
   date,
+  feedbackLevels,
+  type Feedback,
   workoutSchema,
   machineSchema,
   goalSchema,
@@ -45,6 +47,8 @@ export const routineSchema = z
             .array(
               z.object({
                 exercise: z.string().trim().min(1).max(120),
+                // #82: optional machine copied into a new journal's sets. Older plans omit it.
+                machine_id: z.number().int().positive().max(2147483647).nullable().optional(),
                 sets: z.number().int().min(1).max(200),
                 weight: z.number().min(0).max(99999),
                 reps: z.number().int().min(1).max(1000),

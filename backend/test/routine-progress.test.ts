@@ -11,7 +11,7 @@ import {
   routineProgress,
   weekExercises,
 } from '../src/progress.js';
-import { routineInput } from './routine-fixture.js';
+import { autoRoutineInput, routineInput } from './routine-fixture.js';
 
 // Fixture: starts Thursday 2024-02-29 (a rest day), trains Mon/Wed/Fri, two splits,
 // 36 training slots. Weeks alternate +2.5 kg / +1 rep, week 5 is +7.25 kg and
@@ -23,6 +23,8 @@ test('week targets apply only that week’s manual change to the base values', (
   const [squat1, lunge1] = weekExercises(plan, 0, 1);
   assert.deepEqual(squat1, {
     exercise: '스쿼트',
+    // A plan saved before #82 has no machine.
+    machine_id: null,
     sets: 3,
     weight: 102.75,
     reps: 10,
@@ -39,6 +41,39 @@ test('week targets apply only that week’s manual change to the base values', (
   const sets = structuredClone(plan);
   sets.weeks![7] = { week: 8, kind: 'deload', amount: 5, deload_metric: 'sets' };
   assert.equal(weekExercises(sets, 0, 8)[0].sets, 1, 'deload keeps at least one set');
+});
+
+test('a planned machine is carried into every manual and auto target (#82)', () => {
+  const manual = structuredClone(plan);
+  manual.splits[0].exercises[0].machine_id = 5;
+  const [squat, lunge] = weekExercises(manual, 0, 3);
+  assert.equal(squat.machine_id, 5);
+  assert.equal(lunge.machine_id, null);
+  const auto = routineSchema.parse({
+    ...autoRoutineInput(),
+    splits: autoRoutineInput().splits.map((s) => ({
+      ...s,
+      exercises: s.exercises.map((e, i) => (i === 0 ? { ...e, machine_id: 8 } : e)),
+    })),
+  }) as RoutinePlan;
+  const today = routineProgress(auto, [], auto.start_date).today_plan!.target!;
+  assert.deepEqual(
+    today.exercises.map((e) => e.machine_id),
+    [8, null, null],
+  );
+  assert.equal(
+    routineSchema.safeParse({
+      ...autoRoutineInput(),
+      splits: [
+        {
+          ...autoRoutineInput().splits[0],
+          exercises: [{ ...autoRoutineInput().splits[0].exercises[0], machine_id: 0 }],
+        },
+      ],
+    }).success,
+    false,
+    'machine ids are positive integers',
+  );
 });
 
 test('without rests every target stays on its original slot and nothing is excluded', () => {

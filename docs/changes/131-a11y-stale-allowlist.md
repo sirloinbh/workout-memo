@@ -34,3 +34,12 @@
 - `npm run check`(DB 없음, 프로세스 한정 `PSExecutionPolicyPreference=Bypass`): 통과
   - 백엔드 206 pass / 35 skip(DB 통합 미실행), 프론트 121 pass, `test:agents` 167, `test:skills` 4, `test:docs` 3, build 성공
 - 시각 회귀·DB를 쓰는 e2e는 로컬에서 실행하지 않았다. PR CI의 `e2e` 작업이 전체를 실행한다.
+
+## 자동 리뷰 1차 — 2026-10-22
+
+별도 읽기 전용 리뷰 에이전트가 PR #135 전체 diff를 검토했다. 결과는 **보완점 없음**이다. 리뷰 횟수 정책에 따라 2차 리뷰 없이 CI 통과 후 병합한다.
+
+- `browser.newContext`로 바꿔도 잃는 설정이 없다. `channel`은 브라우저 단위이고 `baseURL`·`locale`·`timezoneId`는 직접 넘긴다. 설치된 Playwright가 직접 만든 컨텍스트에도 trace(`retain-on-failure`)와 기본 시간 제한을 적용한다.
+- 최근 main CI(run 39692517095) 컨테이너에서 기존 a11y 테스트는 폭당 약 2초였다. 합친 테스트도 기본 30초 제한까지 여유가 있다.
+- 두 폭의 합집합으로 판정하므로 한 폭에서만 나타나는 조합 때문에 거짓 실패가 나지 않는다. `ui-visual`·`ui-responsive`에는 영향이 없다.
+- nit(반영하지 않음): 컨텍스트 옵션을 세 개만 골라 넘기므로, 나중에 config `use`에 `colorScheme` 같은 컨텍스트 옵션을 추가하면 이 테스트에는 적용되지 않는다. 지금 동작은 맞으므로 기록만 남긴다. 그런 옵션을 추가할 때 함께 넘긴다.

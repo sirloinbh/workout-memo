@@ -333,7 +333,8 @@ test('harness scripts stay ASCII-only so a non-ASCII checkout path still runs th
   // Inline harness templates would bypass the checks above, so every harness write
   // must come from the shared constant.
   const source = readFileSync(new URL(import.meta.url), 'utf8');
-  const writes = [...source.matchAll(/writeFileSync\(harness, ([^)]*)\)/g)].map(
+  // Prettier wraps long calls, so the arguments may span several lines.
+  const writes = [...source.matchAll(/writeFileSync\(\s*harness\s*,\s*([\s\S]*?)\s*,?\s*\);/g)].map(
     (match) => match[1],
   );
   assert.ok(writes.length >= Object.keys(harnesses).length, 'harness writes were not found');

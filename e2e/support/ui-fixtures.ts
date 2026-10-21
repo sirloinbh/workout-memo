@@ -1,7 +1,16 @@
 import { expect, type Page } from '@playwright/test';
 import { analyze, type AnalysisSet } from '../../backend/src/analysis.js';
-import { routineSchedule, routineSchema, type RoutinePlan } from '../../backend/src/domain.js';
-import { routineProgress, type WorkoutRecord } from '../../backend/src/progress.js';
+import {
+  defaultWeightStep,
+  routineSchedule,
+  routineSchema,
+  type RoutinePlan,
+} from '../../backend/src/domain.js';
+import {
+  routineProgress,
+  withWeightSteps,
+  type WorkoutRecord,
+} from '../../backend/src/progress.js';
 import { autoRoutineInput } from '../../backend/test/routine-fixture.js';
 
 // #113: screen checks (visual, responsive, accessibility) use fixed data and a fixed
@@ -212,6 +221,8 @@ const plan = routineSchema.parse({
   start_date: '2026-09-28',
 }) as RoutinePlan;
 const routine = { ...plan, id: 1, schedule: routineSchedule(plan) };
+// The server applies the user's weight steps before computing progress (#86).
+const weightSteps: Record<string, number> = { 벤치프레스: 2.5 };
 const records: WorkoutRecord[] = workouts.flatMap((w) =>
   [...new Set(w.sets.map((s) => s.exercise))].map((exercise) => ({
     date: w.date,
@@ -222,7 +233,7 @@ const records: WorkoutRecord[] = workouts.flatMap((w) =>
 );
 const progress = {
   routine: { id: routine.id, name: plan.name, splits: plan.splits.length },
-  ...routineProgress(plan, [], today, records),
+  ...routineProgress(withWeightSteps(plan, weightSteps), [], today, records),
   previous: {
     벤치프레스: { date: '2026-10-09', sets: [{ weight: 97.5, reps: 10 }] },
   },
@@ -258,7 +269,11 @@ function respond(url: URL): unknown {
   if (path === '/brands') return brands;
   if (path === '/official-machine-weights') return [];
   if (path === '/exercise-body-parts') return bodyParts;
-  if (path === '/exercise-weight-steps') return [{ exercise: '벤치프레스', weight_step: 2.5 }];
+  if (path === '/exercise-weight-steps')
+    return Object.entries(weightSteps).map(([exercise, weight_step]) => ({
+      exercise,
+      weight_step,
+    }));
   if (path === '/routines') return [routine];
   if (path === `/routines/${routine.id}`) return routine;
   if (path === '/routine-progress') return progress;
@@ -273,15 +288,43 @@ function respond(url: URL): unknown {
       ),
       today,
     };
-  if (path === '/goal-suggestion')
-    return {
-      exercise: url.searchParams.get('exercise'),
-      weight_step: 5,
-      custom: false,
-      base: null,
-      target_weight: null,
-    };
+  if (path === '/goal-suggestion') return goalSuggestion(url.searchParams.get('exercise') ?? '');
   return undefined;
+}
+
+// Same rule as GET /api/goal-suggestion: the latest goal of the exercise, or else the
+// heaviest completed set of its latest workout, plus the exercise's weight step.
+function goalSuggestion(exercise: string) {
+  const key = exercise.trim().toLowerCase();
+  const step = weightSteps[key];
+  const weightStep = step ?? defaultWeightStep;
+  const goal = goals
+    .filter((g) => g.exercise.trim().toLowerCase() === key)
+    .sort((a, b) => b.id - a.id)[0];
+  const record = workouts
+    .flatMap((w) =>
+      w.sets
+        .filter((s) => s.completed && s.exercise.trim().toLowerCase() === key)
+        .map((s) => ({ weight: s.weight, reps: s.reps, date: w.date, id: w.id })),
+    )
+    .sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) || b.id - a.id || b.weight - a.weight || b.reps - a.reps,
+    )[0];
+  const base = goal
+    ? { source: 'goal' as const, weight: goal.target_weight, reps: goal.target_reps }
+    : record
+      ? { source: 'record' as const, weight: record.weight, reps: record.reps, date: record.date }
+      : null;
+  return {
+    exercise: key,
+    weight_step: weightStep,
+    custom: step !== undefined,
+    base,
+    target_weight: base
+      ? Math.min(99999, Math.round((base.weight + weightStep) * 100) / 100)
+      : null,
+  };
 }
 
 // Serves every API call from the fixtures; screen checks never write.

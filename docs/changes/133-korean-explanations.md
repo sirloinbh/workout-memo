@@ -11,7 +11,7 @@
 
 - 새 스킬 `skills/workout-communication/SKILL.md`
   - 한국어로 쓰는 대상: 최종 보고, 진행 안내, 질문, 오류·차단 설명, 영어 자료(하위 에이전트 리뷰, 도구 출력 요약, 조사 결과)의 번역 전달
-  - 원문 유지: 명령, 경로, 식별자, 오류·로그 원문(한국어 의미를 덧붙임), 형식이 정해진 커밋·PR 제목
+  - 원문 유지: 명령, 경로, 식별자, 오류·로그 원문(한국어 의미를 덧붙임), 형식이 정해진 커밋·PR 제목(→ 1차 보완에서 아래 '저장소 산출물' 기준으로 대체됨)
   - 범위 밖: 하위 에이전트 지시문 언어, 코드 주석·기존 문서 언어
 - `AGENTS.md`의 "스킬과 문서" 첫 항목에 이 스킬을 연결했다. 스킬 description만으로는 매 대화에 적용된다는 보장이 없어서, 항상 읽히는 프로젝트 지침에서 가리키도록 했다.
 - `npm run skills:sync`로 `.claude/skills/workout-communication/`을 생성했다.
@@ -38,3 +38,15 @@
 - `npm run skills:sync` 후 `npm run test:skills` 4 pass, `npm run test:docs` 3 pass
 - `quick_validate.py skills/workout-communication`(`PYTHONUTF8=1`): `Skill is valid!`
 - `prettier --check`(변경 파일): 통과
+
+## 자동 리뷰 2차 — 2026-10-22
+
+별도 읽기 전용 리뷰 에이전트가 1차 반영(`5c86a2e`)과 최종 전체 diff를 검토했다. 1차 지적 4건은 모두 반영됐고 기존 스킬·AGENTS.md와 충돌이 없다.
+
+- **minor**: 위 "변경" 절 요약에 커밋·PR 제목이 아직 "원문 유지"로 남아 현재 SKILL.md와 달랐다. → 누적 기록이므로 원문을 지우지 않고 대체됐다는 표시를 달았다.
+- **nit**: 변경 요약에 "저장소 산출물" 절이 빠져 있었다. → 1차 리뷰 1번 항목이 이 절을 설명하므로, 위 표시가 그 항목을 가리키게 했다.
+- 리뷰는 최대 2회이므로 이 보완 뒤 추가 리뷰는 하지 않는다.
+
+### 2차 보완 검증
+
+- `npm run test:skills` 4 pass, `npm run test:docs` 3 pass, `prettier --check`(변경 파일) 통과

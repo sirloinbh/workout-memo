@@ -92,3 +92,143 @@ for (const stage of ['delivery', 'ci']) {
     });
   }
 }
+
+function mergeHarness(prState, { conflict = false } = {}) {
+  const calls = [];
+  const job = {
+    id: '30',
+    branch: 'feat/30-agent-task',
+    commit: 'b'.repeat(40),
+    stage: 'ci',
+    results: {
+      verification: { passed: true },
+      delivery: { url: 'https://github.com/fixture/pull/2' },
+    },
+  };
+  const run = vm.runInNewContext(`(${entrySources.ci})`, {
+    verification: async (current) => current.results.verification,
+    worktree: () => '/fixture',
+    git: async (_cwd, action, ...args) => {
+      calls.push(['git', action, ...args]);
+      if (action === 'merge' && args[0] === '--no-edit' && conflict)
+        throw new Error('CONFLICT (content)');
+      return action === 'rev-parse' ? 'c'.repeat(40) : '';
+    },
+    gh: async (_resource, action, ...args) => {
+      calls.push(['gh', action, ...args]);
+      if (action === 'view')
+        return JSON.stringify({
+          headRefOid: job.commit,
+          url: job.results.delivery.url,
+          isDraft: false,
+          statusCheckRollup: [{ name: 'verify', conclusion: 'SUCCESS', status: 'COMPLETED' }],
+          ...prState,
+        });
+      return '';
+    },
+    save: () => {},
+    repo: 'fixture/repo',
+    jobDir: () => '/fixture/job',
+    path,
+    Date,
+  });
+  return { calls, job, run: () => run(job) };
+}
+
+test('ci merges a mergeable PR at the verified head commit after checks pass', async () => {
+  const h = mergeHarness({ mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN' });
+  const result = await h.run();
+  const merge = h.calls.find(([tool, action]) => tool === 'gh' && action === 'merge');
+  assert.deepEqual(merge.slice(2), [
+    'https://github.com/fixture/pull/2',
+    '--repo',
+    'fixture/repo',
+    '--merge',
+    '--match-head-commit',
+    'b'.repeat(40),
+  ]);
+  assert.equal(result.merged, true);
+});
+
+test('ci waits instead of merging while GitHub mergeability is unknown', async () => {
+  const h = mergeHarness({ mergeable: 'UNKNOWN', mergeStateStatus: 'UNKNOWN' });
+  const result = await h.run();
+  assert.equal(result.pending, true);
+  assert.equal(
+    h.calls.some(([tool, action]) => tool === 'gh' && action === 'merge'),
+    false,
+  );
+});
+
+test('ci brings a branch behind main up to date and re-waits for CI before merging', async () => {
+  const h = mergeHarness({ mergeable: 'MERGEABLE', mergeStateStatus: 'BEHIND' });
+  const result = await h.run();
+  assert.equal(result.pending, true);
+  assert.ok(h.calls.some(([, action, ...args]) => action === 'merge' && args[0] === '--no-edit'));
+  assert.ok(h.calls.some(([, action]) => action === 'push'));
+  assert.equal(h.job.commit, 'c'.repeat(40));
+  assert.equal(h.job.ciStartedAt, null);
+  assert.equal(
+    h.calls.some(([tool, action]) => tool === 'gh' && action === 'merge'),
+    false,
+  );
+});
+
+test('ci aborts a conflicting main merge and blocks for coordinator resolution', async () => {
+  const h = mergeHarness(
+    { mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' },
+    { conflict: true },
+  );
+  await assert.rejects(h.run(), (error) => error.failureKind === 'merge-conflict');
+  assert.ok(h.calls.some(([, action, ...args]) => action === 'merge' && args[0] === '--abort'));
+  assert.equal(
+    h.calls.some(([, action]) => action === 'push'),
+    false,
+  );
+  assert.equal(h.job.commit, 'b'.repeat(40));
+});
+
+test('delivery adopts the coordinator merge commit after a merge-conflict retry', async () => {
+  const calls = [];
+  const job = {
+    id: '30',
+    branch: 'feat/30-agent-task',
+    commit: 'b'.repeat(40),
+    failureKind: 'merge-conflict',
+    issue: { title: 'Conflict' },
+    results: {
+      implementation: { summary: 'Implemented' },
+      review: { approved: true, summary: 'Reviewed' },
+      verification: { passed: true, fingerprint: 'source', summary: 'ok' },
+    },
+  };
+  const deliver = vm.runInNewContext(`(${entrySources.delivery})`, {
+    identity: async () => {},
+    assertBranch: async () => {},
+    worktree: () => '/fixture',
+    fingerprint: async () => 'source',
+    changedPaths: async () => [],
+    verification: async (current) => current.results.verification,
+    git: async (_cwd, action, ...args) => {
+      calls.push([action, ...args]);
+      return action === 'rev-parse' ? 'c'.repeat(40) : '';
+    },
+    gh: async (_resource, action) =>
+      action === 'list'
+        ? JSON.stringify([{ state: 'OPEN', url: 'https://github.com/fixture/pull/2' }])
+        : '',
+    save: () => {},
+    repo: 'fixture/repo',
+    jobDir: () => '/fixture/job',
+    path,
+    fs: { writeFileSync: () => {} },
+  });
+  await deliver(job);
+  assert.deepEqual(
+    calls.find(([action]) => action === 'merge-base'),
+    ['merge-base', '--is-ancestor', 'b'.repeat(40), 'c'.repeat(40)],
+  );
+  assert.equal(job.commit, 'c'.repeat(40));
+  assert.equal(job.failureKind, null);
+  assert.equal(job.ciCommit, job.commit);
+});

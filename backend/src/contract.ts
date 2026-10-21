@@ -91,6 +91,9 @@ export const machineSchema = z.object({
   // A link to a manufacturer reference row; it never sets or changes base_weight.
   // Omitted keeps the stored link on update (none on create); explicit null unlinks.
   official_weight_id: z.number().int().positive().max(2147483647).nullable().optional(),
+  // #84: single-joint machines use the single-joint rest. Omitted keeps the stored value
+  // on update (false on create), so older clients do not clear it.
+  single_joint: z.boolean({ invalid_type_error: '단관절 여부를 확인하세요' }).optional(),
 });
 
 export const goalSchema = z

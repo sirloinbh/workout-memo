@@ -96,6 +96,15 @@ test(
         created.rows[0].id,
       ]);
       assert.deepEqual(workout.rows, [{ feedback: null }]);
+      // #84: existing machines are not single-joint.
+      const brand = await client.query('INSERT INTO brands(name) VALUES ($1) RETURNING id', [
+        'baseline',
+      ]);
+      const machine = await client.query(
+        `INSERT INTO machines(brand_id, name) VALUES ($1, 'baseline') RETURNING single_joint`,
+        [brand.rows[0].id],
+      );
+      assert.equal(machine.rows[0].single_joint, false);
       await assert.rejects(
         client.query(`UPDATE workouts SET feedback='0' WHERE id=$1`, [created.rows[0].id]),
         /workouts_feedback_check/,

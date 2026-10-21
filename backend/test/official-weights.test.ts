@@ -269,7 +269,8 @@ test('machine PUT keeps an omitted link and maps an unknown reference id to 400'
     ] as const) {
       const response: Response = await send('PUT', { ...body, official_weight_id: value });
       assert.equal(response.status, 200);
-      assert.deepEqual(calls.at(-1)!.slice(4), [value ?? null, 1, flag]);
+      // The last parameter is single_joint (#84): omitted is null, keeping the stored flag.
+      assert.deepEqual(calls.at(-1)!.slice(4), [value ?? null, 1, flag, null]);
     }
     const created: Response = await send('POST', body);
     assert.equal(created.status, 201);

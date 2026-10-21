@@ -104,7 +104,9 @@ docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /dock
 
 일지 체감 피드백(#83)을 쓰는 API 실행 전에는 `010_workout_feedback.sql`을 적용하세요(`npm run db:migrate`). `workouts.feedback`은 NULL(미입력) 또는 `hard`·`medium`·`easy`이며 DB CHECK로도 검증합니다. 기존 일지는 NULL로 남고 재실행해도 안전합니다.
 
-휴식 타이머는 서버에 저장하지 않습니다. 이 브라우저의 localStorage(`workout-memo:rest-timer:v1`)에 시간 설정·자동 시작 여부·종료 시각만 보관하며, 남은 시간은 종료 시각으로 다시 계산합니다.
+머신의 단관절 여부(#84)를 쓰는 API 실행 전에는 `011_machine_single_joint.sql`을 적용하세요. `machines.single_joint`는 `NOT NULL DEFAULT false`라 기존 머신은 단관절이 아닌 것으로 시작합니다. 재실행해도 안전합니다.
+
+휴식 타이머는 서버에 저장하지 않습니다. 이 브라우저의 localStorage(`workout-memo:rest-timer:v1`)에 시간 설정·자동 시작 여부·종료 시각만 보관하며, 남은 시간은 종료 시각으로 다시 계산합니다. 운동 종류별 기본 휴식(하체·상체·단관절, #84)은 `workout-memo:rest-durations:v1`에 따로 보관합니다.
 
 중량은 kg 단위 총중량(머신 기본중량 포함), 반복 수는 양의 정수입니다. 기본중량 미확인은 NULL로 유지합니다. 일지 삭제 시 세트는 CASCADE 삭제됩니다. 목표 달성은 같은 운동명의 완료한 한 세트가 설정 기간 내 중량·횟수를 모두 충족한 경우입니다.
 
@@ -139,7 +141,16 @@ DB 스키마 변경은 없습니다(추가 마이그레이션 없음). `scripts/
   "exported_at": "ISO 8601",
   "data": {
     "brands": [{ "id": 1, "name": "..." }],
-    "machines": [{ "id": 1, "brand_id": 1, "name": "...", "base_weight": null, "notes": "" }],
+    "machines": [
+      {
+        "id": 1,
+        "brand_id": 1,
+        "name": "...",
+        "base_weight": null,
+        "notes": "",
+        "single_joint": false
+      }
+    ],
     "workouts": [
       {
         "id": 1,
@@ -166,7 +177,7 @@ DB 스키마 변경은 없습니다(추가 마이그레이션 없음). `scripts/
 }
 ```
 
-- 한 REPEATABLE READ 스냅샷에서 읽습니다. `id`는 파일 안의 참조 키일 뿐이며 복원 시 새 id가 발급됩니다. 세트는 일지 안에 순서대로 들어 있고 `machine_id`→`machines.id`→`brand_id`→`brands.id`로 연결됩니다. 중량은 총중량 kg 숫자, 기본중량 미확인은 `null`입니다. 일지의 `feedback`(#83)은 `hard`·`medium`·`easy` 또는 `null`입니다. 이 필드가 없는 이전 백업도 v1으로 그대로 복원되며 `null`이 됩니다. 일지 중복 판정에는 `feedback`을 쓰지 않으므로, 피드백만 다른 같은 일지는 건너뜁니다(기존 값 유지).
+- 한 REPEATABLE READ 스냅샷에서 읽습니다. `id`는 파일 안의 참조 키일 뿐이며 복원 시 새 id가 발급됩니다. 세트는 일지 안에 순서대로 들어 있고 `machine_id`→`machines.id`→`brand_id`→`brands.id`로 연결됩니다. 중량은 총중량 kg 숫자, 기본중량 미확인은 `null`입니다. 일지의 `feedback`(#83)은 `hard`·`medium`·`easy` 또는 `null`입니다. 이 필드가 없는 이전 백업도 v1으로 그대로 복원되며 `null`이 됩니다. 일지 중복 판정에는 `feedback`을 쓰지 않으므로, 피드백만 다른 같은 일지는 건너뜁니다(기존 값 유지). 머신의 `single_joint`(#84)가 없는 이전 백업은 `false`로 복원합니다. 이미 있는 같은 머신과 연결할 때는 기존 머신의 값을 유지합니다.
 - `workout_requests`(저장 재시도 키)는 포함하지 않습니다. 기기별 일시적 중복 방지 기록이고 응답 id가 원본 DB에만 유효하기 때문입니다. 추가만 복원은 이 테이블을 건드리지 않습니다. 전체 교체는 같은 트랜잭션에서 이 테이블도 비웁니다(삭제된 일지 id를 과거 키가 재전송해 저장된 것처럼 보이는 것을 막기 위함). 이후 같은 키로 재시도하면 새 일지로 저장됩니다. 인증 정보·환경변수·Terraform state는 어떤 파일에도 들어가지 않습니다.
 
 **복원** `POST /api/backup/preview`, `POST /api/backup/restore` — 본문 `{ "mode": "merge" | "replace", "backup": {...}, "confirm"?: "전체 교체" }`

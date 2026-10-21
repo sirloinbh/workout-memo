@@ -9,6 +9,11 @@ const migration = readFileSync(
   new URL('../../database/migrations/009_official_machine_weights.sql', import.meta.url),
   'utf8',
 );
+// #87: 013 updates rows 009 left unverified, so a re-run applies both in order.
+const followup = readFileSync(
+  new URL('../../database/migrations/013_official_weights_followup.sql', import.meta.url),
+  'utf8',
+);
 
 test(
   'official references are read with sources and never overwrite user weights or past totals',
@@ -51,10 +56,7 @@ test(
         assert.match(bench.source_url, /^https:\/\/www\.lifefitness\.com\//);
         assert.equal(bench.checked_date, '2026-10-19');
       });
-      const unverified = all.data.find(
-        (r: { brand: string; status: string }) =>
-          r.brand === 'Arsenal Strength' && r.status === 'unverified',
-      );
+      const unverified = all.data.find((r: { status: string }) => r.status === 'unverified');
       await t.test('unverified reference is NULL with a reason, distinct from 0 kg', () => {
         assert.ok(unverified);
         assert.equal(unverified.raw_value, null);
@@ -151,13 +153,18 @@ test(
         },
       );
 
-      await t.test('re-running migration 009 changes no user data or past totals', async () => {
-        await pool.query(migration);
-        await pool.query(migration);
-        assert.deepEqual(await snapshot(), before);
-        const again = await call('/official-machine-weights?brand=Hammer%20Strength');
-        assert.equal(again.data.length, hammer.data.length, 'Seeding is idempotent');
-      });
+      await t.test(
+        're-running migrations 009 and 013 changes no user data or past totals',
+        async () => {
+          for (let i = 0; i < 2; i++) {
+            await pool.query(migration);
+            await pool.query(followup);
+          }
+          assert.deepEqual(await snapshot(), before);
+          const again = await call('/official-machine-weights?brand=Hammer%20Strength');
+          assert.equal(again.data.length, hammer.data.length, 'Seeding is idempotent');
+        },
+      );
 
       await t.test(
         'Newtech brand exists once after re-runs and lists its unverified rows',

@@ -140,6 +140,29 @@ test(
         before,
         'reading progress never modifies saved sets',
       );
+
+      // #83: the same achieved session marked 'hard' holds session 2 at 100x10, so the
+      // moved session 3 is projected one step lower (100x11 instead of 100x12).
+      const hard = await call(`/workouts/${workout.data.id}`, 'PUT', {
+        date: slots[0].date,
+        title: prefix,
+        version: 1,
+        feedback: 'hard',
+        sets: before.map((s: { exercise: string; weight: string; reps: number }) =>
+          set(s.exercise, Number(s.weight), s.reps),
+        ),
+      });
+      assert.equal(hard.status, 200);
+      const held = (await call('/routine-progress')).data.days.find(
+        (d: { date: string; rest: boolean }) => d.date > third && !d.rest,
+      );
+      assert.deepEqual(
+        [
+          held.target.exercises.find((e: Ex) => e.exercise === bench).weight,
+          held.target.exercises.find((e: Ex) => e.exercise === bench).reps,
+        ],
+        [100, 11],
+      );
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
       try {

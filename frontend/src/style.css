@@ -763,6 +763,16 @@ footer > span:last-child {
   color: var(--color-ink-muted);
   margin-bottom: 17px;
 }
+/* #83: workout feedback reads like a field label above the .tabs selector. */
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-bottom: 17px;
+}
 .modal input,
 .modal select,
 .modal textarea {

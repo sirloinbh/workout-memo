@@ -266,6 +266,35 @@ test('each session window decides whether the next session advances or holds', (
   );
 });
 
+test('an achieved session marked hard holds the next target; medium and easy advance (#83)', () => {
+  const friday = '2024-03-08';
+  const met = (feedback: 'hard' | 'medium' | 'easy' | null) => [
+    { ...three('2024-03-05', 100, 10), feedback },
+  ];
+  assert.deepEqual(
+    sessions('벤치프레스', met('hard'), friday).slice(0, 2),
+    ['100x10', '100x10'],
+    'hard → same target next session',
+  );
+  assert.equal(at('2024-03-04', '벤치프레스', met('hard'), friday).exercise?.result, 'achieved');
+  for (const feedback of ['medium', 'easy', null] as const)
+    assert.deepEqual(
+      sessions('벤치프레스', met(feedback), friday).slice(0, 2),
+      ['100x10', '100x11'],
+      `${String(feedback)} → advances as before`,
+    );
+  // Feedback of a workout outside the session window does not affect it.
+  const hardLater = [
+    three('2024-03-05', 100, 10),
+    { ...three('2024-03-06', 100, 11), feedback: 'hard' as const },
+  ];
+  assert.deepEqual(sessions('벤치프레스', hardLater, friday).slice(0, 3), [
+    '100x10',
+    '100x11',
+    '100x11',
+  ]);
+});
+
 test('only completed sets count when the completed flag is present', () => {
   const today = '2024-03-06';
   const oneIncomplete = [

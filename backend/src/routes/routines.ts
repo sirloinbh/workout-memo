@@ -1,7 +1,13 @@
 import type express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import { date, routineSchema, routineSchedule, type RoutinePlan } from '../domain.js';
+import {
+  date,
+  routineSchema,
+  routineSchedule,
+  type Feedback,
+  type RoutinePlan,
+} from '../domain.js';
 import {
   exerciseKey,
   isAuto,
@@ -37,7 +43,7 @@ async function planRecords(db: Db, plan: RoutinePlan, today: string) {
     ...new Set(plan.splits.flatMap((s) => s.exercises.map((e) => exerciseKey(e.exercise)))),
   ];
   const result = await db.query(
-    `SELECT w.id, w.date, lower(trim(s.exercise)) AS key, s.weight, s.reps,
+    `SELECT w.id, w.date, w.feedback, lower(trim(s.exercise)) AS key, s.weight, s.reps,
        to_jsonb(s)->'completed' AS completed
      FROM sets s JOIN workouts w ON w.id = s.workout_id
      WHERE lower(trim(s.exercise)) = ANY($1::text[]) AND w.date BETWEEN $2 AND $3
@@ -48,13 +54,15 @@ async function planRecords(db: Db, plan: RoutinePlan, today: string) {
   for (const row of result.rows as {
     id: number;
     date: string;
+    feedback: Feedback | null;
     key: string;
     weight: string | number;
     reps: number;
     completed: unknown;
   }[]) {
     const id = `${row.id}:${row.key}`;
-    if (!grouped.has(id)) grouped.set(id, { date: row.date, exercise: row.key, sets: [] });
+    if (!grouped.has(id))
+      grouped.set(id, { date: row.date, exercise: row.key, sets: [], feedback: row.feedback });
     grouped.get(id)!.sets.push({
       weight: Number(row.weight),
       reps: row.reps,

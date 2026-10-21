@@ -1384,6 +1384,18 @@
             "maxLength": 4000,
             "default": ""
           },
+          "feedback": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "hard",
+              "medium",
+              "easy"
+            ],
+            "default": null
+          },
           "sets": {
             "type": "array",
             "items": {

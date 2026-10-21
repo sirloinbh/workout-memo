@@ -27,6 +27,7 @@ function mount(failPost = false, failReadAfterPost = false, initialPlan: Plan = 
       saved = { ...(body as Plan), id: 27, schedule: [] };
       return json({ id: 27 }, 201);
     }
+    if (pathname === '/api/machines') return [{ id: 5, brand: '해머', name: '레그프레스' }];
     const data =
       pathname === '/api/routines' ? [saved] : pathname === '/api/routines/27' ? saved : [];
     return structuredClone(data);
@@ -291,4 +292,35 @@ test('new routines default to automatic double progression with a 12-week previe
   expect(post!.body).toEqual(expected);
   await waitFor(() => expect(ui.text()).toMatch(/자동 · 이중 점진 과부하/));
   expect(ui.text()).toMatch(/5주차: 1번째 110 kg × 9회\(반복 \+1\)/);
+});
+
+test('a routine exercise can name a machine that the plan keeps (#82)', async () => {
+  const expected = autoRoutineInput();
+  const ui = mount(false, false, expected as unknown as Plan);
+  await openRoutines();
+  await ui.click('새 루틴 만들기');
+  await ui.change('루틴 이름', expected.name);
+  await ui.change('분할 이름', expected.splits[0].name);
+  await ui.change('시작일', expected.start_date);
+  await ui.change('주당 운동 횟수', '3');
+  for (const day of ['일', '화', '목', '토']) await ui.change(day, '', 0, true);
+  await ui.click('가슴 추가');
+  await ui.click('운동 추가');
+  for (const [i, ex] of expected.splits[0].exercises.slice(0, 2).entries()) {
+    await ui.change('운동명', ex.exercise, i);
+    await ui.change('현재 총중량 (kg, 머신 기본중량 포함)', String(ex.weight), i);
+    await ui.change('현재 반복 수', String(ex.reps), i);
+  }
+  await waitFor(() =>
+    expect(ui.labels('머신')[0].querySelector('option[value="5"]')).not.toBeNull(),
+  );
+  await ui.change('머신', '5', 0);
+  await ui.submit();
+  await saveSettled();
+  const post = ui.requests.find((r) => r.method === 'POST');
+  const exercises = (post!.body as Plan).splits[0].exercises as Record<string, unknown>[];
+  expect(exercises[0].machine_id).toBe(5);
+  // A free exercise omits the field, keeping the plan shape of older routines.
+  expect('machine_id' in exercises[1]).toBe(false);
+  await waitFor(() => expect(ui.text()).toMatch(/벤치프레스 \(해머 · 레그프레스\)/));
 });

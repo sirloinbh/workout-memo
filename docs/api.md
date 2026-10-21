@@ -113,7 +113,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 
 ### 루틴, 백업
 
-루틴 계획 형식은 [domain.ts](../backend/src/domain.ts)의 `routineSchema`를 따릅니다. 수동 진행에서는 12주 변화량이 필수이며, `progression: "auto"`에서는 반복 범위가 필수입니다. 백업 파일 형식과 복원 규칙은 [database/README.md의 앱 내보내기·백업](../database/README.md#앱-내보내기백업-33)을 따릅니다.
+루틴 계획 형식은 [domain.ts](../backend/src/domain.ts)의 `routineSchema`를 따릅니다. 수동 진행에서는 12주 변화량이 필수이며, `progression: "auto"`에서는 반복 범위가 필수입니다. 운동마다 선택 필드 `machine_id`로 머신을 지정할 수 있고(#82), 존재하지 않는 머신이면 400입니다. 오늘 목표(`today_plan.target.exercises`)는 `machine_id`(없으면 `null`)를 함께 돌려주며, 새 일지는 이 값으로 세트를 채웁니다. 백업 파일 형식과 복원 규칙은 [database/README.md의 앱 내보내기·백업](../database/README.md#앱-내보내기백업-33)을 따릅니다.
 
 ## 변경 절차
 

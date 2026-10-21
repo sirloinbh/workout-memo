@@ -17,7 +17,8 @@ import {
   Scale,
   Trophy,
 } from 'lucide-react';
-import { BrowserRouter, NavLink, useLocation, useNavigate } from 'react-router';
+import { BrowserRouter, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,7 +38,7 @@ import { Dialog } from './components/ui/dialog';
 import { FieldError, invalidProps, Input } from './components/ui/field';
 import './theme.css';
 import './style.css';
-import { seoulDate } from './date';
+import { dateTitle, seoulDate } from './date';
 import { Routines } from './routines';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
@@ -323,6 +324,14 @@ function Workspace() {
     if (!pageOf(location.pathname)) void navigate(pages.overview, { replace: true });
   }, [location.pathname, navigate]);
   const queryClient = useQueryClient();
+  // #85: a directly chosen range lives in the address (?from&to) so reloads and shared
+  // links keep it. Presets stay in component state as before.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const customRange = parseRange(searchParams.get('from'), searchParams.get('to'));
+  const badRangeAddress = !customRange && (searchParams.has('from') || searchParams.has('to'));
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customDraft, setCustomDraft] = useState({ from: '', to: '' });
+  const [customErrors, setCustomErrors] = useState<{ from?: string; to?: string }>({});
   const [period, setPeriod] = useState('week'),
     [anchor, setAnchor] = useState(today()),
     [brand, setBrand] = useState(0),
@@ -519,6 +528,7 @@ function Workspace() {
     }
   }
   const range = () => {
+    if (customRange) return customRange;
     const start = calendarDate(anchor);
     let end = new Date(start);
     if (period === 'week') {
@@ -600,27 +610,33 @@ function Workspace() {
       setSaving(false);
     }
   }
+  const machineIds = () => new Set(machines.map((m) => m.id));
+  // #82: a new journal is dated today (Asia/Seoul) even when another day is browsed,
+  // and starts with today's routine sets when a routine plans a workout today.
   const newWorkout = () => {
     if (recovery) return;
+    const date = today();
     setEditor({
-      date: anchor,
-      title: '',
+      date,
+      title: dateTitle(date),
       notes: '',
       feedback: null,
-      // #28: a new journal starts with three sets.
-      sets: Array.from({ length: 3 }, () => ({
-        exercise: '',
-        machine_id: null,
-        weight: 0,
-        reps: 10,
-        notes: '',
-        completed: false,
-        rpe: null,
-      })),
+      // #28: otherwise a new journal starts with three sets.
+      sets:
+        routineDraft(progress, machineIds())?.sets ??
+        Array.from({ length: 3 }, () => ({
+          exercise: '',
+          machine_id: null,
+          weight: 0,
+          reps: 10,
+          notes: '',
+          completed: false,
+          rpe: null,
+        })),
     });
   };
   const quickWorkout = () => {
-    const value = routineDraft(progress);
+    const value = routineDraft(progress, machineIds());
     if (recovery || !value) return;
     setEditor(value);
   };
@@ -663,28 +679,102 @@ function Workspace() {
           ].map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setPeriod(key)}
-              className={period === key ? 'selected' : ''}
+              onClick={() => {
+                setPeriod(key);
+                setCustomOpen(false);
+                setCustomErrors({});
+                if (customRange || badRangeAddress) setSearchParams({});
+              }}
+              className={period === key && !customRange && !customOpen ? 'selected' : ''}
             >
               {label}
             </button>
           ))}
-        </div>
-        <div className="date-control">
-          <button aria-label="이전 기간" onClick={() => move(-1)}>
-            <ChevronLeft size={17} />
-          </button>
-          <input
-            aria-label="기준 날짜"
-            type="date"
-            value={anchor}
-            onChange={(e) => e.target.value && setAnchor(e.target.value)}
-          />
-          <button aria-label="다음 기간" onClick={() => move(1)}>
-            <ChevronRight size={17} />
+          <button
+            onClick={() => {
+              setCustomOpen(true);
+              setCustomDraft({ from, to });
+            }}
+            className={customRange || customOpen ? 'selected' : ''}
+          >
+            직접 선택
           </button>
         </div>
+        {!customRange && !customOpen && (
+          <div className="date-control">
+            <button aria-label="이전 기간" onClick={() => move(-1)}>
+              <ChevronLeft size={17} />
+            </button>
+            <input
+              aria-label="기준 날짜"
+              type="date"
+              value={anchor}
+              onChange={(e) => e.target.value && setAnchor(e.target.value)}
+            />
+            <button aria-label="다음 기간" onClick={() => move(1)}>
+              <ChevronRight size={17} />
+            </button>
+          </div>
+        )}
       </div>
+      {(customOpen || customRange) && (
+        <form
+          className="custom-range"
+          aria-label="기간 직접 선택"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            // Invalid ranges are explained per field and never requested.
+            const errors = checkRange(customDraft.from, customDraft.to);
+            setCustomErrors(errors);
+            if (Object.keys(errors).length) return;
+            setSearchParams({ from: customDraft.from, to: customDraft.to });
+            setCustomOpen(false);
+          }}
+        >
+          <label>
+            시작일
+            <input
+              type="date"
+              value={customOpen ? customDraft.from : from}
+              onChange={(e) => {
+                setCustomOpen(true);
+                setCustomDraft({
+                  ...(customOpen ? customDraft : { from, to }),
+                  from: e.target.value,
+                });
+              }}
+              {...invalidProps('range-from', customErrors.from)}
+            />
+          </label>
+          <FieldError name="range-from">{customErrors.from}</FieldError>
+          <label>
+            종료일
+            <input
+              type="date"
+              value={customOpen ? customDraft.to : to}
+              onChange={(e) => {
+                setCustomOpen(true);
+                setCustomDraft({
+                  ...(customOpen ? customDraft : { from, to }),
+                  to: e.target.value,
+                });
+              }}
+              {...invalidProps('range-to', customErrors.to)}
+            />
+          </label>
+          <FieldError name="range-to">{customErrors.to}</FieldError>
+          <button type="submit" className="subtle-button">
+            적용
+          </button>
+          <span className="form-hint">양 끝 날짜 포함 · 최대 {maxRangeDays}일</span>
+        </form>
+      )}
+      {badRangeAddress && (
+        <p role="alert" className="error">
+          주소의 기간이 올바르지 않아 기본 기간을 표시합니다. 기간을 다시 선택하세요.
+        </p>
+      )}
       <div className="range-label">
         {from} — {to} <span>선택한 기간의 기록</span>
       </div>
@@ -811,7 +901,15 @@ function Workspace() {
         <nav aria-label="주요 메뉴">
           {nav.map(([key, label, Icon]) => (
             // NavLink marks the current page with aria-current="page" and .active.
-            <NavLink key={key} to={pages[key]} end>
+            // #85: pages sharing the period keep a directly chosen range in the address.
+            <NavLink
+              key={key}
+              to={{
+                pathname: pages[key],
+                search: ['overview', 'journal', 'body'].includes(key) ? location.search : '',
+              }}
+              end
+            >
               <Icon size={19} />
               {label}
               {page === key && <span className="nav-dot" />}
@@ -1008,7 +1106,7 @@ function Workspace() {
                         볼륨 (kg)
                       </span>
                     </div>
-                    <Chart workouts={workouts} from={from} to={to} />
+                    <Chart workouts={workouts} from={from} to={to} custom={!!customRange} />
                   </section>
                   <section className="focus-card">
                     <div className="focus-top">
@@ -1974,26 +2072,48 @@ function Stat({
     </section>
   );
 }
-function Chart({ workouts, from, to }: { workouts: Workout[]; from: string; to: string }) {
+function Chart({
+  workouts,
+  from,
+  to,
+  custom = false,
+}: {
+  workouts: Workout[];
+  from: string;
+  to: string;
+  custom?: boolean;
+}) {
   const start = calendarDate(from),
     end = calendarDate(to);
   const count = Math.round((+end - +start) / 86400000) + 1;
   const buckets = count > 31 ? 12 : count > 7 ? Math.ceil(count / 7) : count;
-  const values = Array.from({ length: buckets }, (_, i) => {
-    const a = new Date(start);
-    a.setUTCDate(a.getUTCDate() + Math.floor((i * count) / buckets));
-    const b = new Date(start);
-    b.setUTCDate(b.getUTCDate() + Math.floor(((i + 1) * count) / buckets));
-    return {
-      label:
-        count > 7
-          ? `${a.getUTCMonth() + 1}/${a.getUTCDate()}`
-          : ['일', '월', '화', '수', '목', '금', '토'][a.getUTCDay()],
-      value: workouts
-        .filter((w) => cleanDate(w.date) >= iso(a) && cleanDate(w.date) < iso(b))
-        .reduce((n, w) => n + vol(w), 0),
-    };
-  });
+  // #85: a directly chosen range groups by day, week or month by its length.
+  const sum = (a: string, b: string) =>
+    workouts
+      .filter((w) => cleanDate(w.date) >= a && cleanDate(w.date) < b)
+      .reduce((n, w) => n + vol(w), 0);
+  const values = custom
+    ? rangeBuckets(from, to).map((b) => ({ label: b.label, value: sum(b.start, b.end) }))
+    : presetValues();
+  // Up to 31 daily bars: only every few labels are drawn so they do not overlap.
+  const labelStep = Math.ceil(values.length / 12);
+  function presetValues() {
+    return Array.from({ length: buckets }, (_, i) => {
+      const a = new Date(start);
+      a.setUTCDate(a.getUTCDate() + Math.floor((i * count) / buckets));
+      const b = new Date(start);
+      b.setUTCDate(b.getUTCDate() + Math.floor(((i + 1) * count) / buckets));
+      return {
+        label:
+          count > 7
+            ? `${a.getUTCMonth() + 1}/${a.getUTCDate()}`
+            : ['일', '월', '화', '수', '목', '금', '토'][a.getUTCDay()],
+        value: workouts
+          .filter((w) => cleanDate(w.date) >= iso(a) && cleanDate(w.date) < iso(b))
+          .reduce((n, w) => n + vol(w), 0),
+      };
+    });
+  }
   const max = Math.max(100, ...values.map((v) => v.value));
   return (
     <div
@@ -2020,7 +2140,7 @@ function Chart({ workouts, from, to }: { workouts: Workout[]; from: string; to: 
                 style={{ height: Math.max(v.value ? 3 : 0, (v.value / max) * 145) }}
                 title={`${v.label}: ${fmt(v.value)}kg`}
               />
-              <span>{v.label}</span>
+              <span>{i % labelStep === 0 ? v.label : ''}</span>
             </div>
           ))}
         </div>

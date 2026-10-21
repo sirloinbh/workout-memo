@@ -157,6 +157,8 @@ async function fill(ui: UI) {
   for (let i = 0; i < 2; i++)
     await ui.user.click(within(dialog()).getAllByRole('button', { name: '세트 삭제' })[0]);
   expect(exerciseInputs()).toHaveLength(1);
+  // #82: the title starts as today's date; these scenarios replace it.
+  await ui.user.clear(titleInput());
   await ui.user.type(titleInput(), 'Recovery workout');
   await ui.user.type(exerciseInputs()[0], 'Squat');
   // Number inputs drop partial decimals ("100.") while typing in jsdom; set the value.

@@ -5,6 +5,7 @@ import { routineSchedule, type Feedback, type RoutinePlan } from './domain.js';
 // date never moves, so targets pushed past the last slot are kept as excluded.
 export type TargetExercise = {
   exercise: string;
+  machine_id: number | null;
   sets: number;
   weight: number;
   reps: number;
@@ -75,6 +76,7 @@ export function weekExercises(plan: RoutinePlan, splitIndex: number, week: numbe
     else reps -= change.amount;
     return {
       exercise: base.exercise,
+      machine_id: base.machine_id ?? null,
       sets: clamp(sets, 1, 200),
       weight: clamp(round(weight), 0, 99999),
       reps: clamp(reps, 1, 1000),
@@ -175,6 +177,7 @@ function autoExercises(
         }
         out.get(o.target.order)!.push({
           exercise: ex.exercise,
+          machine_id: ex.machine_id ?? null,
           sets: ex.sets,
           weight: target.weight,
           reps: target.reps,

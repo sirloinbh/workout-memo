@@ -4,6 +4,7 @@ import React from 'react';
 // weights of different exercises are never summed. Only saved journals are records.
 export type TargetExercise = {
   exercise: string;
+  machine_id?: number | null;
   sets: number;
   weight: number;
   reps: number;
@@ -100,15 +101,16 @@ export const previousText = (p: Previous | undefined) =>
     : '직전 기록 없음';
 
 // A local journal draft prefilled from today's targets. It becomes a record only
-// when the user saves it through the normal journal save flow.
-export function routineDraft(progress: Progress | null) {
+// when the user saves it through the normal journal save flow. A planned machine
+// is kept only while it is in the loaded machine list (#82).
+export function routineDraft(progress: Progress | null, machineIds?: ReadonlySet<number>) {
   const target = progress?.routine && progress.today_plan?.target;
   if (!progress?.routine || !target) return null;
   const sets: DraftSet[] = target.exercises
     .flatMap((e) =>
       Array.from({ length: e.sets }, () => ({
         exercise: e.exercise,
-        machine_id: null,
+        machine_id: e.machine_id != null && machineIds?.has(e.machine_id) ? e.machine_id : null,
         weight: e.weight,
         reps: e.reps,
         notes: '',

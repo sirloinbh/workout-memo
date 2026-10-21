@@ -287,3 +287,105 @@ test('machine PUT keeps an omitted link and maps an unknown reference id to 400'
     );
   }
 });
+
+// #87: migration 013 updates rows 009 left unverified. Parsed like the 009 seed.
+const followupSql = readFileSync(
+  new URL('../../database/migrations/013_official_weights_followup.sql', import.meta.url),
+  'utf8',
+);
+const followupDocs = readFileSync(
+  new URL('../../docs/machine-official-weights-followup.md', import.meta.url),
+  'utf8',
+);
+const followupColumns = [
+  'brand',
+  'lineup',
+  'model_name',
+  'setting',
+  'model_number',
+  'official_item_name',
+  'status',
+  'raw_value',
+  'raw_unit',
+  'official_kg_text',
+  'weight_kg',
+  'basis',
+  'source_url',
+  'checked_date',
+  'notes',
+] as const;
+const followup = followupSql
+  .slice(followupSql.indexOf('-- followup:begin'), followupSql.indexOf('-- followup:end'))
+  .split('\n')
+  .filter((line) => line.trim().startsWith('('))
+  .map((line) => {
+    const values = tuple(line);
+    assert.equal(values.length, followupColumns.length, line);
+    return Object.fromEntries(followupColumns.map((c, i) => [c, values[i]])) as Record<
+      (typeof followupColumns)[number],
+      string | number | null
+    >;
+  });
+const key = (r: { brand: unknown; lineup: unknown; model_name: unknown; setting: unknown }) =>
+  [r.brand, r.lineup, r.model_name, r.setting].join('|');
+
+test('013 only revisits rows 009 left unverified, each once', () => {
+  const unverified = new Set(rows.filter((r) => r.status === 'unverified').map(key));
+  assert.equal(followup.length, unverified.size, 'every unverified row was researched again');
+  for (const r of followup) assert.ok(unverified.has(key(r)), key(r));
+  assert.equal(new Set(followup.map(key)).size, followup.length);
+  for (const r of followup) assert.equal(r.checked_date, '2026-10-21');
+  assert.match(followupSql, /^UPDATE official_machine_weights o SET/m);
+  assert.doesNotMatch(followupSql, /INSERT|UPDATE\s+machines|UPDATE\s+sets|base_weight\s*=/i);
+});
+
+test('013 values come from manufacturer pages with exact kg conversion; the rest stay NULL', () => {
+  const official = /^https:\/\/(www\.)?(lifefitness\.com|myarsenalstrength\.com)\//;
+  for (const r of followup) {
+    const label = key(r);
+    assert.doesNotMatch(String(r.source_url), /performaxx|amazon|coupang/, label);
+    if (r.status === 'unverified') {
+      assert.equal(r.raw_value, null, label);
+      assert.equal(r.weight_kg, null, label);
+      assert.ok(String(r.notes).trim().length > 10, `${label} needs a reason`);
+      continue;
+    }
+    assert.equal(r.status, 'verified', label);
+    assert.match(String(r.source_url), official, label);
+    assert.equal(r.raw_unit, 'lb', label);
+    assert.equal(
+      r.weight_kg,
+      Math.round((r.raw_value as number) * 0.45359237 * 100) / 100,
+      `${label}: lb x 0.45359237 rounded to 0.01 kg`,
+    );
+    assert.match(String(r.official_item_name), /^Starting (Resistance|Weight)/, label);
+    if (r.basis === 'per_arm')
+      assert.match(String(r.official_item_name), /per (work-?)?arm/, label);
+    else assert.equal(r.basis, 'unspecified', label);
+  }
+  // A starting assistance (e.g. the Nordic Ham) is not a starting resistance.
+  const nordic = followup.find((r) => r.model_name === 'Plate Loaded Assisted Nordic Ham')!;
+  assert.equal(nordic.status, 'unverified');
+  assert.match(String(nordic.notes), /Starting Assistance/);
+});
+
+test('the follow-up document lists every 013 row with the same value', () => {
+  const table = followupDocs
+    .split('\n')
+    .filter((l) => l.startsWith('|'))
+    .map((l) =>
+      l
+        .split('|')
+        .slice(1, -1)
+        .map((c) => c.trim()),
+    );
+  for (const r of followup) {
+    const cells = table.find((c) => c[0] === r.brand && c[1] === r.lineup && c[3] === r.model_name);
+    assert.ok(cells, `docs row for ${key(r)}`);
+    assert.equal(cells[6], r.weight_kg === null ? 'NULL' : (r.weight_kg as number).toFixed(2));
+    assert.equal(cells[7], r.basis ?? '—');
+    assert.equal(cells[9], r.status);
+  }
+  assert.equal(table.length - 2, followup.length, 'No extra or missing docs rows');
+  assert.match(followupDocs, new RegExp(`조사 행 수: ${followup.length}`));
+});

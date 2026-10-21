@@ -10,8 +10,8 @@ import { autoRoutineInput, routineInput } from './routine-fixture.js';
 // #28 rule changes (issue comments "규칙 변경 — 자동 점진 과부하와 기본 3세트" and
 // "규칙 변경 — 주 단위가 아니라 분할(운동일) 단위로 진행"): one step per session of
 // the exercise's split,
-// double progression from the entered current performance, ~5% weight steps in
-// 2.5 kg units (min 2.5 kg), bodyweight adds reps only, deloads at 4/8/12 are 90%
+// double progression from the entered current performance, weight steps of the
+// exercise's increment (#86: 5 kg by default), bodyweight adds reps only, deloads at 4/8/12 are 90%
 // of the previous non-deload target weight with the same reps, and real records
 // decide whether a target advances or is held.
 type Records = {
@@ -20,7 +20,10 @@ type Records = {
   sets: { weight: number; reps: number; completed?: boolean | null }[];
 }[];
 type Api = {
-  incrementFor(weight: number): number;
+  progressionStep(
+    level: { weight: number; reps: number },
+    ex: { rep_min?: number; rep_max?: number; weight_step?: number },
+  ): { level: { weight: number; reps: number }; kind: string };
   deloadWeight(weight: number): number;
   arrangeTargets(
     plan: RoutinePlan,
@@ -131,13 +134,20 @@ test('auto routines validate a rep range and reject manual week amounts; manual 
   assert.equal(parse({ ...manual, weeks: undefined }).success, false, 'manual needs 12 weeks');
 });
 
-test('weight increment is about 5% in 2.5 kg steps with a 2.5 kg minimum', () => {
-  assert.equal(api.incrementFor(100), 5);
-  assert.equal(api.incrementFor(105), 5);
-  assert.equal(api.incrementFor(75), 5);
-  assert.equal(api.incrementFor(40), 2.5);
-  assert.equal(api.incrementFor(10), 2.5);
-  assert.equal(api.incrementFor(200), 10);
+test('weight increment is 5 kg by default and the exercise own step otherwise (#86)', () => {
+  const top = { weight: 40, reps: 12 };
+  const range = { rep_min: 8, rep_max: 12 };
+  assert.deepEqual(api.progressionStep(top, range).level, { weight: 45, reps: 8 });
+  for (const [weight_step, weight] of [
+    [2.5, 42.5],
+    [1.25, 41.25],
+    [10, 50],
+  ])
+    assert.deepEqual(api.progressionStep(top, { ...range, weight_step }).level, {
+      weight,
+      reps: 8,
+    });
+  assert.equal(api.progressionStep({ weight: 0, reps: 12 }, range).kind, 'hold');
   assert.equal(api.deloadWeight(100), 90);
   assert.equal(api.deloadWeight(105), 95, '94.5 kg rounds to the nearest 2.5 kg');
   assert.equal(api.deloadWeight(42.5), 37.5);
@@ -172,20 +182,31 @@ test('a full-body routine trained 3x a week advances one step per session', () =
   assert.deepEqual(bench.slice(33), ['112.5x11', '112.5x11', '112.5x11'], 'week 12 deload');
   assert.deepEqual(sessions('덤벨 컬').slice(0, 15), [
     '40x12',
+    '45x8', // #86: +5 kg by default, also for light weights
+    '45x9',
+    '45x10',
+    '45x11',
+    '45x12',
+    '50x8',
+    '50x9',
+    '50x10',
+    '45x10', // week 4 deload: 90% of 50 kg
+    '45x10',
+    '45x10',
+    '50x11',
+    '50x12',
+    '55x8',
+  ]);
+  // A 2.5 kg step set for the exercise (also for saved routines) is used instead.
+  const custom = progress.withWeightSteps(plan(), { '덤벨 컬': 2.5 }) as RoutinePlan;
+  assert.deepEqual(sessions('덤벨 컬', [], beforeStart, [], custom).slice(0, 7), [
+    '40x12',
     '42.5x8',
     '42.5x9',
     '42.5x10',
     '42.5x11',
     '42.5x12',
     '45x8',
-    '45x9',
-    '45x10',
-    '40x10',
-    '40x10',
-    '40x10',
-    '45x11',
-    '45x12',
-    '47.5x8',
   ]);
   const pullUp = sessions('맨몸 풀업');
   assert.deepEqual(pullUp.slice(0, 4), ['0x10', '0x11', '0x12', '0x12']);
@@ -218,10 +239,10 @@ test('a 2-split routine 3x a week advances each exercise only on its own split s
     '50x10', // w1 #2
     '50x11', // w2 #1
     '50x12', // w2 #3
-    '52.5x8', // w3 #2: 5% of 50 rounds to 2.5 kg
-    '47.5x8', // w4 #1 deload
-    '47.5x8', // w4 #3 deload
-    '52.5x9', // w5 #2
+    '55x8', // w3 #2: +5 kg default increment (#86)
+    '50x8', // w4 #1 deload: 90% of 55 kg rounded to 2.5 kg
+    '50x8', // w4 #3 deload
+    '55x9', // w5 #2
   ]);
 });
 
@@ -392,7 +413,8 @@ test('the routine form preview uses the same per-session progression as the serv
       readFileSync(new URL('../../frontend/src/progression.ts', import.meta.url), 'utf8'),
       { compilerOptions: { module: ts.ModuleKind.CommonJS } },
     ).outputText,
-    { exports, Date, Math },
+    // The preview reads the default increment from the shared contract.
+    { exports, Date, Math, require: () => ({ defaultWeightStep: 5 }) },
   );
   type Row = { week: number; session: number; weight: number; reps: number; kind: string };
   const preview = exports.previewTargets as (

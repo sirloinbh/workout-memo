@@ -5,7 +5,7 @@ description: Establish or improve the repeatable development foundation of the w
 
 # Workout Memo 개발 기반
 
-운동 일지 앱의 개발·검증·운영 방식을 반복 가능하게 정리한다. 먼저 프로젝트 루트의 `AGENTS.md`와 `skills/workout-implementation/SKILL.md`를 읽고, 이슈 → 번호 기반 브랜치 → 구현 및 docs 기록 → 테스트·PR → 사용자 병합 절차로 진행한다. 이 스킬이 이슈·PR 절차를 생략하거나 배포·병합 권한을 부여하지 않는다.
+운동 일지 앱의 개발·검증·운영 방식을 반복 가능하게 정리한다. 먼저 프로젝트 루트의 `AGENTS.md`와 `skills/workout-implementation/SKILL.md`를 읽고, 이슈 → 번호 기반 브랜치 → 구현 및 docs 기록 → 테스트·PR → CI 통과 후 병합 절차로 진행한다. 이 스킬이 이슈·PR·CI 절차를 생략하거나 별도 배포 권한을 부여하지 않는다.
 
 ## 범위와 선택
 
@@ -24,7 +24,7 @@ description: Establish or improve the repeatable development foundation of the w
 4. 화면 변경은 기존 디자인을 유지하면서 공통 컴포넌트·폼·로딩·빈 결과·오류·키보드 접근을 해당 기능 범위에서 정리한다.
 5. 프로젝트의 `skills/workout-testing/SKILL.md`를 함께 적용한다. 구현·수정과 관련 테스트 코드를 함께 작성하고 버그에는 회귀 테스트를 추가한다. 커밋 전과 PR 생성·갱신 전에 관련 검사를 실행하며 실제 결과를 docs·PR에 기록한다. 기준 기능인 운동 일지 CRUD의 변경된 동작을 적합한 단위·통합·브라우저 검사로 검증한다.
 6. 배포 작업은 사용자 요청 범위에서 수행한다. 이미지 버전, health check, 설정·비밀값 관리, 백업·복원, 이전 버전 복구를 준비한다. 비용이 발생하는 리소스는 배포 목적과 예산에 맞게 선택한다.
-7. 각 작업 커밋에 docs 기록을 포함하고 검증한 PR을 생성한다. PR 병합은 사용자에게 맡긴다.
+7. 각 작업 커밋에 docs 기록을 포함하고 검증한 PR을 생성하고 CI가 통과하면 병합한다.
 
 ## 완료 기준
 

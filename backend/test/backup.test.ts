@@ -93,6 +93,17 @@ test('backup validation accepts a well-formed v1 backup', () => {
   assert.equal(parsed.data.machines[0].base_weight, null);
 });
 
+test('backups without workout feedback stay valid and keep it null (#83)', () => {
+  const parsed = parseBackup(validBackup());
+  assert.equal(parsed.data.workouts[0].feedback, null);
+  const backup = validBackup();
+  (backup.data.workouts[0] as { feedback?: string }).feedback = 'easy';
+  assert.equal(parseBackup(backup).data.workouts[0].feedback, 'easy');
+  rejects((b) => {
+    (b.data.workouts[0] as { feedback?: string }).feedback = 'tired';
+  }, /workouts\.0\.feedback/);
+});
+
 test('backup validation rejects other files and unsupported versions first', () => {
   rejects(() => 'not an object', /백업 파일 형식이 아닙니다/);
   rejects(() => [], /백업 파일 형식이 아닙니다/);

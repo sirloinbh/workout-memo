@@ -21,7 +21,15 @@ import { BrowserRouter, NavLink, useLocation, useNavigate } from 'react-router';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fieldErrors, goalSchema, machineSchema, workoutSchema, type GoalInput } from './contract';
+import {
+  feedbackLevels,
+  fieldErrors,
+  goalSchema,
+  machineSchema,
+  workoutSchema,
+  type Feedback,
+  type GoalInput,
+} from './contract';
 import { Button } from './components/ui/button';
 import { Dialog } from './components/ui/dialog';
 import { FieldError, invalidProps, Input } from './components/ui/field';
@@ -75,8 +83,11 @@ type Workout = {
   date: string;
   title: string;
   notes: string;
+  // #83: how the whole workout felt; null or missing means not recorded.
+  feedback?: Feedback | null;
   sets: SetRow[];
 };
+const feedbackLabels: Record<Feedback, string> = { hard: '힘듦', medium: '중간', easy: '쉬움' };
 type Draft = {
   format: 1;
   savedAt: number;
@@ -107,6 +118,7 @@ function readDraft(): { draft: Draft | null; warning: string } {
       typeof d.editor.date !== 'string' ||
       typeof d.editor.title !== 'string' ||
       typeof d.editor.notes !== 'string' ||
+      (d.editor.feedback != null && !feedbackLevels.includes(d.editor.feedback)) ||
       (d.editor.id !== undefined && (!Number.isInteger(d.editor.id) || d.editor.id <= 0)) ||
       (d.editor.version !== undefined &&
         (!Number.isInteger(d.editor.version) || d.editor.version <= 0)) ||
@@ -541,6 +553,7 @@ function Workspace() {
       date,
       title: dateTitle(date),
       notes: '',
+      feedback: null,
       // #28: otherwise a new journal starts with three sets.
       sets:
         routineDraft(progress, machineIds())?.sets ??
@@ -987,6 +1000,7 @@ function Workspace() {
                             {dateLabel(w.date)} ·{' '}
                             {Array.from(new Set(w.sets.map((s) => s.exercise))).join(', ')}
                           </p>
+                          {w.feedback && <p>체감 {feedbackLabels[w.feedback]}</p>}
                           {w.notes && <p>{w.notes}</p>}
                           <details>
                             <summary>세트 기록 보기</summary>
@@ -1249,6 +1263,29 @@ function Workspace() {
                 </label>
                 {issue('title')}
               </div>
+              <div className="feedback-field">
+                <span id="workout-feedback">체감 피드백 (선택)</span>
+                <div className="tabs" role="group" aria-labelledby="workout-feedback">
+                  {feedbackLevels.map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      className={editor.feedback === level ? 'selected' : ''}
+                      aria-pressed={editor.feedback === level}
+                      // Pressing the selected level again clears it back to not recorded.
+                      onClick={() =>
+                        setEditor({
+                          ...editor,
+                          feedback: editor.feedback === level ? null : level,
+                        })
+                      }
+                    >
+                      {feedbackLabels[level]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {issue('feedback')}
               {issue('sets')}
               <p className="form-hint">
                 세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 좌우를
@@ -1258,8 +1295,9 @@ function Workspace() {
               </p>
               <p className="form-hint">
                 수행한 세트는 완료로 표시하세요. 완료한 세트만 통계와 목표 달성에 반영하며 미완료
-                세트는 계획으로 함께 보관합니다. RPE는 1~10의 0.5 단위이며 비워두면 미입력으로
-                남습니다. 완료 {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0}
+                세트는 계획으로 함께 보관합니다. 운동 전체가 어땠는지는 체감
+                피드백(힘듦·중간·쉬움)으로 남기고, 고르지 않으면 미입력으로 남습니다. 완료{' '}
+                {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0}
                 세트
               </p>
               {editor.sets?.map((s, i) => (
@@ -1355,27 +1393,6 @@ function Workspace() {
                     >
                       {done(s) ? '완료됨 · 취소하려면 다시 누르기' : '완료'}
                     </button>
-                    <label>
-                      RPE (선택)
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        step="0.5"
-                        inputMode="decimal"
-                        placeholder="미입력"
-                        value={s.rpe ?? ''}
-                        onChange={(e) => {
-                          const sets = [...editor.sets!];
-                          sets[i] = {
-                            ...s,
-                            rpe: e.target.value === '' ? null : Number(e.target.value),
-                          };
-                          setEditor({ ...editor, sets });
-                        }}
-                        {...invalid(`sets.${i}.rpe`)}
-                      />
-                    </label>
                   </div>
                   {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
                     <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>

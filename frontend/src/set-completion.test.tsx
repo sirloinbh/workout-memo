@@ -19,6 +19,7 @@ type Workout = {
   date: string;
   title: string;
   notes: string;
+  feedback?: string | null;
   sets: SetInput[];
 };
 const start = Date.parse(deviceNow);
@@ -47,6 +48,7 @@ function mount(initial: Workout[] = [], now = start) {
     view,
     mutations,
     sentSets: () => (mutations().at(-1)!.body as { sets: SetInput[] }).sets,
+    sentFeedback: () => (mutations().at(-1)!.body as { feedback: string | null }).feedback,
     // Equivalent of the legacy render(): redraw at the current clock without any event.
     redraw: () => view.rerender(<App />),
     // Returning to a background tab: no tick ran meanwhile, only the clock moved.
@@ -77,7 +79,8 @@ const completion = (i = 0) => screen.getAllByRole('button', { name: /세트 완�
 const pressed = (i = 0) => completion(i).getAttribute('aria-pressed');
 const autoStart = () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
 const duration = () => screen.getByRole('spinbutton', { name: '휴식 시간(초)' });
-const rpe = (i = 0) => document.querySelectorAll<HTMLInputElement>('input[step="0.5"]')[i];
+// #83: workout feedback replaced the per-set RPE input.
+const feedback = (label: string) => screen.getByRole('button', { name: label });
 const timer = () => document.querySelector('.rest-timer')?.textContent ?? '';
 const content = () => document.body.textContent ?? '';
 const stat = (label: string) => {
@@ -199,7 +202,7 @@ test('refresh restores timer from its end time and set state from the draft', as
   await openNew(first);
   await first.user.click(autoStart());
   await first.user.click(completion());
-  fireEvent.change(rpe(), { target: { value: '8.5' } });
+  await first.user.click(feedback('힘듦'));
   // Reload: the same localStorage survives, the page is mounted again 45 s later.
   first.view.unmount();
   const second = mount([], start + 45000);
@@ -208,25 +211,29 @@ test('refresh restores timer from its end time and set state from the draft', as
   await second.user.click(screen.getByRole('button', { name: /복구/ }));
   await loaded();
   expect(pressed()).toBe('true');
-  expect(Number(rpe().value)).toBe(8.5);
+  expect(feedback('힘듦')).toHaveAttribute('aria-pressed', 'true');
   expect(autoStart().checked, 'auto-start preference persists').toBe(true);
   await submit(second);
+  expect(second.sentFeedback()).toBe('hard');
   expect(second.sentSets().map((s) => [s.completed, s.rpe])).toEqual([
-    [true, 8.5],
+    [true, null],
     [false, null],
     [false, null],
   ]);
 });
 
-test('clearing RPE sends null, and corrupt timer storage does not block startup', async () => {
+test('pressing the chosen feedback again sends null, and corrupt timer storage does not block startup', async () => {
   localStorage.setItem('workout-memo:rest-timer:v1', '{broken');
   const ui = mount();
   await openNew(ui);
   expect(timer()).toMatch(/1:30/);
-  fireEvent.change(rpe(), { target: { value: '7' } });
-  fireEvent.change(rpe(), { target: { value: '' } });
+  expect(document.querySelector('input[step="0.5"]'), 'no RPE input').toBeNull();
+  await ui.user.click(feedback('중간'));
+  expect(feedback('중간')).toHaveAttribute('aria-pressed', 'true');
+  await ui.user.click(feedback('중간'));
+  expect(feedback('중간')).toHaveAttribute('aria-pressed', 'false');
   await submit(ui);
-  expect(ui.sentSets()[0].rpe).toBeNull();
+  expect(ui.sentFeedback(), 'not recorded is null, never a default level').toBeNull();
 });
 
 test('not-completed sets are excluded from volume, set count and workout days', async () => {
@@ -274,4 +281,29 @@ test('a rapid second tap in a later render does not undo completion or touch the
   expect(timer(), 'undo does not cancel the rest').toMatch(/1:29 남음/);
   await submit(ui);
   expect(ui.sentSets()[0].completed).toBe(false);
+});
+
+test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83)', async () => {
+  const ui = mount([
+    {
+      id: 3,
+      version: 2,
+      date: '2026-10-14',
+      title: '예전 기록',
+      notes: '',
+      feedback: 'easy',
+      sets: [
+        { exercise: 'Squat', machine_id: null, weight: 100, reps: 10, completed: true, rpe: 8 },
+      ],
+    } as Workout,
+  ]);
+  await loaded();
+  await waitFor(() => expect(content()).toMatch(/체감 쉬움/));
+  await ui.user.click(screen.getByRole('button', { name: '수정' }));
+  expect(feedback('쉬움')).toHaveAttribute('aria-pressed', 'true');
+  await ui.user.click(feedback('힘듦'));
+  await submit(ui);
+  expect(ui.mutations().at(-1)!.method).toBe('PUT');
+  expect(ui.sentFeedback()).toBe('hard');
+  expect(ui.sentSets()[0].rpe, 'existing RPE data is preserved').toBe(8);
 });

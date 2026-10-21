@@ -639,3 +639,36 @@ async function fetchJson(
   });
   return { status: response.status, data: (await response.json()) as { id: number } };
 }
+
+test(
+  'restoring a routine maps its machine to the restored machine id (#82)',
+  { skip },
+  async () => {
+    await isolated(async (source, target) => {
+      const brand = ((await source.api('/brands')).data as unknown as { id: number }[])[0];
+      const machine = { brand_id: brand.id, name: '루틴 머신', base_weight: 30, notes: '' };
+      const created = await source.api('/machines', 'POST', machine);
+      assert.equal(created.status, 201);
+      const plan = routineInput(1) as ReturnType<typeof routineInput> & {
+        splits: { exercises: { machine_id?: number }[] }[];
+      };
+      plan.splits[0].exercises[0].machine_id = created.data.id;
+      assert.equal((await source.api('/routines', 'POST', plan)).status, 201);
+      // The target already has another machine, so the restored one gets a different id.
+      await target.api('/machines', 'POST', { ...machine, name: '먼저 있던 머신' });
+      const backup = (await source.api('/backup')).data;
+      const restored = await target.api('/backup/restore', 'POST', { mode: 'merge', backup });
+      assert.equal(restored.status, 200);
+      const targetMachine = (
+        await target.pool.query('SELECT id FROM machines WHERE name=$1', ['루틴 머신'])
+      ).rows[0].id as number;
+      assert.notEqual(targetMachine, created.data.id);
+      const routine = (await target.pool.query('SELECT plan FROM routines')).rows[0].plan;
+      assert.equal(routine.splits[0].exercises[0].machine_id, targetMachine);
+      // Restoring again recognizes the remapped plan as the same routine.
+      const again = await target.api('/backup/restore', 'POST', { mode: 'merge', backup });
+      assert.equal(again.data.tables.routines.added, 0);
+      assert.equal(again.data.tables.routines.skipped, 1);
+    }, 2);
+  },
+);

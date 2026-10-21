@@ -97,6 +97,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 `{ "brand_id": 1, "name": "레그 프레스", "base_weight": null, "notes": "", "official_weight_id": 12 }`
 
 - `official_weight_id`는 공식 참고값 연결입니다. `base_weight`를 바꾸지 않습니다. 수정 요청에서 생략하면 기존 연결을 유지하고, `null`을 보내면 연결을 해제합니다.
+- `single_joint`(#84, boolean)는 단관절 운동 머신 여부입니다. 등록 시 생략하면 `false`, 수정 시 생략하면 기존 값을 유지합니다. 화면의 휴식 타이머가 세트 완료 시 단관절 기본 휴식을 고르는 데 씁니다.
 
 ### 목표 `POST /api/goals`
 

@@ -47,16 +47,34 @@ import {
   formatRemaining,
   maxRest,
   minRest,
+  parseRestDurations,
   parseTimer,
   pauseTimer,
   remainingMs,
+  restDurationsKey,
+  restKind,
+  restKinds,
   restTimerKey,
   resumeTimer,
   startTimer,
   validDuration,
   withDuration,
+  type RestDurations,
+  type RestKind,
   type RestTimer,
 } from './rest-timer';
+const restKindLabels: Record<RestKind, string> = {
+  lower: '하체',
+  upper: '상체',
+  single: '단관절',
+};
+function readRestDurations(): RestDurations {
+  try {
+    return parseRestDurations(localStorage.getItem(restDurationsKey));
+  } catch {
+    return parseRestDurations(null);
+  }
+}
 type SetRow = {
   exercise: string;
   machine_id: number | null;
@@ -178,6 +196,8 @@ type Machine = {
   official_basis?: OfficialWeight['basis'];
   official_source_url?: string | null;
   official_checked_date?: string | null;
+  // #84: single-joint machines use the single-joint rest.
+  single_joint?: boolean;
 };
 // Manufacturer starting resistance (no plates). Reference only: never added to a set total.
 type OfficialWeight = {
@@ -323,6 +343,25 @@ function Workspace() {
   const [timer, setTimerState] = useState(readTimer);
   const [durationInput, setDurationInput] = useState(String(timer.duration));
   const [timerWarning, setTimerWarning] = useState('');
+  const [restDurations, setRestDurations] = useState(readRestDurations);
+  const [restInputs, setRestInputs] = useState(() =>
+    Object.fromEntries(restKinds.map((k) => [k, String(restDurations[k])])),
+  );
+  function updateRestDuration(kind: RestKind, value: string) {
+    setRestInputs({ ...restInputs, [kind]: value });
+    const seconds = Number(value);
+    if (!validDuration(seconds)) return;
+    const next = { ...restDurations, [kind]: seconds };
+    setRestDurations(next);
+    try {
+      localStorage.setItem(restDurationsKey, JSON.stringify(next));
+      setTimerWarning('');
+    } catch {
+      setTimerWarning(
+        '휴식 시간 설정을 이 브라우저에 보관하지 못했습니다. 새로고침하면 기본값으로 돌아갑니다.',
+      );
+    }
+  }
   const [tick, setTick] = useState(0);
   const timerNow = Date.now();
   const timerLeft = remainingMs(timer, timerNow);
@@ -373,7 +412,9 @@ function Workspace() {
   // user comes back to the journal without a full page refresh.
   useEffect(() => {
     void loadProgress();
-  }, [loadProgress, page]);
+    // Body parts mapped on 종목 분석 must apply to the rest timer when the user returns.
+    void queryClient.invalidateQueries({ queryKey: ['exercise-body-parts'] });
+  }, [loadProgress, page, queryClient]);
   // Rest changes only the plan. A pending request blocks repeated clicks and the
   // server applies the same day's rest at most once.
   async function changeRest(method: 'POST' | 'DELETE') {
@@ -432,7 +473,7 @@ function Workspace() {
     sets[i] = { ...current, completed };
     setEditor({ ...latest, sets });
     if (completed && timer.autoStart && !workoutSaving.current)
-      updateTimer(startTimer(timer, Date.now()));
+      updateTimer(startTimer(timer, Date.now(), restSeconds(current)));
   }
   async function saveWorkout() {
     if (!editor || workoutSaving.current) return;
@@ -512,6 +553,20 @@ function Workspace() {
     // Reference data is optional: its failure must not block journal data.
     queryFn: () => api<OfficialWeight[]>('/official-machine-weights').catch(() => null),
   });
+  // #84: the user's exercise → body part mapping (#32) picks the rest of a completed set.
+  // It is optional: a failed load only falls back to the configured rest.
+  const bodyPartsQuery = useQuery({
+    queryKey: ['exercise-body-parts'],
+    queryFn: () =>
+      api<{ exercise: string; body_parts: string[] }[]>('/exercise-body-parts').catch(() => []),
+  });
+  const restSeconds = (s: SetRow) => {
+    const machine = machines.find((m) => m.id === s.machine_id);
+    const key = s.exercise.trim().toLowerCase();
+    const parts = bodyPartsQuery.data?.find((m) => m.exercise === key)?.body_parts ?? [];
+    const kind = restKind(machine?.single_joint === true, parts);
+    return kind ? restDurations[kind] : timer.duration;
+  };
   const workouts = workoutsQuery.data ?? [],
     goals = goalsQuery.data ?? [],
     machines = machinesQuery.data ?? [],
@@ -707,9 +762,32 @@ function Workspace() {
         />
         세트 완료 시 자동 시작
       </label>
+      <fieldset className="rest-kinds">
+        <legend>운동별 기본 휴식(초) · 세트 완료로 시작할 때 적용</legend>
+        {restKinds.map((kind) => (
+          <label key={kind}>
+            {restKindLabels[kind]}
+            <input
+              type="number"
+              aria-label={`${restKindLabels[kind]} 휴식(초)`}
+              min={minRest}
+              max={maxRest}
+              step="1"
+              inputMode="numeric"
+              value={restInputs[kind]}
+              onChange={(e) => updateRestDuration(kind, e.target.value)}
+            />
+          </label>
+        ))}
+      </fieldset>
       <p className="form-hint">
         종료 시각 기준으로 이 브라우저에만 보관합니다. 탭을 다시 열면 남은 시간이 맞춰지며,
         브라우저를 닫은 동안에는 알림이 없습니다.
+      </p>
+      <p className="form-hint">
+        세트를 완료하면 단관절 머신 → 하체 → 상체 순서로 운동의 기본 휴식을 씁니다. 단관절은 머신
+        라이브러리, 하체·상체는 종목 분석의 부위 지정을 따르며 운동명으로 추측하지 않습니다. 지정이
+        없으면 위의 휴식 시간을 씁니다.
       </p>
       {timerWarning && (
         <p role="alert" className="error">
@@ -1148,7 +1226,8 @@ function Workspace() {
                         <div className="workout-info">
                           <h3>{m.name}</h3>
                           <p>
-                            {m.brand} · {m.notes || '메모 없음'}
+                            {m.brand}
+                            {m.single_joint ? ' · 단관절' : ''} · {m.notes || '메모 없음'}
                           </p>
                           {m.official_status && (
                             <p className="official-ref">
@@ -1661,6 +1740,16 @@ function Workspace() {
                 value={machineEditor.notes}
                 onChange={(e) => setMachineEditor({ ...machineEditor, notes: e.target.value })}
               />
+            </label>
+            <label className="rest-auto">
+              <input
+                type="checkbox"
+                checked={machineEditor.single_joint === true}
+                onChange={(e) =>
+                  setMachineEditor({ ...machineEditor, single_joint: e.target.checked })
+                }
+              />
+              단관절 운동 머신 (세트 완료 시 단관절 기본 휴식 사용)
             </label>
             <Button full disabled={saving}>
               머신 저장하기

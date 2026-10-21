@@ -97,6 +97,7 @@ async function seed(api: Api) {
     name: '레그 프레스',
     base_weight: null,
     notes: '기본중량 미확인',
+    single_joint: true,
   });
   const row = await api('/machines', 'POST', {
     brand_id: hammer.id,
@@ -167,6 +168,7 @@ function normalize(backup: Backup) {
         key: machine.get(m.id),
         base_weight: m.base_weight,
         notes: m.notes,
+        single_joint: m.single_joint,
       })),
     ),
     workouts: sort(
@@ -212,6 +214,10 @@ test(
         'Unknown base weight stays null',
       );
       assert.equal('workout_requests' in backup.data, false);
+      assert.ok(
+        backup.data.machines.some((m) => m.single_joint),
+        'single-joint flag is exported (#84)',
+      );
 
       const before = await target.count();
       const preview = await target.api('/backup/preview', 'POST', { mode: 'merge', backup });

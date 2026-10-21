@@ -23,7 +23,7 @@ description: Write or update behavior-focused tests with workout-memo implementa
   - 시각 회귀: `e2e/ui-visual.spec.ts`의 기준선은 `e2e/__screenshots__/`이다. 글꼴 렌더링을 맞추려고 CI `e2e` 작업의 고정 컨테이너(`mcr.microsoft.com/playwright:v1.63.0-noble`, `E2E_VISUAL=1`)에서만 비교하고, Windows 등 로컬 실행에서는 건너뛴다. CI는 기준선을 쓰지 않는다.
 - 의도한 화면 변경으로 기준선을 갱신할 때:
   1. PR을 push하면 CI `e2e`가 화면 차이로 실패한다. `playwright-report` 아티팩트의 diff 이미지로 바뀐 화면이 의도한 것뿐인지 확인한다.
-  2. 같은 실행의 `visual-baselines` 아티팩트를 받아 `e2e/__screenshots__/`에 덮어쓴다. 예: `ghp run download <run-id> -n visual-baselines -D e2e/__screenshots__`.
+  2. 같은 실행의 `visual-baselines` 아티팩트를 받아 `e2e/__screenshots__/`에 덮어쓴다. 예: `ghp run download <run-id> --name visual-baselines --dir e2e/__screenshots__`(`scripts/gh-project.ps1`을 거칠 때 짧은 옵션 `-n`·`-D`는 인자 오류가 난다).
   3. `git diff --stat e2e/__screenshots__`로 바뀐 파일이 의도한 화면뿐인지 확인하고 구현과 같은 커밋에 넣는다. 갱신한 장수와 이유를 docs/changes와 PR에 적는다.
   4. 의도하지 않은 차이는 기준선을 갱신하지 말고 구현을 고친다.
 - 모양을 바꾸지 않아야 하는 화면 변경(토큰화·컴포넌트 추출·CSS 도구 도입)은 실제 Chrome에서 전후 픽셀 비교로 확인한다. 기준을 두 번 찍어 차이가 0인지 먼저 확인한 뒤 비교하고, 비교한 장수와 차이 픽셀을 기록한다. 절차는 workout-foundation의 [검증된 반복 절차](../workout-foundation/references/procedures.md)를 따른다.

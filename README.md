@@ -73,7 +73,7 @@ http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세�
 
 ## 검증·운영
 
-`npm run check`는 TypeScript 빌드와 테스트입니다. 실제 DB 테스트는 `DATABASE_URL`을 테스트 DB로 지정해 `npm run db:migrate`로 스키마를 준비한 뒤 `TEST_DATABASE_URL`을 설정하세요. GitHub 통합 CI는 전용 PostgreSQL 서비스에 `db:migrate`로 스키마를 준비한 뒤 전체 빌드와 DB 통합 테스트를 수행합니다. 화면 테스트는 Vitest·React Testing Library(`npm run test -w frontend`)로 실행하며 `npm test`에 포함됩니다. 실제 브라우저의 운동 일지 생성·조회·수정·삭제는 `npm run test:e2e`(Playwright, 설치된 Chrome)로 검증하며, 테스트 DB를 `E2E_DATABASE_URL`로 지정해야 합니다. CI의 `e2e` 작업도 같은 검사를 실행합니다. 프론트엔드·백엔드 저장소에서는 개별 빌드 및 Docker 이미지 빌드도 검사합니다.
+`npm run check`는 TypeScript 빌드와 테스트입니다. 실제 DB 테스트는 `DATABASE_URL`을 테스트 DB로 지정해 `npm run db:migrate`로 스키마를 준비한 뒤 `TEST_DATABASE_URL`을 설정하세요. GitHub 통합 CI는 전용 PostgreSQL 서비스에 `db:migrate`로 스키마를 준비한 뒤 전체 빌드와 DB 통합 테스트를 수행합니다. 화면 테스트는 Vitest·React Testing Library(`npm run test -w frontend`)로 실행하며 `npm test`에 포함됩니다. 실제 브라우저의 운동 일지 생성·조회·수정·삭제는 `npm run test:e2e`(Playwright, 설치된 Chrome)로 검증하며, 테스트 DB를 `E2E_DATABASE_URL`로 지정해야 합니다. 같은 명령이 모든 페이지·주요 모달의 가로 넘침·고정 요소 겹침과 axe 접근성(WCAG 2.1 A/AA)도 검사합니다. CI의 `e2e` 작업은 고정 Playwright 컨테이너에서 같은 검사와 화면 스크린샷 비교(기준선 `e2e/__screenshots__/`)를 실행합니다. 프론트엔드·백엔드 저장소에서는 개별 빌드 및 Docker 이미지 빌드도 검사합니다.
 
 `docker compose logs --tail 100 api`로 오류 확인, `./scripts/backup.ps1`로 SQL 백업. 앱의 `백업·내보내기` 화면은 분석용 CSV와 앱 복원용 JSON 백업(검증·미리보기·전체 취소 복원)을 제공합니다. 형식과 정책은 `database/README.md`를 참고하세요. SQL 백업은 DB 전체 복구, JSON 백업은 앱 기록 이전·복원용으로 역할이 다릅니다. 백업은 PC 외부의 별도 안전한 저장소에도 보관하고 정기적으로 복원 확인을 하세요. AWS 초안·비용 관리는 `infrastructure/README.md`를 참고하세요. 자동 운영 배포는 아직 연결되지 않았습니다.
 

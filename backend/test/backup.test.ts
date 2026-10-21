@@ -104,6 +104,13 @@ test('backups without workout feedback stay valid and keep it null (#83)', () =>
   }, /workouts\.0\.feedback/);
 });
 
+test('backups without the single-joint flag restore machines as not single-joint (#84)', () => {
+  assert.equal(parseBackup(validBackup()).data.machines[0].single_joint, false);
+  rejects((b) => {
+    (b.data.machines[0] as { single_joint?: unknown }).single_joint = 'yes';
+  }, /machines\.0\.single_joint/);
+});
+
 test('backup validation rejects other files and unsupported versions first', () => {
   rejects(() => 'not an object', /백업 파일 형식이 아닙니다/);
   rejects(() => [], /백업 파일 형식이 아닙니다/);

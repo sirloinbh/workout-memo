@@ -1159,6 +1159,9 @@
             ],
             "exclusiveMinimum": 0,
             "maximum": 2147483647
+          },
+          "single_joint": {
+            "type": "boolean"
           }
         },
         "required": [

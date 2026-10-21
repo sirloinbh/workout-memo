@@ -62,6 +62,8 @@ const backupSchema = z.object({
             name,
             base_weight: kg.nullable(),
             notes: z.string().max(2000),
+            // #84: backups made before single-joint machines have no field.
+            single_joint: z.boolean().default(false),
           }),
         )
         .max(5000),
@@ -297,8 +299,8 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     }
     const inserted = (
       await client.query(
-        'INSERT INTO machines(brand_id,name,base_weight,notes) VALUES($1,$2,$3,$4) RETURNING id',
-        [brandId, m.name, m.base_weight, m.notes],
+        'INSERT INTO machines(brand_id,name,base_weight,notes,single_joint) VALUES($1,$2,$3,$4,$5) RETURNING id',
+        [brandId, m.name, m.base_weight, m.notes, m.single_joint],
       )
     ).rows[0].id;
     machines.set(brandId + '\u0000' + m.name, {
@@ -474,7 +476,7 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         brands: (await client.query('SELECT id, name FROM brands ORDER BY id')).rows,
         machines: (
           await client.query(
-            'SELECT id, brand_id, name, base_weight, notes FROM machines ORDER BY id',
+            'SELECT id, brand_id, name, base_weight, notes, single_joint FROM machines ORDER BY id',
           )
         ).rows.map((m) => ({ ...m, base_weight: num(m.base_weight) })),
         workouts: (

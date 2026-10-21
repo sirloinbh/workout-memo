@@ -29,11 +29,12 @@ export function remainingMs(t: RestTimer, now: number) {
 }
 export const finished = (t: RestTimer, now: number) =>
   t.state === 'running' && remainingMs(t, now) === 0;
-export const startTimer = (t: RestTimer, now: number): RestTimer => ({
+// `seconds` overrides the configured duration for one rest (#84: per exercise kind).
+export const startTimer = (t: RestTimer, now: number, seconds = t.duration): RestTimer => ({
   ...t,
   state: 'running',
-  endsAt: now + t.duration * 1000,
-  remaining: t.duration * 1000,
+  endsAt: now + seconds * 1000,
+  remaining: seconds * 1000,
 });
 export function pauseTimer(t: RestTimer, now: number): RestTimer {
   if (t.state !== 'running' || finished(t, now)) return t;
@@ -82,4 +83,38 @@ export function parseTimer(raw: string | null, now: number): RestTimer {
   } catch {
     return defaultTimer();
   }
+}
+
+// #84: default rest per exercise kind, kept only in this browser like the timer.
+export type RestKind = 'lower' | 'upper' | 'single';
+export type RestDurations = Record<RestKind, number>;
+export const restDurationsKey = 'workout-memo:rest-durations:v1';
+export const restKinds = ['lower', 'upper', 'single'] as const;
+export const defaultRestDurations = (): RestDurations => ({ lower: 150, upper: 120, single: 90 });
+export function parseRestDurations(raw: string | null): RestDurations {
+  const defaults = defaultRestDurations();
+  if (!raw) return defaults;
+  try {
+    const value = JSON.parse(raw) as Partial<RestDurations>;
+    // Each kind falls back on its own, so one corrupt value does not reset the others.
+    return Object.fromEntries(
+      restKinds.map((k) => [
+        k,
+        typeof value?.[k] === 'number' && validDuration(value[k]) ? value[k] : defaults[k],
+      ]),
+    ) as RestDurations;
+  } catch {
+    return defaults;
+  }
+}
+const lowerParts = ['하체-앞', '하체-뒤'];
+const upperParts = ['가슴', '등', '어깨', '팔'];
+// A single-joint machine wins, then lower body, then upper body. Kinds come only from
+// what the user set (machine flag, #32 body parts); exercise names are never guessed.
+// Abs-only or unmapped exercises have no kind and keep the configured rest.
+export function restKind(singleJoint: boolean, parts: readonly string[]): RestKind | null {
+  if (singleJoint) return 'single';
+  if (parts.some((p) => lowerParts.includes(p))) return 'lower';
+  if (parts.some((p) => upperParts.includes(p))) return 'upper';
+  return null;
 }

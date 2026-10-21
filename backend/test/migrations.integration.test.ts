@@ -91,6 +91,15 @@ test(
         [created.rows[0].id],
       );
       assert.deepEqual(sets.rows, [{ weight: '100.25', reps: 5, completed: true, rpe: '8.5' }]);
+      // #83: an existing workout has no feedback; only the three levels are accepted.
+      const workout = await client.query('SELECT feedback FROM workouts WHERE id=$1', [
+        created.rows[0].id,
+      ]);
+      assert.deepEqual(workout.rows, [{ feedback: null }]);
+      await assert.rejects(
+        client.query(`UPDATE workouts SET feedback='0' WHERE id=$1`, [created.rows[0].id]),
+        /workouts_feedback_check/,
+      );
       assert.deepEqual(await migrate(client, files), []);
     });
   },

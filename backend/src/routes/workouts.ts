@@ -24,8 +24,11 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
       if (key !== undefined) z.string().uuid().parse(key);
       const target = method === 'put' ? id(req.params.id) : null;
       if (method === 'put') z.number().int().positive().parse(w.version);
+      // A request without feedback keeps the fingerprint it had before #83, so a retry key
+      // stored by an older server still replays instead of reporting different content.
+      const { feedback, ...withoutFeedback } = w;
       const fingerprint = createHash('sha256')
-        .update(JSON.stringify([method, target, w]))
+        .update(JSON.stringify([method, target, feedback === null ? withoutFeedback : w]))
         .digest('hex');
       const client = await pool.connect();
       try {
@@ -55,8 +58,8 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
         if (method === 'post')
           workoutId = (
             await client.query(
-              'INSERT INTO workouts(date,title,notes) VALUES($1,$2,$3) RETURNING id',
-              [w.date, w.title, w.notes],
+              'INSERT INTO workouts(date,title,notes,feedback) VALUES($1,$2,$3,$4) RETURNING id',
+              [w.date, w.title, w.notes, w.feedback],
             )
           ).rows[0].id;
         else {
@@ -78,8 +81,8 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
             return;
           }
           const r = await client.query(
-            'UPDATE workouts SET date=$1,title=$2,notes=$3,version=version+1 WHERE id=$4 RETURNING id,version',
-            [w.date, w.title, w.notes, workoutId],
+            'UPDATE workouts SET date=$1,title=$2,notes=$3,feedback=$4,version=version+1 WHERE id=$5 RETURNING id,version',
+            [w.date, w.title, w.notes, w.feedback, workoutId],
           );
           if (!r.rowCount) {
             await client.query('ROLLBACK');

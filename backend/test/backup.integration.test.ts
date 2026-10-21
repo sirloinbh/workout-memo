@@ -110,6 +110,7 @@ async function seed(api: Api) {
     date: '2024-02-29',
     title: '=SUM(A1) 하체',
     notes: tricky,
+    feedback: 'hard',
     sets: [
       { exercise: '레그 프레스', machine_id: press.data.id, weight: 100.25, reps: 10, notes: '' },
       { exercise: '레그 프레스', machine_id: press.data.id, weight: 120, reps: 8, notes: '+힘듦' },
@@ -173,6 +174,7 @@ function normalize(backup: Backup) {
         date: w.date,
         title: w.title,
         notes: w.notes,
+        feedback: w.feedback,
         created_at: w.created_at,
         sets: w.sets.map((s) => ({
           ...s,
@@ -512,6 +514,7 @@ test(
         'brand',
         'machine_name',
         'machine_base_weight_kg',
+        'workout_feedback',
       ]);
       assert.equal(rows.length, 1 + 6, 'One row per set');
       const col = (name: string) => rows[0].indexOf(name);
@@ -536,6 +539,9 @@ test(
       assert.equal(bodyweight[col('set_notes')], tricky);
       assert.equal(rows[4][col('machine_name')], 'Iso Row, "와이드"');
       assert.equal(rows[4][col('machine_base_weight_kg')], '20.5');
+      // #83: workout feedback repeats on each set row; not recorded is an empty cell.
+      assert.equal(first[col('workout_feedback')], 'hard');
+      assert.equal(rows[4][col('workout_feedback')], '');
       const ranged = parseCsv(
         (await db.api('/export/workouts.csv?from=2024-03-01&to=2024-03-01')).text,
       );

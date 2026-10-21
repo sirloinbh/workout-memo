@@ -17,6 +17,15 @@ description: Write or update behavior-focused tests with workout-memo implementa
 - 현재 도구: 백엔드 단위·DB 통합은 node:test(`backend/test`), 화면 컴포넌트는 Vitest·jsdom·React Testing Library(`frontend/src/*.test.tsx`), 실제 브라우저 흐름은 Playwright(`e2e/`, `npm run test:e2e`)다. 화면 테스트는 내부 hook이 아니라 사용자에게 보이는 역할·라벨·텍스트로 검증한다. 날짜는 `frontend/src/test/api.ts`의 `fixClock`으로 고정하고 API는 `mockApi`로 대체한다.
 - 현재 설치된 테스트 도구와 명령을 확인한다. 설치하지 않은 도구를 사용했다고 보고하지 않는다.
 - 화면 흐름·주소·실제 DB 저장이 바뀌면 `e2e/`의 Playwright 시나리오를 추가하거나 갱신한다. 테스트 DB(`E2E_DATABASE_URL`)로 `npm run test:e2e`를 실행하고, 개인 DB는 쓰지 않는다.
+- 화면 공통 검사(#113): `e2e/ui-*.spec.ts`는 `e2e/support/ui-fixtures.ts`의 고정 데이터·시계로 모든 페이지와 주요 모달을 검사한다. 페이지·모달·API 응답이 추가되면 이 고정 데이터와 목록을 함께 갱신한다.
+  - 반응형: 360·390·768·1280px에서 가로 넘침이 없고, 고정·sticky 요소(사이드바, 하단 탭)가 조작 요소를 가리지 않는다.
+  - 접근성: axe WCAG 2.1 A/AA. 기존 저대비 색 조합만 `e2e/a11y-known-contrast.json`에 화면별로 허용한다. 새 조합이나 다른 규칙 위반은 실패한다. 색을 고치면 해당 항목을 지우고, 새 저대비 색을 목록에 추가해 통과시키지 않는다.
+  - 시각 회귀: `e2e/ui-visual.spec.ts`의 기준선은 `e2e/__screenshots__/`이다. 글꼴 렌더링을 맞추려고 CI `e2e` 작업의 고정 컨테이너(`mcr.microsoft.com/playwright:v1.63.0-noble`, `E2E_VISUAL=1`)에서만 비교하고, Windows 등 로컬 실행에서는 건너뛴다. CI는 기준선을 쓰지 않는다. 이미지는 `.github/workflows/ci.yml`에 digest로 고정한다. `@playwright/test`를 올리면 같은 버전 이미지의 digest로 바꾸고 기준선을 다시 만든다.
+- 의도한 화면 변경으로 기준선을 갱신할 때:
+  1. PR을 push하면 CI `e2e`가 화면 차이로 실패한다. `playwright-report` 아티팩트의 diff 이미지로 바뀐 화면이 의도한 것뿐인지 확인한다.
+  2. 같은 실행의 `visual-baselines` 아티팩트를 받아 `e2e/__screenshots__/`에 덮어쓴다. 예: `ghp run download <run-id> --name visual-baselines --dir e2e/__screenshots__`(`scripts/gh-project.ps1`을 거칠 때 짧은 옵션 `-n`·`-D`는 인자 오류가 난다).
+  3. `git diff --stat e2e/__screenshots__`로 바뀐 파일이 의도한 화면뿐인지 확인하고 구현과 같은 커밋에 넣는다. 갱신한 장수와 이유를 docs/changes와 PR에 적는다.
+  4. 의도하지 않은 차이는 기준선을 갱신하지 말고 구현을 고친다.
 - 모양을 바꾸지 않아야 하는 화면 변경(토큰화·컴포넌트 추출·CSS 도구 도입)은 실제 Chrome에서 전후 픽셀 비교로 확인한다. 기준을 두 번 찍어 차이가 0인지 먼저 확인한 뒤 비교하고, 비교한 장수와 차이 픽셀을 기록한다. 절차는 workout-foundation의 [검증된 반복 절차](../workout-foundation/references/procedures.md)를 따른다.
 - 목업 API가 실제 서버라면 거부할 입력을 받아주고 있으면, 목업이 아니라 테스트 데이터를 실제 계약(`shared/contract.ts`)에 맞춘다.
 - 테스트 데이터는 운영·사용자 데이터와 분리한다. 시간·날짜·무작위 값에 의존하는 검사는 실행 환경이 바뀌어도 같은 의미를 검증하도록 작성한다.

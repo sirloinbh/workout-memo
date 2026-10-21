@@ -26,6 +26,7 @@
     "typecheck": "npm run typecheck --workspaces && tsc -p e2e/tsconfig.json"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
     "concurrently": "^9.2.0",

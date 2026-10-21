@@ -20,16 +20,24 @@ jobs:
       - run: npm run check
         env: { TEST_DATABASE_URL: 'postgres://workout:test@localhost:5432/workout' }
 
-  # Workout CRUD in a real browser against the API and a migrated PostgreSQL.
+  # Browser flows against the API and a migrated PostgreSQL, plus screen checks (#113).
+  # The pinned Playwright image keeps Chromium and fonts fixed, so screenshots are stable.
   e2e:
     runs-on: ubuntu-latest
+    container:
+      # v1.63.0-noble pinned by digest: a re-pushed tag would change fonts and screenshots.
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --ipc=host
     services:
       postgres:
         image: postgres:17-alpine
         env: { POSTGRES_USER: workout, POSTGRES_PASSWORD: test, POSTGRES_DB: workout }
-        ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
-    env: { CI: 'true' }
+    env:
+      CI: 'true'
+      E2E_VISUAL: '1'
+      DATABASE_URL: 'postgres://workout:test@postgres:5432/workout'
+      E2E_DATABASE_URL: 'postgres://workout:test@postgres:5432/workout'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,13 +45,22 @@ jobs:
       - run: npm install --global npm@11.19.0
       - run: npm ci
       - run: npm run db:migrate
-        env: { DATABASE_URL: 'postgres://workout:test@localhost:5432/workout' }
-      # ubuntu-latest ships Google Chrome; Playwright uses it via channel 'chrome'.
       - run: npm run test:e2e
-        env: { E2E_DATABASE_URL: 'postgres://workout:test@localhost:5432/workout' }
       - uses: actions/upload-artifact@v4
         if: failure()
-        with: { name: playwright-report, path: playwright-report, retention-days: 7 }
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+      # Proposed baselines for a missing or intentionally changed screen: review the diff
+      # in playwright-report, then commit this artifact into e2e/__screenshots__.
+      - if: failure()
+        run: npx playwright test e2e/ui-visual.spec.ts --update-snapshots=changed --retries=0 || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: visual-baselines, path: e2e/__screenshots__, retention-days: 7 }
 
   # Lightsail deployment code (#73): format and provider schema validation, no AWS access.
   terraform:

@@ -69,7 +69,7 @@ terraform output                      # static_ip, url, ssh
 
 - 롤백은 다시 빌드하지 않고 직전 이미지로 바로 시작합니다.
 - 마이그레이션은 되돌리지 않습니다. 새 스키마에서 이전 앱이 동작하지 않거나 데이터를 되돌려야 하면, 배포 직전 덤프로 복원합니다(아래 5).
-- 로컬 동작은 바뀌지 않습니다. `compose.yaml`은 `IMAGE_TAG`·`WEB_BIND`·`WEB_PORT`·`DB_PORT` 변수를 쓰고, 기본값은 기존과 같습니다(이미지 `local`, 웹 `127.0.0.1:8088`, DB `127.0.0.1:55432`). 서버 `.env`만 웹을 `0.0.0.0:80`으로 엽니다.
+- 로컬 동작은 바뀌지 않습니다. `compose.yaml`은 `IMAGE_TAG`·`WEB_BIND`·`WEB_PORT`·`DB_PORT` 변수를 쓰고, 로컬 기본값은 중앙 레지스트리 포트입니다(이미지 `local`, 웹 `127.0.0.1:8101`, DB `127.0.0.1:15401`). 서버 `.env`만 웹을 `0.0.0.0:80`으로 엽니다.
 
 ## 3-1. main 자동 배포 (#75)
 
@@ -117,7 +117,7 @@ main에 병합되면 서버가 직접 확인해서 배포합니다(pull 방식).
 
 - **브라우저**: `http://<static_ip>`. 허용 IP에서만 열립니다.
 - **SSH**: `ssh -i ~/.ssh/workout-memo-lightsail ubuntu@<static_ip>`
-- **SSH 터널**(전송 암호화): `ssh -i ~/.ssh/workout-memo-lightsail -L 8088:127.0.0.1:80 ubuntu@<static_ip>`를 실행한 뒤 `http://localhost:8088`로 접속합니다.
+- **SSH 터널**(전송 암호화): `ssh -i ~/.ssh/workout-memo-lightsail -L 8101:127.0.0.1:80 ubuntu@<static_ip>`를 실행한 뒤 `http://localhost:8101`로 접속합니다.
 - **로그**: 서버에서 `cd /opt/workout-memo && docker compose logs --tail 100 api`
 
 ## 5. 백업·복원

@@ -34,7 +34,7 @@ Copy-Item .env.example .env
 docker compose up --build -d
 ```
 
-접속: http://localhost:8088 . `.env`의 비밀번호를 변경한 후 실행하세요. 데이터는 `workout-data` 볼륨에 저장됩니다. `docker compose down` 후에도 유지되며, `down -v`는 데이터를 삭제합니다.
+접속: http://localhost:8101 . `.env`의 비밀번호를 변경한 후 실행하세요. 데이터는 `workout-data` 볼륨에 저장됩니다. `docker compose down` 후에도 유지되며, `down -v`는 데이터를 삭제합니다.
 
 기존 볼륨을 새 버전으로 실행하기 전에는 `npm ci` 후 `npm run db:migrate`로 미적용 마이그레이션을 적용하세요. 절차와 실패 시 복구 방법은 [database/README.md](database/README.md#마이그레이션-적용-58)에 있고, API 요청·응답 규칙은 [REST API 계약](docs/api.md)에 있습니다.
 
@@ -46,7 +46,7 @@ npm ci
 npm run dev
 ```
 
-http://localhost:5173 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세요. 비밀번호에 URL 예약문자가 있으면 DATABASE_URL에 URL 인코딩이 필요합니다.
+http://localhost:5201 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세요. 비밀번호에 URL 예약문자가 있으면 DATABASE_URL에 URL 인코딩이 필요합니다.
 
 ## 기능과 규칙
 

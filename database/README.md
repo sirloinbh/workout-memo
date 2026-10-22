@@ -4,7 +4,7 @@ PostgreSQL 17. 스키마의 관리 원본은 `migrations/NNN_name.sql` 하나이
 
 ## 마이그레이션 적용 (#58)
 
-새 API를 실행하기 전에 우산 저장소 루트에서 실행하세요. `.env`의 `DATABASE_URL`(호스트 포트 55432)을 사용하며, 이미 설정된 환경변수가 있으면 그 값이 우선합니다.
+새 API를 실행하기 전에 우산 저장소 루트에서 실행하세요. `.env`의 `DATABASE_URL`(호스트 포트 15401)을 사용하며, 이미 설정된 환경변수가 있으면 그 값이 우선합니다.
 
 ```powershell
 npm run db:migrate              # 미적용 파일만 순서대로 적용

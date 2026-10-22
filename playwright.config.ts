@@ -6,8 +6,8 @@ if (!database)
   throw new Error(
     'E2E_DATABASE_URL 또는 TEST_DATABASE_URL에 db:migrate로 준비한 테스트 DB를 지정하세요.',
   );
-const apiPort = 3101;
-const webPort = 5174;
+const apiPort = 3201;
+const webPort = 5301;
 // #113: screenshot comparison runs only in the pinned Playwright container, with its
 // bundled Chromium; elsewhere the installed Chrome is used.
 const visual = !!process.env.E2E_VISUAL;

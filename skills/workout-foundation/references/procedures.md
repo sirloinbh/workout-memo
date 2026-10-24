@@ -21,7 +21,7 @@
 
 ## 2. 영역별 독립 빌드 유지
 
-- `frontend`·`backend`·`database`·`infrastructure`는 각자의 Docker 컨텍스트와 subtree 저장소에서 따로 빌드된다. 영역 밖 경로를 import하는 앱 코드를 만들지 않는다.
+- `frontend`·`backend`·`database`는 각자의 Docker 컨텍스트와 subtree 저장소에서 따로 빌드된다. 영역 밖 경로를 import하는 앱 코드를 만들지 않는다.
 - 두 영역이 같은 코드를 써야 하면 원본 하나와 복제본을 두고 검사한다. 사례:
   - `shared/contract.ts` → `contract:sync`·`contract:check`
   - `skills/` → `.claude/skills/`

@@ -18,7 +18,7 @@
 
 - 개발 기준 저장소: `sirloinbh/workout-memo`. 코드 원본은 이 우산 모노레포에서 관리한다.
 - 이 저장소의 GitHub 작업은 개인 계정 `sirloinbh`의 `ghp` 또는 `scripts/gh-project.ps1` 프로젝트 래퍼를 사용한다. 기본 회사 계정 `gh`로 원격 변경을 수행하지 않는다.
-- `frontend`, `backend`, `database`, `infrastructure`의 별도 저장소는 subtree 배포 대상이다. 일상적인 PR 작업 중 별도 저장소나 `main`에 직접 푸시하지 않는다. `scripts/push-repositories.ps1`은 별도 동기화 요청 시에만 사용한다.
+- `frontend`, `backend`, `database`의 별도 저장소는 subtree 배포 대상이다. 일상적인 PR 작업 중 별도 저장소나 `main`에 직접 푸시하지 않는다. `scripts/push-repositories.ps1`은 별도 동기화 요청 시에만 사용한다. AWS 인프라는 공유 저장소 `sirloinbh/shared-aws-infrastructure`에서 관리한다.
 - 포트(127.0.0.1 바인딩): 웹 `8101`, API `3101`, Vite `5201`, 호스트 DB `15401`, e2e API `3201`, e2e 웹 `5301`. 포트는 중앙 레지스트리(`sirloinbh/project-standards`의 `registry/projects.json`, 슬롯 01) 값이며, 바꾸려면 중앙 리포에 이슈를 연다.
 - 날짜는 `YYYY-MM-DD`, 서비스 시간대는 `Asia/Seoul`이다.
 - 입력 검증과 판정은 서버에서도 수행한다. 여러 행 변경은 트랜잭션으로 처리한다.

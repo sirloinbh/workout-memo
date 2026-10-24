@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $login = & gh api user --jq .login
 if ($LASTEXITCODE -ne 0 -or $login -ne $Owner) { throw "Authenticate as $Owner before creating repositories." }
 function Run-Git { & git @args; if ($LASTEXITCODE -ne 0) { throw "git failed: $args" } }
-$repos = @{ frontend='workout-memo-frontend'; backend='workout-memo-backend'; database='workout-memo-db'; infrastructure='shared-aws-infrastructure' }
+$repos = @{ frontend='workout-memo-frontend'; backend='workout-memo-backend'; database='workout-memo-db' }
 Run-Git init -b main
 Run-Git add .
 Run-Git commit -m 'Build FORM workout tracker with PostgreSQL, Docker and CI'

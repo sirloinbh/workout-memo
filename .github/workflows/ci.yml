@@ -62,17 +62,12 @@ jobs:
         if: failure()
         with: { name: visual-baselines, path: e2e/__screenshots__, retention-days: 7 }
 
-  # Lightsail deployment code (#73): format and provider schema validation, no AWS access.
-  terraform:
+  # Server deploy scripts (#73, #75): shell syntax only. Terraform lives in sirloinbh/shared-aws-infrastructure.
+  deploy-scripts:
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: infrastructure } }
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-      - run: terraform fmt -check
-      - run: terraform init -backend=false -input=false
-      - run: terraform validate
-      - run: bash -n user-data.sh && for f in ../deploy/*.sh; do bash -n "$f"; done
+      - run: for f in deploy/*.sh; do bash -n "$f"; done
 
   docker-build:
     runs-on: ubuntu-latest

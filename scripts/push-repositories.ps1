@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$repos = @{ frontend='workout-memo-frontend'; backend='workout-memo-backend'; database='workout-memo-db'; infrastructure='shared-aws-infrastructure' }
+$repos = @{ frontend='workout-memo-frontend'; backend='workout-memo-backend'; database='workout-memo-db' }
 foreach ($part in $repos.Keys) {
     $branch = "export/$part"
     & git subtree split --prefix=$part --branch=$branch --rejoin

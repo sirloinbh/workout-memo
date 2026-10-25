@@ -17,7 +17,7 @@ services:
       retries: 15
     restart: unless-stopped
   api:
-    build: ./backend
+    build: { context: ./backend, secrets: [npm_token] }
     # Tagged by commit on the server so the previous version can be restarted (#73).
     image: workout-backend:${IMAGE_TAG:-local}
     environment:
@@ -28,7 +28,7 @@ services:
       db: { condition: service_healthy }
     restart: unless-stopped
   web:
-    build: ./frontend
+    build: { context: ./frontend, secrets: [npm_token] }
     image: workout-frontend:${IMAGE_TAG:-local}
     # Local default stays 127.0.0.1:8101; the server sets WEB_BIND/WEB_PORT in .env.
     ports: ['${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8101}:80']
@@ -36,3 +36,7 @@ services:
     restart: unless-stopped
 volumes:
   workout-data:
+# The Dockerfiles read the GitHub Packages token as a BuildKit secret, so it never lands in an image layer.
+secrets:
+  npm_token:
+    environment: NODE_AUTH_TOKEN

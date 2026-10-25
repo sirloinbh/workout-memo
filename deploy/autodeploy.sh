@@ -1,5 +1,6 @@
 #!/bin/bash
-# Pull-based continuous deployment (#75), run every 2 minutes by workout-autodeploy.timer.
+# 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/app/deploy/에서
+# Pull-based continuous deployment, run every 2 minutes by workout-autodeploy.timer.
 # Deploys origin/main only after every GitHub Actions check run of that commit passed.
 # The firewall stays closed to GitHub: the server polls the public repository and API.
 #   autodeploy.sh            check and deploy if needed
@@ -28,8 +29,9 @@ if [ "${1:-}" = ci-state ]; then
 fi
 
 cd "$app"
-# Shared with remote-deploy.sh so a manual deploy and this timer never overlap.
-exec 9> /run/lock/workout-deploy.lock
+# One lock for every app on the server (ADR-0009): builds share 2 GB of memory, so only
+# one app builds or deploys at a time. A busy lock means "try again on the next run".
+exec 9> /run/lock/apps-deploy.lock
 flock -n 9 || exit 0
 
 git fetch --quiet origin main
@@ -55,7 +57,7 @@ esac
 # Run the deploy script of the new commit (git replaces files, the running bash keeps
 # the old inode, so checking out under a running script is safe).
 git checkout --quiet --detach "$full"
-if WORKOUT_DEPLOY_LOCKED=1 bash deploy/remote-deploy.sh deploy "$full"; then
+if APPS_DEPLOY_LOCKED=1 bash deploy/remote-deploy.sh deploy "$full"; then
   rm -f .autodeploy-failed
 else
   echo "$sha" > .autodeploy-failed

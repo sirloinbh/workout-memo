@@ -1,3 +1,5 @@
+# Managed file. Edit it in sirloinbh/project-standards templates/app/scripts/
+# Sync the deploy sub-repositories from this umbrella monorepo. Run only when the user asks.
 $ErrorActionPreference = 'Stop'
 $repos = @{ frontend='workout-memo-frontend'; backend='workout-memo-backend'; database='workout-memo-db' }
 foreach ($part in $repos.Keys) {

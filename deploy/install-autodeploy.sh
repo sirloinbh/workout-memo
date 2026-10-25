@@ -1,10 +1,12 @@
 #!/bin/bash
-# Installs and starts the pull-based deployment timer (#75). Run as root on the server:
+# 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/app/deploy/에서
+# Installs and starts the pull-based deployment timer. Run as root on the server:
 #   sudo bash /opt/workout-memo/deploy/install-autodeploy.sh
 set -euo pipefail
 dir=$(cd "$(dirname "$0")" && pwd)
-install -m 644 "$dir/workout-autodeploy.service" /etc/systemd/system/workout-autodeploy.service
-install -m 644 "$dir/workout-autodeploy.timer" /etc/systemd/system/workout-autodeploy.timer
+unit=workout-autodeploy
+install -m 644 "$dir/autodeploy.service" "/etc/systemd/system/$unit.service"
+install -m 644 "$dir/autodeploy.timer" "/etc/systemd/system/$unit.timer"
 systemctl daemon-reload
-systemctl enable --now workout-autodeploy.timer
-systemctl list-timers workout-autodeploy.timer --no-pager
+systemctl enable --now "$unit.timer"
+systemctl list-timers "$unit.timer" --no-pager

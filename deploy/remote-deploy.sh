@@ -21,6 +21,13 @@ fi
 # The server .env decides the published web port; without it the registry port is used.
 web_port=$(sed -n 's/^WEB_PORT=//p' .env 2>/dev/null | tail -n 1)
 web_port=${web_port:-8101}
+# compose reads the build secret npm_token (secrets.npm_token.environment) from the shell
+# environment only, never from .env, so the server .env token is exported for the build.
+# The value is never printed.
+if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+  NODE_AUTH_TOKEN=$(sed -n 's/^NODE_AUTH_TOKEN=//p' .env 2>/dev/null | tail -n 1 | tr -d "\"'\r")
+fi
+export NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-}"
 
 health() {
   for _ in $(seq 1 30); do

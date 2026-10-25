@@ -1,5 +1,5 @@
 {
-  "centralSha": "2c2f8d18eb5ce80e8a3cfe12fdd688c42094012e",
+  "centralSha": "523d533dea9e3df7d9312998b00d354f847db341",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -200,7 +200,7 @@
     },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "5b03bec78cc70e1d2eaeaf89532e394b5174cc18de7fb06db14f49441da08c77",
+      "sha256": "bfc8f9dffd5c800e275e28bce14e5c9fa622603286f0958a84d5cf5740514bbc",
       "source": "templates/app/deploy/remote-deploy.sh.tmpl"
     },
     "eslint.config.mjs": {

@@ -29,6 +29,8 @@
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
+    "@sirloinbh/eslint-config": "1.0.0",
+    "@sirloinbh/prettier-config": "1.0.0",
     "concurrently": "^9.2.0",
     "eslint": "10.12.0",
     "eslint-config-prettier": "10.1.8",

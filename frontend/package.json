@@ -24,6 +24,8 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@sirloinbh/design-tokens": "1.0.0",
+    "@sirloinbh/tsconfig": "1.0.0",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",

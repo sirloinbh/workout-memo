@@ -34,6 +34,7 @@
 - 롤백은 다시 빌드하지 않고 직전 이미지로 바로 시작합니다.
 - 마이그레이션은 되돌리지 않습니다. 새 스키마에서 이전 앱이 동작하지 않거나 데이터를 되돌려야 하면, 배포 직전 덤프로 복원합니다(아래 4).
 - 로컬 동작은 바뀌지 않습니다. `compose.yaml`은 `IMAGE_TAG`·`WEB_BIND`·`WEB_PORT`·`DB_PORT` 변수를 쓰고, 로컬 기본값은 중앙 레지스트리 포트입니다(이미지 `local`, 웹 `127.0.0.1:8101`, DB `127.0.0.1:15401`). 서버 `.env`만 웹을 `0.0.0.0:80`으로 엽니다.
+- 이미지 빌드는 GitHub Packages의 `@sirloinbh/*` 공유 패키지를 받으므로 `NODE_AUTH_TOKEN`(`read:packages`만 있는 classic PAT)이 필요합니다(#145). `compose.yaml`이 이 값을 BuildKit secret `npm_token`으로 Dockerfile의 `npm ci`에만 넘기므로 이미지 레이어에는 남지 않습니다. 서버는 `/opt/workout-memo/.env`에 두고(발급·교체는 project-standards `docs/user-steps.md` 4-3), 로컬에서 `docker compose build`를 할 때는 사용자 환경 변수로 둡니다. CI는 `GITHUB_TOKEN`을 씁니다.
 
 ## 2-1. main 자동 배포 (#75)
 

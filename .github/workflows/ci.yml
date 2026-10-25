@@ -1,5 +1,10 @@
 name: Verify application
 on: [push, pull_request]
+permissions:
+  contents: read
+  packages: read # @sirloinbh shared packages from GitHub Packages
+env:
+  NODE_AUTH_TOKEN: ${{ github.token }}
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -73,5 +78,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t workout-frontend:ci ./frontend
-      - run: docker build -t workout-backend:ci ./backend
+      # The package token is passed only as a BuildKit secret, so it never lands in an image layer.
+      - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN -t workout-frontend:ci ./frontend
+      - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN -t workout-backend:ci ./backend

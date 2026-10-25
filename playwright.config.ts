@@ -1,3 +1,4 @@
+// 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/e2e/에서
 import { defineConfig } from '@playwright/test';
 
 // Browser checks need a dedicated, migrated test database (never the personal DB).
@@ -6,9 +7,10 @@ if (!database)
   throw new Error(
     'E2E_DATABASE_URL 또는 TEST_DATABASE_URL에 db:migrate로 준비한 테스트 DB를 지정하세요.',
   );
+// e2e ports come from the central registry (slot 1, ADR-0006), apart from the dev servers.
 const apiPort = 3201;
 const webPort = 5301;
-// #113: screenshot comparison runs only in the pinned Playwright container, with its
+// Screenshot comparison runs only in the pinned Playwright container (E2E_VISUAL=1), with its
 // bundled Chromium; elsewhere the installed Chrome is used.
 const visual = !!process.env.E2E_VISUAL;
 
@@ -20,7 +22,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   // One baseline set made in Linux, so no platform suffix in the file name.
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFileName}/{arg}{ext}',
-  // CI never writes baselines; a missing or changed one fails (see workout-testing).
+  // CI never writes baselines; a missing or changed one fails.
   updateSnapshots: process.env.CI ? 'none' : 'missing',
   expect: { toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css' } },
   use: {

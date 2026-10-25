@@ -1,52 +1,139 @@
-name: Verify application
+# 중앙 관리 파일. 수정은 sirloinbh/project-standards의 .github/workflows/에서
+# public 리포는 private 중앙 리포의 재사용 워크플로를 부를 수 없어서, 중앙 reusable-app-ci.yml을 이 리포의 값으로 펼쳐 넣었다(#209).
+name: ci
+
 on: [push, pull_request]
+
+permissions:
+  contents: read
+  packages: read # @sirloinbh 공유 패키지 설치
+
+env:
+  NODE_AUTH_TOKEN: ${{ github.token }}
+  # inputs는 run 셸에 직접 넣지 않고 환경변수로만 쓴다(스크립트 주입 방지).
+  NPM_VERSION: 11.19.0
+  DATABASE_URL: postgres://app:test@localhost:5432/workout_test
+  TEST_DATABASE_URL: postgres://app:test@localhost:5432/workout_test
+  E2E_DATABASE_URL: postgres://app:test@localhost:5432/workout_test
+
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:17-alpine
-        env: { POSTGRES_USER: workout, POSTGRES_PASSWORD: test, POSTGRES_DB: workout }
+        env: { POSTGRES_USER: app, POSTGRES_PASSWORD: test, POSTGRES_DB: 'workout_test' }
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '24.21.0', cache: npm }
-      - run: npm install --global npm@11.19.0
-      - run: npm ci
-      - run: npm run db:migrate
-        env: { DATABASE_URL: 'postgres://workout:test@localhost:5432/workout' }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+          cache: npm
+      - name: 공급망 점검 (설치 전, lockfile 기준)
+        run: node .standards/ioc-scan.mjs
+      - run: npm install --global "npm@$NPM_VERSION" --ignore-scripts
+      - run: npm ci --ignore-scripts
+      - name: 중앙 표준 검사
+        run: node .standards/check.mjs
+      - name: 공급망 점검 (설치 후, node_modules 포함)
+        run: node .standards/ioc-scan.mjs
+      - name: DB 마이그레이션
+        # 규칙: docs/conventions/database.md (#27). e2e job에도 같은 스크립트가 있다(테스트가 같은지 확인한다).
+        # 1) 빈 볼륨의 Docker 초기화처럼 psql로 모든 파일을 기록 없이 한 번 적용한다(다시 실행해도 안전한지 확인).
+        # 2) 공통 실행기(db:migrate)가 있으면 다시 적용하며 schema_migrations에 기록한다.
+        #    아직 실행기가 없는 앱은 psql로 한 번 더 적용하고 경고만 남긴다(이전 동작과 호환).
+        run: |
+          shopt -s nullglob
+          for migration in database/migrations/*.sql; do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
+          done
+          if node -e "process.exit(require('./package.json').scripts?.['db:migrate'] ? 0 : 1)"; then
+            npm run db:migrate
+          else
+            echo "::warning title=DB 마이그레이션::db:migrate 실행기가 없어 psql로만 적용합니다. 적용 기록이 남지 않습니다. 중앙 docs/conventions/database.md를 따라 실행기를 추가하세요."
+            for migration in database/migrations/*.sql; do
+              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
+            done
+          fi
       - run: npm run check
-        env: { TEST_DATABASE_URL: 'postgres://workout:test@localhost:5432/workout' }
+      - name: 배포 스크립트 문법 검사
+        run: |
+          shopt -s nullglob
+          for f in deploy/*.sh; do bash -n "$f" || exit 1; done
 
-  # Browser flows against the API and a migrated PostgreSQL, plus screen checks (#113).
-  # The pinned Playwright image keeps Chromium and fonts fixed, so screenshots are stable.
   e2e:
-    runs-on: ubuntu-latest
+    if: true && !true
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: app, POSTGRES_PASSWORD: test, POSTGRES_DB: 'workout_test' }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env: { CI: 'true' }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+          cache: npm
+      - run: npm install --global "npm@$NPM_VERSION" --ignore-scripts
+      - run: npm ci --ignore-scripts
+      - name: DB 마이그레이션
+        # verify job의 같은 이름 단계와 같은 스크립트다.
+        run: |
+          shopt -s nullglob
+          for migration in database/migrations/*.sql; do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
+          done
+          if node -e "process.exit(require('./package.json').scripts?.['db:migrate'] ? 0 : 1)"; then
+            npm run db:migrate
+          else
+            echo "::warning title=DB 마이그레이션::db:migrate 실행기가 없어 psql로만 적용합니다. 적용 기록이 남지 않습니다. 중앙 docs/conventions/database.md를 따라 실행기를 추가하세요."
+            for migration in database/migrations/*.sql; do
+              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
+            done
+          fi
+      # 러너 이미지(ubuntu-24.04)에 설치된 Google Chrome을 Playwright가 channel 'chrome'으로 쓴다.
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with: { name: playwright-report, path: playwright-report, retention-days: 7 }
+
+  # 화면 비교: 글꼴과 Chromium이 고정된 컨테이너에서만 스크린샷 기준 이미지와 비교한다.
+  e2e-visual:
+    if: true && true
+    runs-on: ubuntu-24.04
     container:
-      # v1.63.0-noble pinned by digest: a re-pushed tag would change fonts and screenshots.
       image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
       options: --ipc=host
     services:
       postgres:
         image: postgres:17-alpine
-        env: { POSTGRES_USER: workout, POSTGRES_PASSWORD: test, POSTGRES_DB: workout }
+        env: { POSTGRES_USER: app, POSTGRES_PASSWORD: test, POSTGRES_DB: 'workout_test' }
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       CI: 'true'
       E2E_VISUAL: '1'
-      DATABASE_URL: 'postgres://workout:test@postgres:5432/workout'
-      E2E_DATABASE_URL: 'postgres://workout:test@postgres:5432/workout'
+      # 컨테이너 안에서는 서비스 이름으로 DB에 접속한다.
+      DATABASE_URL: postgres://app:test@postgres:5432/workout_test
+      TEST_DATABASE_URL: postgres://app:test@postgres:5432/workout_test
+      E2E_DATABASE_URL: postgres://app:test@postgres:5432/workout_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '24.21.0', cache: npm }
-      - run: npm install --global npm@11.19.0
-      - run: npm ci
-      - run: npm run db:migrate
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+          cache: npm
+      - run: npm install --global "npm@$NPM_VERSION" --ignore-scripts
+      - run: npm ci --ignore-scripts
+      # Playwright 이미지에는 psql이 없다. 다시 실행해도 안전한지는 verify job이 psql로 확인한다.
+      - name: DB 마이그레이션
+        run: npm run db:migrate
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: playwright-report
@@ -54,24 +141,18 @@ jobs:
             playwright-report
             test-results
           retention-days: 7
-      # Proposed baselines for a missing or intentionally changed screen: review the diff
-      # in playwright-report, then commit this artifact into e2e/__screenshots__.
+      # 없거나 의도적으로 바뀐 화면의 기준 이미지 후보. playwright-report에서 차이를 확인한 뒤
+      # 이 artifact를 e2e/__screenshots__에 커밋한다.
       - if: failure()
-        run: npx playwright test e2e/ui-visual.spec.ts --update-snapshots=changed --retries=0 || true
-      - uses: actions/upload-artifact@v4
+        run: npx playwright test --update-snapshots=changed --retries=0 || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with: { name: visual-baselines, path: e2e/__screenshots__, retention-days: 7 }
 
-  # Server deploy scripts (#73, #75): shell syntax only. Terraform lives in sirloinbh/shared-aws-infrastructure.
-  deploy-scripts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: for f in deploy/*.sh; do bash -n "$f"; done
-
   docker-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t workout-frontend:ci ./frontend
-      - run: docker build -t workout-backend:ci ./backend
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # 패키지 인증 토큰은 BuildKit secret으로만 넘긴다. 이미지 레이어에 남지 않는다.
+      - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN ./frontend
+      - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN ./backend

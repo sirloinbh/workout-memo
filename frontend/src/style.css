@@ -513,9 +513,9 @@
   display: inline-block;
   margin-bottom: 20px;
 }
+/* The tint marks the state; the text stays the foreground colour for contrast. */
 .badge.success {
   background: color-mix(in oklch, var(--success) 15%, transparent);
-  color: var(--success);
 }
 .goal-number {
   font-size: 32px;

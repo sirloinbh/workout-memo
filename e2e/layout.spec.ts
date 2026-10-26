@@ -24,10 +24,10 @@ for (const width of [320, 390])
     // #159: on a phone the main menu opens as a sheet from the top bar. Every menu link
     // stays visible and inside the viewport.
     await page.getByRole('button', { name: '메뉴 열기' }).click();
-    const links = page
-      .getByRole('dialog')
-      .getByRole('navigation', { name: '주 메뉴' })
-      .getByRole('link');
+    const sheet = page.getByRole('dialog');
+    // Measure after the sheet has slid in.
+    await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const links = sheet.getByRole('navigation', { name: '주 메뉴' }).getByRole('link');
     await expect(links).toHaveCount(8);
     for (const box of await links.evaluateAll((els) =>
       els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect),

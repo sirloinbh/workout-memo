@@ -214,7 +214,7 @@ trim_trailing_whitespace = false
 }
 ```
 
-`npm run check` 하나가 포맷 → 린트 → 타입 → 테스트 → 빌드를 모두 돈다. **커밋 전과 PR 생성·갱신 전에 반드시 실행한다.** 로컬 AI 워커를 두면 `test:agents`를 `check`에 추가한다(workout-memo 참고).
+`npm run check` 하나가 포맷 → 린트 → 타입 → 테스트 → 빌드를 모두 돈다. **커밋 전과 PR 생성·갱신 전에 반드시 실행한다.** 로컬 AI 워커는 중앙 리포의 실행기를 쓰므로 앱 `check`에 워커 테스트를 넣지 않는다.
 
 ### 5.3 포맷·린트
 
@@ -680,10 +680,10 @@ workout-memo는 차분한 그린 계열의 "운동 노트" 톤이다. 새 프로
 
 ### 10.4 [선택] 로컬 AI 워커
 
-workout-memo는 확정한 이슈를 큐에 넣으면 PC에서 테스트 → 구현 → 독립 검토 → 검사 → PR을 자동으로 처리하는 워커(`scripts/agents.ps1`)를 운영한다. 새 프로젝트에 처음부터 필요하지는 않다. 도입할 때 지켜야 할 점은 다음과 같다.
+workout-memo는 확정한 이슈를 큐에 넣으면 PC에서 테스트 → 구현 → 독립 검토 → 검사 → PR을 자동으로 처리하는 워커를 중앙 리포(`sirloinbh/project-standards`의 `tools/agents`) 실행기로 운영한다. 새 프로젝트에 처음부터 필요하지는 않다. 도입할 때 지켜야 할 점은 다음과 같다.
 
 - 역할별 모델을 고정한다(예: 계획·디버깅·고위험 검토는 상위 모델, 테스트·구현·검토는 표준 모델). 임의로 다른 모델로 바꾸지 않는다.
-- 이슈별 worktree, 잠금, 상태 전이를 테스트한다(`npm run test:agents`).
+- 이슈별 worktree, 잠금, 상태 전이 테스트는 중앙 리포의 `npm run test:agents`가 맡는다. 앱에는 `.agents.json`만 둔다.
 - **샌드박스 안에서는 Vite/esbuild 빌드가 상위 폴더 읽기 권한 문제로 실패할 수 있다.** 최종 `npm run check`는 호스트에서 실행한다.
 - 상세: workout-memo의 `docs/local-agent-workflow.md`.
 

@@ -20,11 +20,14 @@ Node.js **24.21.0**, npm **11.19.0**을 사용합니다. 설치는 `npm ci`, 포
 
 요구사항 대화는 주 에이전트와 진행하고, 확정한 이슈는 PC에서 테스트 → 구현 → 독립 검토 → 검사 → PR 순서로 처리합니다. 시작·중지·이슈 등록·복구 방법은 [로컬 에이전트 운영 문서](docs/local-agent-workflow.md)를 참고하세요.
 
+워커는 중앙 리포(`sirloinbh/project-standards`)의 실행기를 PC에 설치해서 씁니다.
+
 ```powershell
-./scripts/agents.ps1 start
-./scripts/agents.ps1 enqueue -Issue 12
-./scripts/agents.ps1 status
-./scripts/agents.ps1 stop
+$agents = "$env:LOCALAPPDATA\sirloinbh-tools\agents.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File $agents -Root . start
+powershell -NoProfile -ExecutionPolicy Bypass -File $agents -Root . enqueue -Issue 12
+powershell -NoProfile -ExecutionPolicy Bypass -File $agents -Root . status
+powershell -NoProfile -ExecutionPolicy Bypass -File $agents -Root . stop
 ```
 
 ## 실행

@@ -1,0 +1,11 @@
+{
+  "database": {
+    "tables": {
+      "brands": ["id", "name"],
+      "machines": ["id", "brand_id", "name", "base_weight", "notes"],
+      "workouts": ["id", "date", "title", "notes", "created_at"],
+      "sets": ["id", "workout_id", "exercise", "machine_id", "weight", "reps", "position", "notes"],
+      "goals": ["id", "exercise", "target_weight", "target_reps", "start_date", "deadline"]
+    }
+  }
+}

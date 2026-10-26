@@ -43,12 +43,12 @@
 
 ## 로컬 에이전트 작업
 
-- 사용자가 요청한 다중 에이전트 작업은 [운영 문서](docs/local-agent-workflow.md)에 따라 확정한 이슈를 `./scripts/agents.ps1 enqueue -Issue <번호>`로 등록한다. 이 대화가 요구사항 및 진행 확인 창구다. 주 에이전트는 큐 등록 뒤 계속 요구사항 대화를 진행할 수 있다.
+- 사용자가 요청한 다중 에이전트 작업은 [운영 문서](docs/local-agent-workflow.md)에 따라 확정한 이슈를 중앙 실행기로 등록한다(`agents.ps1 -Root . enqueue -Issue <번호>`, 실행기 위치는 운영 문서). 이 대화가 요구사항 및 진행 확인 창구다. 주 에이전트는 큐 등록 뒤 계속 요구사항 대화를 진행할 수 있다.
 - 로컬 워커가 실행 중일 때 새로운 개발 요청을 받으면 주 에이전트가 요구사항·완료 기준·이슈를 준비하고 큐에 등록한다. 같은 이슈를 주 에이전트가 동시에 직접 구현하지 않는다. 사용자와의 소통 및 blocked 원인 해소를 담당한다.
 - 워커는 이슈별 worktree에서 테스트 → 구현 → 독립 검토를 별도 Codex 실행으로 처리한다. 이미 등록한 이슈와 준비한 브랜치를 재사용하며 하위 에이전트가 이슈·브랜치를 중복 생성하지 않는다.
 - 워커가 지시한 테스트·구현 역할은 파일 변경과 검증 기록만 수행한다. 검토 역할은 읽기 전용이다. 커밋·푸시·PR·CI 통과 후 병합은 워커가 담당한다. 워커가 자동으로 풀지 못한 main 충돌은 blocked(`merge-conflict`)로 남기고, 주 에이전트가 worktree에서 merge 커밋으로 해결한 뒤 `retry`한다.
-- 워커 변경은 `npm run test:agents`로 상태 전이·잠금·실행 경계 동작을 검증한다. 전체 `npm run check`에도 포함한다.
-- 워커 모델은 `scripts/agents/models.mjs`에서 역할별로 고정하고 모든 `codex exec`에 모델·추론 수준을 명시한다. 사용자 명시 요청 전 모델 변경 및 임의 fallback을 금지한다. 접근 실패는 blocked로 기록한다. 현재 채팅이나 사용자/전역 Codex 설정은 변경하지 않는다.
+- 워커 코드의 원본은 중앙 리포 `sirloinbh/project-standards`의 `tools/agents/`다. 워커 변경은 중앙 리포에서 하고 그 리포의 `npm run test:agents`로 검증한다. 이 리포에는 고유 설정 `.agents.json`(DB 사전검사 테이블)만 둔다.
+- 워커 모델은 중앙 `tools/agents/models.mjs`에서 역할별로 고정하고 모든 `codex exec`에 모델·추론 수준을 명시한다. 사용자 명시 요청 전 모델 변경 및 임의 fallback을 금지한다. 접근 실패는 blocked로 기록한다. 현재 채팅이나 사용자/전역 Codex 설정은 변경하지 않는다.
 
 | 역할                                | 모델        | reasoning effort |
 | ----------------------------------- | ----------- | ---------------- |
@@ -61,5 +61,5 @@
 - 역할 문맥은 완료 기준·base SHA·변경 경로·최근 검사 요약·미해결 지적만 전달한다. 전체 로그·해시·감사 기록은 로컬에 보존한다. 한도 초과 중요 지적은 조용히 자르지 않고 인계 전 중단한다. 검토 증거가 동일한 환경 복구는 통과한 코드 단계를 재사용하고, 변경 시 재검토한다. 보호 테스트 수정은 워커 종료 후 `handoff-tests -Issue <번호>`로 테스트 역할에 정식 재인계한다.
 
 - 일반 작업은 Sol이며 문서 구현은 `enqueue -Issue <번호> -TaskKind documentation`, 고위험 검토는 `-ReviewRole highRiskReview`로 명시한다. 제목/본문으로 자동 분류하지 않는다. 기존 #21 변경은 워커 종료 후 `configure -Issue 21 -TaskKind documentation`을 사용한다.
-- 어려운 디버깅은 `./scripts/agents.ps1 diagnose -Issue <번호>`를 사용한다. Astra 진단은 읽기 전용이며 별도 잠금·스키마·결과를 ignored `.local/agent-workflow/diagnostics/`에 기록한다. 동시 구현 중에는 시점 스냅샷이며 stale 여부를 확인한다. 자동 escalation은 없다. Astra high와 반복 smoke/진단은 사용량을 소비하므로 명시적 필요가 있을 때만 호출한다. 상세 절차는 [운영 문서](docs/local-agent-workflow.md)를 따른다.
-- 큐·로그·로컬 실행 설정은 무시되는 `.local/agent-workflow/`에 저장한다. 진행 확인은 `./scripts/agents.ps1 status`, 중지는 `./scripts/agents.ps1 stop`이다. 채팅 메시지가 없을 때 워커 상태를 이 대화에 자동으로 보내는 기능은 없다.
+- 어려운 디버깅은 `agents.ps1 -Root . diagnose -Issue <번호>`를 사용한다. Astra 진단은 읽기 전용이며 별도 잠금·스키마·결과를 ignored `.local/agent-workflow/diagnostics/`에 기록한다. 동시 구현 중에는 시점 스냅샷이며 stale 여부를 확인한다. 자동 escalation은 없다. Astra high와 반복 smoke/진단은 사용량을 소비하므로 명시적 필요가 있을 때만 호출한다. 상세 절차는 [운영 문서](docs/local-agent-workflow.md)를 따른다.
+- 큐·로그·로컬 실행 설정은 무시되는 `.local/agent-workflow/`에 저장한다. 진행 확인은 `agents.ps1 -Root . status`, 중지는 `agents.ps1 -Root . stop`이다. 채팅 메시지가 없을 때 워커 상태를 이 대화에 자동으로 보내는 기능은 없다.

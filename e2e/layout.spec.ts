@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// #71: no page may scroll sideways on a phone; the main menu wraps instead.
+// #71: no page may scroll sideways on a phone. #159: the main menu opens as a sheet there.
 const pages = [
   '/',
   '/journal',
@@ -21,8 +21,13 @@ for (const width of [320, 390])
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       expect(scrollWidth, `${path} scrollWidth`).toBeLessThanOrEqual(width);
     }
-    // Every menu link stays visible and inside the viewport.
-    const links = page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link');
+    // #159: on a phone the main menu opens as a sheet from the top bar. Every menu link
+    // stays visible and inside the viewport.
+    await page.getByRole('button', { name: '메뉴 열기' }).click();
+    const links = page
+      .getByRole('dialog')
+      .getByRole('navigation', { name: '주 메뉴' })
+      .getByRole('link');
     await expect(links).toHaveCount(8);
     for (const box of await links.evaluateAll((els) =>
       els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect),

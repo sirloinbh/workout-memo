@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   NotebookPen,
   Target,
-  Settings2,
   ChevronLeft,
   ChevronRight,
   X,
@@ -17,7 +16,7 @@ import {
   Scale,
   Trophy,
 } from 'lucide-react';
-import { BrowserRouter, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -33,11 +32,11 @@ import {
   type Feedback,
   type GoalInput,
 } from './contract';
+import { AppShell, type NavItem } from './components/layout/app-shell';
 import { Button } from './components/ui/button';
-import { Dialog } from './components/ui/dialog';
-import { FieldError, invalidProps, Input } from './components/ui/field';
-import './theme.css';
-import './style.css';
+import { Toaster } from './components/ui/sonner';
+import { FieldError, invalidProps, Input } from './components/field';
+import { Modal } from './components/modal';
 import { dateTitle, seoulDate } from './date';
 import { Routines } from './routines';
 import { Backup } from './backup';
@@ -653,6 +652,13 @@ function Workspace() {
     ['machines', '머신 라이브러리', Dumbbell],
     ['backup', '백업·내보내기', DatabaseBackup],
   ] as const;
+  // #85: pages sharing the period keep a directly chosen range in the address.
+  const navItems: NavItem[] = nav.map(([key, label, icon]) => ({
+    to: pages[key] + (['overview', 'journal', 'body'].includes(key) ? location.search : ''),
+    label,
+    icon,
+    end: true,
+  }));
   function move(dir: number) {
     const d = calendarDate(anchor);
     if (period === 'month') {
@@ -889,65 +895,13 @@ function Workspace() {
     </section>
   );
   return (
-    <div className="shell">
-      <aside>
-        <NavLink className="logo" to={pages.overview}>
-          <span className="logo-mark">
-            <Activity size={24} />
-          </span>
-          form<span className="logo-dot">.</span>
-        </NavLink>
-        <div className="workspace-label">MY WORKSPACE</div>
-        <nav aria-label="주요 메뉴">
-          {nav.map(([key, label, Icon]) => (
-            // NavLink marks the current page with aria-current="page" and .active.
-            // #85: pages sharing the period keep a directly chosen range in the address.
-            <NavLink
-              key={key}
-              to={{
-                pathname: pages[key],
-                search: ['overview', 'journal', 'body'].includes(key) ? location.search : '',
-              }}
-              end
-            >
-              <Icon size={19} />
-              {label}
-              {page === key && <span className="nav-dot" />}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-note">
-          <span className="small-icon">
-            <ArrowUpRight size={20} />
-          </span>
-          <strong>작은 기록, 더 큰 변화.</strong>
-          <p>
-            어제의 나보다 한 걸음 더.
-            <br />
-            꾸준함이 만드는 성장을 기록해요.
-          </p>
-          <div className="tiny-line" />
-        </div>
-        <div className="profile">
-          <div className="avatar">ME</div>
-          <div>
-            <strong>나의 트레이닝</strong>
-            <small>Personal workspace</small>
-          </div>
-          <Settings2 size={17} />
-        </div>
-      </aside>
-      <main>
-        <header>
-          <div className="breadcrumb">
-            내 워크스페이스 <ChevronRight size={13} /> <b>{nav.find((n) => n[0] === page)?.[1]}</b>
-          </div>
-          <span className="private-tag">
-            <span />
-            나만의 운동 공간
-          </span>
-        </header>
-        <div className="content">
+    <>
+      <AppShell
+        appName="FORM · 나의 운동 기록"
+        nav={navItems}
+        footer="오늘의 기록이 내일의 변화를 만듭니다."
+      >
+        <div className="legacy">
           {page === 'routines' && <Routines />}
           {page === 'backup' && <Backup onRestored={() => void refreshAll()} />}
           {page === 'body' && (
@@ -1370,14 +1324,10 @@ function Workspace() {
               </section>
             </>
           )}
-          <footer>
-            <span className="footer-logo">form.</span> 오늘의 기록이 내일의 변화를 만듭니다.
-            <span>ONE REP AT A TIME</span>
-          </footer>
         </div>
-      </main>
+      </AppShell>
       {editor && (
-        <Dialog
+        <Modal
           title={editor.id ? '운동 일지 수정' : '새로운 운동 기록'}
           close={() => {
             setIssues({});
@@ -1661,15 +1611,15 @@ function Workspace() {
                   onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
                 />
               </label>
-              <Button full disabled={saving}>
+              <Button className="w-full" disabled={saving}>
                 {saving ? '저장 중…' : '기록 저장하기'}
               </Button>
             </fieldset>
           </form>
-        </Dialog>
+        </Modal>
       )}
       {goalEditor && (
-        <Dialog title="점진적 과부하 목표" close={() => setGoalEditor(false)}>
+        <Modal title="점진적 과부하 목표" close={() => setGoalEditor(false)}>
           <GoalForm
             deadline={to}
             saving={saving}
@@ -1680,10 +1630,10 @@ function Workspace() {
               )
             }
           />
-        </Dialog>
+        </Modal>
       )}
       {machineEditor && (
-        <Dialog
+        <Modal
           title={machineEditor.id ? '머신 정보 수정' : '머신 등록'}
           close={() => {
             setIssues({});
@@ -1851,13 +1801,14 @@ function Workspace() {
               />
               단관절 운동 머신 (세트 완료 시 단관절 기본 휴식 사용)
             </label>
-            <Button full disabled={saving}>
+            <Button className="w-full" disabled={saving}>
               머신 저장하기
             </Button>
           </form>
-        </Dialog>
+        </Modal>
       )}
-    </div>
+      <Toaster />
+    </>
   );
 }
 // #64: React Hook Form with the shared goal schema. Messages come from the same
@@ -1939,7 +1890,7 @@ function GoalForm({
       <p className="form-hint">
         기간 안에 한 세트에서 목표 중량 이상, 목표 반복 수 이상을 수행하면 달성 처리됩니다.
       </p>
-      <Button full disabled={saving}>
+      <Button className="w-full" disabled={saving}>
         목표 저장하기
       </Button>
     </form>
@@ -2008,7 +1959,11 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
             제안 {fmt(suggestion.target_weight)} kg ·{' '}
             {suggestion.base.source === 'goal' ? '최근 목표' : '직전 기록'}{' '}
             {fmt(suggestion.base.weight)} kg + {fmt(suggestion.weight_step)} kg{' '}
-            <Button type="button" variant="subtle" onClick={() => apply(suggestion.target_weight!)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => apply(suggestion.target_weight!)}
+            >
               제안 적용
             </Button>
           </p>
@@ -2029,14 +1984,14 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
         </label>
         <Button
           type="button"
-          variant="subtle"
+          variant="secondary"
           disabled={busy}
           onClick={() => void save(step === '' ? Number.NaN : Number(step))}
         >
           증량 단위 저장
         </Button>
         {suggestion?.custom && (
-          <Button type="button" variant="text" disabled={busy} onClick={() => void save(null)}>
+          <Button type="button" variant="ghost" disabled={busy} onClick={() => void save(null)}>
             기본값({defaultWeightStep} kg)으로
           </Button>
         )}

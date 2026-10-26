@@ -1,220 +1,41 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
-:root {
-  font-family: 'DM Sans', 'Noto Sans KR', sans-serif;
-  color: #25372f;
-  background: #f7f8f5;
-  font-synthesis: none;
+/*
+ * The app's own page styles (from before #159), now on the common tokens.
+ * Element rules apply only inside .legacy (page content and modals), so the common
+ * shell and components keep their own look. Colours come only from tokens.
+ */
+:where(.legacy) {
   font-size: 14px;
+  font-synthesis: none;
 }
-* {
-  box-sizing: border-box;
+:where(.legacy) :is(button, a):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
 }
-body {
-  margin: 0;
-}
-button,
-input,
-select,
-textarea {
+:where(.legacy) button,
+:where(.legacy) input,
+:where(.legacy) select,
+:where(.legacy) textarea {
   font: inherit;
 }
-button,
-a,
-input,
-select,
-textarea {
+:where(.legacy) button,
+:where(.legacy) a,
+:where(.legacy) input,
+:where(.legacy) select,
+:where(.legacy) textarea {
   -webkit-tap-highlight-color: transparent;
 }
-button {
+:where(.legacy) button {
   cursor: pointer;
 }
-button:disabled {
+:where(.legacy) button:disabled {
   opacity: 0.5;
   cursor: wait;
 }
-button {
+:where(.legacy) button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-}
-button:focus-visible,
-a:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 3px;
-}
-a {
-  color: inherit;
-  text-decoration: none;
-}
-.shell {
-  display: flex;
-  min-height: 100vh;
-}
-aside {
-  width: 234px;
-  background: var(--color-surface-sidebar);
-  border-right: 1px solid var(--color-line-soft);
-  padding: 38px 22px 22px;
-  position: fixed;
-  inset: 0 auto 0 0;
-  display: flex;
-  flex-direction: column;
-}
-.logo {
-  display: flex;
-  align-items: center;
-  font-size: 37px;
-  font-weight: 700;
-  letter-spacing: -2px;
-  padding: 0 14px;
-  gap: 10px;
-}
-.logo-mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  background: #213d30;
-  border-radius: var(--radius-lg);
-  color: #d9ebae;
-}
-.logo-dot {
-  color: var(--color-accent);
-  margin-left: -9px;
-}
-.workspace-label {
-  font-size: 10px;
-  letter-spacing: 1.8px;
-  color: #a0a69e;
-  margin: 55px 14px 17px;
-}
-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-nav a {
-  display: flex;
-  align-items: center;
-  background: none;
-  border: 0;
-  justify-content: flex-start;
-  padding: 14px;
-  border-radius: 7px;
-  color: var(--color-ink-subtle);
-  font-size: 13px;
-  font-weight: 500;
-  gap: 13px;
-}
-nav a.active {
-  background: var(--color-nav-active);
-  color: var(--color-nav-active-ink);
-  font-weight: 700;
-}
-.nav-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #71884d;
-  margin-left: auto;
-}
-.sidebar-note {
-  margin: auto 10px 36px;
-  padding-top: 50px;
-}
-.small-icon {
-  display: block;
-  color: #899d66;
-  margin-bottom: 12px;
-}
-.sidebar-note strong {
-  font-size: 12px;
-}
-.sidebar-note p {
-  font-size: 11px;
-  line-height: 1.9;
-  color: #91988b;
-}
-.tiny-line {
-  height: 3px;
-  width: 25px;
-  background: #c3d0a8;
-  margin-top: 21px;
-}
-.profile {
-  border-top: 1px solid #e7e9e2;
-  padding-top: 22px;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-}
-.avatar {
-  border-radius: 50%;
-  background: #e5e9dd;
-  color: #536148;
-  display: grid;
-  place-items: center;
-  width: 35px;
-  height: 35px;
-  font-size: 10px;
-}
-.profile strong {
-  display: block;
-  font-size: 11px;
-}
-.profile small {
-  display: block;
-  color: #929b8d;
-  font-size: 9px;
-  margin-top: 4px;
-}
-.profile > svg {
-  margin-left: auto;
-  color: #8b9485;
-}
-main {
-  margin-left: 234px;
-  flex: 1;
-  min-width: 0;
-}
-header {
-  height: 75px;
-  border-bottom: 1px solid var(--color-line-soft);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 44px;
-  background: var(--color-surface-sidebar);
-}
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 11px;
-  color: #929a91;
-}
-.breadcrumb b {
-  font-weight: 500;
-  color: #51604d;
-}
-.private-tag {
-  font-size: 10px;
-  color: #849079;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.private-tag span {
-  width: 5px;
-  height: 5px;
-  background: #91a96a;
-  border-radius: 50%;
-}
-.content {
-  max-width: 1450px;
-  margin: auto;
-  padding: 42px 44px 0;
 }
 .page-heading {
   display: flex;
@@ -226,20 +47,20 @@ header {
 .eyebrow {
   font-size: 9px;
   letter-spacing: 2px;
-  color: #8c9b7c;
+  color: var(--muted-foreground);
   font-weight: 600;
 }
-h1 {
+:where(.legacy) h1 {
   font-size: 28px;
   letter-spacing: -1.2px;
   font-weight: 600;
   margin: 12px 0;
 }
 .heading-dot {
-  color: #9eaf77;
+  color: var(--muted-foreground);
 }
-p {
-  color: #8b9488;
+:where(.legacy) p {
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -247,17 +68,17 @@ p {
   margin: 0;
 }
 .primary {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 1px solid var(--primary);
+  border-radius: calc(var(--radius) - 2px);
   padding: 12px 17px;
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
 }
 .primary:hover {
-  background: #3b5941;
+  background: color-mix(in oklch, var(--primary) 90%, transparent);
 }
 .period-bar {
   display: flex;
@@ -267,8 +88,8 @@ p {
 }
 .tabs {
   display: flex;
-  background: #ebeee6;
-  border: 1px solid #e7eae1;
+  background: var(--muted);
+  border: 1px solid var(--border);
   padding: 4px;
   border-radius: 7px;
 }
@@ -277,13 +98,15 @@ p {
   background: none;
   padding: 7px 20px;
   font-size: 11px;
-  color: #8a9481;
+  color: var(--muted-foreground);
   border-radius: 4px;
 }
 .tabs .selected {
-  background: white;
-  color: #33472c;
-  box-shadow: var(--shadow-card);
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 .date-control {
   display: flex;
@@ -298,7 +121,7 @@ p {
   gap: 8px 12px;
   margin: 12px 0 0;
   font-size: 11px;
-  color: var(--color-ink-muted);
+  color: var(--muted-foreground);
 }
 .custom-range label {
   display: flex;
@@ -316,24 +139,24 @@ p {
 .date-control button {
   background: transparent;
   border: 0;
-  color: #89917f;
+  color: var(--muted-foreground);
   padding: 5px;
 }
 .date-control input {
   border: 0;
   background: transparent;
-  color: #5f6958;
+  color: var(--foreground);
   font-size: 11px;
   padding: 4px;
   width: 116px;
 }
 .range-label {
   font-size: 10px;
-  color: #596b4f;
+  color: var(--foreground);
   margin: 15px 0 20px;
 }
 .range-label span {
-  color: #9ca492;
+  color: var(--muted-foreground);
   margin-left: 10px;
 }
 .stats {
@@ -343,22 +166,22 @@ p {
   margin-bottom: 24px;
 }
 .stat {
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
   padding: 20px 22px;
 }
 .stat-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #78846f;
+  color: var(--muted-foreground);
   font-size: 11px;
 }
 .stat-top span {
-  color: #94a780;
-  background: #f4f6ef;
-  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-radius: calc(var(--radius) - 2px);
   padding: 6px;
   display: flex;
 }
@@ -370,13 +193,13 @@ p {
 }
 .stat-value small {
   font-size: 12px;
-  color: #929b88;
+  color: var(--muted-foreground);
   margin-left: 7px;
   letter-spacing: 0;
 }
 .stat-foot {
   font-size: 10px;
-  color: #a0a792;
+  color: var(--muted-foreground);
 }
 .overview-grid {
   display: grid;
@@ -385,9 +208,9 @@ p {
   margin-bottom: 24px;
 }
 .card {
-  background: #fff;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   overflow: hidden;
 }
 .section-title {
@@ -397,7 +220,7 @@ p {
   padding: 23px 24px 0;
   gap: 12px;
 }
-h2 {
+:where(.legacy) h2 {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.4px;
@@ -409,7 +232,7 @@ h2 {
 }
 .legend {
   font-size: 9px;
-  color: #8b967f;
+  color: var(--muted-foreground);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -418,7 +241,7 @@ h2 {
 .legend i {
   width: 6px;
   height: 6px;
-  background: #9cac7d;
+  background: var(--primary);
   border-radius: 2px;
 }
 .chart {
@@ -430,7 +253,7 @@ h2 {
 .chart-y {
   width: 34px;
   font-size: 8px;
-  color: #9da494;
+  color: var(--muted-foreground);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -448,7 +271,7 @@ h2 {
   justify-content: space-between;
 }
 .grid-lines i {
-  border-top: 1px dashed #edf0e7;
+  border-top: 1px dashed var(--border);
 }
 .bars {
   position: absolute;
@@ -470,16 +293,16 @@ h2 {
 }
 .bar {
   width: 75%;
-  background: #c0cfa8;
+  background: color-mix(in oklch, var(--foreground) 18%, transparent);
   border-radius: 4px 4px 0 0;
   min-width: 6px;
 }
 .bar.last {
-  background: #708c4e;
+  background: var(--primary);
 }
 .bar-column > span {
   font-size: 9px;
-  color: #9ca68e;
+  color: var(--muted-foreground);
   line-height: 23px;
 }
 .chart-empty {
@@ -487,14 +310,14 @@ h2 {
   inset: 30% 0 auto;
   text-align: center;
   font-size: 11px;
-  color: #a3ad97;
+  color: var(--muted-foreground);
 }
 .focus-card {
   position: relative;
   overflow: hidden;
-  background: #eaf0dd;
-  border: 1px solid #dce5cc;
-  border-radius: var(--radius-lg);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 25px;
 }
 .focus-top {
@@ -502,18 +325,18 @@ h2 {
   letter-spacing: 1.5px;
   display: flex;
   justify-content: space-between;
-  color: #899b6c;
+  color: var(--muted-foreground);
 }
 .focus-card h2 {
   font-size: 24px;
   line-height: 1.5;
   letter-spacing: -1px;
   margin: 17px 0 8px;
-  color: #3b4e2d;
+  color: var(--foreground);
 }
 .focus-card p {
   font-size: 10px;
-  color: #83946c;
+  color: var(--muted-foreground);
 }
 .focus-card button {
   position: relative;
@@ -522,7 +345,7 @@ h2 {
   border: 0;
   padding: 14px 0 0;
   font-size: 10px;
-  color: #4f6539;
+  color: var(--foreground);
 }
 .rings {
   position: absolute;
@@ -534,7 +357,7 @@ h2 {
 .rings span {
   position: absolute;
   inset: 0;
-  border: 1px solid #d4dfc0;
+  border: 1px solid var(--border);
   border-radius: 50%;
 }
 .rings span:nth-child(2) {
@@ -544,8 +367,8 @@ h2 {
   inset: 40px;
 }
 .count {
-  background: #eff3e7;
-  color: #809563;
+  background: var(--muted);
+  color: var(--muted-foreground);
   border-radius: 4px;
   font-size: 10px;
   padding: 2px 6px;
@@ -554,7 +377,7 @@ h2 {
 .text-button {
   background: transparent;
   border: 0;
-  color: var(--color-link);
+  color: var(--primary);
   font-size: 11px;
   padding: 8px;
   white-space: nowrap;
@@ -565,11 +388,11 @@ h2 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #a4b392;
+  color: var(--muted-foreground);
   min-height: 220px;
 }
 .empty h3 {
-  color: #69775e;
+  color: var(--muted-foreground);
   font-size: 13px;
   font-weight: 500;
   margin: 15px 0 0;
@@ -579,10 +402,10 @@ h2 {
   margin-bottom: 18px;
 }
 .subtle-button {
-  background: var(--color-subtle);
-  border: 1px solid var(--color-subtle-line);
-  color: var(--color-subtle-ink);
-  border-radius: var(--radius-sm);
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--secondary-foreground);
+  border-radius: calc(var(--radius) - 4px);
   font-size: 11px;
   padding: 9px 13px;
 }
@@ -593,7 +416,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 16px;
-  border-bottom: 1px solid #eff1e9;
+  border-bottom: 1px solid var(--border);
   padding: 18px 24px;
 }
 .workout-list .workout-row {
@@ -607,8 +430,8 @@ h2 {
   align-items: center;
   flex-direction: column;
   justify-content: center;
-  background: #f4f6ef;
-  border-radius: var(--radius-md);
+  background: var(--muted);
+  border-radius: calc(var(--radius) - 2px);
   width: 45px;
   height: 50px;
   flex-shrink: 0;
@@ -619,7 +442,7 @@ h2 {
 }
 .date-tile small {
   font-size: 9px;
-  color: #919e83;
+  color: var(--muted-foreground);
 }
 .workout-info {
   flex: 1;
@@ -644,25 +467,25 @@ h2 {
 }
 .row-volume small {
   font-size: 9px;
-  color: #9aa48f;
+  color: var(--muted-foreground);
 }
 .row-volume span {
   display: block;
   font-size: 9px;
-  color: #9aa48f;
+  color: var(--muted-foreground);
   margin-top: 6px;
 }
 .icon-button {
   background: none;
   border: 0;
-  color: var(--color-icon);
+  color: var(--muted-foreground);
   padding: 7px;
 }
 .error {
-  background: var(--color-danger-surface);
-  border: 1px solid var(--color-danger-line);
-  border-radius: var(--radius-md);
-  color: var(--color-danger-ink);
+  background: color-mix(in oklch, var(--destructive) 10%, transparent);
+  border: 1px solid color-mix(in oklch, var(--destructive) 30%, transparent);
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--destructive);
   font-size: 12px;
   padding: 14px;
   margin-bottom: 20px;
@@ -672,27 +495,6 @@ h2 {
   background: none;
   text-decoration: underline;
   color: inherit;
-}
-footer {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-top: 1px solid var(--color-line);
-  margin-top: 35px;
-  padding: 23px 0;
-  color: #a0a893;
-  font-size: 9px;
-}
-.footer-logo {
-  font-size: 17px;
-  font-weight: 700;
-  color: #7b8a6b;
-  letter-spacing: -1px;
-}
-footer > span:last-child {
-  margin-left: auto;
-  font-size: 8px;
-  letter-spacing: 1.5px;
 }
 .goal-grid {
   display: grid;
@@ -704,16 +506,16 @@ footer > span:last-child {
 }
 .badge {
   font-size: 10px;
-  background: #f4f0dd;
-  color: #99854b;
+  background: color-mix(in oklch, var(--warning) 25%, transparent);
+  color: var(--foreground);
   border-radius: 4px;
   padding: 5px 8px;
   display: inline-block;
   margin-bottom: 20px;
 }
 .badge.success {
-  background: #e6efdb;
-  color: #5d7a3f;
+  background: color-mix(in oklch, var(--success) 15%, transparent);
+  color: var(--success);
 }
 .goal-number {
   font-size: 32px;
@@ -721,7 +523,7 @@ footer > span:last-child {
 }
 .goal-number small {
   font-size: 12px;
-  color: #93a185;
+  color: var(--muted-foreground);
 }
 .goal-card p {
   font-size: 11px;
@@ -733,57 +535,30 @@ footer > span:last-child {
   margin: 25px 0;
 }
 .brand-tabs button {
-  border: 1px solid #e0e6d7;
-  background: white;
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: calc(var(--radius) - 2px);
   padding: 10px 15px;
-  color: #879579;
+  color: var(--muted-foreground);
   font-size: 11px;
 }
 .brand-tabs .selected {
-  color: #3e5930;
-  background: var(--color-nav-active);
-  border-color: #cad7b8;
+  color: var(--foreground);
+  background: var(--accent);
+  border-color: var(--border);
 }
 .machine-icon {
-  background: #f1f5e9;
-  color: #8ba474;
+  background: var(--muted);
+  color: var(--muted-foreground);
   border-radius: 7px;
   padding: 12px;
-}
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--color-backdrop);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  backdrop-filter: blur(3px);
-}
-.modal {
-  background: var(--color-surface-modal);
-  border-radius: var(--radius-xl);
-  padding: 28px;
-  max-width: 800px;
-  width: 100%;
-  max-height: 90vh;
-  overflow: auto;
-  box-shadow: var(--shadow-modal);
-}
-.modal-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 22px;
 }
 .modal label {
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-size: 11px;
-  color: var(--color-ink-muted);
+  color: var(--muted-foreground);
   margin-bottom: 17px;
 }
 /* #83: workout feedback reads like a field label above the .tabs selector. */
@@ -793,20 +568,20 @@ footer > span:last-child {
   align-items: flex-start;
   gap: 8px;
   font-size: 11px;
-  color: var(--color-ink-muted);
+  color: var(--muted-foreground);
   margin-bottom: 17px;
 }
 .modal input,
 .modal select,
 .modal textarea {
   width: 100%;
-  border: 1px solid var(--color-line-input);
-  border-radius: var(--radius-sm);
-  background: white;
-  color: var(--color-ink);
+  border: 1px solid var(--input);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--card);
+  color: var(--foreground);
   padding: 11px;
   min-width: 0;
-  outline-color: #9aaa7f;
+  outline-color: var(--ring);
 }
 .modal textarea {
   resize: vertical;
@@ -819,22 +594,22 @@ footer > span:last-child {
 }
 .form-hint {
   font-size: 11px;
-  background: #eff3e6;
+  background: var(--muted);
   padding: 12px;
-  border-radius: var(--radius-sm);
+  border-radius: calc(var(--radius) - 4px);
 }
 .official-ref {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
-div.official-ref {
-  border: 1px solid #c9d4b0;
-  background: #f7f9f2;
+:where(.legacy) div.official-ref {
+  border: 1px solid var(--border);
+  background: var(--muted);
   padding: 12px;
-  border-radius: var(--radius-sm);
+  border-radius: calc(var(--radius) - 4px);
   margin-bottom: 12px;
 }
-div.official-ref p {
+:where(.legacy) div.official-ref p {
   margin: 6px 0 0;
 }
 .set-editor {
@@ -861,7 +636,7 @@ div.official-ref p {
 }
 .set-number {
   font-size: 11px;
-  color: #9ba88b;
+  color: var(--muted-foreground);
 }
 .modal .subtle-button {
   margin: 4px 0 22px;
@@ -871,9 +646,6 @@ div.official-ref p {
   margin-top: 5px;
 }
 @media (min-width: 1500px) {
-  .content {
-    padding-top: 55px;
-  }
   .overview-grid {
     grid-template-columns: 1fr 340px;
   }
@@ -882,20 +654,7 @@ div.official-ref p {
   }
 }
 @media (max-width: 1100px) {
-  aside {
-    width: 195px;
-    padding: 30px 14px;
-  }
-  main {
-    margin-left: 195px;
-  }
-  .content {
-    padding: 30px 25px 0;
-  }
-  header {
-    padding: 0 25px;
-  }
-  h1 {
+  :where(.legacy) h1 {
     font-size: 23px;
   }
   .stats {
@@ -918,65 +677,13 @@ div.official-ref p {
   }
 }
 @media (max-width: 760px) {
-  aside {
-    position: static;
-    width: 100%;
-    padding: 15px 18px;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-line);
-  }
-  .shell {
-    display: block;
-  }
-  .logo {
-    font-size: 28px;
-    padding: 0;
-  }
-  .logo-mark {
-    width: 29px;
-    height: 29px;
-  }
-  /* #71: eight links in one row needed ~404px and pushed the page to 424px at 390px.
-     Two rows of four fit any phone width; the icon sits above the label. */
-  nav {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    margin-top: 15px;
-    gap: 4px;
-  }
-  nav a {
-    flex-direction: column;
-    justify-content: center;
-    min-width: 0;
-    padding: 8px 4px;
-    font-size: 10px;
-    line-height: 1.25;
-    text-align: center;
-    gap: 4px;
-  }
-  .nav-dot,
-  .workspace-label,
-  .sidebar-note,
-  .profile {
-    display: none;
-  }
-  main {
-    margin-left: 0;
-  }
-  header {
-    height: 50px;
-    padding: 0 20px;
-  }
-  .content {
-    padding: 25px 18px 0;
-  }
   .page-heading {
     align-items: flex-start;
     flex-direction: column;
     margin-bottom: 23px;
     gap: 16px;
   }
-  h1 {
+  :where(.legacy) h1 {
     font-size: 23px;
   }
   .eyebrow {
@@ -1048,24 +755,11 @@ div.official-ref p {
   .goal-grid {
     grid-template-columns: 1fr;
   }
-  footer {
-    font-size: 8px;
-    gap: 8px;
-  }
-  footer > span:last-child {
-    display: none;
-  }
-  .modal-backdrop {
-    padding: 10px;
-  }
-  .modal {
-    padding: 20px 15px;
-  }
   .set-editor {
     grid-template-columns: 18px 1fr 1fr 26px;
     gap: 7px;
     margin-bottom: 18px;
-    border-bottom: 1px solid #e4e9dc;
+    border-bottom: 1px solid var(--border);
   }
   .set-editor label {
     margin-bottom: 10px;
@@ -1088,7 +782,7 @@ div.official-ref p {
     gap: 0 12px;
   }
 }
-fieldset.workout-fields {
+:where(.legacy) fieldset.workout-fields {
   border: 0;
   margin: 0;
   padding: 0;
@@ -1097,8 +791,8 @@ fieldset.workout-fields {
 .routine-page fieldset {
   margin: 20px 0;
   padding: 16px;
-  border: 1px solid #dfe3e8;
-  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
 }
 .routine-page button {
   margin: 4px;
@@ -1112,7 +806,7 @@ fieldset.workout-fields {
 }
 .routine-exercise {
   padding: 12px 0;
-  border-bottom: 1px solid #dfe3e8;
+  border-bottom: 1px solid var(--border);
 }
 .backup-page .card {
   margin: 16px 0;
@@ -1154,30 +848,30 @@ fieldset.workout-fields {
   justify-content: space-between;
   gap: 8px;
   font-size: 11px;
-  color: #6f7a63;
+  color: var(--muted-foreground);
   margin-bottom: 8px;
 }
 .body-trend svg {
   display: block;
   width: 100%;
   height: 120px;
-  border-top: 1px dashed #edf0e7;
-  border-bottom: 1px dashed #edf0e7;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
 }
 .body-trend polyline {
-  stroke: #708c4e;
+  stroke: var(--primary);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 .body-trend circle {
-  fill: #708c4e;
+  fill: var(--primary);
 }
 .body-trend-axis {
   display: flex;
   justify-content: space-between;
   gap: 6px;
   font-size: 9px;
-  color: #9ca68e;
+  color: var(--muted-foreground);
   margin-top: 6px;
 }
 .body-list {
@@ -1195,7 +889,7 @@ fieldset.workout-fields {
 }
 .analysis-week {
   padding: 12px 0;
-  border-bottom: 1px solid #dfe3e8;
+  border-bottom: 1px solid var(--border);
 }
 .analysis-week table {
   width: 100%;
@@ -1208,7 +902,7 @@ fieldset.workout-fields {
 }
 .exercise-pr {
   padding: 16px 0;
-  border-bottom: 1px solid #dfe3e8;
+  border-bottom: 1px solid var(--border);
 }
 .exercise-pr dl {
   display: grid;
@@ -1245,7 +939,7 @@ fieldset.workout-fields {
 .trend-bar {
   width: 14px;
   border-radius: 4px 4px 0 0;
-  background: #6f8f3a;
+  background: var(--primary);
 }
 .set-editor .set-actions {
   grid-column: 2 / -2;
@@ -1264,19 +958,19 @@ fieldset.workout-fields {
 .set-done {
   min-height: 40px;
   min-width: 84px;
-  border: 1px solid #c9d3bb;
-  border-radius: var(--radius-sm);
-  background: white;
-  color: #4c6140;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--card);
+  color: var(--foreground);
   font-weight: 600;
 }
 .set-done.active {
-  background: #4c6140;
-  border-color: #4c6140;
-  color: white;
+  background: var(--primary);
+  border-color: var(--border);
+  color: var(--muted-foreground);
 }
 .set-editor.completed .set-number {
-  color: #4c6140;
+  color: var(--foreground);
   font-weight: 700;
 }
 .rest-timer {
@@ -1286,17 +980,17 @@ fieldset.workout-fields {
   align-items: center;
   margin: 0 0 18px;
   padding: 14px;
-  border: 1px solid var(--color-line-input);
+  border: 1px solid var(--input);
   border-radius: 8px;
-  background: #fbfcf8;
+  background: var(--muted);
 }
 .rest-timer strong {
   font-size: 22px;
   font-variant-numeric: tabular-nums;
-  color: var(--color-ink);
+  color: var(--foreground);
 }
 .rest-timer strong.ended {
-  color: #b2522f;
+  color: var(--muted-foreground);
 }
 .rest-timer .rest-actions {
   display: flex;
@@ -1381,7 +1075,7 @@ fieldset.workout-fields {
   margin: 6px 0;
 }
 .target-list small {
-  color: #6f7c68;
+  color: var(--muted-foreground);
 }
 .progress-actions {
   display: flex;
@@ -1392,8 +1086,8 @@ fieldset.workout-fields {
 .rest-preview {
   margin-top: 14px;
   padding: 14px;
-  background: #eff3e6;
-  border-radius: var(--radius-md);
+  background: var(--muted);
+  border-radius: calc(var(--radius) - 2px);
 }
 .rest-preview button {
   margin: 6px 6px 0 0;
@@ -1409,20 +1103,20 @@ fieldset.workout-fields {
   text-align: left;
   vertical-align: top;
   padding: 7px 6px;
-  border-top: 1px solid #e4e9dc;
+  border-top: 1px solid var(--border);
 }
 .week-table ul {
   margin: 0;
   padding-left: 16px;
 }
 .week-table .excluded {
-  color: #9a6b4c;
+  color: var(--muted-foreground);
 }
 .set-editor .set-reference {
   grid-column: 2 / -2;
   margin: 0;
   font-size: 11px;
-  color: #6f7c68;
+  color: var(--muted-foreground);
 }
 @media (max-width: 760px) {
   .progress-body {
@@ -1440,20 +1134,19 @@ fieldset.workout-fields {
 .field-error {
   display: block;
   grid-column: 1 / -1;
-  color: var(--color-danger);
+  color: var(--destructive);
   font-size: 12px;
   font-weight: 600;
   margin: -4px 0 6px;
 }
 [aria-invalid='true'] {
-  border-color: var(--color-danger);
+  border-color: var(--destructive);
 }
-
 /* #86: next goal suggestion and the exercise's increment in the goal form. */
 .goal-suggestion {
   margin: 0 0 17px;
   padding: 12px;
-  border: 1px solid var(--color-line-input);
+  border: 1px solid var(--input);
   border-radius: 8px;
   font-size: 12px;
 }
@@ -1469,7 +1162,6 @@ fieldset.workout-fields {
 .modal .goal-step label {
   margin-bottom: 0;
 }
-
 /* #89: InBody import entry, column mapping and the editable preview table. */
 .heading-actions {
   display: flex;
@@ -1484,7 +1176,7 @@ fieldset.workout-fields {
   flex-direction: column;
   gap: 6px;
   font-size: 11px;
-  color: var(--color-ink-muted);
+  color: var(--muted-foreground);
   margin-bottom: 12px;
 }
 .inbody-import pre {
@@ -1497,4 +1189,22 @@ fieldset.workout-fields {
 }
 .inbody-preview input[type='number'] {
   max-width: 90px;
+}
+/* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA
+   4.5:1. Text on these surfaces mixes in more of the foreground colour instead. */
+:is(
+  .tabs,
+  .stat-top span,
+  .focus-card,
+  .count,
+  .subtle-button,
+  .date-tile,
+  .machine-icon,
+  .form-hint,
+  div.official-ref,
+  .rest-timer,
+  .rest-preview
+),
+:is(.tabs, .focus-card, .date-tile, .form-hint, div.official-ref, .rest-timer, .rest-preview) * {
+  color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }

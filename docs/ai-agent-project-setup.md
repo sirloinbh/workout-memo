@@ -61,7 +61,7 @@
 | 프론트엔드  | React, React DOM                                    | `^19.1.0`                                               | SPA                                          |
 |             | Vite                                                | `^6.3.5`                                                | 개발 서버·빌드, `/api` 프록시                |
 |             | TypeScript                                          | `^5.8.3`                                                | `strict`                                     |
-|             | lucide-react                                        | `^0.468.0`                                              | 아이콘                                       |
+|             | lucide-react                                        | `1.52.0`                                                | 아이콘                                       |
 | 백엔드      | Express                                             | `^5.1.0`                                                | REST API                                     |
 |             | pg (node-postgres)                                  | `^8.16.0`                                               | SQL 직접 작성, ORM 없음                      |
 |             | Zod                                                 | `^3.25.0`                                               | 서버 입력 검증                               |
@@ -560,44 +560,15 @@ CI 러너 안의 `npm ci`는 격리된 GitHub 환경에서 잠금 파일대로 �
 
 ## 8. 디자인 시스템
 
-workout-memo는 차분한 그린 계열의 "운동 노트" 톤이다. 새 프로젝트도 다른 지시가 없으면 아래 토큰과 컴포넌트에서 시작한다. 새 프로젝트에서는 값을 처음부터 **CSS 변수(`:root`)로 정의**한다. workout-memo는 색을 직접 써서 나중에 공통화가 어려웠다.
+8개 앱은 같은 디자인 시스템을 쓴다(project-standards #126, workout-memo #159). 예전 workout-memo의 초록 계열 토큰과 자체 사이드바는 더 이상 쓰지 않는다. 새 프로젝트는 중앙 스캐폴드가 아래를 모두 만든다.
 
-### 8.1 토큰
+- **토큰:** `@sirloinbh/design-tokens`. 8개 앱 공통 흑백(shadcn/ui neutral) 라이트·다크 모드, 글꼴 Pretendard Variable. 앱별 테마 색은 없고 표시 이름으로만 구별한다(중앙 ADR-0008).
+- **컴포넌트:** shadcn/ui 공통 컴포넌트(`frontend/src/components/ui/`, 중앙 관리). 아이콘은 `lucide-react`, 이모지는 Fluent Emoji Flat SVG(중앙 ADR-0007).
+- **레이아웃:** `AppShell`(상단 바, 768px 이상 왼쪽 사이드바·미만 왼쪽 Sheet 메뉴, footer), 화면 모드 메뉴, 첫 화면 깜빡임 방지 스크립트.
+- **PWA:** manifest, 서비스 워커, 오프라인 화면, 아이콘.
+- **검증:** 360·390·768·1280px에서 가로 넘침 없음, 라이트·다크 모두 WCAG AA 대비, 키보드로 메뉴·모달 조작.
 
-| 토큰              | 값                                                      | 용도                                  |
-| ----------------- | ------------------------------------------------------- | ------------------------------------- |
-| 글꼴              | `'DM Sans', 'Noto Sans KR', sans-serif` (Google Fonts)  | 영문 DM Sans, 한글 Noto Sans KR       |
-| 기본 글자 크기    | `14px`, `font-synthesis: none`                          |                                       |
-| 본문 색           | `#25372f`                                               | 텍스트                                |
-| 페이지 배경       | `#f7f8f5`                                               |                                       |
-| 사이드바 배경     | `#fcfcfa`, 구분선 `#e5e8e1`                             |                                       |
-| 주요 색(Primary)  | `#294432` 배경 / `#f3f7ec` 글자                         | 주요 버튼                             |
-| 강조(포커스)      | `#a1bd56`                                               | `:focus-visible` 3px 외곽선, 3px 간격 |
-| 카드              | 배경 `#fff`, 테두리 `#e3e7dd`, 반경 `9px`               |                                       |
-| 모달              | 배경 `#fcfdf9`, 반경 `12px`, 그림자 `0 20px 80px #0003` |                                       |
-| 보조 배경         | `#f4f6ef`, `#eaf0df`                                    | 탭·안내 상자                          |
-| 흐린 글자         | `#9aa48f`                                               | 보조 설명                             |
-| 경고 배경         | `#fff0e9`                                               | 오류                                  |
-| 버튼 반경         | `6px`, 안쪽 여백 `12px 17px`, 글자 `12px/500`           |                                       |
-| 테마 색(브라우저) | `<meta name="theme-color" content="#182b26">`           |                                       |
-
-### 8.2 레이아웃과 컴포넌트
-
-- **셸:** 왼쪽 고정 사이드바(`aside`, 너비 234px, 로고·내비게이션·프로필)와 오른쪽 콘텐츠. 상단에 브레드크럼("내 워크스페이스 › 화면")을 둔다.
-- **페이지 헤더:** 작은 대문자 문구(eyebrow) + 큰 제목 + 설명 + 우측 주요 버튼.
-- **기간 바:** 탭(1일·1주·1달·4주·12주) + 이전/다음 + 날짜 입력.
-- **통계 카드(stat):** 라벨, 큰 숫자 + 단위, 아래 보조 설명.
-- **카드·목록 행:** 날짜 타일, 제목, 요약, 우측 수치·수정·삭제.
-- **버튼 3종:** `primary`(주요 동작), `subtle-button`(보조), `text-button`(약한 동작). 아이콘은 lucide-react를 쓰고, 아이콘만 있는 버튼은 반드시 `aria-label`을 단다.
-- **모달 폼:** `form-grid` 2열, 라벨이 입력을 감싼다(`<label>텍스트<input/></label>`). 입력 안내는 `form-hint`.
-- **상태 표시:** 저장 상태는 `role="status"`, 오류는 `role="alert"`, 토글은 `aria-pressed`, 비어 있을 때는 빈 상태 안내(제목 + 설명 + 행동 버튼).
-- **차트:** 라이브러리 없이 SVG·CSS로 직접 그리고 `role="img"`와 값을 요약한 `aria-label`을 단다. 값이 없는 날을 0으로 잇지 않는다.
-
-### 8.3 반응형·검증
-
-- 중단점: `min-width: 1500px`(넓은 화면), `max-width: 1100px`(태블릿), `max-width: 760px`(모바일).
-- 화면을 바꾼 PR은 **모바일 390×844와 PC 1440×900**에서 실제 브라우저로 확인한다. 가로 스크롤(`scrollWidth > innerWidth`)이 없는지 보고 결과를 docs/changes에 남긴다.
-- 브라우저 확인에서 찾은 문제(이중 클릭 토글, 저장 후 화면 미갱신 등)는 회귀 테스트와 함께 고친다.
+자세한 규칙은 중앙 리포의 `docs/design-system.md`, `docs/ui-components.md`, `docs/layout.md`, `docs/pwa.md`와 이 리포의 [디자인 시스템](design-system.md)을 따른다.
 
 ## 9. Git 전략
 

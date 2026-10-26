@@ -46,7 +46,7 @@ test('새 일지는 오늘 날짜·제목과 오늘 루틴의 세트·머신으�
 
   await page.goto('/');
   await page
-    .getByRole('navigation', { name: '주요 메뉴' })
+    .getByRole('navigation', { name: '주 메뉴' })
     .getByRole('link', { name: '운동 일지' })
     .click();
   // Browsing another day does not change the new journal's date.

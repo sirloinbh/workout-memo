@@ -346,6 +346,16 @@ export async function settle(page: Page) {
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByText(/불러오는 중/)).toHaveCount(0);
+  // #159: the common dialog fades and zooms in; checks run on the finished frame, not
+  // through a half-transparent modal. Endless animations (spinners) are skipped.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+        .map((a) => a.finished),
+    ),
+  );
 }
 
 export async function openPage(page: Page, path: string) {

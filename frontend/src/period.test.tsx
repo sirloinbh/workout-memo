@@ -133,7 +133,9 @@ test('an older response cannot clear loading while the latest period is still pe
   expect(rows()).toHaveLength(1);
 });
 
-for (const mutation of ['delete', 'edit'] as const) {
+// #159: an edit is saved from the modal, which blocks the page behind it and cannot be closed
+// while its save is pending, so only a delete can race with a period change.
+for (const mutation of ['delete'] as const) {
   test(`a delayed ${mutation} refreshes the currently selected period`, async () => {
     const ui = mount([
       workout(1, '2024-02-29', 100),
@@ -265,4 +267,31 @@ test('period statistics and graph combine same-day sessions and refresh after ed
   expect(stat('완료한 세트')).toBe('0세트');
   expect(stat('누적 볼륨')).toBe('0kg');
   expect(chart()).not.toMatch(/[1-9][\d,.]*kg/);
+});
+
+test('a delayed edit keeps the page blocked until it finishes, then the new period loads', async () => {
+  const ui = mount([
+    workout(1, '2024-02-29', 100),
+    workout(2, '2024-03-01', 200),
+    workout(3, '2024-03-02', 300),
+  ]);
+  await loaded();
+  await ui.select('1일', '2024-02-29');
+  await waitFor(() => expect(rows()).toHaveLength(1));
+  const pending = ui.holdNextMutation();
+  await ui.user.click(screen.getByRole('button', { name: '수정' }));
+  const dialog = screen.getByRole('dialog');
+  const weight = dialog.querySelector<HTMLInputElement>('input[type="number"][step="0.25"]')!;
+  await ui.user.clear(weight);
+  await ui.user.type(weight, '150');
+  await ui.user.click(within(dialog).getByRole('button', { name: /저장/ }));
+  expect(screen.queryByRole('button', { name: '1달' })).toBeNull();
+  await ui.user.keyboard('{Escape}');
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  pending.resolve();
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await ui.select('1달', '2024-03-01');
+  await waitFor(() => expect(stat('누적 볼륨')).toBe('5,000kg'));
+  expect(rows()).toHaveLength(2);
+  expect(screen.queryByRole('alert')).toBeNull();
 });

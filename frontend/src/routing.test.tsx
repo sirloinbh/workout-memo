@@ -25,7 +25,7 @@ function mount(path = '/', failWorkouts = false) {
       api.requests.filter((r) => r.method === 'GET' && r.url.pathname === '/api/workouts').length,
   };
 }
-const menu = () => screen.getByRole('navigation', { name: '주요 메뉴' });
+const menu = () => screen.getByRole('navigation', { name: '주 메뉴' });
 const current = () =>
   within(menu())
     .getAllByRole('link')

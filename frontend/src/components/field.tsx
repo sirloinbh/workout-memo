@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { cn } from '../../lib/cn';
+import { cn } from '../lib/utils';
 
 // Ids for field messages: "sets.0.weight" becomes "issue-sets-0-weight".
 export const fieldErrorId = (name: string) => 'issue-' + name.replace(/\./g, '-');

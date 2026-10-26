@@ -26,7 +26,7 @@
 
 ## DB 접근과 계약
 
-현재 pg + SQL을 활용한다. 마이그레이션 적용 이력은 #58에서 `schema_migrations`와 `npm run db:migrate`로 도입했다. 기능별 라우트 모듈(`backend/src/routes/`)과 REST 계약 문서(`docs/api.md`)도 같은 작업에서 정리했다. OpenAPI 생성과 공유 Zod 계약 패키지는 실제 중복 제거가 필요할 때 별도 이슈로 도입한다. #60에서 Vitest·React Testing Library·Playwright를 도입해 화면 테스트를 실제 DOM으로 옮기고 일지 CRUD 브라우저 검증을 CI에 연결했다. #62에서 React Router(페이지 URL)와 TanStack Query(대시보드·일지·목표·머신 조회)를 도입했다. #64에서 공유 Zod 계약(`shared/contract.ts` 원본, backend·frontend 복제)과 React Hook Form(목표 폼), 일지·머신 폼의 저장 전 항목별 검증을 도입했다. #66에서 디자인 토큰(`theme.css`), Tailwind CSS 4(Preflight 제외), shadcn/ui 방식 공통 컴포넌트(`components/ui`)를 도입했고 변경 전후 화면이 픽셀 단위로 같음을 확인했다. Prisma는 ORM 전환을 요청받았을 때 검토할 후보이다. 전환 시 기존 DB baseline과 데이터 보존을 검증하고, database와 backend에서 서로 다른 마이그레이션 원본을 동시에 운영하지 않는다.
+현재 pg + SQL을 활용한다. 마이그레이션 적용 이력은 #58에서 `schema_migrations`와 `npm run db:migrate`로 도입했다. 기능별 라우트 모듈(`backend/src/routes/`)과 REST 계약 문서(`docs/api.md`)도 같은 작업에서 정리했다. OpenAPI 생성과 공유 Zod 계약 패키지는 실제 중복 제거가 필요할 때 별도 이슈로 도입한다. #60에서 Vitest·React Testing Library·Playwright를 도입해 화면 테스트를 실제 DOM으로 옮기고 일지 CRUD 브라우저 검증을 CI에 연결했다. #62에서 React Router(페이지 URL)와 TanStack Query(대시보드·일지·목표·머신 조회)를 도입했다. #64에서 공유 Zod 계약(`shared/contract.ts` 원본, backend·frontend 복제)과 React Hook Form(목표 폼), 일지·머신 폼의 저장 전 항목별 검증을 도입했다. #66에서 디자인 토큰(`theme.css`), Tailwind CSS 4(Preflight 제외), shadcn/ui 방식 공통 컴포넌트(`components/ui`)를 도입했고 변경 전후 화면이 픽셀 단위로 같음을 확인했다. #159에서 8개 앱 공통 디자인 시스템(흑백 라이트·다크 토큰, Pretendard, shadcn/ui 공통 컴포넌트, `AppShell`, PWA 설치)으로 바꿨다. Prisma는 ORM 전환을 요청받았을 때 검토할 후보이다. 전환 시 기존 DB baseline과 데이터 보존을 검증하고, database와 backend에서 서로 다른 마이그레이션 원본을 동시에 운영하지 않는다.
 
 날짜는 `YYYY-MM-DD`, 서비스 시간대는 `Asia/Seoul`. 머신 기본중량은 확인된 값만 입력한다. 운동 중량은 기본중량 포함 총중량 kg이며, 목표는 기간 내 동일 운동의 한 세트가 목표 중량과 횟수를 모두 충족했는지 서버에서 판단한다.
 

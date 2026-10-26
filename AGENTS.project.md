@@ -21,7 +21,7 @@
 
 ## 현재 구현
 
-- React + Vite + TypeScript(React Router 페이지 URL, TanStack Query 서버 조회, React Hook Form, Tailwind CSS 4 토큰·`components/ui` 공통 컴포넌트), Express + pg + Zod, PostgreSQL 17, npm workspaces, Docker Compose, GitHub Actions.
+- React + Vite + TypeScript(React Router 페이지 URL, TanStack Query 서버 조회, React Hook Form, Tailwind CSS 4, 공통 디자인 토큰·shadcn/ui 공통 컴포넌트·`AppShell`), Express + pg + Zod, PostgreSQL 17, npm workspaces, Docker Compose, GitHub Actions.
 
 ## 고유 스킬과 문서
 
@@ -30,7 +30,7 @@
 - 작업 절차: [workout-implementation](skills/workout-implementation/SKILL.md).
 - 개발 기반 구축·정리: [workout-foundation](skills/workout-foundation/SKILL.md). 적용 시 위 구현 절차도 함께 따른다.
 - 기술 추천과 적용 순서: [stack.md](skills/workout-foundation/references/stack.md). 추천 목록은 설치 완료 목록이 아니다.
-- 화면 디자인: [디자인 시스템](docs/design-system.md). 새 요소는 `frontend/src/components/ui`를 먼저 쓰고 색·모서리는 `theme.css` 토큰을 쓴다. Preflight와 기존 스타일 전면 교체는 전체 화면 비교와 함께 별도 이슈로 진행한다.
+- 화면 디자인: [디자인 시스템](docs/design-system.md). 새 요소는 `frontend/src/components/ui`(중앙 관리)를 먼저 쓰고 색은 공통 토큰 이름만 쓴다. 기존 `style.css` 화면을 공통 컴포넌트로 옮길 때는 전후 화면을 비교한다.
 
 ## 고유 검증 명령
 

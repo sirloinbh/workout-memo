@@ -15,7 +15,7 @@
 
 ## 계정과 도구
 
-- GitHub 개인 작업은 `ghp`를 우선 사용하며, 함수가 없는 비대화형 워커·Git helper는 `scripts/gh-project.ps1`을 명시적으로 호출한다. 개인 설정은 `%USERPROFILE%/.config/gh-personal`, 기대 계정은 `sirloinbh`이다. 기본 `gh`는 회사 계정 `byunghKim`용으로 유지하며 프로젝트 원격 변경에 사용하지 않는다.
+- GitHub 개인 작업은 `ghp`를 우선 사용하며, 함수가 없는 비대화형 워커·Git helper는 `scripts/gh-project.ps1`을 명시적으로 호출한다. 개인 설정은 `%USERPROFILE%/.config/gh-personal`, 기대 계정은 `sirloinbh`이다. 기본 `gh`는 회사 계정용으로 유지하며 프로젝트 원격 변경에 사용하지 않는다.
 - Codex는 `CODEX_HOME=%LOCALAPPDATA%/Codex-Account-B`로 기존 개인 계정B 프로필을 선택한다. 실행 중인 회사 계정 대화의 자동 전환을 전제하지 않는다. 인증 및 실행기 적용 절차는 [인증 문서](docs/project-github-auth.md)를 따른다.
 - 개인 인증 설정은 `%USERPROFILE%/.config/gh-personal`을 재사용하며, 도구 설치 위치 `%LOCALAPPDATA%/sirloinbh-tools`(중앙 `docs/tools.md`)와 구분한다.
 

@@ -4,7 +4,7 @@
 
 ## GitHub 사용
 
-- 기본 `gh`는 회사 계정 `byunghKim`용으로 유지합니다. 이 프로젝트의 이슈·푸시·PR 같은 원격 변경은 개인 계정 `sirloinbh`로 하고, 기본 `gh`로 하지 않습니다.
+- 기본 `gh`는 회사 계정용으로 유지합니다. 이 프로젝트의 이슈·푸시·PR 같은 원격 변경은 개인 계정 `sirloinbh`로 하고, 기본 `gh`로 하지 않습니다.
 - 대화형 터미널에서는 `ghp`를 씁니다. VS Code 통합 터미널 프로필(`.vscode/settings.json`, 중앙 관리 파일)이 `project-terminal.ps1`을 불러 `ghp` 함수를 만듭니다.
 - 함수가 없는 비대화형 워커·외부 PowerShell은 래퍼를 직접 부릅니다: `./scripts/gh-project.ps1 api user --jq .login`(중앙 관리 파일). 기대 계정은 `sirloinbh`입니다.
 - Git push/fetch는 이 저장소의 로컬 credential helper가 `%LOCALAPPDATA%\sirloinbh-tools\gh-project.ps1 auth git-credential`을 씁니다. 전역 helper와 회사 기본 인증은 바꾸지 않습니다. 재클론하면 중앙 `tools/set-credential-helper.ps1`로 다시 설정합니다.

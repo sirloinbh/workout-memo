@@ -1,5 +1,5 @@
 {
-  "centralSha": "47f8ad2c00907c1e88843e62714ce6c2646f5e89",
+  "centralSha": "3b90c85c232ec9540393ec04d38775708c8cff68",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -229,6 +229,7 @@
         "packageManager": "npm@11.19.0",
         "engines.node": "24.21.0",
         "engines.npm": "11.19.0",
+        "dependencies.@sirloinbh/design-tokens": "1.0.0",
         "devDependencies.@sirloinbh/tsconfig": "1.0.0"
       },
       "source": "templates/index.json"
@@ -504,7 +505,8 @@
   "packages": {
     "@sirloinbh/eslint-config": "1.0.0",
     "@sirloinbh/prettier-config": "1.0.0",
-    "@sirloinbh/tsconfig": "1.0.0"
+    "@sirloinbh/tsconfig": "1.0.0",
+    "@sirloinbh/design-tokens": "1.0.0"
   },
   "registry": {
     "ports": {

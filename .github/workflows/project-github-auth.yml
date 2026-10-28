@@ -1,5 +1,7 @@
 name: Project GitHub authentication
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   windows-auth:
     runs-on: windows-latest

@@ -1,0 +1,19 @@
+{
+  "name": "workout-memo",
+  "dockerComposeFile": ["../compose.yaml", "compose.yaml"],
+  "service": "dev",
+  "runServices": ["db", "dev"],
+  "workspaceFolder": "/workspaces/workout-memo",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "node",
+  "forwardPorts": [5201, 3101],
+  "portsAttributes": {
+    "5201": { "label": "vite" },
+    "3101": { "label": "api" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "EditorConfig.EditorConfig"]
+    }
+  }
+}

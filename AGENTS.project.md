@@ -25,7 +25,7 @@
 
 ## 고유 스킬과 문서
 
-- 사용자 설명 언어: [workout-communication](skills/workout-communication/SKILL.md). 사용자에게 하는 보고·안내·질문은 항상 한국어로 쓰고, 영어 자료는 번역해서 설명한다. 명령·경로·식별자·오류 원문은 그대로 둔다.
+- 사용자 설명 언어: 중앙 공통 스킬 [std-communication](skills/std-communication/SKILL.md)을 따른다(sirloinbh/project-standards#313).
 - 구현·수정 테스트: [workout-testing](skills/workout-testing/SKILL.md). 새 기능은 관련 테스트, 버그 수정은 회귀 테스트를 함께 작성한다.
 - 작업 절차: [workout-implementation](skills/workout-implementation/SKILL.md).
 - 개발 기반 구축·정리: [workout-foundation](skills/workout-foundation/SKILL.md). 적용 시 위 구현 절차도 함께 따른다.

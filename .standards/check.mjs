@@ -106,6 +106,39 @@ export function checkApi(sources) {
   return warnings;
 }
 
+// End index of the parenthesized group whose "(" is just before `start`.
+function closeParen(text, start) {
+  let depth = 1;
+  let i = start;
+  while (i < text.length && depth > 0) {
+    if (text[i] === '(') depth++;
+    else if (text[i] === ')') depth--;
+    i++;
+  }
+  return i;
+}
+
+// A zod array with no length limit lets one large request raise an issue per element until memory runs out
+// (GHSA-mrhx-c7xc-m3w5, #326). Follows the method chain after `.array(...)` across lines for .max()/.length().
+export function checkZodArrays(sources) {
+  const warnings = [];
+  for (const source of sources) {
+    if (!/from ['"]zod(\/v[34])?['"]/.test(source.text)) continue;
+    for (const m of source.text.matchAll(/\.array\(/g)) {
+      let i = closeParen(source.text, m.index + m[0].length);
+      const chain = [];
+      for (let next; (next = source.text.slice(i).match(/^\s*\.(\w+)\(/)); ) {
+        chain.push(next[1]);
+        i = closeParen(source.text, i + next[0].length);
+      }
+      if (chain.includes('max') || chain.includes('length')) continue;
+      const line = source.text.slice(0, m.index).split('\n').length;
+      warnings.push(`${source.file}:${line}: 배열 스키마에 길이 제한이 없습니다. .max(<개수>)를 붙입니다(zod 보안 권고 GHSA-mrhx-c7xc-m3w5).`);
+    }
+  }
+  return warnings;
+}
+
 // Frontend file names are lowercase words joined by hyphens; dots only separate kinds (docs/conventions/code.md, #312).
 const FILE_NAME = /^[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*$/;
 export function checkFileNames(files) {
@@ -196,7 +229,9 @@ export function runCheck(root) {
   checkPackages(manifest.packages, read, problems);
   if (manifest.registry) checkRegistry(manifest.registry, read, problems, warnings);
   checkLockfiles(read, problems);
-  warnings.push(...checkApi(apiSources(root)));
+  const backend = apiSources(root);
+  warnings.push(...checkApi(backend));
+  warnings.push(...checkZodArrays(backend));
   warnings.push(...checkFileNames(frontendFiles(root)));
   const compose = read('compose.yaml');
   if (compose !== null && (manifest.files['frontend/Dockerfile'] || manifest.files['backend/Dockerfile'])) {

@@ -1,5 +1,5 @@
 {
-  "centralSha": "9cc6fd1c6cac06dda0cf6d96a4c6aa0b32060d28",
+  "centralSha": "f60232d51da09b14ed7f4a580245643e6835c99a",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -95,7 +95,7 @@
     },
     ".gitignore": {
       "mode": "section",
-      "sha256": "a6a0663693db0b3ff0ffe77e08855e2bb44f4b8831e7a146ab7952de9f9d64f0",
+      "sha256": "ece91dab1dd481eca64581c25c4f17440d1c4f6fd25c7d52f0639208045b12a6",
       "source": "templates/common/.gitignore.tmpl"
     },
     ".node-version": {
@@ -130,7 +130,7 @@
     },
     ".standards/check.mjs": {
       "mode": "full",
-      "sha256": "bb0e9eb05d0ea06b21d2e540382379d9b4b27f64bd61dc03e008f32995ac9b84",
+      "sha256": "d3d3356442229cc93a42efc20fd9d0fce74b8028e2257f478aeeac6f9e211147",
       "source": "scripts/standards-check.mjs"
     },
     ".standards/ioc-scan.mjs": {
@@ -213,7 +213,7 @@
     },
     "backend/src/standard/http.ts": {
       "mode": "full",
-      "sha256": "95532692a4b6bc16bc622d87546b628362cedcc7f35dc4b55cd2be2109f9b56e",
+      "sha256": "0affd441a71279f817fa657b9c8acf480536cdf4c1412f646194d1e7f6e67fd7",
       "source": "templates/app/backend/src/standard/http.ts"
     },
     "backend/tsconfig.json": {
@@ -617,7 +617,7 @@
         "engines.npm": "11.19.0",
         "scripts.standards:check": "node .standards/check.mjs",
         "scripts.lockfiles:sync": "node .standards/lockfiles.mjs --write",
-        "devDependencies.@sirloinbh/eslint-config": "1.0.0",
+        "devDependencies.@sirloinbh/eslint-config": "1.1.0",
         "devDependencies.@sirloinbh/prettier-config": "1.0.0",
         "devDependencies.@eslint/js": "10.0.1",
         "devDependencies.eslint": "10.12.0",
@@ -686,7 +686,7 @@
     }
   },
   "packages": {
-    "@sirloinbh/eslint-config": "1.0.0",
+    "@sirloinbh/eslint-config": "1.1.0",
     "@sirloinbh/prettier-config": "1.0.0",
     "@sirloinbh/tsconfig": "1.0.0",
     "@sirloinbh/design-tokens": "1.0.0"

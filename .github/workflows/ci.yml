@@ -33,6 +33,8 @@ jobs:
           cache: npm
       - name: 공급망 점검 (설치 전, lockfile 기준)
         run: node .standards/ioc-scan.mjs
+      - name: 비밀값 유출 점검 (커밋된 토큰·키, .env)
+        run: node .standards/secret-scan.mjs
       - run: npm install --global "npm@$NPM_VERSION" --ignore-scripts
       - run: npm ci --ignore-scripts
       - name: 중앙 표준 검사

@@ -1,0 +1,18 @@
+# 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/devcontainer/.devcontainer/에서
+# Dev Container service (#282). It runs next to the db service of the app's own compose.yaml
+# and reaches it as db:5432, with the user and password from the root .env.
+# Nothing is installed automatically (no postCreateCommand): package installs need the user's
+# approval (docs/dependency-policy.md). After the container starts, run once in its terminal
+# (the image already has npm 11.19.0):
+#   npm ci --ignore-scripts
+services:
+  dev:
+    image: node:24.21.0-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/workout-memo:cached
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-workout}:${POSTGRES_PASSWORD:?Copy .env.example to .env and set password}@db:5432/${POSTGRES_DB:-workout}
+      TZ: Asia/Seoul
+    depends_on:
+      db: { condition: service_healthy }

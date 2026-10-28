@@ -13,3 +13,8 @@ backups/
 # --- project ---
 test-results/
 playwright-report/
+blob-report/
+coverage/
+*.tsbuildinfo
+*.tfvars
+.claude/settings.local.json

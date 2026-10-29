@@ -23,7 +23,8 @@
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "npm run typecheck --workspaces && tsc -p e2e/tsconfig.json",
-    "standards:check": "node .standards/check.mjs"
+    "standards:check": "node .standards/check.mjs",
+    "lockfiles:sync": "node .standards/lockfiles.mjs --write"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
@@ -36,7 +37,7 @@
     "globals": "16.5.0",
     "prettier": "3.9.10",
     "typescript-eslint": "8.71.2",
-    "@sirloinbh/eslint-config": "1.0.0",
+    "@sirloinbh/eslint-config": "1.1.0",
     "@sirloinbh/prettier-config": "1.0.0"
   },
   "allowScripts": {

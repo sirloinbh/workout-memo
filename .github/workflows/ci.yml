@@ -61,9 +61,33 @@ jobs:
           fi
       - run: npm run check
       - name: 안 쓰는 파일·export·의존성 (knip, 경고만)
-        # 처음에는 실패시키지 않는다(#263). 결과가 0이 된 앱부터 실패로 바꾼다.
-        if: hashFiles('knip.json') != ''
+        # 처음에는 실패시키지 않는다(#263). 결과가 0이 된 앱은 features.knipStrict로 실패 단계를 쓴다(#342).
+        if: hashFiles('knip.json') != '' && !false
         run: npm run knip || echo "::warning title=knip::안 쓰는 파일·export·의존성이 있습니다. 이 단계 로그를 확인하세요."
+      - name: 안 쓰는 파일·export·의존성 (knip)
+        if: hashFiles('knip.json') != '' && false
+        run: npm run knip
+      - name: 접근성·성능 점수 (Lighthouse CI, 경고만)
+        # 레지스트리 features.lighthouse인 앱만 lighthouserc.json을 받는다(#280). npm run check가 만든
+        # frontend/dist를 정적으로 띄워 러너의 Google Chrome으로 잰다. 기준 미달·측정 실패 모두 CI를 멈추지 않는다.
+        id: lighthouse
+        if: hashFiles('lighthouserc.json') != ''
+        run: |
+          node_modules/.bin/lhci autorun || echo "::warning title=Lighthouse CI::측정 또는 기준 점수 확인에 실패했습니다. 이 단계 로그를 확인하세요."
+          # The score summary goes to node on standard input, so no shell quoting is involved.
+          node - <<'JS'
+          const fs = require('node:fs');
+          const file = '.lighthouseci/manifest.json';
+          if (!fs.existsSync(file)) process.exit(0);
+          for (const run of JSON.parse(fs.readFileSync(file, 'utf8')).filter((r) => r.isRepresentativeRun)) {
+            const scores = Object.entries(run.summary).map(([k, v]) => `${k} ${Math.round(v * 100)}`).join(', ');
+            console.log(`${run.url}: ${scores}`);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Lighthouse ${run.url}: ${scores}\n`);
+          }
+          JS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.lighthouse.outcome != 'skipped'
+        with: { name: lighthouse-report, path: .lighthouseci, retention-days: 7, if-no-files-found: ignore }
       - name: 배포 스크립트 문법 검사
         run: |
           shopt -s nullglob

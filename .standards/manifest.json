@@ -1,5 +1,5 @@
 {
-  "centralSha": "e91112cfb495b6f5d832c638660adc621b9f39ae",
+  "centralSha": "7a47662beb53746a4bb08b2d2c7e708165eb2f70",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -90,12 +90,12 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "28d0785569edb17602c0872bfdc70c7e699cb7f065b0b936c45d03e16d7ec98f",
+      "sha256": "af21d80a9a8a560fa83a5a0773affa68f135ac652f84cedc70db4c5dc2f7019c",
       "source": ".github/workflows/reusable-app-ci.yml"
     },
     ".gitignore": {
       "mode": "section",
-      "sha256": "ece91dab1dd481eca64581c25c4f17440d1c4f6fd25c7d52f0639208045b12a6",
+      "sha256": "fbb342668d3fd142c5d5d688d59d63662961df951a92e0b0359af586e74b3328",
       "source": "templates/common/.gitignore.tmpl"
     },
     ".node-version": {
@@ -115,7 +115,7 @@
     },
     ".prettierignore": {
       "mode": "section",
-      "sha256": "12332e4212412b198cad757607a42cd418c02dbac9f1131b255156c990bb40a2",
+      "sha256": "e0e53bf51277e6bed103ce485a53844e28c00efa1d86e9d5a4fccf0e97a88b9d",
       "source": "templates/app/.prettierignore.tmpl"
     },
     ".standards/blocked-packages.json": {
@@ -594,6 +594,16 @@
       "sha256": "d609cd4d459a09392a6a758f7a45510477a6c99350600894f9c7cca07b2d30ca",
       "source": "templates/ui/frontend/src/lib/utils.ts"
     },
+    "frontend/src/test/contract-api.test.ts": {
+      "mode": "full",
+      "sha256": "74d8ecc459f6f34b26499b91ce2f1017394003ce2ee89c833b9dcee6af0b8043",
+      "source": "templates/msw/frontend/src/test/contract-api.test.ts"
+    },
+    "frontend/src/test/contract-api.ts": {
+      "mode": "full",
+      "sha256": "864ef9a8e2a91cd38a2650c49869abaee96034575d92508f007703a0840f98f3",
+      "source": "templates/msw/frontend/src/test/contract-api.ts"
+    },
     "frontend/tsconfig.json": {
       "mode": "full",
       "sha256": "0a086f123f3e30fdb63e62f26f7443200f6a71eb9848cb4a545cf68d3d36bf01",
@@ -606,8 +616,13 @@
     },
     "knip.json": {
       "mode": "full",
-      "sha256": "a8790f019e8e9ff327b4ccdf57fe4890516f4fd6bbd54110ae462ee11563f34e",
+      "sha256": "2daa22b9f4d1fae152acda1d84c7aabb6559ff5c44a2281a6c4f43dbb6f9e5d4",
       "source": "templates/app/knip.json"
+    },
+    "lighthouserc.json": {
+      "mode": "full",
+      "sha256": "82a4bc06ef0dc1d9de27a6284edf0f898920d4e81d09afcb519e547b32970946",
+      "source": "templates/lighthouse/lighthouserc.json"
     },
     "package.json": {
       "mode": "fields",

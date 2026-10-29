@@ -1,8 +1,10 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
 import type { Pool } from 'pg';
+
 import { createApp } from '../src/app.js';
-import { routineSchema, routineSchedule, type RoutinePlan } from '../src/domain.js';
+import { type RoutinePlan, routineSchedule, routineSchema } from '../src/domain.js';
 import {
   arrangeTargets,
   planEndDate,

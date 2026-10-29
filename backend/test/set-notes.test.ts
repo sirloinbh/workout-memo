@@ -1,7 +1,9 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+
 import { Pool } from 'pg';
+
 import { workoutSchema } from '../src/domain.js';
 
 test('set notes are optional for older clients and bounded like journal notes', () => {

@@ -1,12 +1,13 @@
 import type express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod';
+
 import {
   date,
-  routineSchema,
-  routineSchedule,
   type Feedback,
   type RoutinePlan,
+  routineSchedule,
+  routineSchema,
 } from '../domain.js';
 import {
   exerciseKey,
@@ -16,7 +17,7 @@ import {
   withWeightSteps,
   type WorkoutRecord,
 } from '../progress.js';
-import { id, type Db } from './shared.js';
+import { type Db, id } from './shared.js';
 
 type ActiveRoutine = { id: number; plan: RoutinePlan };
 // The routine in progress: started on or before today (Asia/Seoul), latest start wins.

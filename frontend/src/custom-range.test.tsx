@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
+
 import { App } from './app';
 import { fixClock, mockApi } from './test/api';
 import { openPage } from './test/nav';
@@ -40,7 +41,7 @@ const field = (label: string) => within(form()).getByLabelText(label);
 const stat = (label: string) =>
   screen
     .getAllByText(
-      (_, el) => el?.classList.contains('stat') === true && el.textContent!.startsWith(label),
+      (_, el) => el?.classList.contains('stat') === true && el.textContent.startsWith(label),
     )
     .at(0)!
     .querySelector('.stat-value')!.textContent;

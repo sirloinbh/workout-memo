@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
+
 import { modals, openModal, openPage, pages, widths } from './support/ui-fixtures.js';
 
 // #113: extends the #71 overflow check to every page and modal at each width, and checks

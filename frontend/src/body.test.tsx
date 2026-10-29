@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
+
 import { App } from './app';
 import { json, mockApi } from './test/api';
 import { openPage } from './test/nav';
@@ -117,7 +118,7 @@ function mount() {
   const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
   const input = (label: string) => {
     const item = [...document.querySelectorAll('label')].find((e) =>
-      e.textContent!.trim().startsWith(label),
+      e.textContent.trim().startsWith(label),
     );
     expect(item, `Input label ${label} exists`).toBeDefined();
     const found = item!.querySelector('input');

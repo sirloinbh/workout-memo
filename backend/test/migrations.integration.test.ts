@@ -1,14 +1,16 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
 import { Pool, type PoolClient } from 'pg';
+
 import {
   checksum,
   migrate,
+  type Migration,
   migrationStatus,
   readMigrations,
-  type Migration,
 } from '../src/migrations.js';
 
 const repoMigrations = fileURLToPath(new URL('../../database/migrations/', import.meta.url));

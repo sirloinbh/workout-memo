@@ -1,10 +1,11 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { checksum, planMigrations, readMigrations, type Migration } from '../src/migrations.js';
+
+import { checksum, type Migration, planMigrations, readMigrations } from '../src/migrations.js';
 
 const repoMigrations = fileURLToPath(new URL('../../database/migrations/', import.meta.url));
 const file = (name: string, sql = `-- ${name}`): Migration => ({

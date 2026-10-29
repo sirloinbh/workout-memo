@@ -1,15 +1,16 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
 import {
   backupFormat,
+  BackupInvalid,
   backupVersion,
   csvCell,
-  toCsv,
   parseBackup,
-  BackupInvalid,
+  toCsv,
 } from '../src/backup.js';
-import { routineInput } from './routine-fixture.js';
 import { parseCsv } from './csv-reader.js';
+import { routineInput } from './routine-fixture.js';
 
 test('CSV cells keep commas, quotes, newlines and Korean intact', () => {
   const values = [

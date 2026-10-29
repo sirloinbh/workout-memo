@@ -1,5 +1,6 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
 import { seoulDate } from '../../frontend/src/date.js';
 
 test('default workout date changes at Seoul midnight, including year and leap day boundaries', () => {

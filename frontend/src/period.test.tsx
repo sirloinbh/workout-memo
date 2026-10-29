@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
+
 import { App } from './app';
 import { deferred, fixClock, mockApi } from './test/api';
 
@@ -79,7 +80,7 @@ function mount(initial: Workout[] = []) {
 const stat = (label: string) => {
   const card = screen
     .getAllByText(
-      (_, el) => el?.classList.contains('stat') === true && el.textContent!.startsWith(label),
+      (_, el) => el?.classList.contains('stat') === true && el.textContent.startsWith(label),
     )
     .at(0)!;
   return card.querySelector('.stat-value')!.textContent;
@@ -171,7 +172,7 @@ for (const mutation of ['delete'] as const) {
     expect(stat('완료한 세트')).toBe(mutation === 'delete' ? '1세트' : '2세트');
     expect(chart()).toMatch(mutation === 'delete' ? /2,000kg/ : /5,000kg/);
     expect(rows()).toHaveLength(mutation === 'delete' ? 1 : 2);
-    expect(rows().every((row) => !row.textContent!.includes('기록 1'))).toBe(true);
+    expect(rows().every((row) => !row.textContent.includes('기록 1'))).toBe(true);
     expect(screen.queryByRole('alert')).toBeNull();
   });
 }

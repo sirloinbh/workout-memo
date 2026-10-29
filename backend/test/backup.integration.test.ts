@@ -1,12 +1,14 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
+import { test } from 'node:test';
+
 import { Pool } from 'pg';
+
 import { createApp } from '../src/app.js';
 import type { Backup, RestoreSummary } from '../src/backup.js';
-import { routineInput } from './routine-fixture.js';
 import { parseCsv } from './csv-reader.js';
+import { routineInput } from './routine-fixture.js';
 
 // Restore in "replace" mode deletes every row. Each scenario therefore runs in its own
 // PostgreSQL schema inside the dedicated test DB so concurrently running test files keep

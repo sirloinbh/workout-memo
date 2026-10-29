@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
+
 import { bodyMeasurementSchema, fieldErrors } from './contract';
 import {
   detectColumns,
   parseCsv,
+  type PreviewRow,
   rowFromText,
   rowsFromCsv,
-  targets,
-  type PreviewRow,
   type Target,
+  targets,
 } from './inbody';
 
 const labels: Record<Target, string> = {

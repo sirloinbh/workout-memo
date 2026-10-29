@@ -1,13 +1,15 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { Pool } from 'pg';
-import { createApp } from '../src/app.js';
-import { routineSchema, routineSchedule, type RoutinePlan } from '../src/domain.js';
-import { arrangeTargets, routineProgress } from '../src/progress.js';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
+
+import { Pool } from 'pg';
 import ts from 'typescript';
+
+import { createApp } from '../src/app.js';
+import { type RoutinePlan, routineSchedule, routineSchema } from '../src/domain.js';
+import { arrangeTargets, routineProgress } from '../src/progress.js';
 import { autoRoutineInput, routineInput } from './routine-fixture.js';
 
 // #88: "N training days + M rest days" cycles counted from the start date. Saved weekday

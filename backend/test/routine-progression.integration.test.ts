@@ -1,9 +1,11 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { test } from 'node:test';
+
 import { Pool } from 'pg';
+
 import { createApp } from '../src/app.js';
-import { routineSchedule, type RoutinePlan } from '../src/domain.js';
+import { type RoutinePlan, routineSchedule } from '../src/domain.js';
 import { autoRoutineInput } from './routine-fixture.js';
 
 // Adaptive auto targets read the real saved journal sets. Far-future dates keep

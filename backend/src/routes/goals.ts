@@ -1,5 +1,6 @@
 import type express from 'express';
 import type { Pool } from 'pg';
+
 import { exerciseKeySql, goalSchema } from '../domain.js';
 import { id, seoulTodaySql } from './shared.js';
 

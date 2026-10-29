@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
-import { analyze, type AnalysisSet } from '../../backend/src/analysis';
+
+import { type AnalysisSet, analyze } from '../../backend/src/analysis';
 import { App } from './app';
 import { fixClock, mockApi } from './test/api';
 import { openPage } from './test/nav';
@@ -60,10 +61,10 @@ const loaded = () =>
   });
 const partRow = (week: string, name: string) => {
   const article = [...document.querySelectorAll('.analysis-week')].find((e) =>
-    e.textContent!.startsWith(week),
+    e.textContent.startsWith(week),
   );
   expect(article, `week ${week}`).toBeDefined();
-  const row = [...article!.querySelectorAll('tr')].find((e) => e.textContent!.startsWith(name));
+  const row = [...article!.querySelectorAll('tr')].find((e) => e.textContent.startsWith(name));
   expect(row, `row ${name}`).toBeDefined();
   return row!.textContent;
 };

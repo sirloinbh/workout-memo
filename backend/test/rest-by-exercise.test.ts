@@ -1,9 +1,9 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { test } from 'node:test';
+
 import { Pool } from 'pg';
-import { createApp } from '../src/app.js';
-import { machineSchema } from '../src/domain.js';
+
 import {
   defaultRestDurations,
   defaultTimer,
@@ -12,6 +12,8 @@ import {
   restKind,
   startTimer,
 } from '../../frontend/src/rest-timer.js';
+import { createApp } from '../src/app.js';
+import { machineSchema } from '../src/domain.js';
 
 // #84: rest by exercise kind. Lower 2:30, upper 2:00, single-joint 1:30.
 test('default per-kind rests match the issue table', () => {

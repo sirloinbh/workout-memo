@@ -1,9 +1,11 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { test } from 'node:test';
+
 import { Pool } from 'pg';
+
 import { createApp } from '../src/app.js';
-import { routineInput, type SavedRoutine, type RoutineInput } from './routine-fixture.js';
+import { type RoutineInput, routineInput, type SavedRoutine } from './routine-fixture.js';
 
 async function withApi(pool: Pool, run: (call: ApiCall) => Promise<void>) {
   const server = createApp(pool).listen(0, '127.0.0.1');

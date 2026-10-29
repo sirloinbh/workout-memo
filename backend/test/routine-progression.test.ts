@@ -1,9 +1,11 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
+
 import ts from 'typescript';
-import { routineSchema, type RoutinePlan } from '../src/domain.js';
+
+import { type RoutinePlan, routineSchema } from '../src/domain.js';
 import * as progress from '../src/progress.js';
 import { autoRoutineInput, routineInput } from './routine-fixture.js';
 

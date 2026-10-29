@@ -1,9 +1,11 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { test } from 'node:test';
+
 import { Pool, type PoolClient } from 'pg';
+
 import { createApp } from '../src/app.js';
-import { routineSchedule, type RoutinePlan } from '../src/domain.js';
+import { type RoutinePlan, routineSchedule } from '../src/domain.js';
 import { routineInput } from './routine-fixture.js';
 
 // Far-future dates keep this routine the active one even while other test files

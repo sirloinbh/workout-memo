@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
+
 import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
 import { App } from './app';
 import { json, mockApi } from './test/api';
@@ -54,7 +55,7 @@ function mount(failPost = false, failReadAfterPost = false, initialPlan: Plan = 
     } else fireEvent.change(input, { target: { value } });
   }
   const form = () => document.querySelectorAll('form');
-  async function submit() {
+  function submit() {
     expect(form()[0]).toBeTruthy();
     fireEvent.submit(form()[0]);
   }
@@ -158,7 +159,7 @@ for (const failRead of [false, true]) {
         w.kind === 'deload' ? w.week / 4 - 1 : w.week - 1 - Math.floor(w.week / 4),
       );
     }
-    await ui.submit();
+    ui.submit();
     await saveSettled();
     const post = ui.requests.find((r) => r.method === 'POST');
     expect(post).toBeTruthy();
@@ -205,7 +206,7 @@ test('routine editor exposes all five splits and keeps a failed save available f
   // #88: 5분할 fills split 1 with 가슴; the clicks add two more occurrences.
   await ui.click('가슴 추가');
   await ui.click('가슴 추가');
-  await ui.submit();
+  ui.submit();
   await waitFor(() => expect(ui.text()).toMatch(/휴식 요일과 주당 운동 횟수를 확인하세요/));
   await saveSettled();
   expect(ui.form()).toHaveLength(1);
@@ -300,7 +301,7 @@ test('new routines default to automatic double progression with a 12-week previe
   expect(preview).toMatch(/12주차 디로딩: 1번째 0 kg × 12회\(디로딩\)/);
   expect(preview, 'the per-session rule is explained').toMatch(/세션\(운동일\)마다/);
   expect(ui.nonGet(), 'preview sends nothing').toHaveLength(0);
-  await ui.submit();
+  ui.submit();
   await saveSettled();
   const post = ui.requests.find((r) => r.method === 'POST');
   expect(post).toBeTruthy();
@@ -358,7 +359,7 @@ test('a new routine defaults to a cycle and fills each split count with its cycl
   await ui.change('연속 운동일', '2');
   await ui.change('루틴 이름', '주기 루틴');
   await ui.change('시작일', '2026-10-21');
-  await ui.submit();
+  ui.submit();
   await saveSettled();
   const body = ui.requests.find((r) => r.method === 'POST')!.body as Plan & {
     schedule_mode: string;
@@ -392,7 +393,7 @@ test('a routine exercise can name a machine that the plan keeps (#82)', async ()
     expect(ui.labels('머신')[0].querySelector('option[value="5"]')).not.toBeNull(),
   );
   await ui.change('머신', '5', 0);
-  await ui.submit();
+  ui.submit();
   await saveSettled();
   const post = ui.requests.find((r) => r.method === 'POST');
   const exercises = (post!.body as Plan).splits[0].exercises as Record<string, unknown>[];

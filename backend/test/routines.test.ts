@@ -1,9 +1,11 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
 import type { Pool } from 'pg';
-import * as domain from '../src/domain.js';
+
 import { createApp } from '../src/app.js';
-import { routineInput, type RoutineInput } from './routine-fixture.js';
+import * as domain from '../src/domain.js';
+import { type RoutineInput, routineInput } from './routine-fixture.js';
 
 type Schema = { safeParse(value: unknown): { success: boolean; data?: unknown } };
 const schema = () => {

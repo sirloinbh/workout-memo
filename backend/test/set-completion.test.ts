@@ -1,10 +1,12 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+
 import { Pool } from 'pg';
+
 import { createApp } from '../src/app.js';
-import { workoutSchema, volume } from '../src/domain.js';
+import { volume, workoutSchema } from '../src/domain.js';
 
 const workout = {
   date: '2026-10-15',

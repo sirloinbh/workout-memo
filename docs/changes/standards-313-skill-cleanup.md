@@ -6,10 +6,10 @@
 
 ## 변경
 
-| 파일 | 내용 |
-|---|---|
-| `skills/workout-communication/`, `.claude/skills/workout-communication/` | 삭제 |
-| `AGENTS.project.md` | 사용자 설명 언어는 `std-communication`을 따른다 |
+| 파일                                                                     | 내용                                            |
+| ------------------------------------------------------------------------ | ----------------------------------------------- |
+| `skills/workout-communication/`, `.claude/skills/workout-communication/` | 삭제                                            |
+| `AGENTS.project.md`                                                      | 사용자 설명 언어는 `std-communication`을 따른다 |
 
 ## 순서
 

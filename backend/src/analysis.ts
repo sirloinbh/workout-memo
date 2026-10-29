@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { allBodyParts, legacyBodyParts } from './domain.js';
 
 // Exercise analysis (#32). Everything is computed on read from saved sets, so

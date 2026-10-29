@@ -1,6 +1,8 @@
 // `npm run openapi`: regenerates docs/openapi.json from the routes and schemas.
 import { readFile, writeFile } from 'node:fs/promises';
+
 import type { Pool } from 'pg';
+
 import { createApp } from './app.js';
 import { buildOpenApi, routeDescriptions } from './openapi.js';
 

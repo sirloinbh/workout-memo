@@ -1,5 +1,6 @@
 import type express from 'express';
 import type { Pool } from 'pg';
+
 import { machineSchema, officialWeightQuery } from '../domain.js';
 import { id } from './shared.js';
 

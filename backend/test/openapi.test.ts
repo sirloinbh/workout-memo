@@ -1,8 +1,10 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { test } from 'node:test';
+
 import type { Pool } from 'pg';
 import { z } from 'zod';
+
 import { createApp } from '../src/app.js';
 import { goalSchema, workoutSchema } from '../src/domain.js';
 import { buildOpenApi, jsonSchema, registeredRoutes, routeDescriptions } from '../src/openapi.js';

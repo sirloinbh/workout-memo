@@ -1,8 +1,10 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
 import type { Pool } from 'pg';
+
 import { createApp } from '../src/app.js';
-import { machineSchema, workoutSchema, volume } from '../src/domain.js';
+import { machineSchema, volume, workoutSchema } from '../src/domain.js';
 
 const machine = { brand_id: 1, name: 'Arsenal test machine', notes: 'Verified test fixture' };
 const invalidWeights: unknown[] = [-0.25, 100000, '', '20', 'unknown', false, {}, [], undefined];

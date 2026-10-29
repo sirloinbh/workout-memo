@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
+
 import { App } from './app';
 import { fixClock, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
@@ -8,13 +9,14 @@ import { openPage } from './test/nav';
 // #89: InBody results become an editable preview; only confirmed rows are saved.
 const ocr = vi.hoisted(() => ({ text: '', images: [] as unknown[] }));
 vi.mock('tesseract.js', () => ({
-  createWorker: async () => ({
-    recognize: async (image: unknown) => {
-      ocr.images.push(image);
-      return { data: { text: ocr.text } };
-    },
-    terminate: async () => undefined,
-  }),
+  createWorker: () =>
+    Promise.resolve({
+      recognize: (image: unknown) => {
+        ocr.images.push(image);
+        return Promise.resolve({ data: { text: ocr.text } });
+      },
+      terminate: () => Promise.resolve(undefined),
+    }),
 }));
 
 function mount() {

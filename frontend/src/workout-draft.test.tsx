@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, test, vi } from 'vitest';
+
 import { App } from './app';
-import { deferred, deviceNow, fixClock, json, mockApi, type ApiRequest } from './test/api';
+import { type ApiRequest, deferred, deviceNow, fixClock, json, mockApi } from './test/api';
 
 type Workout = {
   id: number;
@@ -127,7 +128,7 @@ const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러�
 const stat = (label: string) => {
   const card = screen
     .getAllByText(
-      (_, el) => el?.classList.contains('stat') === true && el.textContent!.startsWith(label),
+      (_, el) => el?.classList.contains('stat') === true && el.textContent.startsWith(label),
     )
     .at(0)!;
   return card.querySelector('.stat-value')!.textContent;
@@ -338,12 +339,12 @@ test('the request deadline aborts pending transport and permits an explicit retr
     if (delay === 15000) deadlines.set(id, { callback, delay });
     return id;
   }) as typeof setTimeout);
-  vi.spyOn(globalThis, 'clearTimeout').mockImplementation(((
-    id?: Parameters<typeof clearTimeout>[0],
-  ) => {
-    deadlines.delete(id);
-    realClearTimeout(id);
-  }) as typeof clearTimeout);
+  vi.spyOn(globalThis, 'clearTimeout').mockImplementation(
+    (id?: Parameters<typeof clearTimeout>[0]) => {
+      deadlines.delete(id);
+      realClearTimeout(id);
+    },
+  );
   const ui = mount();
   await fill(ui);
   const pending = ui.holdNextMutation();

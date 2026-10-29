@@ -1,6 +1,7 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { date, goalSchema, workoutSchema, volume } from '../src/domain.js';
+import { test } from 'node:test';
+
+import { date, goalSchema, volume, workoutSchema } from '../src/domain.js';
 test('reject impossible calendar dates and reversed goal periods', () => {
   assert.equal(date.safeParse('2026-02-30').success, false);
   assert.equal(date.safeParse('2024-02-29').success, true);

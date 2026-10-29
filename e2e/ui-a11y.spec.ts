@@ -1,7 +1,9 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Browser, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import AxeBuilder from '@axe-core/playwright';
+import { type Browser, expect, type Page, test } from '@playwright/test';
+
 import { modals, openModal, openPage, pages } from './support/ui-fixtures.js';
 
 // #113: axe WCAG 2.1 A/AA rules (contrast, labels, roles) on every page and modal, at a

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
+
 import { App } from './app';
 import { deviceNow, fixClock, json, mockApi } from './test/api';
 
@@ -86,7 +87,7 @@ const content = () => document.body.textContent ?? '';
 const stat = (label: string) => {
   const card = screen
     .getAllByText(
-      (_, el) => el?.classList.contains('stat') === true && el.textContent!.startsWith(label),
+      (_, el) => el?.classList.contains('stat') === true && el.textContent.startsWith(label),
     )
     .at(0)!;
   return card.querySelector('.stat-value')!.textContent;
@@ -166,7 +167,9 @@ test('rest timer can be set, started, paused, resumed and cancelled', async () =
   // user-event waits on setTimeout, so clicks below are dispatched with fireEvent.
   fireEvent.click(screen.getByRole('button', { name: '휴식 시작' }));
   // A foreground tick: the clock moves and the due redraw timeout fires once.
-  act(() => vi.advanceTimersByTime(1000));
+  act(() => {
+    vi.advanceTimersByTime(1000);
+  });
   expect(timer()).toMatch(/0:59 남음/);
   advance(9000);
   fireEvent.click(screen.getByRole('button', { name: '일시정지' }));
@@ -295,7 +298,7 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
       sets: [
         { exercise: 'Squat', machine_id: null, weight: 100, reps: 10, completed: true, rpe: 8 },
       ],
-    } as Workout,
+    },
   ]);
   await loaded();
   await waitFor(() => expect(content()).toMatch(/체감 쉬움/));

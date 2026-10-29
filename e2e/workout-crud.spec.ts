@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // A fixed past date keeps the fixture apart from today's dashboard and goal logic.
 const day = '2001-03-15';

@@ -1,48 +1,50 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Activity,
+  ArrowRight,
   ArrowUpRight,
-  Plus,
+  ChevronLeft,
+  ChevronRight,
+  DatabaseBackup,
   Dumbbell,
   LayoutDashboard,
   NotebookPen,
-  Target,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Trash2,
-  ArrowRight,
-  Activity,
-  DatabaseBackup,
+  Plus,
   Scale,
+  Target,
+  Trash2,
   Trophy,
+  X,
 } from 'lucide-react';
-import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-router';
-import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
-import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-router';
+
+import { Analysis } from './analysis';
+import { Backup } from './backup';
+import { BodyMeasurements } from './body';
+import { FieldError, Input } from './components/field';
+import { invalidProps } from './components/field-props';
+import { AppShell, type NavItem } from './components/layout/app-shell';
+import { Modal } from './components/modal';
+import { Button } from './components/ui/button';
+import { Toaster } from './components/ui/sonner';
 import {
   defaultWeightStep,
+  type Feedback,
   feedbackLevels,
   fieldErrors,
+  type GoalInput,
   goalSchema,
   machineSchema,
   weightStepSchema,
   workoutSchema,
-  type Feedback,
-  type GoalInput,
 } from './contract';
-import { AppShell, type NavItem } from './components/layout/app-shell';
-import { Button } from './components/ui/button';
-import { Toaster } from './components/ui/sonner';
-import { FieldError, invalidProps, Input } from './components/field';
-import { Modal } from './components/modal';
 import { dateTitle, seoulDate } from './date';
-import { Routines } from './routines';
-import { Backup } from './backup';
-import { BodyMeasurements } from './body';
-import { Analysis } from './analysis';
-import { RoutineProgress, routineDraft, setReference, type Progress } from './progress';
+import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
+import { RoutineProgress } from './progress';
+import { type Progress, routineDraft, setReference } from './progress-data';
 import {
   cancelTimer,
   finished,
@@ -53,18 +55,19 @@ import {
   parseTimer,
   pauseTimer,
   remainingMs,
+  type RestDurations,
   restDurationsKey,
+  type RestKind,
   restKind,
   restKinds,
+  type RestTimer,
   restTimerKey,
   resumeTimer,
   startTimer,
   validDuration,
   withDuration,
-  type RestDurations,
-  type RestKind,
-  type RestTimer,
 } from './rest-timer';
+import { Routines } from './routines';
 const restKindLabels: Record<RestKind, string> = {
   lower: '하체',
   upper: '상체',
@@ -1837,7 +1840,7 @@ function GoalForm({
     <FieldError name={name}>{errors[name]?.message}</FieldError>
   );
   return (
-    <form noValidate onSubmit={handleSubmit(onSave)}>
+    <form noValidate onSubmit={(event) => void handleSubmit(onSave)(event)}>
       <label>
         운동명
         <Input

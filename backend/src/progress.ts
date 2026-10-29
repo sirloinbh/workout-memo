@@ -1,4 +1,4 @@
-import { defaultWeightStep, routineSchedule, type Feedback, type RoutinePlan } from './domain.js';
+import { defaultWeightStep, type Feedback, type RoutinePlan, routineSchedule } from './domain.js';
 
 // Routine progress (#28). A plan's targets keep their original order; a rest day
 // only changes which training slot (date) a target lands on. The 12-week end
@@ -338,7 +338,7 @@ export function routineProgress(
       entries: [
         ...days
           .filter((d) => d.target?.week === week)
-          .map((d) => ({ date: d.date as string | null, excluded: false, target: d.target! })),
+          .map((d) => ({ date: d.date, excluded: false, target: d.target! })),
         ...excluded
           .filter((t) => t.week === week)
           .map((target) => ({ date: null, excluded: true, target })),

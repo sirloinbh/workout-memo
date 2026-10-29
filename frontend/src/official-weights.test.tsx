@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
+
 import { App } from './app';
 import { json, mockApi } from './test/api';
 import { openPage } from './test/nav';
@@ -106,10 +107,10 @@ function mount(failReferences = false) {
   const button = (label: string) => screen.getAllByRole('button', { name: label })[0];
   const labelled = <T extends 'select' | 'input'>(label: string, type: T) => {
     const found = [...document.querySelectorAll('label')]
-      .filter((l) => l.textContent!.startsWith(label))
+      .filter((l) => l.textContent.startsWith(label))
       .flatMap((l) => [...l.querySelectorAll(type)])[0];
     expect(found, `${type} ${label}`).toBeDefined();
-    return found as HTMLElementTagNameMap[T];
+    return found;
   };
   const options = (select: HTMLSelectElement) =>
     [...select.querySelectorAll('option')].map((o) => o.textContent);

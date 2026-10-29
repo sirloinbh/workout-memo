@@ -3,21 +3,22 @@
 // docs/openapi.json and a test fails when the committed file is out of date.
 import type express from 'express';
 import { z, type ZodTypeAny } from 'zod';
+
 import { bodyPartMappingSchema } from './analysis.js';
-import { goalSuggestionQuery } from './routes/weight-steps.js';
 import { exportQuery, restoreRequest } from './backup.js';
 import {
   bodyMeasurementSchema,
   date,
   dateRange,
   goalSchema,
-  weightStepSchema,
   machineSchema,
   officialWeightQuery,
   routineSchema,
+  weightStepSchema,
   workoutSchema,
 } from './domain.js';
 import { analysisQuery } from './routes/analysis.js';
+import { goalSuggestionQuery } from './routes/weight-steps.js';
 
 type Json = Record<string, unknown>;
 

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+
 import { modals, openModal, openPage, pages, widths } from './support/ui-fixtures.js';
 
 // #113: screenshot baselines are made only in the pinned Playwright container (CI and

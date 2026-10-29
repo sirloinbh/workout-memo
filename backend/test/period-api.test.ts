@@ -1,6 +1,8 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
 import type { Pool } from 'pg';
+
 import { createApp } from '../src/app.js';
 
 test('workout range rejects malformed and reversed dates before querying storage', async () => {

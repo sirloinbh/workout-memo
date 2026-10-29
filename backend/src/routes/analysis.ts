@@ -1,7 +1,8 @@
 import type express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import { analyze, bodyPartMappingSchema, type AnalysisSet } from '../analysis.js';
+
+import { type AnalysisSet, analyze, bodyPartMappingSchema } from '../analysis.js';
 import { allBodyParts, date, exerciseKeySql } from '../domain.js';
 import { seoulTodaySql } from './shared.js';
 

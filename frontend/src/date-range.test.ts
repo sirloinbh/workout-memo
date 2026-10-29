@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { checkRange, maxRangeDays, parseRange, rangeBuckets, rangeDays } from './date-range';
 
 // #85: a directly chosen range includes both ends and is at most 371 days.

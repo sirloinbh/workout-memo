@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url';
+
 import { Pool } from 'pg';
+
 import { migrate, migrationStatus, readMigrations } from './migrations.js';
 
 // Host-side CLI: `npm run db:migrate` applies pending files, `-- --status` only reports.

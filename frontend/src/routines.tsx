@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+
 import { defaultWeightStep } from './contract';
 import { byWeek, kindLabel, previewTargets } from './progression';
 

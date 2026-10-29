@@ -1,10 +1,10 @@
 // #55: Windows PowerShell 5.1 re-encodes text piped to or captured from native programs
 // (ASCII out, console code page in), which corrupted Korean SQL and backups. Command
 // examples in PowerShell blocks must use files (`psql -f`, `docker compose cp`) instead.
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');

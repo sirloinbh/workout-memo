@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
-import { FieldError, Input, invalidProps } from './field';
+
+import { FieldError, Input } from './field';
+import { invalidProps } from './field-props';
 import { Modal } from './modal';
 
 test('a field message is linked to its control and absent without a message', () => {

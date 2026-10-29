@@ -1,7 +1,9 @@
-import type express from 'express';
 import { createHash } from 'node:crypto';
+
+import type express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod';
+
 import { dateRange, workoutSchema } from '../domain.js';
 import { id } from './shared.js';
 

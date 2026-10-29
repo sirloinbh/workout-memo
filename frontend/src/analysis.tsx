@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+
 import { seoulDate } from './date';
 
 // #88: 이두·삼두 replace 팔 for new choices; a saved 팔 is still listed so it can be cleared.
@@ -44,7 +45,7 @@ const shift = (date: string, days: number) => {
   return d.toISOString().slice(0, 10);
 };
 // Monday-start weeks ending with the week that contains the anchor date.
-export function analysisRange(anchor: string, weeks: number) {
+function analysisRange(anchor: string, weeks: number) {
   const day = new Date(anchor + 'T12:00:00Z').getUTCDay();
   const monday = shift(anchor, -((day + 6) % 7));
   return { from: shift(monday, -7 * (weeks - 1)), to: shift(monday, 6) };

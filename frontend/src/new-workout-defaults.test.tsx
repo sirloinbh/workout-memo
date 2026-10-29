@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
+
 import { App } from './app';
-import type { Progress } from './progress';
+import type { Progress } from './progress-data';
 import { fixClock, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
@@ -64,7 +65,7 @@ function mount(progress: Progress) {
 }
 const dialog = () => screen.getByRole('dialog');
 const inputs = (label: string) =>
-  within(dialog()).getAllByLabelText(label) as (HTMLInputElement | HTMLSelectElement)[];
+  within(dialog()).getAllByLabelText<HTMLInputElement | HTMLSelectElement>(label);
 const values = (label: string) => inputs(label).map((e) => e.value);
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
   await openPage('운동 일지', user);

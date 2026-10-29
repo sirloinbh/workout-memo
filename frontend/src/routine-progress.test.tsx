@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
-import { routineSchema, type RoutinePlan } from '../../backend/src/domain';
+
+import { type RoutinePlan, routineSchema } from '../../backend/src/domain';
 import { routineProgress } from '../../backend/src/progress';
 import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
 import { App } from './app';
@@ -11,7 +12,7 @@ import { openPage } from './test/nav';
 // Ported from backend/test/routine-progress-ui.test.ts (vm hook harness) to a real
 // DOM. The server is simulated with the real progress functions so previews match
 // applied results.
-const plan = routineSchema.parse(routineInput(2)) as RoutinePlan;
+const plan = routineSchema.parse(routineInput(2));
 const today = '2024-03-04'; // Monday, the second training slot: split 2, week 1.
 
 function mount(options: { routine?: boolean; plan?: RoutinePlan } = {}) {
@@ -280,7 +281,7 @@ test('rest shows the preview first, applies once on rapid clicks and can be canc
 
 test('auto routine targets show firm values today and label future sessions as projected', async () => {
   // Auto fixture starts Monday 2024-03-04, so today is its first session.
-  const ui = mount({ plan: routineSchema.parse(autoRoutineInput()) as RoutinePlan });
+  const ui = mount({ plan: routineSchema.parse(autoRoutineInput()) });
   await openJournal();
   const content = ui.text(card()!);
   expect(content).toMatch(/자동 목표/);

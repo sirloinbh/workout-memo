@@ -1,13 +1,15 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
 import type { Pool } from 'pg';
-import { createApp } from '../src/app.js';
+
 import {
+  type AnalysisSet,
   analyze,
   bodyPartMappingSchema,
   estimatedOneRepMax,
-  type AnalysisSet,
 } from '../src/analysis.js';
+import { createApp } from '../src/app.js';
 
 let nextId = 1;
 const set = (

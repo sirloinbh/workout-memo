@@ -1,6 +1,7 @@
 import type express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod';
+
 import { defaultWeightStep, exerciseKeySql, weightStepSchema } from '../domain.js';
 
 export const goalSuggestionQuery = z

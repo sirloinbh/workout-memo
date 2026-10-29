@@ -1,10 +1,11 @@
 import { expect, type Page } from '@playwright/test';
-import { analyze, type AnalysisSet } from '../../backend/src/analysis.js';
+
+import { type AnalysisSet, analyze } from '../../backend/src/analysis.js';
 import {
   defaultWeightStep,
+  type RoutinePlan,
   routineSchedule,
   routineSchema,
-  type RoutinePlan,
 } from '../../backend/src/domain.js';
 import {
   routineProgress,

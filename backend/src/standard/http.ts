@@ -62,9 +62,16 @@ type ErrorFields = {
 };
 
 // Matched by shape so that both zod 3 and zod 4 errors are recognized without importing zod.
+// At most MAX_ISSUES messages reach the response: a large invalid array can raise one issue per element
+// (GHSA-mrhx-c7xc-m3w5, #326), and the client only needs the first few to fix its input.
+export const MAX_ISSUES = 10;
+
 function zodMessages(error: ErrorFields) {
   if (error.name !== 'ZodError' || !Array.isArray(error.issues)) return null;
-  return error.issues.map((issue: { message?: unknown }) => String(issue.message)).join(', ');
+  const issues = error.issues as { message?: unknown }[];
+  const shown = issues.slice(0, MAX_ISSUES).map((issue) => String(issue.message));
+  if (issues.length > MAX_ISSUES) shown.push(`외 ${issues.length - MAX_ISSUES}개`);
+  return shown.join(', ');
 }
 
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {

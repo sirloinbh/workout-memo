@@ -60,6 +60,10 @@ jobs:
             done
           fi
       - run: npm run check
+      - name: 안 쓰는 파일·export·의존성 (knip, 경고만)
+        # 처음에는 실패시키지 않는다(#263). 결과가 0이 된 앱부터 실패로 바꾼다.
+        if: hashFiles('knip.json') != ''
+        run: npm run knip || echo "::warning title=knip::안 쓰는 파일·export·의존성이 있습니다. 이 단계 로그를 확인하세요."
       - name: 배포 스크립트 문법 검사
         run: |
           shopt -s nullglob

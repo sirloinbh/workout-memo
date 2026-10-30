@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
-import { json, mockApi } from './test/api';
+import { fixClock, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/body-ui.test.ts (vm hook harness) to a real DOM. Real browser
@@ -55,7 +55,8 @@ const fixture = (): Body[] => [
   },
 ];
 
-function mount() {
+function mount(now?: string) {
+  if (now) fixClock(now);
   vi.stubGlobal('confirm', () => true);
   let records = fixture();
   let nextId = 100;
@@ -162,6 +163,7 @@ function mount() {
     };
   };
   return {
+    user,
     requests: api.requests,
     bodyGets,
     loaded,
@@ -179,6 +181,9 @@ const page = () => document.body.textContent ?? '';
 async function openWeek() {
   const ui = mount();
   await openPage('신체 기록');
+  await ui.loaded();
+  // The body page starts at 12 weeks (#123); these cases pick one week explicitly.
+  await ui.click('1주');
   await ui.loaded();
   // The period anchor is reused on the body page.
   await ui.setAnchor('2024-03-06');
@@ -217,18 +222,51 @@ test('body page reuses the selected period and plots only recorded values withou
   expect(page()).not.toMatch(/2024-03-18/);
 });
 
-test('empty period shows an empty trend without points', async () => {
+const trendCharts = () =>
+  [...document.querySelectorAll('[aria-label]')].filter((e) =>
+    / 추이 \(/.test(e.getAttribute('aria-label')!),
+  );
+
+test('default period is 12 weeks so a record from last week is charted on first open', async () => {
+  // Monday 2024-03-11 in Seoul; the latest records (3/3–3/7) are all from last week.
+  const ui = mount('2024-03-11T03:00:00Z');
+  await openPage('신체 기록', ui.user);
+  await ui.loaded();
+  expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2023-12-19&to=2024-03-11');
+  expect(screen.getByRole('button', { name: '12주' })).toHaveClass('selected');
+  await waitFor(() => expect(ui.chart('체중').points).toBe(4));
+  expect(ui.chart('체지방률').points).toBe(2);
+  expect(ui.chart('골격근량').points).toBe(1);
+  expect(page()).not.toMatch(/값이 없는 지표/);
+});
+
+test('the 12-week default is only for the body page; a chosen preset is shared', async () => {
+  const ui = mount('2024-03-11T03:00:00Z');
+  await openPage('신체 기록', ui.user);
+  await ui.loaded();
+  await openPage('대시보드', ui.user);
+  // The dashboard keeps its one-week default.
+  await waitFor(() => expect(page()).toMatch(/2024-03-11 — 2024-03-17/));
+  expect(screen.getByRole('button', { name: '1주' })).toHaveClass('selected');
+  await ui.click('4주');
+  await openPage('신체 기록', ui.user);
+  // Once chosen, the period is shared again instead of falling back to 12 weeks.
+  await waitFor(() =>
+    expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2024-02-13&to=2024-03-11'),
+  );
+  expect(screen.getByRole('button', { name: '4주' })).toHaveClass('selected');
+});
+
+test('empty period replaces empty charts with one line', async () => {
   const ui = await openWeek();
   await ui.click('다음 기간');
   await waitFor(() =>
     expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2024-03-11&to=2024-03-17'),
   );
   await waitFor(() => expect(page()).toMatch(/선택한 기간에 신체 기록이 없습니다/));
-  for (const label of ['체중', '체지방률', '골격근량']) {
-    const c = ui.chart(label);
-    expect(c.points).toBe(0);
-    expect(c.lines).toBe(0);
-  }
+  // No empty chart cards; the metrics without values are named in a single line.
+  expect(trendCharts()).toHaveLength(0);
+  expect(page()).toMatch(/이 기간에 입력한 값이 없는 지표: 체중 · 체지방률 · 골격근량/);
   await ui.click('1달');
   await waitFor(() =>
     expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2024-03-01&to=2024-03-31'),

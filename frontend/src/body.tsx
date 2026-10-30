@@ -136,6 +136,9 @@ export function BodyMeasurements({
       .reduce((n, s) => n + Number(s.weight) * s.reps, 0);
     volumeByDate.set(date, (volumeByDate.get(date) ?? 0) + volume);
   }
+  // #123: a metric without any value in the period gets one line instead of an empty chart.
+  const charted = metrics.filter((m) => rows.some((row) => row[m.key] !== null));
+  const missing = metrics.filter((m) => !charted.includes(m));
   const edit = (row?: BodyRecord) => {
     setFormError('');
     setStatus('');
@@ -245,11 +248,18 @@ export function BodyMeasurements({
           </button>
         </form>
       )}
-      <div className="body-trends">
-        {metrics.map((m) => (
-          <Trend key={m.key} metric={m} rows={rows} from={from} to={to} />
-        ))}
-      </div>
+      {charted.length > 0 && (
+        <div className="body-trends">
+          {charted.map((m) => (
+            <Trend key={m.key} metric={m} rows={rows} from={from} to={to} />
+          ))}
+        </div>
+      )}
+      {!loading && missing.length > 0 && (
+        <p className="form-hint body-trend-missing">
+          이 기간에 입력한 값이 없는 지표: {missing.map((m) => m.label).join(' · ')}
+        </p>
+      )}
       <p className="form-hint">
         같은 날의 운동 볼륨을 나란히 보여줄 뿐이며, 운동과 신체 변화 사이의 인과 관계를 뜻하지
         않습니다. 의학적 판정이나 권장 범위는 제공하지 않습니다.
@@ -319,6 +329,7 @@ export function BodyMeasurements({
   );
 }
 
+// Drawn only for a metric with at least one value in the period (#123).
 function Trend({
   metric,
   rows,
@@ -354,9 +365,9 @@ function Trend({
     <figure
       className="card body-trend"
       role="img"
-      aria-label={`${metric.label} 추이 (${metric.unit}): ${
-        points.length ? points.map((p) => `${p.date} ${fmt(p.value)}`).join(', ') : '기록 없음'
-      }`}
+      aria-label={`${metric.label} 추이 (${metric.unit}): ${points
+        .map((p) => `${p.date} ${fmt(p.value)}`)
+        .join(', ')}`}
     >
       <figcaption>
         <strong>
@@ -364,9 +375,7 @@ function Trend({
         </strong>
         <span>
           {change === null
-            ? points.length
-              ? `${fmt(points[0].value)} ${metric.unit}`
-              : ''
+            ? `${fmt(points[0].value)} ${metric.unit}`
             : `첫 기록 대비 ${change > 0 ? '+' : ''}${fmt(change)} ${metric.unit}`}
         </span>
       </figcaption>
@@ -388,16 +397,11 @@ function Trend({
       </svg>
       <div className="body-trend-axis">
         <span>{from}</span>
-        {points.length > 0 && (
-          <span>
-            {fmt(low)}–{fmt(high)} {metric.unit}
-          </span>
-        )}
+        <span>
+          {fmt(low)}–{fmt(high)} {metric.unit}
+        </span>
         <span>{to}</span>
       </div>
-      {!points.length && (
-        <p className="chart-empty">이 기간에 입력한 {metric.label} 값이 없습니다</p>
-      )}
     </figure>
   );
 }

@@ -838,6 +838,9 @@
   gap: 14px;
   margin: 18px 0 8px;
 }
+.body-trend-missing {
+  margin: 18px 0 8px;
+}
 .body-trend {
   position: relative;
   margin: 0;

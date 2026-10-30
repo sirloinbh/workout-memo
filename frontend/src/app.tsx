@@ -334,8 +334,11 @@ function Workspace() {
   const [customOpen, setCustomOpen] = useState(false);
   const [customDraft, setCustomDraft] = useState({ from: '', to: '' });
   const [customErrors, setCustomErrors] = useState<{ from?: string; to?: string }>({});
-  const [period, setPeriod] = useState('week'),
-    [anchor, setAnchor] = useState(today()),
+  // #123: until a preset is chosen, body measurements default to 12 weeks because they
+  // are recorded about weekly; the dashboard and journal default to one week.
+  const [chosenPeriod, setPeriod] = useState<string | null>(null);
+  const period = chosenPeriod ?? (page === 'body' ? '12weeks' : 'week');
+  const [anchor, setAnchor] = useState(today()),
     [brand, setBrand] = useState(0),
     [actionError, setError] = useState(''),
     [saving, setSaving] = useState(false),

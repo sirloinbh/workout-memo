@@ -333,3 +333,16 @@ test('edit sends a full replacement via PUT and delete removes the record', asyn
   await waitFor(() => expect(ui.chart('체중').label).not.toMatch(/2024-03-06/));
   expect(ui.chart('체중').points).toBe(3);
 });
+
+test('a failed load reports the error without claiming the metrics are empty', async () => {
+  mockApi(({ url }) => {
+    if (url.pathname.startsWith('/api/body-measurements')) throw new TypeError('Failed to fetch');
+    return [];
+  });
+  const user = userEvent.setup();
+  render(<App />);
+  await openPage('신체 기록', user);
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('다시 연결');
+  expect(page()).not.toMatch(/값이 없는 지표/);
+});

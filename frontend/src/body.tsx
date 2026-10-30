@@ -255,7 +255,8 @@ export function BodyMeasurements({
           ))}
         </div>
       )}
-      {!loading && missing.length > 0 && (
+      {/* A failed load has no rows to judge, so it must not claim the values are missing. */}
+      {!loading && !error && missing.length > 0 && (
         <p className="form-hint body-trend-missing">
           이 기간에 입력한 값이 없는 지표: {missing.map((m) => m.label).join(' · ')}
         </p>

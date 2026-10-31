@@ -568,6 +568,8 @@ CI 러너 안의 `npm ci`는 격리된 GitHub 환경에서 잠금 파일대로 �
 - **PWA:** manifest, 서비스 워커, 오프라인 화면, 아이콘.
 - **검증:** 360·390·768·1280px에서 가로 넘침 없음, 라이트·다크 모두 WCAG AA 대비, 키보드로 메뉴·모달 조작.
 
+위는 새 프로젝트의 기본값이다. workout-memo 자체는 `features.darkOnly`로 다크 전용이라 화면 모드 메뉴가 없고, 화면 검사도 다크 기준이다(#184, 중앙 ADR-0011).
+
 자세한 규칙은 중앙 리포의 `docs/design-system.md`, `docs/ui-components.md`, `docs/layout.md`, `docs/pwa.md`와 이 리포의 [디자인 시스템](design-system.md)을 따른다.
 
 ## 9. Git 전략

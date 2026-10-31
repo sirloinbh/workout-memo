@@ -39,6 +39,11 @@
 - 로컬에 남은 커밋을 새 head에 cherry-pick해 일반 push로 복구했습니다. 강제 push는 하지 않았습니다.
 - 복구 전후 차이는 #362가 가져온 `std-git-writing` 스킬과 `.standards/manifest.json`뿐입니다. 시각 기준선은 다시 만들지 않았습니다.
 
+## 변경 — docs: 리뷰 기록
+
+- 1차 리뷰: 위 "1차 리뷰 보완"으로 반영하고, 오프라인 화면은 project-standards#363으로 분리했습니다.
+- 2차 리뷰: 보완점 없음. 복구 전후 차이는 리뷰어가 대조하지 못해 작성자가 `git diff a432737 aee97c7`로 확인했습니다.
+
 ## 제한·후속
 
 - 오프라인 화면: project-standards#363. 이 PR 병합 뒤에 진행합니다.

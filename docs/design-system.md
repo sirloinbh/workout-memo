@@ -4,14 +4,14 @@ workout-memo는 8개 앱 공통 디자인 시스템을 씁니다(#159, 중앙 pr
 
 ## UI 기준 결정 (#98)
 
-사용자가 2026-10-30에 정했습니다. 다크 전용은 아직 적용 전입니다. #184가 끝날 때까지 앱에는 라이트·다크·시스템 메뉴가 남아 있고, 아래 "구성"과 "규칙"의 라이트 모드 설명도 그때까지 유효합니다.
+사용자가 2026-10-30에 정했습니다. 다크 전용은 #184에서 적용했습니다. 사용자가 다크 화면만 쓰기로 해, 모든 화면과 화면 검사의 기준은 다크 하나입니다.
 
 | 항목            | 결정                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------- |
 | 컴포넌트 기준   | shadcn/ui + Radix(`radix-ui` 1.7.0). 공통 컴포넌트 17개가 `frontend/src/components/ui`에 있습니다 |
 | 탈락한 후보     | Base UI, Ark UI, 직접 작성. 8개 앱 공통 기준을 따르기로 해 고르지 않았습니다                      |
 | 디자인 톤       | 다크 모드만 씁니다. 색은 공통 다크 토큰(바탕 `#0a0a0a`, 카드 `#171717`)을 그대로 씁니다           |
-| 라이트·시스템   | 선택지를 없앱니다                                                                                 |
+| 라이트·시스템   | 선택지를 없앴습니다. 중앙 레지스트리 `features.darkOnly`로 고정합니다(중앙 ADR-0011)              |
 | 새 npm 패키지   | 사용자가 도입을 허용했지만, 필요한 패키지가 이미 설치돼 있어 새로 들일 것이 없습니다              |
 | Preflight(#100) | #159에서 Tailwind CSS 4와 함께 켜졌습니다                                                         |
 | 대표 화면 시안  | 따로 만들지 않습니다. #184의 시각 기준선으로 확인합니다                                           |
@@ -35,9 +35,9 @@ workout-memo는 8개 앱 공통 디자인 시스템을 씁니다(#159, 중앙 pr
 | `frontend/src/index.css`                    | 앱   | Tailwind CSS 4, `tw-animate-css`, `@sirloinbh/design-tokens`(흑백 라이트·다크, Pretendard) |
 | `frontend/src/style.css`                    | 앱   | 전환 전부터 있던 페이지 스타일. `components` 레이어에 들어가고, 색은 공통 토큰만 참조      |
 | `frontend/src/components/ui/`               | 중앙 | shadcn/ui 공통 컴포넌트(Button, Dialog, Sheet 등). 직접 고치지 않음                        |
-| `frontend/src/components/layout/`           | 중앙 | `AppShell`(상단 바, 주 메뉴, 본문, footer), 화면 모드 메뉴                                 |
-| `frontend/src/lib/utils.ts`, `lib/theme.ts` | 중앙 | `cn()`, 화면 모드 저장·적용                                                                |
-| `frontend/public/theme-init.js`             | 중앙 | 첫 화면 전에 저장한 화면 모드 적용(깜빡임 방지)                                            |
+| `frontend/src/components/layout/`           | 중앙 | `AppShell`(상단 바, 주 메뉴, 본문, footer). 화면 모드 메뉴는 다크 전용이라 그리지 않음     |
+| `frontend/src/lib/utils.ts`, `lib/theme.ts` | 중앙 | `cn()`, 화면 모드 적용. `lib/theme-config.ts`의 `DARK_ONLY`로 항상 다크                    |
+| `frontend/public/theme-init.js`             | 중앙 | 첫 화면 전에 다크 적용(깜빡임 방지). 저장값은 무시                                         |
 | `frontend/src/components/modal.tsx`         | 앱   | `Modal`: 공통 Dialog를 `title`·`close`로 여는 앱 래퍼. 내용은 `.legacy .modal` 폼 스타일   |
 | `frontend/src/components/field.tsx`         | 앱   | `Input`, `FieldError`, `invalidProps(name, message)`: 오류 문구와 입력란 연결              |
 
@@ -47,5 +47,5 @@ workout-memo는 8개 앱 공통 디자인 시스템을 씁니다(#159, 중앙 pr
 2. 색은 공통 토큰 이름만 씁니다(`bg-primary`, `text-muted-foreground`, CSS에서는 `var(--primary)`). 색 코드를 직접 쓰지 않고, 토큰을 앱에서 덮어쓰지 않습니다.
 3. `style.css`의 요소 규칙(`button`, `p`, `h1` 등)은 `.legacy` 안에서만 적용됩니다. 페이지 본문과 `Modal` 내용이 `.legacy`이고, 공통 셸과 공통 컴포넌트는 영향을 받지 않습니다.
 4. `style.css`는 `components` 레이어라 같은 속성이면 Tailwind 유틸리티가 이깁니다. 기존 화면을 유틸리티와 공통 컴포넌트로 옮기면 해당 `style.css` 규칙을 지웁니다.
-5. 회색 바탕(`--muted`) 위의 흐린 글자(`--muted-foreground`)는 라이트 모드에서 4.35:1이라 WCAG AA(4.5:1)에 못 미칩니다. 그런 바탕을 새로 만들면 `style.css` 끝의 대비 규칙에 추가합니다.
+5. `style.css` 끝의 대비 규칙은 라이트 모드 때 만들었습니다. 다크에서도 axe 검사를 통과해 그대로 두며, 화면을 공통 컴포넌트로 옮길 때 함께 지웁니다. 새 바탕을 위해 이 규칙을 늘리지 않습니다.
 6. 오류 문구는 `<label>` 밖에 두어 입력란의 접근성 이름을 바꾸지 않습니다.

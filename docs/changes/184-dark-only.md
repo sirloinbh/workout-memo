@@ -33,6 +33,12 @@
 - 분리: 오프라인 화면 `frontend/public/offline.html`이 OS 라이트 설정을 따르는 문제는 중앙 관리 파일이라 중앙 이슈로 나눴습니다. 번호는 아래 "제한·후속"에 적습니다.
 - 반영하지 않은 지적: `sonner.tsx`의 라이트 분기, `theme.ts`의 주석, `theme-toggle.tsx` 파일 존재는 중앙 관리 파일이고 다크 전용 동작에 문제가 없습니다.
 
+## 변경 — docs: 동기화 브랜치 재생성 복구
+
+- 작업 중 중앙 PR #362(project-standards#359)가 main에 병합돼, 동기화 봇이 이 브랜치를 `3aecccf`(project-standards@c8a4331)로 다시 만들었습니다. 앞서 더한 커밋이 원격에서 사라졌습니다(project-standards#114).
+- 로컬에 남은 커밋을 새 head에 cherry-pick해 일반 push로 복구했습니다. 강제 push는 하지 않았습니다.
+- 복구 전후 차이는 #362가 가져온 `std-git-writing` 스킬과 `.standards/manifest.json`뿐입니다. 시각 기준선은 다시 만들지 않았습니다.
+
 ## 제한·후속
 
 - 오프라인 화면: project-standards#363. 이 PR 병합 뒤에 진행합니다.

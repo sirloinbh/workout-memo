@@ -1219,9 +1219,12 @@
 @media (pointer: coarse) {
   .legacy :is(input:not([type='checkbox'], [type='radio'], [type='hidden']), select, textarea) {
     font-size: 16px;
+  }
+  .legacy :is(input:not([type='checkbox'], [type='radio'], [type='hidden']), select) {
     min-height: 44px;
   }
-  .legacy button {
+  .legacy button,
+  .rest-timer .rest-actions button {
     min-width: 44px;
     min-height: 44px;
   }

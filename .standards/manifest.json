@@ -1,11 +1,11 @@
 {
-  "centralSha": "10baedfb001c54137e02a1c87484219519dffdac",
+  "centralSha": "bb67a2839ed4876702c4c0195c3fa02525f52fca",
   "profile": "app",
   "project": "workout-memo",
   "files": {
     ".claude/hooks/block-package-installs.mjs": {
       "mode": "full",
-      "sha256": "96ed13e7ef27034622fde22d25dc516b8f626b2fe555c90cec822a205ec57533",
+      "sha256": "eb4fd729989c4f45319020c8f5d993381c17136bfd5ec4e9ee52146bd49050ce",
       "source": "templates/common/.claude/hooks/block-package-installs.mjs"
     },
     ".claude/hooks/pc-setup-notice.mjs": {
@@ -15,7 +15,7 @@
     },
     ".claude/settings.json": {
       "mode": "full",
-      "sha256": "656ca80eafc32125c69cd3c30d2b93a176462470401a53faa411afead83d3ef4",
+      "sha256": "7fd5612d18e2952f085afe612e07b83f9dd2c4789994c2e8b690a71cacc0eb2a",
       "source": "templates/common/.claude/settings.json.tmpl"
     },
     ".claude/skills/std-backlog/SKILL.md": {
@@ -60,12 +60,12 @@
     },
     ".codex/rules/package-installs.rules": {
       "mode": "full",
-      "sha256": "66466ffe26bad84175b75032e68ab4b098135682e8617c7cf36607114393af55",
+      "sha256": "e7170be604dd8d6a455f1f5925f4f4fb86582202707ce1000357bb4721c05e22",
       "source": "templates/common/.codex/rules/package-installs.rules"
     },
     ".devcontainer/compose.yaml": {
       "mode": "full",
-      "sha256": "d1b1ceea8d6e67e8d4210a47b0c8c48f323a47ca8cdda44f5b782cb774f6eea5",
+      "sha256": "eafd1fe20bd3eb77e906c5091db9e7f8fc0cc9bd98d7e879463a11ed2cfccce4",
       "source": "templates/devcontainer/.devcontainer/compose.yaml.tmpl"
     },
     ".devcontainer/devcontainer.json": {
@@ -185,7 +185,7 @@
     },
     "AGENTS.md": {
       "mode": "full",
-      "sha256": "714c9c24238b3c585258177dea3db4140f675ec5ec4ec666b564b21c0cc085c3",
+      "sha256": "86decd36597040ff1789aa0b2f922be2d672267def8f4028252ce0119499b5dd",
       "source": "templates/app/AGENTS.md.tmpl"
     },
     "backend/.npmrc": {

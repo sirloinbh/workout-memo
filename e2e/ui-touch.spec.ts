@@ -16,7 +16,7 @@ function violations(root: Locator) {
       `${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 20)}"`;
     const fields =
       'input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea';
-    const targets = `button, summary, ${fields}`;
+    const targets = `button, summary, a.primary, ${fields}`;
     for (const scope of roots) {
       for (const el of scope.querySelectorAll(fields)) {
         if (!visible(el)) continue;
@@ -63,6 +63,8 @@ for (const { width, height } of touchWidths) {
         const dialog = await openModal(page, modal);
         expect(await violations(dialog), modal.name).toEqual([]);
         expect(await overflow(page), `${modal.name} 가로 넘침(px)`).toBeLessThanOrEqual(0);
+        const inner = await dialog.evaluate((el) => el.scrollWidth - el.clientWidth);
+        expect(inner, `${modal.name} 모달 안 가로 넘침(px)`).toBeLessThanOrEqual(0);
       }
     });
   });

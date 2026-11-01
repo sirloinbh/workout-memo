@@ -1232,9 +1232,28 @@
     min-height: 44px;
     padding-block: 12px;
   }
+  .legacy a.primary {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
   .legacy label:has(> input[type='checkbox']) {
     min-height: 44px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+  }
+  /* A bare checkbox in a table row; the common Checkbox replaces it in #103. */
+  .inbody-preview input[type='checkbox'] {
+    width: 24px;
+    height: 24px;
+  }
+  /* The delete button's column follows its 44px minimum. */
+  .set-editor {
+    grid-template-columns: 22px 1.5fr 1.5fr 85px 65px 44px;
+  }
+}
+@media (pointer: coarse) and (max-width: 760px) {
+  .set-editor {
+    grid-template-columns: 18px 1fr 1fr 44px;
   }
 }

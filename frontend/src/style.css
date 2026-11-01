@@ -1211,3 +1211,27 @@
 :is(.tabs, .focus-card, .date-tile, .form-hint, div.official-ref, .rest-timer, .rest-preview) * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }
+
+/*
+ * #104: on touch screens fields use 16px text (iOS zooms in below that) and controls stay
+ * 44px to tap. Last in the file so it wins over the smaller per-screen sizes above.
+ */
+@media (pointer: coarse) {
+  .legacy :is(input:not([type='checkbox'], [type='radio'], [type='hidden']), select, textarea) {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .legacy button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .legacy summary {
+    min-height: 44px;
+    padding-block: 12px;
+  }
+  .legacy label:has(> input[type='checkbox']) {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}

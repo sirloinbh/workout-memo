@@ -1,11 +1,11 @@
 import type express from 'express';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
-import { defaultWeightStep, exerciseKeySql, weightStepSchema } from '../domain.js';
+import { defaultWeightStep, exerciseKeySql, limitLength, weightStepSchema } from '../domain.js';
 
 export const goalSuggestionQuery = z
-  .object({ exercise: z.string().trim().min(1).max(120) })
+  .object({ exercise: limitLength(z.string().trim(), { min: 1, max: 120 }) })
   .strict();
 const round = (value: number) => Math.round(value * 100) / 100;
 

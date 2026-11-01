@@ -26,14 +26,14 @@
 
 전환 전 스키마(zod 3.25.76)와 전환 후 스키마를 입력 12,489개로 비교했다. 전환 후는 `zod/v4`(3.25.76)와 `node_modules/knip/node_modules/zod`(4.6.7) 두 가지로 돌렸다. 입력은 모든 필드에 잘못된 값, 빈 값, 큰 값, Infinity, `constructor` 키(null, 숫자, 객체)를 넣은 것이다.
 
-| 분류 | 3.25.76 `zod/v4` | 4.6.7 |
-|---|---:|---:|
-| 합격 여부, 파싱 값, 메시지가 모두 같음 | 3,434 | 3,453 |
-| zod 기본 영어 문구만 다름 | 8,774 | 8,902 |
-| 같은 문구가 반복되는 횟수만 다름 | 22 | 22 |
-| 첫 문구는 같고 뒤 문구가 줄어듦 | 10 | 10 |
-| 영어 문구가 다르고 교차 검사 문구도 달라짐 | 236 | 86 |
-| 합격 여부가 다름 | 13 | 16 |
+| 분류                                       | 3.25.76 `zod/v4` | 4.6.7 |
+| ------------------------------------------ | ---------------: | ----: |
+| 합격 여부, 파싱 값, 메시지가 모두 같음     |            3,434 | 3,453 |
+| zod 기본 영어 문구만 다름                  |            8,774 | 8,902 |
+| 같은 문구가 반복되는 횟수만 다름           |               22 |    22 |
+| 첫 문구는 같고 뒤 문구가 줄어듦            |               10 |    10 |
+| 영어 문구가 다르고 교차 검사 문구도 달라짐 |              236 |    86 |
+| 합격 여부가 다름                           |               13 |    16 |
 
 합격한 입력의 파싱 값 차이는 두 버전 모두 없다. 값이 달라지면 재시도 키의 지문도 달라지므로 이 항목을 따로 확인했다. 모든 입력에서 스키마가 예외를 던지지 않았다.
 
@@ -45,16 +45,16 @@
 
 **zod 기본 영어 문구.** 한국어 문구를 지정하지 않은 곳은 문구가 zod 4의 것으로 바뀐다. 문자열 길이 문구만 `limitLength`가 zod 3 문구를 유지한다.
 
-| 전 | 후 |
-|---|---|
-| `Required` | `Invalid input: expected number, received undefined` |
-| `Expected string, received number` | `Invalid input: expected string, received number` |
-| `Number must be greater than or equal to 1` | `Too small: expected number to be >=1` |
-| `Array must contain at most 6 element(s)` | `Too big: expected array to have <=6 items` |
-| `Invalid enum value. Expected 'a' \| 'b', received 'c'` | `Invalid option: expected one of "a"\|"b"` |
-| `Unrecognized key(s) in object: 'x'` | `Unrecognized key: "x"` |
-| `Invalid datetime` | `Invalid ISO datetime` |
-| `Invalid uuid` | `Invalid GUID` |
+| 전                                                      | 후                                                   |
+| ------------------------------------------------------- | ---------------------------------------------------- |
+| `Required`                                              | `Invalid input: expected number, received undefined` |
+| `Expected string, received number`                      | `Invalid input: expected string, received number`    |
+| `Number must be greater than or equal to 1`             | `Too small: expected number to be >=1`               |
+| `Array must contain at most 6 element(s)`               | `Too big: expected array to have <=6 items`          |
+| `Invalid enum value. Expected 'a' \| 'b', received 'c'` | `Invalid option: expected one of "a"\|"b"`           |
+| `Unrecognized key(s) in object: 'x'`                    | `Unrecognized key: "x"`                              |
+| `Invalid datetime`                                      | `Invalid ISO datetime`                               |
+| `Invalid uuid`                                          | `Invalid GUID`                                       |
 
 **한국어 문구가 함께 달라지는 경우.**
 

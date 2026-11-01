@@ -29,7 +29,7 @@
 
 - P2 그 외: [#105](https://github.com/sirloinbh/workout-memo/issues/105)는 `NumberInput`으로 진행할 수 있다. [#125](https://github.com/sirloinbh/workout-memo/issues/125)는 #102와 함께, [#124](https://github.com/sirloinbh/workout-memo/issues/124)는 Combobox를 앱 고유로 만들어 진행한다.
 - [#198](https://github.com/sirloinbh/workout-memo/issues/198) 터치 검사를 클릭 후 화면까지 넓히기(P3).
-- `docs/deployment.md`에 `NODE_AUTH_TOKEN` 안내를 복구한다. 아직 이슈가 없다. 원문은 로컬 브랜치 `chore/145-standards-sync-prep`(닫힌 PR #146)에 있고, 복구한 뒤 이 브랜치를 지운다. 이 브랜치도 이력상 병합되지 않아 삭제에 `-D` 승인이 필요하다.
+- `docs/deployment.md`에 `NODE_AUTH_TOKEN` 안내를 추가한다. 아직 이슈가 없다. main에 들어간 적 없는 초안이 로컬 브랜치 `chore/145-standards-sync-prep`(닫힌 PR #146)에 있고, 추가한 뒤 이 브랜치를 지운다. 이 브랜치도 이력상 병합되지 않아 삭제에 `-D` 승인이 필요하다.
 - 1회성 장식 색 토큰화는 아직 이슈가 없다(#66 후속).
 - 일지·머신 폼의 React Hook Form 완전 전환: 초안 저장·재시도 키 구조를 먼저 분리해야 한다(#64 후속).
 - 신체 기록·루틴 폼에 공유 계약 화면 검증을 적용한다(#64 후속).

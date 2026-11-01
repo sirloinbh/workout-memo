@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { expect, test } from 'vitest';
 
@@ -24,6 +24,22 @@ test('each chip reports whether it is pressed', () => {
   expect(screen.getByRole('group', { name: '부위' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '가슴' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByRole('button', { name: '등' })).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('the result follows the option order, not the click order', () => {
+  render(<Parts />);
+  fireEvent.click(screen.getByRole('button', { name: '가슴' }));
+  fireEvent.click(screen.getByRole('button', { name: '어깨' }));
+  fireEvent.click(screen.getByRole('button', { name: '가슴' }));
+  expect(screen.getByRole('status')).toHaveTextContent('가슴,어깨');
+});
+
+test('arrow keys move focus between chips', async () => {
+  render(<Parts />);
+  const first = screen.getByRole('button', { name: '가슴' });
+  first.focus();
+  fireEvent.keyDown(first, { key: 'ArrowRight' });
+  await waitFor(() => expect(screen.getByRole('button', { name: '등' })).toHaveFocus());
 });
 
 test('several chips can be on, and all can be turned off', () => {

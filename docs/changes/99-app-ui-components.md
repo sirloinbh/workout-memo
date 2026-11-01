@@ -22,7 +22,7 @@
 
 ## 테스트
 
-`frontend/src/components/`의 `segmented-control.test.tsx`, `toggle-chips.test.tsx`, `switch.test.tsx`, `number-input.test.tsx`, `list.test.tsx`가 역할·이름·상태·키보드 순서를 확인합니다.
+`frontend/src/components/`의 `segmented-control.test.tsx`, `toggle-chips.test.tsx`, `switch.test.tsx`, `number-input.test.tsx`, `list.test.tsx`가 역할·이름·상태와 화살표 포커스 이동을 확인합니다. jsdom이라 실제 Tab 순서와 Space·Enter 동작은 확인하지 못합니다.
 
 ## 검증
 
@@ -31,6 +31,14 @@
 - `npm run knip`: 새 파일 관련 항목 없음. 기존 항목은 그대로 남아 있습니다(CI에서는 경고만).
 - 로컬 `npm run check`: 완료하지 못했습니다. 시스템 메모리 부족으로 중단됐습니다. 전체 검사는 PR CI로 확인합니다.
 - 화면 변경이 없어 브라우저 확인과 시각 기준선 갱신은 하지 않았습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+- `ToggleChips`: 결과를 클릭 순서가 아니라 `options` 순서로 돌려줍니다. 같은 부위 조합이 다른 배열로 저장되지 않습니다.
+- `NumberInput`: `readOnly`이면 버튼도 막습니다. 한도의 버튼은 `aria-disabled`라 키보드 포커스를 잃지 않습니다. `aria-label`은 `label`로만 정하고, `inputMode`는 넘길 수 있습니다.
+- 테스트: 한쪽 한도, 읽기 전용·비활성, 빈 값, 칩 순서와 화살표 이동을 추가했습니다.
+- `docs/design-system.md`: `SegmentedControl`의 화살표는 포커스만 옮기고 Space·Enter로 고른다고 적었습니다.
+- 반영하지 않은 지적: `List`의 `role="list"`는 린트 규칙 `jsx-a11y-x/no-redundant-roles`가 금지하고, VoiceOver 문제도 실제로 확인하지 못해 넣지 않았습니다. 지수 표기 입력, 범위 밖 값의 점프, `0x10` 입력은 kg·횟수에서 현실적인 문제가 아닙니다. `SegmentedControl`의 `disabled`, `aria-describedby`는 화면 교체에서 필요해지면 넣습니다.
 
 ## 제한·후속
 

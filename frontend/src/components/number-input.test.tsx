@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { NumberInput } from './number-input';
 import { stepValue } from './number-step';
@@ -48,10 +48,41 @@ test('typing keeps the text as written', () => {
   expect(field()).toHaveValue('12.');
 });
 
-test('the button at a limit is disabled', () => {
-  render(<Weight initial="0" max={0} />);
-  expect(down()).toBeDisabled();
-  expect(up()).toBeDisabled();
+test('only the button at the limit stops, and it keeps keyboard focus', () => {
+  render(<Weight initial="2.5" min={0} max={5} />);
+  fireEvent.click(down());
+  expect(field()).toHaveValue('0');
+  expect(down()).toHaveAttribute('aria-disabled', 'true');
+  expect(down()).toBeEnabled();
+  expect(up()).not.toHaveAttribute('aria-disabled');
+  fireEvent.click(down());
+  expect(field()).toHaveValue('0');
+
+  fireEvent.click(up());
+  fireEvent.click(up());
+  expect(field()).toHaveValue('5');
+  expect(up()).toHaveAttribute('aria-disabled', 'true');
+  expect(down()).not.toHaveAttribute('aria-disabled');
+});
+
+test('a read-only or disabled field cannot be changed with the buttons', () => {
+  const onValueChange = vi.fn();
+  const { rerender } = render(
+    <NumberInput label="중량" value="10" onValueChange={onValueChange} readOnly />,
+  );
+  expect(field()).toHaveAttribute('readonly');
+  fireEvent.click(up());
+  rerender(<NumberInput label="중량" value="10" onValueChange={onValueChange} disabled />);
+  expect(field()).toBeDisabled();
+  fireEvent.click(down());
+  expect(onValueChange).not.toHaveBeenCalled();
+});
+
+test('an empty field can still be stepped from the minimum', () => {
+  render(<Weight initial="" min={0} />);
+  expect(down()).not.toHaveAttribute('aria-disabled');
+  fireEvent.click(up());
+  expect(field()).toHaveValue('2.5');
 });
 
 test('a whole-number step opens the numeric keypad, a fractional one the decimal keypad', () => {
@@ -59,6 +90,13 @@ test('a whole-number step opens the numeric keypad, a fractional one the decimal
   expect(field()).toHaveAttribute('inputmode', 'numeric');
   unmount();
   render(<Weight step={0.25} />);
+  expect(field()).toHaveAttribute('inputmode', 'decimal');
+});
+
+test('the keypad can be chosen, for kg in whole steps that may hold decimals', () => {
+  render(
+    <NumberInput label="중량" value="10" onValueChange={() => {}} step={5} inputMode="decimal" />,
+  );
   expect(field()).toHaveAttribute('inputmode', 'decimal');
 });
 

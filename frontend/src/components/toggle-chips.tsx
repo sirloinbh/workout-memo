@@ -2,7 +2,8 @@ import { ToggleGroup } from 'radix-ui';
 
 import { cn } from '../lib/utils';
 
-// Any number of choices, including none: body parts of an exercise.
+// Any number of choices, including none: body parts of an exercise. The result follows the
+// order of options, not of the clicks, so the same choice always gives the same array.
 export function ToggleChips({
   label,
   options,
@@ -22,7 +23,7 @@ export function ToggleChips({
       role="group"
       aria-label={label}
       value={[...value]}
-      onValueChange={onValueChange}
+      onValueChange={(next) => onValueChange(options.filter((option) => next.includes(option)))}
       className={cn('flex flex-wrap gap-2', className)}
     >
       {options.map((option) => (

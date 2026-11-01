@@ -1,8 +1,8 @@
 import express from 'express';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
-import { date, feedbackLevels, routineSchema } from './domain.js';
+import { date, feedbackLevels, limitLength, routineSchema } from './domain.js';
 
 // Two deliberately separate artifacts (#33):
 // - analysis CSV: one row per set for spreadsheets; lossy (formula guard) and never restorable.
@@ -46,8 +46,9 @@ export const csvColumns = [
 
 const id = z.number().int().positive();
 const kg = z.number().min(0).max(99999);
-const name = z.string().trim().min(1).max(120);
-const timestamp = z.string().datetime({ offset: true });
+const name = limitLength(z.string().trim(), { min: 1, max: 120 });
+const notes = (max: number) => limitLength(z.string(), { max });
+const timestamp = z.iso.datetime({ offset: true });
 const backupSchema = z.object({
   format: z.literal(backupFormat),
   version: z.literal(backupVersion),
@@ -62,7 +63,7 @@ const backupSchema = z.object({
             brand_id: id,
             name,
             base_weight: kg.nullable(),
-            notes: z.string().max(2000),
+            notes: notes(2000),
             // #84: backups made before single-joint machines have no field.
             single_joint: z.boolean().default(false),
           }),
@@ -74,7 +75,7 @@ const backupSchema = z.object({
             id,
             date,
             title: name,
-            notes: z.string().max(4000),
+            notes: notes(4000),
             // #83: backups made before workout feedback have no field; it stays NULL.
             feedback: z.enum(feedbackLevels).nullable().default(null),
             created_at: timestamp,
@@ -85,7 +86,7 @@ const backupSchema = z.object({
                   machine_id: id.nullable(),
                   weight: kg,
                   reps: z.number().int().min(1).max(1000),
-                  notes: z.string().max(4000),
+                  notes: notes(4000),
                 }),
               )
               .max(200),
@@ -417,7 +418,8 @@ export const exportQuery = z
 export const restoreRequest = z.object({
   mode: z.enum(['merge', 'replace']).default('merge'),
   confirm: z.string().optional(),
-  backup: z.unknown(),
+  // Optional so a missing backup reaches parseBackup and its Korean message.
+  backup: z.unknown().optional(),
 });
 
 // Registered before the app-wide 256kb JSON parser so a backup may be up to 10MB.

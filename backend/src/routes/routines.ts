@@ -1,6 +1,6 @@
 import type express from 'express';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import {
   date,

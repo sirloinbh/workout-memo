@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
-import { date } from './contract.js';
+import { date, limitLength } from './contract.js';
 // Input schemas shared with the frontend live in contract.ts (synced from shared/contract.ts).
 export {
   type BodyMeasurementInput,
@@ -10,12 +10,13 @@ export {
   type Feedback,
   feedbackLevels,
   goalSchema,
+  limitLength,
   machineSchema,
   weightStepSchema,
   workoutSchema,
 } from './contract.js';
 export const officialWeightQuery = z
-  .object({ brand: z.string().trim().min(1).max(120).optional() })
+  .object({ brand: limitLength(z.string().trim(), { min: 1, max: 120 }).optional() })
   .strict();
 // Weight always means the total moved load, including a machine's base weight.
 // Not-completed (planned) sets are not actual performance.
@@ -53,7 +54,7 @@ export const exerciseKeySql = (column: string) => `lower(trim(${column}))`;
 
 export const routineSchema = z
   .object({
-    name: z.string().trim().min(1).max(120),
+    name: limitLength(z.string().trim(), { min: 1, max: 120 }),
     // #28: 'auto' computes weekly targets (double progression). A missing value
     // is a saved #27 routine with manual weekly changes.
     progression: z.enum(['manual', 'auto']).optional(),
@@ -73,7 +74,7 @@ export const routineSchema = z
     splits: z
       .array(
         z.object({
-          name: z.string().trim().min(1).max(120),
+          name: limitLength(z.string().trim(), { min: 1, max: 120 }),
           body_parts: z
             .array(z.enum(allBodyParts))
             .min(1, '분할마다 운동 부위를 1개 이상 선택하세요')
@@ -81,7 +82,7 @@ export const routineSchema = z
           exercises: z
             .array(
               z.object({
-                exercise: z.string().trim().min(1).max(120),
+                exercise: limitLength(z.string().trim(), { min: 1, max: 120 }),
                 // #82: optional machine copied into a new journal's sets. Older plans omit it.
                 machine_id: z.number().int().positive().max(2147483647).nullable().optional(),
                 sets: z.number().int().min(1).max(200),

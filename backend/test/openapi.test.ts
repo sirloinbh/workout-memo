@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import { createApp } from '../src/app.js';
 import { goalSchema, workoutSchema } from '../src/domain.js';
@@ -74,7 +74,7 @@ test('request schemas keep the server constraints for sets and goals', () => {
 });
 
 test('unsupported schemas and undocumented routes fail instead of being skipped', () => {
-  assert.throws(() => jsonSchema(z.date()), /Unsupported Zod type for OpenAPI: ZodDate/);
+  assert.throws(() => jsonSchema(z.date()), /Unsupported Zod type for OpenAPI: date/);
   const extended = app();
   extended.get('/api/undocumented', (_req, res) => void res.json({}));
   assert.throws(() => buildOpenApi(extended, {}), /\+GET \/api\/undocumented/);

@@ -81,7 +81,7 @@ test('the schema keeps cycle and weekday fields apart; saved weekday plans are u
   );
   bad(
     { schedule_mode: 'cycle', rest_days: [], cycle: { train_days: 0, rest_days: 1 } },
-    /Number must be greater than or equal to 1/,
+    /Too small: expected number to be >=1/,
   );
 });
 

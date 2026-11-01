@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
-import { allBodyParts, legacyBodyParts } from './domain.js';
+import { allBodyParts, legacyBodyParts, limitLength } from './domain.js';
 
 // Exercise analysis (#32). Everything is computed on read from saved sets, so
 // edits and deletes are reflected on the next request without stored PRs.
@@ -9,7 +9,7 @@ export const unclassified = '미분류';
 export const estimateMaxReps = 10;
 export const bodyPartMappingSchema = z
   .object({
-    exercise: z.string().trim().min(1).max(120),
+    exercise: limitLength(z.string().trim(), { min: 1, max: 120 }),
     body_parts: z.array(z.enum(allBodyParts)).max(allBodyParts.length),
   })
   .refine((v) => new Set(v.body_parts).size === v.body_parts.length, '부위를 중복 없이 선택하세요');

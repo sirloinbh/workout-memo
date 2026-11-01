@@ -26,7 +26,7 @@
 
 ## 검증
 
-- 새 컴포넌트 테스트 5개 파일: 14 pass, 0 fail
+- 새 컴포넌트 테스트 5개 파일: 19 pass, 0 fail
 - `npm run typecheck -w frontend`, `npm run lint`, `npm run format:check`: 통과
 - `npm run knip`: 새 파일 관련 항목 없음. 기존 항목은 그대로 남아 있습니다(CI에서는 경고만).
 - 로컬 `npm run check`: 완료하지 못했습니다. 시스템 메모리 부족으로 중단됐습니다. 전체 검사는 PR CI로 확인합니다.
@@ -39,6 +39,11 @@
 - 테스트: 한쪽 한도, 읽기 전용·비활성, 빈 값, 칩 순서와 화살표 이동을 추가했습니다.
 - `docs/design-system.md`: `SegmentedControl`의 화살표는 포커스만 옮기고 Space·Enter로 고른다고 적었습니다.
 - 반영하지 않은 지적: `List`의 `role="list"`는 린트 규칙 `jsx-a11y-x/no-redundant-roles`가 금지하고, VoiceOver 문제도 실제로 확인하지 못해 넣지 않았습니다. 지수 표기 입력, 범위 밖 값의 점프, `0x10` 입력은 kg·횟수에서 현실적인 문제가 아닙니다. `SegmentedControl`의 `disabled`, `aria-describedby`는 화면 교체에서 필요해지면 넣습니다.
+
+## 리뷰
+
+- 1차 리뷰: 위 "1차 리뷰 보완"으로 반영했습니다.
+- 2차 리뷰: 보완점 없음. 분리한 이슈는 없습니다.
 
 ## 제한·후속
 

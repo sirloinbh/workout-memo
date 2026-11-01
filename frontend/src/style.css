@@ -1211,3 +1211,55 @@
 :is(.tabs, .focus-card, .date-tile, .form-hint, div.official-ref, .rest-timer, .rest-preview) * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }
+
+/*
+ * #104: on touch screens fields use 16px text (iOS zooms in below that) and controls stay
+ * 44px to tap. Last in the file so it wins over the smaller per-screen sizes above.
+ */
+@media (pointer: coarse) {
+  .legacy :is(input:not([type='checkbox'], [type='radio'], [type='hidden']), select, textarea) {
+    font-size: 16px;
+  }
+  .legacy :is(input:not([type='checkbox'], [type='radio'], [type='hidden']), select) {
+    min-height: 44px;
+  }
+  .legacy button,
+  .rest-timer .rest-actions button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .legacy summary {
+    min-height: 44px;
+    padding-block: 12px;
+  }
+  .legacy a.primary {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .legacy label:has(> input[type='checkbox']) {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  /* A bare checkbox in a table row; the common Checkbox replaces it in #103. */
+  .inbody-preview input[type='checkbox'] {
+    width: 24px;
+    height: 24px;
+  }
+  /* The delete button's column follows its 44px minimum. */
+  .set-editor {
+    grid-template-columns: 22px 1.5fr 1.5fr 85px 65px 44px;
+  }
+}
+@media (pointer: coarse) and (max-width: 760px) {
+  .set-editor {
+    grid-template-columns: 18px 1fr 1fr 44px;
+  }
+}
+/* Two 16px date fields do not fit side by side on a phone. */
+@media (pointer: coarse) and (max-width: 480px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

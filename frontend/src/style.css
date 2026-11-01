@@ -1257,3 +1257,9 @@
     grid-template-columns: 18px 1fr 1fr 44px;
   }
 }
+/* Two 16px date fields do not fit side by side on a phone. */
+@media (pointer: coarse) and (max-width: 480px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

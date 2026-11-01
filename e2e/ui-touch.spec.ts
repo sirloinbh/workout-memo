@@ -61,7 +61,7 @@ for (const { width, height } of touchWidths) {
     test('모달의 입력·누름 영역이 기준을 지키고 가로로 넘치지 않는다', async ({ page }) => {
       for (const modal of modals) {
         const dialog = await openModal(page, modal);
-        expect(await violations(dialog.locator('.legacy')), modal.name).toEqual([]);
+        expect(await violations(dialog), modal.name).toEqual([]);
         expect(await overflow(page), `${modal.name} 가로 넘침(px)`).toBeLessThanOrEqual(0);
       }
     });

@@ -1,6 +1,6 @@
 import type express from 'express';
 import type { Pool } from 'pg';
-import { z, ZodError } from 'zod';
+import { z, ZodError } from 'zod/v4';
 
 export type Db = Pick<Pool, 'query'>;
 export const seoulTodaySql = "(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date";

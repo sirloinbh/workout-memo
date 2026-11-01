@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import type express from 'express';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import { dateRange, workoutSchema } from '../domain.js';
 import { id } from './shared.js';
@@ -23,7 +23,8 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
     app[method]('/api/workouts' + (method === 'put' ? '/:id' : ''), async (req, res) => {
       const w = workoutSchema.parse(req.body);
       const key = req.get('Idempotency-Key');
-      if (key !== undefined) z.string().uuid().parse(key);
+      // guid(), not uuid(): zod 4's uuid() also rejects keys with a nonstandard version digit.
+      if (key !== undefined) z.guid().parse(key);
       const target = method === 'put' ? id(req.params.id) : null;
       if (method === 'put') z.number().int().positive().parse(w.version);
       // A request without feedback keeps the fingerprint it had before #83, so a retry key

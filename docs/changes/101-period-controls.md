@@ -19,6 +19,10 @@
 
 - 회귀 수정: 잘못된 기간 주소(`?from=bad&to=bad`)로 들어와 현재 탭을 누르면 주소를 정리하던 동작이 교체로 사라졌습니다. `SegmentedControl`에 `onReselect`를 추가해 되살리고 회귀 테스트를 넣었습니다.
 
+## 변경 — docs: 2차 리뷰 보완
+
+- 2차 리뷰의 기능 결함은 없었습니다. `SegmentedControl` 주석과 `docs/design-system.md`에 `onReselect`를 반영하고, 체감 피드백에는 쓰지 않는다고 적었습니다. 리뷰는 2회까지라 더 하지 않았습니다.
+
 ## 테스트
 
 - 기간 탭을 찾는 화면 테스트와 e2e를 `button`에서 `radio`로, `selected` 클래스 확인을 `toBeChecked()`로 바꿨습니다. 같은 의미로 검증합니다.

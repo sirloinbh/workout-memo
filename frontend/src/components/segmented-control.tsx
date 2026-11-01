@@ -4,8 +4,8 @@ import { cn } from '../lib/utils';
 
 export type SegmentOption<T extends string> = { value: T; label: string };
 
-// One choice out of a few: period tabs, workout feedback. Exactly one stays selected, so a
-// click on the current option does nothing (Radix would otherwise clear it).
+// One choice out of a few, such as period tabs. Exactly one stays selected: a click on the
+// current option keeps it (Radix would otherwise clear it) and only calls onReselect.
 export function SegmentedControl<T extends string>({
   label,
   options,

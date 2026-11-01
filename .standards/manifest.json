@@ -1,5 +1,5 @@
 {
-  "centralSha": "bb67a2839ed4876702c4c0195c3fa02525f52fca",
+  "centralSha": "58858fd8be3fe274881abb10610aaf25d2d4f75f",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -451,12 +451,12 @@
     },
     "frontend/src/components/ui/confirm-dialog.test.tsx": {
       "mode": "full",
-      "sha256": "bb724224694fffbfb45d5f9725a605595675a2b0a47e94393d0cc29d203c51ae",
+      "sha256": "f4e9a83a415f3723b84e1b72b2f11a1d5e3e09eaf5e10f156f091a2a5d0e9b95",
       "source": "templates/ui/frontend/src/components/ui/confirm-dialog.test.tsx"
     },
     "frontend/src/components/ui/confirm-dialog.tsx": {
       "mode": "full",
-      "sha256": "c471198d4e11b95e8ec7ae70169752487298cbf874370c1df23bae1da3bd8f28",
+      "sha256": "8e0b7b64a9b124514150377d6c50517d090aa35d541554f8fec1fa89576cf190",
       "source": "templates/ui/frontend/src/components/ui/confirm-dialog.tsx"
     },
     "frontend/src/components/ui/dialog.test.tsx": {

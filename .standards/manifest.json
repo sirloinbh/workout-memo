@@ -1,5 +1,5 @@
 {
-  "centralSha": "58858fd8be3fe274881abb10610aaf25d2d4f75f",
+  "centralSha": "8527ea530f2142355a1bc44f8f85076dbefccec6",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -135,7 +135,7 @@
     },
     ".standards/check.mjs": {
       "mode": "full",
-      "sha256": "d3d3356442229cc93a42efc20fd9d0fce74b8028e2257f478aeeac6f9e211147",
+      "sha256": "e5d4c62dd1538ac2ae2b72ffd9367a2ba078fd5d3721c12788d58026313bf726",
       "source": "scripts/standards-check.mjs"
     },
     ".standards/ioc-scan.mjs": {
@@ -207,7 +207,7 @@
         "devDependencies.@sirloinbh/tsconfig": "1.0.0",
         "dependencies.express": "5.3.0",
         "dependencies.pg": "8.23.1",
-        "dependencies.zod": "3.25.76",
+        "dependencies.zod": "4.6.7",
         "devDependencies.@types/express": "5.0.6",
         "devDependencies.@types/node": "24.19.2",
         "devDependencies.@types/pg": "8.23.1",

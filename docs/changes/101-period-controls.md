@@ -20,3 +20,4 @@
 - 기간 탭을 찾는 화면 테스트와 e2e를 `button`에서 `radio`로, `selected` 클래스 확인을 `toBeChecked()`로 바꿨습니다. 같은 의미로 검증합니다.
 - `npm run test -w frontend`: 195 pass, 2 fail, 4 skip. 실패 2건은 `routines.test.tsx`의 5초 시간 초과입니다. 그 파일만 단독으로 돌리면 8건 모두 통과합니다. 기간 탭을 쓰지 않는 테스트이고, 이 PC의 전체 실행 부하 때문으로 봅니다. CI에서 다시 확인합니다.
 - `npm run typecheck`, `npm run lint`: 통과
+- 시각 기준선 19장 갱신: 대시보드·일지·종목 분석·신체 기록 4개 폭(16장)과 뒤에 탭이 보이는 일지 편집 모달 3장입니다. CI 첫 실행의 실패 19건이 모두 이 시각 회귀였고, axe를 포함한 나머지 59건은 통과했습니다. `dashboard-360`, `body-768`을 직접 봤습니다.

@@ -11,12 +11,14 @@ export function SegmentedControl<T extends string>({
   options,
   value,
   onValueChange,
+  onReselect,
   className,
 }: {
   label: string;
   options: readonly SegmentOption<T>[];
   value: T;
   onValueChange: (value: T) => void;
+  onReselect?: () => void;
   className?: string;
 }) {
   return (
@@ -26,6 +28,7 @@ export function SegmentedControl<T extends string>({
       value={value}
       onValueChange={(next) => {
         if (next) onValueChange(next as T);
+        else onReselect?.();
       }}
       className={cn('inline-flex max-w-full flex-wrap gap-1 rounded-md bg-muted p-1', className)}
     >

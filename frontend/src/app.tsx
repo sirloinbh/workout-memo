@@ -706,6 +706,10 @@ function Workspace() {
             setCustomErrors({});
             if (customRange || badRangeAddress) setSearchParams({});
           }}
+          // The current preset also clears an invalid range left in the address.
+          onReselect={() => {
+            if (badRangeAddress) setSearchParams({});
+          }}
         />
         {!customRange && !customOpen && (
           <div className="date-control">

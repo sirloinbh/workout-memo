@@ -84,6 +84,16 @@ test('opening an address with a range shows that range after a reload', async ()
   expect(screen.getByRole('radio', { name: '직접 선택' })).toBeChecked();
 });
 
+test('pressing the current preset clears an invalid range from the address', async () => {
+  const ui = mount('/?from=bad&to=bad');
+  await waitFor(() => expect(ui.workoutQueries().length).toBeGreaterThan(0));
+  expect(window.location.search).toBe('?from=bad&to=bad');
+  const current = screen.getByRole('radio', { name: '1주' });
+  expect(current).toBeChecked();
+  await ui.user.click(current);
+  await waitFor(() => expect(window.location.search).toBe(''));
+});
+
 test('invalid ranges are explained per field and not requested', async () => {
   const ui = mount();
   await waitFor(() => expect(ui.workoutQueries().length).toBeGreaterThan(0));

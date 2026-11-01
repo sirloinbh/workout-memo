@@ -41,6 +41,23 @@ workout-memo는 8개 앱 공통 디자인 시스템을 씁니다(#159, 중앙 pr
 | `frontend/src/components/modal.tsx`         | 앱   | `Modal`: 공통 Dialog를 `title`·`close`로 여는 앱 래퍼. 내용은 `.legacy .modal` 폼 스타일   |
 | `frontend/src/components/field.tsx`         | 앱   | `Input`, `FieldError`, `invalidProps(name, message)`: 오류 문구와 입력란 연결              |
 
+## 앱 고유 컴포넌트 (#99)
+
+공통 컴포넌트에 없어 `frontend/src/components/`에 만들었습니다. 여러 앱에 필요해지면 중앙 리포로 옮깁니다. 화면 교체(#101~#105)에서 씁니다.
+
+| 컴포넌트           | 언제 쓰나                                 | 규칙과 키보드·접근성                                                                                                                                                                       |
+| ------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SegmentedControl` | 몇 개 중 하나: 기간 탭, 체감 피드백       | `label`이 그룹 이름입니다. 항상 하나가 선택됩니다. Tab은 선택 항목으로 들어갑니다. 화살표는 포커스만 옮기고 Space·Enter로 고릅니다                                                         |
+| `ToggleChips`      | 여러 개 선택(없어도 됨): 부위 지정        | 칩마다 `aria-pressed`로 상태를 알립니다. 화살표로 이동하고 Space·Enter로 켜고 끕니다                                                                                                       |
+| `Switch`           | 바로 적용되는 설정: 휴식 타이머 자동 시작 | `Label`의 `htmlFor`로 이름을 답니다. 폼과 함께 저장하는 값은 공통 `Checkbox`를 씁니다. 터치 기기에서 누름 영역이 넓습니다                                                                  |
+| `NumberInput`      | 한 손으로 넣는 kg·횟수                    | `label`이 입력과 − + 버튼의 이름입니다. 값은 문자열이고 검증은 폼과 서버가 합니다. 소수 `step`이면 소수 키패드를 엽니다. 정수 `step`인데 소수를 받는 값은 `inputMode="decimal"`을 넘깁니다 |
+| `List`, `ListItem` | `Card` 안의 기록 목록                     | `List`에 `aria-label`을 답니다. 행 사이에 구분선이 있고 행 높이는 44px 이상입니다                                                                                                          |
+
+```tsx
+<SegmentedControl label="기간" options={periods} value={period} onValueChange={setPeriod} />
+<NumberInput label="중량" value={weight} onValueChange={setWeight} step={2.5} min={0} />
+```
+
 ## 규칙
 
 1. 새 화면 요소는 `components/ui`의 공통 컴포넌트를 먼저 씁니다. 모달은 `Modal`, 폼 오류는 `invalidProps`와 `FieldError`입니다.

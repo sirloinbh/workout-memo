@@ -28,6 +28,7 @@ import { FieldError, Input } from './components/field';
 import { invalidProps } from './components/field-props';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { Modal } from './components/modal';
+import { SegmentedControl } from './components/segmented-control';
 import { Button } from './components/ui/button';
 import { Toaster } from './components/ui/sonner';
 import {
@@ -293,6 +294,15 @@ const pages = {
   backup: '/backup',
 } as const;
 type Page = keyof typeof pages;
+const periodOptions = [
+  { value: 'day', label: '1일' },
+  { value: 'week', label: '1주' },
+  { value: 'month', label: '1달' },
+  { value: '4weeks', label: '4주' },
+  { value: '12weeks', label: '12주' },
+  { value: 'custom', label: '직접 선택' },
+];
+
 const pageOf = (path: string) =>
   (Object.keys(pages) as Page[]).find((key) => pages[key] === path.replace(/(.)\/$/, '$1'));
 
@@ -681,37 +691,26 @@ function Workspace() {
   const periodControls = (
     <>
       <div className="period-bar">
-        <div className="tabs">
-          {[
-            ['day', '1일'],
-            ['week', '1주'],
-            ['month', '1달'],
-            ['4weeks', '4주'],
-            ['12weeks', '12주'],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => {
-                setPeriod(key);
-                setCustomOpen(false);
-                setCustomErrors({});
-                if (customRange || badRangeAddress) setSearchParams({});
-              }}
-              className={period === key && !customRange && !customOpen ? 'selected' : ''}
-            >
-              {label}
-            </button>
-          ))}
-          <button
-            onClick={() => {
+        <SegmentedControl
+          label="기간"
+          options={periodOptions}
+          value={customRange || customOpen ? 'custom' : period}
+          onValueChange={(key) => {
+            if (key === 'custom') {
               setCustomOpen(true);
               setCustomDraft({ from, to });
-            }}
-            className={customRange || customOpen ? 'selected' : ''}
-          >
-            직접 선택
-          </button>
-        </div>
+              return;
+            }
+            setPeriod(key);
+            setCustomOpen(false);
+            setCustomErrors({});
+            if (customRange || badRangeAddress) setSearchParams({});
+          }}
+          // The current preset also clears an invalid range left in the address.
+          onReselect={() => {
+            if (badRangeAddress) setSearchParams({});
+          }}
+        />
         {!customRange && !customOpen && (
           <div className="date-control">
             <button aria-label="이전 기간" onClick={() => move(-1)}>

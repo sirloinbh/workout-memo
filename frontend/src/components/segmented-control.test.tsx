@@ -49,6 +49,21 @@ test('clicking the current option keeps it selected', () => {
   expect(screen.getByRole('radio', { name: '1주' })).toBeChecked();
 });
 
+test('clicking the current option reports a reselect', () => {
+  const onReselect = vi.fn();
+  render(
+    <SegmentedControl
+      label="기간"
+      options={options}
+      value="week"
+      onValueChange={() => {}}
+      onReselect={onReselect}
+    />,
+  );
+  fireEvent.click(screen.getByRole('radio', { name: '1주' }));
+  expect(onReselect).toHaveBeenCalledOnce();
+});
+
 test('focus enters on the selected option and arrow keys move it', async () => {
   render(<Period />);
   screen.getByRole('radiogroup', { name: '기간' }).focus();

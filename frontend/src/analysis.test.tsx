@@ -108,8 +108,8 @@ test('4 and 12 week tabs request Monday-aligned ranges ending with the anchor we
   const ui = mount();
   await openPage('종목 분석', ui.user);
   await loaded();
-  await ui.user.click(screen.getByRole('button', { name: '4주' }));
-  await ui.user.click(screen.getByRole('button', { name: '12주' }));
+  await ui.user.click(screen.getByRole('radio', { name: '4주' }));
+  await ui.user.click(screen.getByRole('radio', { name: '12주' }));
   // jsdom date inputs do not accept typed keys; set the value as the browser would.
   fireEvent.change(screen.getByLabelText('분석 기준 날짜'), { target: { value: '2025-01-05' } });
   await waitFor(() => expect(ui.analysisRequests()).toHaveLength(4));

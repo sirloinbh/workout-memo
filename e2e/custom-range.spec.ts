@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 // #85: a directly chosen range is requested as-is and survives a reload through the address.
 test('직접 선택한 기간은 주소에 남아 새로고침 후에도 유지된다', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '직접 선택', exact: true }).click();
+  await page.getByRole('radio', { name: '직접 선택', exact: true }).click();
   const form = page.getByRole('form', { name: '기간 직접 선택' });
   await form.getByLabel('시작일').fill('2001-03-01');
   await form.getByLabel('종료일').fill('2001-03-31');

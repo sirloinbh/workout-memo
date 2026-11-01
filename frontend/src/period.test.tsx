@@ -72,7 +72,7 @@ function mount(initial: Workout[] = []) {
       const before = workoutQueries().length;
       // jsdom date inputs do not accept typed keys; set the value as the browser would.
       fireEvent.change(screen.getByLabelText('기준 날짜'), { target: { value: anchor } });
-      await user.click(screen.getByRole('button', { name: period }));
+      await user.click(screen.getByRole('radio', { name: period }));
       await waitFor(() => expect(workoutQueries().length).toBeGreaterThan(before));
     },
   };
@@ -286,7 +286,7 @@ test('a delayed edit keeps the page blocked until it finishes, then the new peri
   await ui.user.clear(weight);
   await ui.user.type(weight, '150');
   await ui.user.click(within(dialog).getByRole('button', { name: /저장/ }));
-  expect(screen.queryByRole('button', { name: '1달' })).toBeNull();
+  expect(screen.queryByRole('radio', { name: '1달' })).toBeNull();
   await ui.user.keyboard('{Escape}');
   expect(screen.getByRole('dialog')).toBeInTheDocument();
   pending.resolve();

@@ -6,7 +6,7 @@ const title = `E2E 일지 ${Date.now()}`;
 
 async function showDay(page: Page) {
   await page.getByLabel('기준 날짜').fill(day);
-  await page.getByRole('button', { name: '1일', exact: true }).click();
+  await page.getByRole('radio', { name: '1일', exact: true }).click();
   await expect(page.getByText(`${day} — ${day}`)).toBeVisible();
 }
 const stat = (page: Page, label: string) =>

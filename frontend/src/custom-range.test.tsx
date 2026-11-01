@@ -47,7 +47,7 @@ const stat = (label: string) =>
     .querySelector('.stat-value')!.textContent;
 const chart = () => screen.getByRole('img').getAttribute('aria-label') ?? '';
 async function choose(ui: ReturnType<typeof mount>, from: string, to: string) {
-  await ui.user.click(screen.getByRole('button', { name: '직접 선택' }));
+  await ui.user.click(screen.getByRole('radio', { name: '직접 선택' }));
   fireEvent.change(field('시작일'), { target: { value: from } });
   fireEvent.change(field('종료일'), { target: { value: to } });
   await ui.user.click(within(form()).getByRole('button', { name: '적용' }));
@@ -69,7 +69,7 @@ test('a chosen range includes both ends and is kept in the address', async () =>
   // Moving to the journal keeps the range; a preset clears it.
   await openPage('운동 일지', ui.user);
   expect(window.location.search).toBe('?from=2026-10-01&to=2026-10-10');
-  await ui.user.click(screen.getByRole('button', { name: '1주' }));
+  await ui.user.click(screen.getByRole('radio', { name: '1주' }));
   await waitFor(() => expect(window.location.search).toBe(''));
   expect(screen.getByLabelText('기준 날짜')).toHaveValue('2026-10-15');
 });
@@ -81,7 +81,7 @@ test('opening an address with a range shows that range after a reload', async ()
   );
   expect(field('시작일')).toHaveValue('2026-10-10');
   expect(field('종료일')).toHaveValue('2026-10-11');
-  expect(screen.getByRole('button', { name: '직접 선택' })).toHaveClass('selected');
+  expect(screen.getByRole('radio', { name: '직접 선택' })).toBeChecked();
 });
 
 test('invalid ranges are explained per field and not requested', async () => {

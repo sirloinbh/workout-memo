@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { SegmentedControl } from './components/segmented-control';
 import { seoulDate } from './date';
 
 // #88: 이두·삼두 replace 팔 for new choices; a saved 팔 is still listed so it can be cleared.
@@ -123,13 +124,12 @@ export function Analysis() {
         추정값은 실제로 들어 올린 기록이 아니며, 실측 1RM은 1회를 수행한 세트의 최고 총중량입니다.
       </p>
       <div className="period-bar">
-        <div className="tabs">
-          {[1, 4, 12].map((n) => (
-            <button key={n} className={weeks === n ? 'selected' : ''} onClick={() => setWeeks(n)}>
-              {n}주
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="분석 기간"
+          options={[1, 4, 12].map((n) => ({ value: String(n), label: `${n}주` }))}
+          value={String(weeks)}
+          onValueChange={(value) => setWeeks(Number(value))}
+        />
         <div className="date-control">
           <input
             aria-label="분석 기준 날짜"

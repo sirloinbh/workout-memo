@@ -137,7 +137,9 @@ function mount(now?: string) {
     }
   }
   async function click(label: string) {
-    const button = screen.getByRole('button', { name: label });
+    // Period tabs are radios; everything else clicked here is a button.
+    const button =
+      screen.queryByRole('radio', { name: label }) ?? screen.getByRole('button', { name: label });
     expect(button, `${label} is enabled`).toBeEnabled();
     await user.click(button);
   }
@@ -233,7 +235,7 @@ test('default period is 12 weeks so a record from last week is charted on first 
   await openPage('신체 기록', ui.user);
   await ui.loaded();
   expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2023-12-19&to=2024-03-11');
-  expect(screen.getByRole('button', { name: '12주' })).toHaveClass('selected');
+  expect(screen.getByRole('radio', { name: '12주' })).toBeChecked();
   await waitFor(() => expect(ui.chart('체중').points).toBe(4));
   expect(ui.chart('체지방률').points).toBe(2);
   expect(ui.chart('골격근량').points).toBe(1);
@@ -247,14 +249,14 @@ test('the 12-week default is only for the body page; a chosen preset is shared',
   await openPage('대시보드', ui.user);
   // The dashboard keeps its one-week default.
   await waitFor(() => expect(page()).toMatch(/2024-03-11 — 2024-03-17/));
-  expect(screen.getByRole('button', { name: '1주' })).toHaveClass('selected');
+  expect(screen.getByRole('radio', { name: '1주' })).toBeChecked();
   await ui.click('4주');
   await openPage('신체 기록', ui.user);
   // Once chosen, the period is shared again instead of falling back to 12 weeks.
   await waitFor(() =>
     expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2024-02-13&to=2024-03-11'),
   );
-  expect(screen.getByRole('button', { name: '4주' })).toHaveClass('selected');
+  expect(screen.getByRole('radio', { name: '4주' })).toBeChecked();
 });
 
 test('empty period replaces empty charts with one line', async () => {

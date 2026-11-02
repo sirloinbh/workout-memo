@@ -29,4 +29,6 @@
 - 추가: `frontend/src/period.test.tsx`의 목록 이름과 행의 수정·삭제 버튼 테스트
 - 수정: `period.test.tsx`, `e2e/workout-crud.spec.ts`의 행 선택자를 지운 스타일과 분리해 `data-slot`으로 바꿨습니다. 검증 내용은 같습니다.
 - `npm run typecheck`, `npm run lint`: 통과
-- 시각 기준선과 e2e는 PR CI에서 확인합니다. 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다.
+- 시각 기준선 8장 갱신: 대시보드·일지 4개 폭입니다. CI 실행의 실패 8건이 모두 이 시각 회귀였고, axe를 포함한 나머지 70건은 통과했습니다. `journal-360`, `journal-768`, `dashboard-1280`을 직접 봤습니다.
+- 리뷰 보완 뒤 긴 메모 넘침은 다시 재지 않았습니다. 기준선 화면에는 그런 데이터가 없어 `overflow-wrap` 적용으로만 판단했습니다.
+- 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다. e2e는 PR CI로 확인합니다.

@@ -30,7 +30,7 @@ export function ToggleChips({
         <ToggleGroup.Item
           key={option}
           value={option}
-          className="min-h-8 rounded-full border border-input px-3 text-body-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground pointer-coarse:min-h-11"
+          className="min-h-8 rounded-full border border-input px-3 text-body-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground pointer-coarse:min-h-11"
         >
           {option}
         </ToggleGroup.Item>

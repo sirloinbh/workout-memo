@@ -86,28 +86,6 @@
   align-items: center;
   gap: 10px;
 }
-.tabs {
-  display: flex;
-  background: var(--muted);
-  border: 1px solid var(--border);
-  padding: 4px;
-  border-radius: 7px;
-}
-.tabs button {
-  border: 0;
-  background: none;
-  padding: 7px 20px;
-  font-size: 11px;
-  color: var(--muted-foreground);
-  border-radius: 4px;
-}
-.tabs .selected {
-  background: var(--card);
-  color: var(--foreground);
-  box-shadow:
-    0 1px 3px 0 rgb(0 0 0 / 0.1),
-    0 1px 2px -1px rgb(0 0 0 / 0.1);
-}
 .date-control {
   display: flex;
   align-items: center;
@@ -131,10 +109,6 @@
 .custom-range .form-hint {
   margin: 0;
   padding: 6px 10px;
-}
-/* Six period tabs wrap instead of widening narrow screens. */
-.tabs {
-  flex-wrap: wrap;
 }
 .date-control button {
   background: transparent;
@@ -477,16 +451,6 @@
   color: var(--muted-foreground);
   margin-bottom: 17px;
 }
-/* #83: workout feedback reads like a field label above the .tabs selector. */
-.feedback-field {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--muted-foreground);
-  margin-bottom: 17px;
-}
 .modal input,
 .modal select,
 .modal textarea {
@@ -602,9 +566,6 @@
   .primary {
     padding: 10px 14px;
     font-size: 11px;
-  }
-  .tabs button {
-    padding: 7px 12px;
   }
   /* #71: on narrow phones (e.g. 320px) the date control moves under the period tabs. */
   .period-bar {
@@ -1091,7 +1052,6 @@
 /* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA
    4.5:1. Text on these surfaces mixes in more of the foreground colour instead. */
 :is(
-  .tabs,
   .focus-card,
   .count,
   .subtle-button,
@@ -1101,7 +1061,7 @@
   .rest-timer,
   .rest-preview
 ),
-:is(.tabs, .focus-card, .form-hint, div.official-ref, .rest-timer, .rest-preview) * {
+:is(.focus-card, .form-hint, div.official-ref, .rest-timer, .rest-preview) * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }
 

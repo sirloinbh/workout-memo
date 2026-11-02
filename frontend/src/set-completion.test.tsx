@@ -235,6 +235,14 @@ test('pressing the chosen feedback again sends null, and corrupt timer storage d
   expect(feedback('중간')).toHaveAttribute('aria-pressed', 'true');
   await ui.user.click(feedback('중간'));
   expect(feedback('중간')).toHaveAttribute('aria-pressed', 'false');
+  await ui.user.click(feedback('쉬움'));
+  await ui.user.click(feedback('힘듦'));
+  expect(feedback('힘듦')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('쉬움'), 'only one level stays selected').toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await ui.user.click(feedback('힘듦'));
   await submit(ui);
   expect(ui.sentFeedback(), 'not recorded is null, never a default level').toBeNull();
 });

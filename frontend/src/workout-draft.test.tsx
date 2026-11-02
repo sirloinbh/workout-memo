@@ -128,10 +128,10 @@ const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러�
 const stat = (label: string) => {
   const card = screen
     .getAllByText(
-      (_, el) => el?.classList.contains('stat') === true && el.textContent.startsWith(label),
+      (_, el) => el?.getAttribute('data-slot') === 'stat' && el.textContent.startsWith(label),
     )
     .at(0)!;
-  return card.querySelector('.stat-value')!.textContent;
+  return card.querySelector('[data-slot=stat-value]')!.textContent;
 };
 const dialog = () => screen.getByRole('dialog');
 const titleInput = () => dialog().querySelector<HTMLInputElement>('input[maxlength="120"]')!;

@@ -10,7 +10,7 @@ async function showDay(page: Page) {
   await expect(page.getByText(`${day} — ${day}`)).toBeVisible();
 }
 const stat = (page: Page, label: string) =>
-  page.locator('.stat', { hasText: label }).locator('.stat-value');
+  page.locator('[data-slot=stat]', { hasText: label }).locator('[data-slot=stat-value]');
 const row = (page: Page) => page.locator('.workout-row', { hasText: title });
 
 test.afterAll(async ({ request }) => {

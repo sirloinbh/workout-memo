@@ -41,10 +41,10 @@ const field = (label: string) => within(form()).getByLabelText(label);
 const stat = (label: string) =>
   screen
     .getAllByText(
-      (_, el) => el?.classList.contains('stat') === true && el.textContent.startsWith(label),
+      (_, el) => el?.getAttribute('data-slot') === 'stat' && el.textContent.startsWith(label),
     )
     .at(0)!
-    .querySelector('.stat-value')!.textContent;
+    .querySelector('[data-slot=stat-value]')!.textContent;
 const chart = () => screen.getByRole('img').getAttribute('aria-label') ?? '';
 async function choose(ui: ReturnType<typeof mount>, from: string, to: string) {
   await ui.user.click(screen.getByRole('radio', { name: '직접 선택' }));

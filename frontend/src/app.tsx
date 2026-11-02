@@ -29,6 +29,7 @@ import { invalidProps } from './components/field-props';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { Modal } from './components/modal';
 import { SegmentedControl } from './components/segmented-control';
+import { StatCard } from './components/stat-card';
 import { Button } from './components/ui/button';
 import { Toaster } from './components/ui/sonner';
 import {
@@ -1007,29 +1008,29 @@ function Workspace() {
           {(page === 'overview' || page === 'journal') && (
             <>
               {periodControls}
-              <div className="stats">
-                <Stat
+              <div className="mb-6 grid grid-cols-2 gap-2.5 lg:grid-cols-4 xl:gap-4">
+                <StatCard
                   label="운동한 날"
                   value={String(days)}
                   unit="일"
                   icon={<NotebookPen size={19} />}
                   foot="기록한 날짜 기준"
                 />
-                <Stat
+                <StatCard
                   label="누적 볼륨"
                   value={fmt(total)}
                   unit="kg"
                   icon={<Dumbbell size={19} />}
                   foot="총중량 × 반복 수"
                 />
-                <Stat
+                <StatCard
                   label="완료한 세트"
                   value={String(totalSets)}
                   unit="세트"
                   icon={<Activity size={19} />}
                   foot={`${workouts.length}개의 운동 일지`}
                 />
-                <Stat
+                <StatCard
                   label="목표 달성"
                   value={String(goals.filter((g) => g.achieved).length)}
                   unit={`/ ${goals.length}`}
@@ -2002,33 +2003,6 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
         )}
       </div>
       {message && <p role="status">{message}</p>}
-    </section>
-  );
-}
-function Stat({
-  label,
-  value,
-  unit,
-  icon,
-  foot,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-  icon: React.ReactNode;
-  foot: string;
-}) {
-  return (
-    <section className="stat">
-      <div className="stat-top">
-        {label}
-        <span>{icon}</span>
-      </div>
-      <div className="stat-value">
-        {value}
-        <small>{unit}</small>
-      </div>
-      <div className="stat-foot">{foot}</div>
     </section>
   );
 }

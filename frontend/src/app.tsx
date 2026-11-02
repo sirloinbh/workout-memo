@@ -1008,7 +1008,7 @@ function Workspace() {
           {(page === 'overview' || page === 'journal') && (
             <>
               {periodControls}
-              <div className="mb-6 grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:gap-4">
+              <div className="mb-6 grid grid-cols-2 gap-2.5 lg:grid-cols-4 xl:gap-4">
                 <StatCard
                   label="운동한 날"
                   value={String(days)}

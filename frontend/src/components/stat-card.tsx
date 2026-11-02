@@ -22,7 +22,7 @@ export function StatCard({
         {label}
         <span className="flex rounded-md bg-muted p-1.5 text-foreground">{icon}</span>
       </div>
-      <div data-slot="stat-value" className="text-2xl font-medium tracking-tight xl:text-3xl">
+      <div data-slot="stat-value" className="text-2xl font-medium tracking-tight break-words xl:text-3xl">
         {value}
         <small className="ml-1.5 text-caption tracking-normal text-muted-foreground">{unit}</small>
       </div>

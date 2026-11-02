@@ -1467,11 +1467,24 @@ function Workspace() {
                 세트
               </p>
               {editor.sets?.map((s, i) => (
-                <div className={'set-editor' + (done(s) ? ' completed' : '')} key={i}>
-                  <div className="set-number">{i + 1}</div>
-                  <label>
+                <div
+                  data-slot="set-row"
+                  className="mb-4 grid grid-cols-[18px_1fr_1fr_44px] items-center gap-2 border-b border-border md:mb-0 md:grid-cols-[22px_1.5fr_1.5fr_85px_65px_36px] md:border-b-0 md:pointer-coarse:grid-cols-[22px_1.5fr_1.5fr_85px_65px_44px]"
+                  key={i}
+                >
+                  <div
+                    className={cn(
+                      'row-span-2 text-meta text-muted-foreground md:row-span-1',
+                      done(s) && 'font-bold text-foreground',
+                    )}
+                  >
+                    {i + 1}
+                  </div>
+                  <label htmlFor={`set-${i}-exercise`} className="text-meta max-md:mb-2.5">
                     운동명
-                    <input
+                    <CommonInput
+                      id={`set-${i}-exercise`}
+                      className="md:pointer-coarse:text-base"
                       required
                       list="exercise-names"
                       value={s.exercise}
@@ -1483,9 +1496,10 @@ function Workspace() {
                       {...invalid(`sets.${i}.exercise`)}
                     />
                   </label>
-                  <label>
+                  <label className="text-meta max-md:mb-2.5">
                     머신
                     <select
+                      className="h-9 px-2 text-body-sm pointer-coarse:text-base"
                       value={s.machine_id ?? ''}
                       onChange={(e) => {
                         const m = machines.find((m) => m.id === Number(e.target.value));
@@ -1516,9 +1530,14 @@ function Workspace() {
                       ))}
                     </select>
                   </label>
-                  <label>
+                  <label
+                    htmlFor={`set-${i}-weight`}
+                    className="text-meta max-md:col-start-2 max-md:mb-2.5"
+                  >
                     총중량 kg
-                    <input
+                    <CommonInput
+                      id={`set-${i}-weight`}
+                      className="px-2 md:pointer-coarse:text-base"
                       type="number"
                       required
                       min="0"
@@ -1533,9 +1552,11 @@ function Workspace() {
                       {...invalid(`sets.${i}.weight`)}
                     />
                   </label>
-                  <label>
+                  <label htmlFor={`set-${i}-reps`} className="text-meta max-md:mb-2.5">
                     횟수
-                    <input
+                    <CommonInput
+                      id={`set-${i}-reps`}
+                      className="px-2 md:pointer-coarse:text-base"
                       type="number"
                       required
                       min="1"
@@ -1549,21 +1570,22 @@ function Workspace() {
                       {...invalid(`sets.${i}.reps`)}
                     />
                   </label>
-                  <div className="set-actions">
-                    <button
+                  <div className="col-[2/-1] row-start-4 flex items-end gap-3 max-md:mb-2.5 md:col-[2/-2] md:row-start-3">
+                    <Button
                       type="button"
-                      className={done(s) ? 'set-done active' : 'set-done'}
+                      variant={done(s) ? 'default' : 'outline'}
+                      className="h-auto min-h-9 py-1.5 whitespace-normal"
                       aria-pressed={done(s)}
                       aria-label={`${i + 1}세트 완료`}
                       onClick={() => markSet(i, !done(s))}
                     >
                       {done(s) ? '완료됨 · 취소하려면 다시 누르기' : '완료'}
-                    </button>
+                    </Button>
                   </div>
                   {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
                     <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
                   ))}
-                  <label className="set-notes">
+                  <label className="col-[2/-1] row-start-3 text-meta max-md:mb-2.5 md:col-[2/-2] md:row-start-2">
                     세트 메모
                     <textarea
                       maxLength={4000}
@@ -1577,11 +1599,15 @@ function Workspace() {
                     />
                   </label>
                   {setReference(progress, s.exercise) && (
-                    <p className="set-reference">{setReference(progress, s.exercise)}</p>
+                    <p className="col-[2/-1] text-meta text-muted-foreground md:col-[2/-2]">
+                      {setReference(progress, s.exercise)}
+                    </p>
                   )}
-                  <button
+                  <Button
                     type="button"
-                    className="icon-button"
+                    variant="ghost"
+                    size="icon"
+                    className="col-start-4 row-span-2 row-start-1 text-muted-foreground md:col-start-6 md:row-span-1"
                     disabled={editor.sets!.length === 1}
                     aria-label="세트 삭제"
                     onClick={() =>
@@ -1589,7 +1615,7 @@ function Workspace() {
                     }
                   >
                     <X size={15} />
-                  </button>
+                  </Button>
                 </div>
               ))}
               <datalist id="exercise-names">

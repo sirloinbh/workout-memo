@@ -66,8 +66,7 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan } = {}) {
     expect(found, `${label} is enabled`).toBeEnabled();
     await user.click(found);
   }
-  const setRows = () =>
-    [...document.querySelectorAll('div')].filter((e) => e.className === 'set-editor');
+  const setRows = () => [...document.querySelectorAll('[data-slot=set-row]')];
   function field(row: Element, label: string) {
     const item = [...row.querySelectorAll('label')].filter((e) =>
       text(e).trim().startsWith(label),

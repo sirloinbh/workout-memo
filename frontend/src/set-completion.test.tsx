@@ -87,10 +87,10 @@ const content = () => document.body.textContent ?? '';
 const stat = (label: string) => {
   const card = screen
     .getAllByText(
-      (_, el) => el?.classList.contains('stat') === true && el.textContent.startsWith(label),
+      (_, el) => el?.getAttribute('data-slot') === 'stat' && el.textContent.startsWith(label),
     )
     .at(0)!;
-  return card.querySelector('.stat-value')!.textContent;
+  return card.querySelector('[data-slot=stat-value]')!.textContent;
 };
 async function submit(ui: UI) {
   const before = ui.mutations().length;

@@ -53,6 +53,8 @@ workout-memo는 8개 앱 공통 디자인 시스템을 씁니다(#159, 중앙 pr
 | `NumberInput`      | 한 손으로 넣는 kg·횟수                    | `label`이 입력과 − + 버튼의 이름입니다. 값은 문자열이고 검증은 폼과 서버가 합니다. 소수 `step`이면 소수 키패드를 엽니다. 정수 `step`인데 소수를 받는 값은 `inputMode="decimal"`을 넘깁니다                                   |
 | `List`, `ListItem` | `Card` 안의 기록 목록                     | `List`에 `aria-label`을 답니다. 행 사이에 구분선이 있고 행 높이는 44px 이상입니다                                                                                                                                            |
 
+`StatCard`(#101)는 `Card` 위에 만든 요약 숫자 카드입니다. 라벨, 값과 단위, 짧은 설명을 받습니다.
+
 ```tsx
 <SegmentedControl label="기간" options={periods} value={period} onValueChange={setPeriod} />
 <NumberInput label="중량" value={weight} onValueChange={setWeight} step={2.5} min={0} />

@@ -30,4 +30,6 @@
 - `frontend/src/test/setup.ts`: jsdom에 없는 `ResizeObserver` 대역을 넣었습니다. `Switch`가 폼 안에 있을 때 Radix가 씁니다.
 - `npm run test -w frontend -- src/rest-by-exercise.test.tsx src/set-completion.test.tsx src/workout-draft.test.tsx src/forms.test.tsx src/components/switch.test.tsx`: 통과
 - `npm run typecheck`, `npm run lint`: 통과
-- 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다. e2e와 시각 기준선은 PR CI로 확인합니다.
+- 시각 기준선 4장 갱신: 일지 편집 모달 4개 폭입니다. CI 실행의 실패 4건이 모두 이 시각 회귀였고, 터치 검사와 axe를 포함한 나머지 74건은 통과했습니다. `workout-editor-768`을 직접 봤습니다.
+- 켜진 스위치 화면과 터치 768px의 입력 글자는 터치 검사로만 확인했고 실제 기기로는 보지 않았습니다.
+- 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다. e2e는 PR CI로 확인합니다.

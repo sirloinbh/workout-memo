@@ -821,7 +821,7 @@ function Workspace() {
         {(timer.state === 'idle' || timerEnded) && (
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             onClick={() => updateTimer(startTimer(timer, Date.now()))}
           >
             휴식 시작
@@ -830,7 +830,7 @@ function Workspace() {
         {timer.state === 'running' && !timerEnded && (
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             onClick={() => updateTimer(pauseTimer(timer, Date.now()))}
           >
             일시정지
@@ -839,7 +839,7 @@ function Workspace() {
         {timer.state === 'paused' && (
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             onClick={() => updateTimer(resumeTimer(timer, Date.now()))}
           >
             재개
@@ -860,7 +860,7 @@ function Workspace() {
           id="rest-duration"
           type="number"
           aria-label="휴식 시간(초)"
-          className="max-w-30"
+          className="max-w-30 md:pointer-coarse:text-base"
           min={minRest}
           max={maxRest}
           step="1"
@@ -892,7 +892,7 @@ function Workspace() {
               id={`rest-${kind}`}
               type="number"
               aria-label={`${restKindLabels[kind]} 휴식(초)`}
-              className="max-w-30"
+              className="max-w-30 md:pointer-coarse:text-base"
               min={minRest}
               max={maxRest}
               step="1"

@@ -110,7 +110,6 @@
   margin: 0;
   padding: 6px 10px;
 }
-/* Six period tabs wrap instead of widening narrow screens. */
 .date-control button {
   background: transparent;
   border: 0;

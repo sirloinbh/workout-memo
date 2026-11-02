@@ -27,4 +27,5 @@
 - 수정: 통계 값을 찾는 화면 테스트 4개와 `e2e/workout-crud.spec.ts`의 선택자를 지운 클래스에서 `data-slot`으로 바꿨습니다. 검증 내용은 같습니다.
 - `npm run test -w frontend -- src/components/stat-card.test.tsx src/custom-range.test.tsx src/period.test.tsx src/set-completion.test.tsx src/workout-draft.test.tsx`: 54 pass
 - `npm run typecheck`, `npm run lint`: 통과
-- e2e와 시각 기준선은 PR CI에서 확인합니다. 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다.
+- 시각 기준선 12장 갱신: 대시보드·일지 4개 폭(8장)과 뒤에 카드가 보이는 일지 편집 모달 4장입니다. CI 첫 실행의 실패 12건이 모두 이 시각 회귀였고, axe를 포함한 나머지 66건은 통과했습니다. `dashboard-360`, `dashboard-768`, `dashboard-1280`을 직접 봤습니다.
+- 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다. e2e는 PR CI로 확인합니다.

@@ -31,8 +31,11 @@ import { List, ListItem } from './components/list';
 import { Modal } from './components/modal';
 import { SegmentedControl } from './components/segmented-control';
 import { StatCard } from './components/stat-card';
+import { Switch } from './components/switch';
 import { ToggleChips } from './components/toggle-chips';
 import { Button } from './components/ui/button';
+import { Input as CommonInput } from './components/ui/input';
+import { Label } from './components/ui/label';
 import { Toaster } from './components/ui/sonner';
 import {
   defaultWeightStep,
@@ -47,6 +50,7 @@ import {
 } from './contract';
 import { dateTitle, seoulDate } from './date';
 import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
+import { cn } from './lib/utils';
 import { RoutineProgress } from './progress';
 import { type Progress, routineDraft, setReference } from './progress-data';
 import {
@@ -795,8 +799,16 @@ function Workspace() {
     </>
   );
   const timerPanel = (
-    <section className="rest-timer" aria-label="휴식 타이머">
-      <strong role="timer" aria-live="polite" className={timerEnded ? 'ended' : ''}>
+    <section
+      data-slot="rest-timer"
+      aria-label="휴식 타이머"
+      className="mb-4 grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 md:grid-cols-[1fr_auto]"
+    >
+      <strong
+        role="timer"
+        aria-live="polite"
+        className={cn('text-2xl tabular-nums', timerEnded && 'text-muted-foreground')}
+      >
         {timerEnded
           ? '휴식 종료'
           : timer.state === 'running'
@@ -805,49 +817,50 @@ function Workspace() {
               ? `${formatRemaining(timerLeft)} 일시정지`
               : `휴식 ${formatRemaining(timerLeft)}`}
       </strong>
-      <div className="rest-actions">
+      <div className="flex flex-wrap gap-2 md:justify-end">
         {(timer.state === 'idle' || timerEnded) && (
-          <button
+          <Button
             type="button"
-            className="subtle-button"
+            variant="secondary"
             onClick={() => updateTimer(startTimer(timer, Date.now()))}
           >
             휴식 시작
-          </button>
+          </Button>
         )}
         {timer.state === 'running' && !timerEnded && (
-          <button
+          <Button
             type="button"
-            className="subtle-button"
+            variant="secondary"
             onClick={() => updateTimer(pauseTimer(timer, Date.now()))}
           >
             일시정지
-          </button>
+          </Button>
         )}
         {timer.state === 'paused' && (
-          <button
+          <Button
             type="button"
-            className="subtle-button"
+            variant="secondary"
             onClick={() => updateTimer(resumeTimer(timer, Date.now()))}
           >
             재개
-          </button>
+          </Button>
         )}
         {timer.state !== 'idle' && (
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => updateTimer(cancelTimer(timer))}
-          >
+          <Button type="button" variant="ghost" onClick={() => updateTimer(cancelTimer(timer))}>
             휴식 취소
-          </button>
+          </Button>
         )}
       </div>
-      <label>
+      <label
+        htmlFor="rest-duration"
+        className="mb-0 flex flex-col gap-1 text-meta text-muted-foreground"
+      >
         휴식 시간(초)
-        <input
+        <CommonInput
+          id="rest-duration"
           type="number"
           aria-label="휴식 시간(초)"
+          className="max-w-30"
           min={minRest}
           max={maxRest}
           step="1"
@@ -860,22 +873,26 @@ function Workspace() {
           }}
         />
       </label>
-      <label className="rest-auto">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Switch
+          id="rest-auto-start"
           checked={timer.autoStart}
-          onChange={(e) => updateTimer({ ...timer, autoStart: e.target.checked })}
+          onCheckedChange={(autoStart) => updateTimer({ ...timer, autoStart })}
         />
-        세트 완료 시 자동 시작
-      </label>
-      <fieldset className="rest-kinds">
+        <Label htmlFor="rest-auto-start" className="mb-0 flex-row text-meta text-foreground">
+          세트 완료 시 자동 시작
+        </Label>
+      </div>
+      <fieldset className="col-span-full m-0 flex flex-wrap gap-x-4 gap-y-2 border-0 p-0 text-meta text-muted-foreground">
         <legend>운동별 기본 휴식(초) · 세트 완료로 시작할 때 적용</legend>
         {restKinds.map((kind) => (
-          <label key={kind}>
+          <label htmlFor={`rest-${kind}`} className="mb-0 flex flex-col gap-1 text-meta" key={kind}>
             {restKindLabels[kind]}
-            <input
+            <CommonInput
+              id={`rest-${kind}`}
               type="number"
               aria-label={`${restKindLabels[kind]} 휴식(초)`}
+              className="max-w-30"
               min={minRest}
               max={maxRest}
               step="1"
@@ -886,17 +903,17 @@ function Workspace() {
           </label>
         ))}
       </fieldset>
-      <p className="form-hint">
+      <p className="col-span-full text-meta text-muted-foreground">
         종료 시각 기준으로 이 브라우저에만 보관합니다. 탭을 다시 열면 남은 시간이 맞춰지며,
         브라우저를 닫은 동안에는 알림이 없습니다.
       </p>
-      <p className="form-hint">
+      <p className="col-span-full text-meta text-muted-foreground">
         세트를 완료하면 단관절 머신 → 하체 → 상체 순서로 운동의 기본 휴식을 씁니다. 단관절은 머신
         라이브러리, 하체·상체는 종목 분석의 부위 지정을 따르며 운동명으로 추측하지 않습니다. 지정이
         없으면 위의 휴식 시간을 씁니다.
       </p>
       {timerWarning && (
-        <p role="alert" className="error">
+        <p role="alert" className="error col-span-full m-0">
           {timerWarning}
         </p>
       )}

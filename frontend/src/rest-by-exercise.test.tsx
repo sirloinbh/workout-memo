@@ -47,7 +47,7 @@ function mount() {
   const view = render(<App />);
   return { user, view, requests: api.requests };
 }
-const timer = () => document.querySelector('.rest-timer')?.textContent ?? '';
+const timer = () => document.querySelector('[data-slot=rest-timer]')?.textContent ?? '';
 const dialog = () => screen.getByRole('dialog');
 async function openWith(ui: ReturnType<typeof mount>, exercise: string, machine = '') {
   await waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
@@ -56,7 +56,7 @@ async function openWith(ui: ReturnType<typeof mount>, exercise: string, machine 
   );
   await ui.user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
   const auto = within(dialog()).getByLabelText('세트 완료 시 자동 시작');
-  if (!(auto as HTMLInputElement).checked) await ui.user.click(auto);
+  if (auto.getAttribute('aria-checked') !== 'true') await ui.user.click(auto);
   fireEvent.change(within(dialog()).getAllByLabelText('운동명')[0], {
     target: { value: exercise },
   });

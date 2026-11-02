@@ -1124,7 +1124,7 @@ function Workspace() {
                     {workouts.map((w) => (
                       <ListItem
                         data-slot="workout-row"
-                        className="gap-2.5 py-4 md:gap-4"
+                        className="flex-wrap gap-2.5 py-4 md:flex-nowrap md:gap-4"
                         key={w.id}
                       >
                         <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-md bg-muted">
@@ -1135,9 +1135,9 @@ function Workspace() {
                             {Number(cleanDate(w.date).slice(5, 7))}월
                           </small>
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 [overflow-wrap:anywhere] max-md:basis-[calc(100%-3.625rem)]">
                           <h3 className="text-body-sm font-semibold">{w.title}</h3>
-                          <p className="mt-1 text-meta break-words text-muted-foreground">
+                          <p className="mt-1 text-meta text-muted-foreground">
                             {dateLabel(w.date)} ·{' '}
                             {Array.from(new Set(w.sets.map((s) => s.exercise))).join(', ')}
                           </p>
@@ -1147,11 +1147,9 @@ function Workspace() {
                             </p>
                           )}
                           {w.notes && (
-                            <p className="mt-1 text-meta break-words text-muted-foreground">
-                              {w.notes}
-                            </p>
+                            <p className="mt-1 text-meta text-muted-foreground">{w.notes}</p>
                           )}
-                          <details className="mt-1 text-meta">
+                          <details className="mt-1 text-body-sm">
                             <summary>세트 기록 보기</summary>
                             <ol>
                               {w.sets.map((s, i) => (
@@ -1166,7 +1164,7 @@ function Workspace() {
                             </ol>
                           </details>
                         </div>
-                        <div className="text-right text-meta text-muted-foreground">
+                        <div className="text-right text-meta text-muted-foreground max-md:mr-auto max-md:ml-14.5 max-md:text-left">
                           <strong className="text-body-sm font-medium text-foreground">
                             {fmt(vol(w))}{' '}
                             <small className="text-meta text-muted-foreground">kg</small>

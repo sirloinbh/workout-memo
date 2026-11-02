@@ -139,7 +139,7 @@ test('the records form a named list with edit and delete on each row', async () 
   await loaded();
   await ui.select('1일', '2024-03-01');
   const list = await screen.findByRole('list', { name: '운동 기록' });
-  const row = within(list).getAllByRole('listitem')[0]!;
+  const row = within(list).getAllByRole('listitem')[0];
   expect(within(row).getByRole('button', { name: '수정' })).toBeEnabled();
   expect(within(row).getByRole('button', { name: /삭제$/ })).toBeEnabled();
 });

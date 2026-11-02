@@ -367,9 +367,6 @@
   font-size: 11px;
   padding: 9px 13px;
 }
-.workout-list {
-  padding: 10px 24px;
-}
 .workout-row {
   display: flex;
   align-items: center;
@@ -377,30 +374,8 @@
   border-bottom: 1px solid var(--border);
   padding: 18px 24px;
 }
-.workout-list .workout-row {
-  padding: 18px 0;
-}
 .workout-row:last-child {
   border-bottom: 0;
-}
-.date-tile {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  justify-content: center;
-  background: var(--muted);
-  border-radius: calc(var(--radius) - 2px);
-  width: 45px;
-  height: 50px;
-  flex-shrink: 0;
-}
-.date-tile strong {
-  font-size: 18px;
-  font-weight: 500;
-}
-.date-tile small {
-  font-size: 9px;
-  color: var(--muted-foreground);
 }
 .workout-info {
   flex: 1;
@@ -415,23 +390,6 @@
   font-size: 10px;
   margin: 5px 0 0;
   overflow-wrap: anywhere;
-}
-.row-volume {
-  text-align: right;
-}
-.row-volume strong {
-  font-size: 13px;
-  font-weight: 500;
-}
-.row-volume small {
-  font-size: 9px;
-  color: var(--muted-foreground);
-}
-.row-volume span {
-  display: block;
-  font-size: 9px;
-  color: var(--muted-foreground);
-  margin-top: 6px;
 }
 .icon-button {
   background: none;
@@ -679,9 +637,6 @@
   .section-title {
     padding: 20px 17px 0;
   }
-  .workout-list {
-    padding: 5px 16px;
-  }
   .workout-row {
     gap: 9px;
     padding: 15px;
@@ -690,9 +645,6 @@
     font-size: 9px;
   }
   .workout-info h3 {
-    font-size: 11px;
-  }
-  .row-volume strong {
     font-size: 11px;
   }
   .goal-grid {
@@ -1143,14 +1095,13 @@
   .focus-card,
   .count,
   .subtle-button,
-  .date-tile,
   .machine-icon,
   .form-hint,
   div.official-ref,
   .rest-timer,
   .rest-preview
 ),
-:is(.tabs, .focus-card, .date-tile, .form-hint, div.official-ref, .rest-timer, .rest-preview) * {
+:is(.tabs, .focus-card, .form-hint, div.official-ref, .rest-timer, .rest-preview) * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }
 

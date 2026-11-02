@@ -86,7 +86,7 @@ const stat = (label: string) => {
   return card.querySelector('[data-slot=stat-value]')!.textContent;
 };
 const chart = () => screen.getByRole('img').getAttribute('aria-label') ?? '';
-const rows = () => [...document.querySelectorAll('.workout-row')];
+const rows = () => [...document.querySelectorAll('[data-slot=workout-row]')];
 const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
 
 test('default date is today in Asia/Seoul even on a UTC device', async () => {
@@ -132,6 +132,16 @@ test('an older response cannot clear loading while the latest period is still pe
   latest.resolve();
   await waitFor(() => expect(stat('누적 볼륨')).toBe('2,000kg'));
   expect(rows()).toHaveLength(1);
+});
+
+test('the records form a named list with edit and delete on each row', async () => {
+  const ui = mount([workout(1, '2024-03-01', 200)]);
+  await loaded();
+  await ui.select('1일', '2024-03-01');
+  const list = await screen.findByRole('list', { name: '운동 기록' });
+  const row = within(list).getAllByRole('listitem')[0];
+  expect(within(row).getByRole('button', { name: '수정' })).toBeEnabled();
+  expect(within(row).getByRole('button', { name: /삭제$/ })).toBeEnabled();
 });
 
 // #159: an edit is saved from the modal, which blocks the page behind it and cannot be closed

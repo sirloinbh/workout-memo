@@ -27,6 +27,7 @@ import { BodyMeasurements } from './body';
 import { FieldError, Input } from './components/field';
 import { invalidProps } from './components/field-props';
 import { AppShell, type NavItem } from './components/layout/app-shell';
+import { List, ListItem } from './components/list';
 import { Modal } from './components/modal';
 import { SegmentedControl } from './components/segmented-control';
 import { StatCard } from './components/stat-card';
@@ -1119,22 +1120,36 @@ function Workspace() {
                     </button>
                   </div>
                 ) : (
-                  <div className="workout-list">
+                  <List aria-label="운동 기록" className="px-4 py-1 md:px-6 md:py-2.5">
                     {workouts.map((w) => (
-                      <div className="workout-row" key={w.id}>
-                        <div className="date-tile">
-                          <strong>{Number(cleanDate(w.date).slice(8))}</strong>
-                          <small>{Number(cleanDate(w.date).slice(5, 7))}월</small>
+                      <ListItem
+                        data-slot="workout-row"
+                        className="flex-wrap gap-2.5 py-4 md:flex-nowrap md:gap-4"
+                        key={w.id}
+                      >
+                        <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-md bg-muted">
+                          <strong className="text-lg leading-none font-medium">
+                            {Number(cleanDate(w.date).slice(8))}
+                          </strong>
+                          <small className="mt-1 text-meta leading-none text-foreground">
+                            {Number(cleanDate(w.date).slice(5, 7))}월
+                          </small>
                         </div>
-                        <div className="workout-info">
-                          <h3>{w.title}</h3>
-                          <p>
+                        <div className="min-w-0 flex-1 [overflow-wrap:anywhere] max-md:basis-[calc(100%-3.625rem)]">
+                          <h3 className="text-body-sm font-semibold">{w.title}</h3>
+                          <p className="mt-1 text-meta text-muted-foreground">
                             {dateLabel(w.date)} ·{' '}
                             {Array.from(new Set(w.sets.map((s) => s.exercise))).join(', ')}
                           </p>
-                          {w.feedback && <p>체감 {feedbackLabels[w.feedback]}</p>}
-                          {w.notes && <p>{w.notes}</p>}
-                          <details>
+                          {w.feedback && (
+                            <p className="mt-1 text-meta text-muted-foreground">
+                              체감 {feedbackLabels[w.feedback]}
+                            </p>
+                          )}
+                          {w.notes && (
+                            <p className="mt-1 text-meta text-muted-foreground">{w.notes}</p>
+                          )}
+                          <details className="mt-1 text-body-sm">
                             <summary>세트 기록 보기</summary>
                             <ol>
                               {w.sets.map((s, i) => (
@@ -1149,17 +1164,21 @@ function Workspace() {
                             </ol>
                           </details>
                         </div>
-                        <div className="row-volume">
-                          <strong>
-                            {fmt(vol(w))} <small>kg</small>
+                        <div className="text-right text-meta text-muted-foreground max-md:mr-auto max-md:ml-14.5 max-md:text-left">
+                          <strong className="text-body-sm font-medium text-foreground">
+                            {fmt(vol(w))}{' '}
+                            <small className="text-meta text-muted-foreground">kg</small>
                           </strong>
-                          <span>{w.sets.filter(done).length} 세트</span>
+                          <span className="mt-1 block">{w.sets.filter(done).length} 세트</span>
                           {w.sets.some((s) => !done(s)) && (
-                            <span>미완료 {w.sets.filter((s) => !done(s)).length}</span>
+                            <span className="mt-1 block">
+                              미완료 {w.sets.filter((s) => !done(s)).length}
+                            </span>
                           )}
                         </div>
-                        <button
-                          className="text-button"
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           disabled={!!recovery || saving}
                           onClick={() =>
                             !recovery &&
@@ -1177,9 +1196,11 @@ function Workspace() {
                           }
                         >
                           수정
-                        </button>
-                        <button
-                          className="icon-button"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground"
                           aria-label={`${w.title} 삭제`}
                           onClick={() => {
                             if (confirm('이 운동 일지와 세트를 삭제할까요?'))
@@ -1187,10 +1208,10 @@ function Workspace() {
                           }}
                         >
                           <Trash2 size={16} />
-                        </button>
-                      </div>
+                        </Button>
+                      </ListItem>
                     ))}
-                  </div>
+                  </List>
                 )}
               </section>
             </>

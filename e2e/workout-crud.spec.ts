@@ -11,7 +11,7 @@ async function showDay(page: Page) {
 }
 const stat = (page: Page, label: string) =>
   page.locator('[data-slot=stat]', { hasText: label }).locator('[data-slot=stat-value]');
-const row = (page: Page) => page.locator('.workout-row', { hasText: title });
+const row = (page: Page) => page.locator('[data-slot=workout-row]', { hasText: title });
 
 test.afterAll(async ({ request }) => {
   // Remove leftovers if an assertion failed before the delete step.

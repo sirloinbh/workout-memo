@@ -31,6 +31,7 @@ import { List, ListItem } from './components/list';
 import { Modal } from './components/modal';
 import { SegmentedControl } from './components/segmented-control';
 import { StatCard } from './components/stat-card';
+import { ToggleChips } from './components/toggle-chips';
 import { Button } from './components/ui/button';
 import { Toaster } from './components/ui/sonner';
 import {
@@ -1413,27 +1414,25 @@ function Workspace() {
                 </label>
                 {issue('title')}
               </div>
-              <div className="feedback-field">
-                <span id="workout-feedback">체감 피드백 (선택)</span>
-                <div className="tabs" role="group" aria-labelledby="workout-feedback">
-                  {feedbackLevels.map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      className={editor.feedback === level ? 'selected' : ''}
-                      aria-pressed={editor.feedback === level}
-                      // Pressing the selected level again clears it back to not recorded.
-                      onClick={() =>
-                        setEditor({
-                          ...editor,
-                          feedback: editor.feedback === level ? null : level,
-                        })
-                      }
-                    >
-                      {feedbackLabels[level]}
-                    </button>
-                  ))}
-                </div>
+              <div className="mb-4 flex flex-col items-start gap-2 text-caption text-muted-foreground">
+                <span>체감 피드백 (선택)</span>
+                <ToggleChips
+                  label="체감 피드백"
+                  options={feedbackLevels.map((level) => feedbackLabels[level])}
+                  value={editor.feedback ? [feedbackLabels[editor.feedback]] : []}
+                  // At most one level: a new press replaces the old one, and pressing the
+                  // selected level again clears it back to not recorded.
+                  onValueChange={(next) =>
+                    setEditor({
+                      ...editor,
+                      feedback:
+                        feedbackLevels.find(
+                          (level) =>
+                            level !== editor.feedback && next.includes(feedbackLabels[level]),
+                        ) ?? null,
+                    })
+                  }
+                />
               </div>
               {issue('feedback')}
               {issue('sets')}

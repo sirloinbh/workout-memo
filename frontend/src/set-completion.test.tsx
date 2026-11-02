@@ -78,11 +78,11 @@ async function openNew(ui: UI) {
 }
 const completion = (i = 0) => screen.getAllByRole('button', { name: /세트 완료/ })[i];
 const pressed = (i = 0) => completion(i).getAttribute('aria-pressed');
-const autoStart = () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+const autoStart = () => screen.getByRole('switch', { name: '세트 완료 시 자동 시작' });
 const duration = () => screen.getByRole('spinbutton', { name: '휴식 시간(초)' });
 // #83: workout feedback replaced the per-set RPE input.
 const feedback = (label: string) => screen.getByRole('button', { name: label });
-const timer = () => document.querySelector('.rest-timer')?.textContent ?? '';
+const timer = () => document.querySelector('[data-slot=rest-timer]')?.textContent ?? '';
 const content = () => document.body.textContent ?? '';
 const stat = (label: string) => {
   const card = screen
@@ -215,7 +215,7 @@ test('refresh restores timer from its end time and set state from the draft', as
   await loaded();
   expect(pressed()).toBe('true');
   expect(feedback('힘듦')).toHaveAttribute('aria-pressed', 'true');
-  expect(autoStart().checked, 'auto-start preference persists').toBe(true);
+  expect(autoStart(), 'auto-start preference persists').toBeChecked();
   await submit(second);
   expect(second.sentFeedback()).toBe('hard');
   expect(second.sentSets().map((s) => [s.completed, s.rpe])).toEqual([

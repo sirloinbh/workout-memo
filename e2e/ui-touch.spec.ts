@@ -16,7 +16,7 @@ function violations(root: Locator) {
       `${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 20)}"`;
     const fields =
       'input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea';
-    const targets = `button, summary, a.primary, ${fields}`;
+    const targets = `button:not([role="switch"]), summary, a.primary, ${fields}`;
     for (const scope of roots) {
       for (const el of scope.querySelectorAll(fields)) {
         if (!visible(el)) continue;
@@ -29,8 +29,17 @@ function violations(root: Locator) {
         if (height < 44) found.push(`${name(el)} 높이 ${height}px`);
         if (el.tagName === 'BUTTON' && width < 44) found.push(`${name(el)} 너비 ${width}px`);
       }
-      // A checkbox is tapped through its label.
-      for (const el of scope.querySelectorAll('input[type="checkbox"]')) {
+      // A switch keeps its small track and is tapped through an invisible ::after area.
+      for (const el of scope.querySelectorAll('[role="switch"]')) {
+        if (!visible(el)) continue;
+        const area = getComputedStyle(el, '::after');
+        const height = parseFloat(area.height);
+        const width = parseFloat(area.width);
+        if (!(height >= 44 && width >= 44))
+          found.push(`스위치 "${el.id}" 누름 영역 ${width}×${height}px`);
+      }
+      // A checkbox is tapped through its label. Radix's hidden twin of a switch is not tapped.
+      for (const el of scope.querySelectorAll('input[type="checkbox"]:not([aria-hidden="true"])')) {
         if (!visible(el)) continue;
         const height = (el.closest('label') ?? el).getBoundingClientRect().height;
         if (height < 44)

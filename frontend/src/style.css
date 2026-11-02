@@ -832,65 +832,7 @@
   color: var(--foreground);
   font-weight: 700;
 }
-.rest-timer {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px 16px;
-  align-items: center;
-  margin: 0 0 18px;
-  padding: 14px;
-  border: 1px solid var(--input);
-  border-radius: 8px;
-  background: var(--muted);
-}
-.rest-timer strong {
-  font-size: 22px;
-  font-variant-numeric: tabular-nums;
-  color: var(--foreground);
-}
-.rest-timer strong.ended {
-  color: var(--muted-foreground);
-}
-.rest-timer .rest-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: end;
-}
-.rest-timer .rest-actions button {
-  margin: 0;
-  min-height: 40px;
-}
-.rest-timer label {
-  font-size: 11px;
-}
-.rest-timer input[type='number'] {
-  max-width: 120px;
-}
-.rest-timer .rest-auto {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.rest-timer .rest-auto input {
-  width: auto;
-}
-/* #84: per-kind rest inputs and the machine form's single-joint checkbox. */
-.rest-timer .rest-kinds {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font-size: 11px;
-}
-.rest-timer .rest-kinds label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+/* #84: the machine form's single-joint checkbox. */
 .modal .rest-auto {
   flex-direction: row;
   align-items: center;
@@ -898,21 +840,10 @@
 .modal .rest-auto input {
   width: auto;
 }
-.rest-timer .form-hint,
-.rest-timer .error {
-  grid-column: 1 / -1;
-  margin: 0;
-}
 @media (max-width: 760px) {
   .set-editor .set-actions {
     grid-column: 2 / -1;
     grid-row: 4;
-  }
-  .rest-timer {
-    grid-template-columns: 1fr;
-  }
-  .rest-timer .rest-actions {
-    justify-content: start;
   }
 }
 .routine-progress {
@@ -1058,10 +989,9 @@
   .machine-icon,
   .form-hint,
   div.official-ref,
-  .rest-timer,
   .rest-preview
 ),
-:is(.focus-card, .form-hint, div.official-ref, .rest-timer, .rest-preview) * {
+:is(.focus-card, .form-hint, div.official-ref, .rest-preview) * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }
 
@@ -1076,8 +1006,7 @@
   .legacy :is(input:not([type='checkbox'], [type='radio'], [type='hidden']), select) {
     min-height: 44px;
   }
-  .legacy button,
-  .rest-timer .rest-actions button {
+  .legacy button {
     min-width: 44px;
     min-height: 44px;
   }

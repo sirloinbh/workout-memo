@@ -1499,7 +1499,7 @@ function Workspace() {
                   <label className="text-meta max-md:mb-2.5">
                     머신
                     <select
-                      className="h-9 px-2 text-body-sm pointer-coarse:text-base"
+                      className="h-9 px-2 py-0 text-body-sm pointer-coarse:text-base"
                       value={s.machine_id ?? ''}
                       onChange={(e) => {
                         const m = machines.find((m) => m.id === Number(e.target.value));
@@ -1607,7 +1607,7 @@ function Workspace() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="col-start-4 row-span-2 row-start-1 text-muted-foreground md:col-start-6 md:row-span-1"
+                    className="col-start-4 row-span-2 row-start-1 text-muted-foreground md:col-start-6 md:row-span-1 md:row-start-1"
                     disabled={editor.sets!.length === 1}
                     aria-label="세트 삭제"
                     onClick={() =>

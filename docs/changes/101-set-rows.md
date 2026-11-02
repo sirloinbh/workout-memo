@@ -17,6 +17,12 @@
 - `frontend/src/style.css`: `.set-editor`, `.set-number`, `.set-actions`, `.set-done`, `.set-reference`, `.set-notes`와 반응형, 터치 규칙을 지웠습니다.
 - 화면 차이: 입력 라벨이 9px에서 12px로, 입력 글자가 12px에서 14px로 커집니다. 터치 기기는 16px입니다. 완료한 세트 버튼은 주 색 바탕입니다. 2열로 바뀌는 폭은 761px에서 `md`(768px)입니다.
 
+## 변경 — fix: 1차 리뷰 보완
+
+- 삭제 버튼 위치: `md:row-span-1`이 시작 행을 지워, 기준 문구나 오류가 있는 세트에서 768px 이상일 때 삭제 버튼이 첫 줄을 벗어났습니다. `md:row-start-1`을 넣었습니다.
+- 머신 선택 높이: `.modal select`의 위아래 여백이 남아 `h-9` 안에서 글자 칸이 12px뿐이었습니다. `py-0`을 넣었습니다.
+- 규칙을 지운 뒤 비어 있던 `@media` 블록을 지웠습니다.
+
 ## 테스트
 
 - 수정: `routine-progress.test.tsx`, `e2e/new-workout-defaults.spec.ts`, `e2e/workout-crud.spec.ts`의 세트 행 선택자를 `data-slot`으로 바꿨습니다. 검증 내용은 같습니다.

@@ -759,8 +759,6 @@
 .modal .rest-auto input {
   width: auto;
 }
-@media (max-width: 760px) {
-}
 .routine-progress {
   margin-bottom: 24px;
 }

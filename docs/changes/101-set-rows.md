@@ -27,4 +27,5 @@
 
 - 수정: `routine-progress.test.tsx`, `e2e/new-workout-defaults.spec.ts`, `e2e/workout-crud.spec.ts`의 세트 행 선택자를 `data-slot`으로 바꿨습니다. 검증 내용은 같습니다.
 - `npm run test -w frontend -- src/routine-progress.test.tsx src/set-completion.test.tsx src/forms.test.tsx src/workout-draft.test.tsx src/new-workout-defaults.test.tsx`: 40 pass
+- PR CI의 `e2e-visual`에서 `workout-editor-768` 한 장만 달라졌습니다. 라벨과 입력 글자가 커지고 삭제 버튼이 첫 줄에 있는 것을 이미지로 확인하고 기준선을 갱신했습니다. 360px과 1280px 이미지는 그대로입니다.
 - 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다. e2e와 시각 기준선은 PR CI로 확인합니다.

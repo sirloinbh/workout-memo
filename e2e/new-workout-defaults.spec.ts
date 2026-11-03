@@ -56,7 +56,7 @@ test('새 일지는 오늘 날짜·제목과 오늘 루틴의 세트·머신으�
   const editor = page.getByRole('dialog', { name: '새로운 운동 기록' });
   await expect(editor.getByLabel('운동 날짜')).toHaveValue(seoul);
   await expect(editor.getByLabel('일지 제목')).toHaveValue(title);
-  const sets = editor.locator('.set-editor');
+  const sets = editor.locator('[data-slot=set-row]');
   await expect(sets).toHaveCount(2);
   for (let i = 0; i < 2; i++) {
     await expect(sets.nth(i).getByLabel('운동명')).toHaveValue(`E2E 레그프레스 ${suffix}`);

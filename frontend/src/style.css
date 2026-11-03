@@ -492,32 +492,6 @@
 :where(.legacy) div.official-ref p {
   margin: 6px 0 0;
 }
-.set-editor {
-  display: grid;
-  grid-template-columns: 22px 1.5fr 1.5fr 85px 65px 26px;
-  align-items: center;
-  gap: 9px;
-}
-.set-editor label {
-  font-size: 9px;
-}
-.set-editor .set-notes {
-  grid-column: 2 / -2;
-  grid-row: 2;
-}
-.set-editor > button {
-  grid-column: -2;
-  grid-row: 1;
-}
-.set-editor input,
-.set-editor select {
-  padding: 9px 7px;
-  font-size: 12px;
-}
-.set-number {
-  font-size: 11px;
-  color: var(--muted-foreground);
-}
 .modal .subtle-button {
   margin: 4px 0 22px;
 }
@@ -610,29 +584,6 @@
   }
   .goal-grid {
     grid-template-columns: 1fr;
-  }
-  .set-editor {
-    grid-template-columns: 18px 1fr 1fr 26px;
-    gap: 7px;
-    margin-bottom: 18px;
-    border-bottom: 1px solid var(--border);
-  }
-  .set-editor label {
-    margin-bottom: 10px;
-  }
-  .set-editor label:nth-of-type(3) {
-    grid-column: 2;
-  }
-  .set-editor button {
-    grid-column: 4;
-    grid-row: 1 / 3;
-  }
-  .set-editor .set-notes {
-    grid-column: 2 / -1;
-    grid-row: 3;
-  }
-  .set-number {
-    grid-row: 1 / 3;
   }
   .form-grid {
     gap: 0 12px;
@@ -800,38 +751,6 @@
   border-radius: 4px 4px 0 0;
   background: var(--primary);
 }
-.set-editor .set-actions {
-  grid-column: 2 / -2;
-  grid-row: 3;
-  display: flex;
-  align-items: end;
-  gap: 12px;
-}
-.set-editor .set-actions label {
-  flex: 0 1 140px;
-}
-.set-editor .set-actions button {
-  grid-column: auto;
-  grid-row: auto;
-}
-.set-done {
-  min-height: 40px;
-  min-width: 84px;
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius) - 4px);
-  background: var(--card);
-  color: var(--foreground);
-  font-weight: 600;
-}
-.set-done.active {
-  background: var(--primary);
-  border-color: var(--border);
-  color: var(--muted-foreground);
-}
-.set-editor.completed .set-number {
-  color: var(--foreground);
-  font-weight: 700;
-}
 /* #84: the machine form's single-joint checkbox. */
 .modal .rest-auto {
   flex-direction: row;
@@ -839,12 +758,6 @@
 }
 .modal .rest-auto input {
   width: auto;
-}
-@media (max-width: 760px) {
-  .set-editor .set-actions {
-    grid-column: 2 / -1;
-    grid-row: 4;
-  }
 }
 .routine-progress {
   margin-bottom: 24px;
@@ -902,12 +815,6 @@
 .week-table .excluded {
   color: var(--muted-foreground);
 }
-.set-editor .set-reference {
-  grid-column: 2 / -2;
-  margin: 0;
-  font-size: 11px;
-  color: var(--muted-foreground);
-}
 @media (max-width: 760px) {
   .progress-body {
     padding: 8px 16px 18px;
@@ -915,9 +822,6 @@
   .week-table {
     display: block;
     overflow-x: auto;
-  }
-  .set-editor .set-reference {
-    grid-column: 2 / -1;
   }
 }
 /* #64: per-field messages from the shared input contract. */
@@ -1028,15 +932,6 @@
   .inbody-preview input[type='checkbox'] {
     width: 24px;
     height: 24px;
-  }
-  /* The delete button's column follows its 44px minimum. */
-  .set-editor {
-    grid-template-columns: 22px 1.5fr 1.5fr 85px 65px 44px;
-  }
-}
-@media (pointer: coarse) and (max-width: 760px) {
-  .set-editor {
-    grid-template-columns: 18px 1fr 1fr 44px;
   }
 }
 /* Two 16px date fields do not fit side by side on a phone. */

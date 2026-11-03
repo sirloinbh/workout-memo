@@ -31,7 +31,7 @@ test('운동 일지를 브라우저에서 생성·조회·수정·삭제하고 D
   await editor.getByLabel('운동 날짜').fill(day);
   await editor.getByLabel('일지 제목').fill(title);
   // The new-record form opens with several planned sets; keep one for exact totals.
-  const sets = editor.locator('.set-editor');
+  const sets = editor.locator('[data-slot=set-row]');
   while ((await sets.count()) > 1)
     await sets.last().getByRole('button', { name: '세트 삭제' }).click();
   await editor.getByLabel('운동명').fill('E2E 스쿼트');

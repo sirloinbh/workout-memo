@@ -33,8 +33,10 @@ import { SegmentedControl } from './components/segmented-control';
 import { StatCard } from './components/stat-card';
 import { Switch } from './components/switch';
 import { ToggleChips } from './components/toggle-chips';
+import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { EmptyState } from './components/ui/empty-state';
 import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Toaster } from './components/ui/sonner';
@@ -997,32 +999,38 @@ function Workspace() {
           )}
           {saveState && !editor && <p role="status">{saveState}</p>}
           {recovery && !editor && (
-            <section className="card">
-              <p>
+            <Card
+              role="region"
+              aria-label="로컬 초안"
+              className="mb-6 gap-3 p-4 shadow-none md:flex-row md:items-center md:justify-between md:p-5"
+            >
+              <p className="text-sm text-muted-foreground">
                 이 브라우저에 로컬 초안이 있습니다. 서버 기록과 별도로 보관됩니다. 복구 또는 폐기 후
                 다른 기록을 입력하세요.
               </p>
-              <button
-                className="subtle-button"
-                onClick={() => {
-                  updateEditor(recovery.editor);
-                  setRecovery(null);
-                  setSaveState('로컬 초안 · 서버 저장 전');
-                }}
-              >
-                초안 복구
-              </button>
-              <button
-                className="text-button"
-                onClick={() => {
-                  persist(null);
-                  setRecovery(null);
-                  setSaveState('초안 폐기');
-                }}
-              >
-                초안 폐기
-              </button>
-            </section>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    updateEditor(recovery.editor);
+                    setRecovery(null);
+                    setSaveState('로컬 초안 · 서버 저장 전');
+                  }}
+                >
+                  초안 복구
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    persist(null);
+                    setRecovery(null);
+                    setSaveState('초안 폐기');
+                  }}
+                >
+                  초안 폐기
+                </Button>
+              </div>
+            </Card>
           )}
           {!editor && timer.state !== 'idle' && timerPanel}
           {(page === 'overview' || page === 'journal') && (
@@ -1121,32 +1129,46 @@ function Workspace() {
                   </Card>
                 </div>
               )}
-              <section className="card journal-card">
-                <div className="section-title">
-                  <div>
-                    <h2>
-                      운동 기록 <span className="count">{workouts.length}</span>
-                    </h2>
-                    <p>오늘의 노력이 내일의 기준이 되도록</p>
-                  </div>
+              <Card data-slot="journal-card" className="gap-0 py-0 shadow-none">
+                <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
+                  <CardTitle
+                    asHeading="h2"
+                    className="flex items-center gap-2 text-body font-semibold"
+                  >
+                    운동 기록{' '}
+                    <Badge variant="secondary" className="text-meta">
+                      {workouts.length}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="text-caption">
+                    오늘의 노력이 내일의 기준이 되도록
+                  </CardDescription>
                   {page === 'overview' && (
-                    <button className="text-button" onClick={() => setPage('journal')}>
-                      전체 기록 <ArrowRight size={15} />
-                    </button>
+                    <CardAction>
+                      <Button variant="ghost" size="sm" onClick={() => setPage('journal')}>
+                        전체 기록 <ArrowRight aria-hidden />
+                      </Button>
+                    </CardAction>
                   )}
-                </div>
+                </CardHeader>
                 {loading ? (
-                  <div className="empty">기록을 불러오는 중…</div>
+                  <p className="px-6 py-14 text-center text-sm text-muted-foreground">
+                    기록을 불러오는 중…
+                  </p>
                 ) : workouts.length === 0 ? (
-                  <div className="empty">
-                    <NotebookPen size={30} />
-                    <h3>첫 번째 기록을 남겨보세요</h3>
-                    <p>오늘의 세트부터, 나의 성장 이야기가 시작돼요.</p>
-                    <button className="subtle-button" onClick={newWorkout}>
-                      <Plus size={16} />
-                      운동 기록하기
-                    </button>
-                  </div>
+                  <EmptyState
+                    className="m-4 md:m-6"
+                    headingLevel="h3"
+                    icon={<NotebookPen />}
+                    title="첫 번째 기록을 남겨보세요"
+                    description="오늘의 세트부터, 나의 성장 이야기가 시작돼요."
+                    action={
+                      <Button variant="secondary" onClick={newWorkout}>
+                        <Plus aria-hidden />
+                        운동 기록하기
+                      </Button>
+                    }
+                  />
                 ) : (
                   <List aria-label="운동 기록" className="px-4 py-1 md:px-6 md:py-2.5">
                     {workouts.map((w) => (
@@ -1241,7 +1263,7 @@ function Workspace() {
                     ))}
                   </List>
                 )}
-              </section>
+              </Card>
             </>
           )}
           {page === 'goals' && (

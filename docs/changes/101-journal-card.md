@@ -31,3 +31,9 @@
 - 개수 `Badge`의 `text-meta`는 글자 크기와 함께 `muted-foreground` 색도 정해 `Badge`의 `text-secondary-foreground`와 겹쳤습니다. 크기만 정하는 `text-xs`로 바꿨습니다.
 - 지적된 필수 사항 "시각 기준선 미갱신"은 이 저장소의 절차대로 CI 이미지를 확인한 뒤 갱신합니다.
 - 1차 보완 후: `npm run test -w frontend -- src/period.test.tsx` 25 pass, `npm run lint`, `npm run typecheck -w frontend` 통과
+
+## 변경 — test: 시각 기준선 갱신
+
+- 2차 리뷰는 보완점이 없었습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- `4b54494`의 CI `e2e-visual`에서 9건만 실패했고 axe·반응형·터치 포함 나머지 69건은 통과했습니다. 바뀐 것은 `dashboard`·`journal`의 360·390·768·1280과 뒤에 대시보드가 보이는 `workout-editor-768`입니다. `dashboard-1280`과 `journal-360`을 직접 보고 개수 `Badge`, 커진 설명 글자, "전체 기록" 버튼 외에 차이가 없음을 확인한 뒤 `visual-baselines` 아티팩트로 9장을 갱신했습니다.
+- 한계: e2e 고정 데이터에는 기록이 있고 로컬 초안이 없어 빈 상태와 초안 안내는 기준선 이미지에 나오지 않습니다. 이 둘은 화면 테스트(`period.test.tsx`, `workout-draft.test.tsx`)로만 확인했습니다.

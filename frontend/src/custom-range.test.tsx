@@ -115,3 +115,33 @@ test('a broken range in the address falls back to the default period with a noti
   expect(screen.getByRole('alert').textContent).toMatch(/주소의 기간이 올바르지 않아/);
   expect(ui.workoutQueries()[0]).toBe('/api/workouts?from=2026-10-12&to=2026-10-18');
 });
+
+// #101: 31 daily bars label every 3rd day and thin those out further on a narrow plot.
+test('a 31-day range labels every third day in width tiers', async () => {
+  const ui = mount();
+  await choose(ui, '2026-10-01', '2026-10-31');
+  await waitFor(() => expect(document.querySelectorAll('[data-slot=volume-bar]')).toHaveLength(31));
+  const labels = [...document.querySelectorAll('[data-slot=volume-label]')];
+  expect(labels.map((l) => l.textContent)).toEqual(
+    [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31].map((d) => `10/${d}`),
+  );
+  const tier = (l: Element) =>
+    l.classList.contains('@min-[400px]:inline')
+      ? 'wide'
+      : l.classList.contains('@min-[200px]:inline')
+        ? 'medium'
+        : 'always';
+  expect(labels.map(tier)).toEqual([
+    'always',
+    'wide',
+    'medium',
+    'wide',
+    'always',
+    'wide',
+    'medium',
+    'wide',
+    'always',
+    'wide',
+    'medium',
+  ]);
+});

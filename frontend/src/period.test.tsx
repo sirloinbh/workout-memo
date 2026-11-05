@@ -337,17 +337,25 @@ test('volume chart sizes bars against the largest bucket and highlights the late
   expect(screen.queryByText('첫 기록부터 그래프가 채워져요')).toBeNull();
 });
 
-test('volume chart keeps every other label on narrow screens past a week', async () => {
+// Labels thin out by the plot's width: every 4th always, every 2nd from 200px, all from 400px.
+const labelTiers = () =>
+  [...document.querySelectorAll('[data-slot=volume-label]')].map((label) =>
+    label.classList.contains('@min-[400px]:inline')
+      ? 'wide'
+      : label.classList.contains('@min-[200px]:inline')
+        ? 'medium'
+        : 'always',
+  );
+
+test('volume chart thins date labels by the plot width past a week', async () => {
   const ui = mount();
   await loaded();
   expect(screen.getByText('첫 기록부터 그래프가 채워져요')).toBeInTheDocument();
+  // A week of weekday labels is short enough to show them all.
+  expect(labelTiers()).toEqual(Array(7).fill('always'));
   await ui.select('12주', '2025-01-05');
   await loaded();
-  const chartBox = document.querySelector('[data-slot=volume-chart]')!;
-  const labels = [...chartBox.querySelectorAll('[data-slot=volume-bar]')].map(
-    (bar) => bar.parentElement!.nextElementSibling!.firstElementChild,
-  );
-  expect(labels).toHaveLength(12);
-  expect(labels.every(Boolean)).toBe(true);
-  labels.forEach((label, i) => expect(label!.classList.contains('hidden')).toBe(i % 2 === 1));
+  await waitFor(() => expect(document.querySelectorAll('[data-slot=volume-bar]')).toHaveLength(12));
+  const quarter = ['always', 'wide', 'medium', 'wide'];
+  expect(labelTiers()).toEqual([...quarter, ...quarter, ...quarter]);
 });

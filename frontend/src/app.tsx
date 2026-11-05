@@ -1094,7 +1094,7 @@ function Workspace() {
                     <div className="flex items-center justify-between text-meta tracking-widest">
                       THE NEXT CHAPTER <ArrowUpRight aria-hidden size={19} />
                     </div>
-                    <h2 className="mt-4 mb-2 text-2xl leading-normal font-semibold tracking-tight">
+                    <h2 className="mt-4 mb-2 text-2xl leading-normal font-semibold tracking-tight md:text-xl xl:text-2xl">
                       조금 더 무겁게.
                       <br />한 번 더 해내기.
                     </h2>
@@ -2122,8 +2122,14 @@ function Chart({
     });
   }
   const max = Math.max(100, ...values.map((v) => v.value));
-  // Below xl the plot is narrow, so more than a week of labels keeps only every other one.
-  const narrowStep = values.length > 7 ? labelStep * 2 : labelStep;
+  // Past a week of bars the labels thin out by the plot's own width (the sidebar and the
+  // side card make it independent of the screen width): every 4th, every 2nd, then all.
+  const labelClass = (i: number) =>
+    values.length <= 7 || i % (labelStep * 4) === 0
+      ? undefined
+      : i % (labelStep * 2) === 0
+        ? 'hidden @min-[200px]:inline'
+        : 'hidden @min-[400px]:inline';
   return (
     <div
       data-slot="volume-chart"
@@ -2138,29 +2144,38 @@ function Chart({
           </span>
         ))}
       </div>
-      <div className="relative flex-1">
+      <div className="@container relative min-w-0 flex-1">
         <div className="absolute inset-x-0 top-0 bottom-6 flex flex-col justify-between">
           {[1, 2, 3, 4, 5].map((i) => (
             <i key={i} className="border-t border-dashed" />
           ))}
         </div>
-        <div className="absolute inset-0 flex justify-around gap-1 md:gap-2.5">
+        <div className="absolute inset-0 flex justify-around gap-px @sm:gap-1 @lg:gap-2.5">
+          {/* min-w-0 and absolutely placed labels keep 31 bars inside a narrow plot (#101). */}
           {values.map((v, i) => (
-            <div className="flex max-w-10 flex-1 flex-col items-center" key={i}>
+            <div className="flex max-w-10 min-w-0 flex-1 flex-col items-center" key={i}>
               <div className="flex w-full flex-1 items-end justify-center">
                 <div
                   data-slot="volume-bar"
                   className={cn(
-                    'w-3/4 min-w-1.5 rounded-t-sm',
+                    'w-3/4 min-w-0.5 rounded-t-sm',
                     i === values.length - 1 ? 'bg-primary' : 'bg-foreground/20',
                   )}
                   style={{ height: `${(v.value / max) * 100}%`, minHeight: v.value ? 3 : 0 }}
                   title={`${v.label}: ${fmt(v.value)}kg`}
                 />
               </div>
-              <span className="h-6 text-meta leading-6 whitespace-nowrap">
+              <span className="relative h-6 w-full text-meta leading-6">
                 {i % labelStep === 0 && (
-                  <span className={cn(i % narrowStep !== 0 && 'hidden xl:inline')}>{v.label}</span>
+                  <span
+                    data-slot="volume-label"
+                    className={cn(
+                      'absolute left-1/2 -translate-x-1/2 whitespace-nowrap',
+                      labelClass(i),
+                    )}
+                  >
+                    {v.label}
+                  </span>
                 )}
               </span>
             </div>

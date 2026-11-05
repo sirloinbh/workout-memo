@@ -306,3 +306,48 @@ test('a delayed edit keeps the page blocked until it finishes, then the new peri
   expect(rows()).toHaveLength(2);
   expect(screen.queryByRole('alert')).toBeNull();
 });
+
+// #101: bars are sized against the largest bucket and the latest bucket is highlighted.
+test('volume chart sizes bars against the largest bucket and highlights the latest', async () => {
+  const ui = mount([workout(1, '2024-02-26', 100), workout(2, '2024-02-28', 200)]);
+  await loaded();
+  await ui.select('1주', '2024-02-29');
+  await waitFor(() => expect(stat('누적 볼륨')).toBe('3,000kg'));
+  const bars = [...document.querySelectorAll<HTMLElement>('[data-slot=volume-bar]')];
+  expect(bars.map((bar) => bar.style.height)).toEqual([
+    '50%',
+    '0%',
+    '100%',
+    '0%',
+    '0%',
+    '0%',
+    '0%',
+  ]);
+  expect(bars.map((bar) => bar.title)).toEqual([
+    '월: 1,000kg',
+    '화: 0kg',
+    '수: 2,000kg',
+    '목: 0kg',
+    '금: 0kg',
+    '토: 0kg',
+    '일: 0kg',
+  ]);
+  expect(bars.at(-1)).toHaveClass('bg-primary');
+  expect(bars.filter((bar) => bar.classList.contains('bg-primary'))).toHaveLength(1);
+  expect(screen.queryByText('첫 기록부터 그래프가 채워져요')).toBeNull();
+});
+
+test('volume chart keeps every other label on narrow screens past a week', async () => {
+  const ui = mount();
+  await loaded();
+  expect(screen.getByText('첫 기록부터 그래프가 채워져요')).toBeInTheDocument();
+  await ui.select('12주', '2025-01-05');
+  await loaded();
+  const chartBox = document.querySelector('[data-slot=volume-chart]')!;
+  const labels = [...chartBox.querySelectorAll('[data-slot=volume-bar]')].map(
+    (bar) => bar.parentElement!.nextElementSibling!.firstElementChild,
+  );
+  expect(labels).toHaveLength(12);
+  expect(labels.every(Boolean)).toBe(true);
+  labels.forEach((label, i) => expect(label!.classList.contains('hidden')).toBe(i % 2 === 1));
+});

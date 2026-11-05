@@ -126,7 +126,7 @@ test('a 31-day range labels every third day in width tiers', async () => {
     [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31].map((d) => `10/${d}`),
   );
   const tier = (l: Element) =>
-    l.classList.contains('@min-[400px]:inline')
+    l.classList.contains('@min-[480px]:inline')
       ? 'wide'
       : l.classList.contains('@min-[200px]:inline')
         ? 'medium'

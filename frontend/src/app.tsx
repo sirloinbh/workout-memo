@@ -2129,7 +2129,7 @@ function Chart({
       ? undefined
       : i % (labelStep * 2) === 0
         ? 'hidden @min-[200px]:inline'
-        : 'hidden @min-[400px]:inline';
+        : 'hidden @min-[480px]:inline';
   return (
     <div
       data-slot="volume-chart"

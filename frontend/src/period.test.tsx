@@ -337,10 +337,10 @@ test('volume chart sizes bars against the largest bucket and highlights the late
   expect(screen.queryByText('첫 기록부터 그래프가 채워져요')).toBeNull();
 });
 
-// Labels thin out by the plot's width: every 4th always, every 2nd from 200px, all from 400px.
+// Labels thin out by the plot's width: every 4th always, every 2nd from 200px, all from 480px.
 const labelTiers = () =>
   [...document.querySelectorAll('[data-slot=volume-label]')].map((label) =>
-    label.classList.contains('@min-[400px]:inline')
+    label.classList.contains('@min-[480px]:inline')
       ? 'wide'
       : label.classList.contains('@min-[200px]:inline')
         ? 'medium'

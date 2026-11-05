@@ -1129,14 +1129,14 @@ function Workspace() {
                   </Card>
                 </div>
               )}
-              <Card data-slot="journal-card" className="gap-0 py-0 shadow-none">
+              <Card className="gap-0 py-0 shadow-none">
                 <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
                   <CardTitle
                     asHeading="h2"
                     className="flex items-center gap-2 text-body font-semibold"
                   >
                     운동 기록{' '}
-                    <Badge variant="secondary" className="text-meta">
+                    <Badge variant="secondary" className="text-xs">
                       {workouts.length}
                     </Badge>
                   </CardTitle>

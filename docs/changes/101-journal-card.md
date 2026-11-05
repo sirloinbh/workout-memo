@@ -24,3 +24,10 @@
 - `npm run test -w frontend`: 210 pass, 4 skip
 - `npm run typecheck -w frontend`, `npm run lint`, prettier: 통과
 - 시각 기준선과 e2e(반응형·axe)는 PR CI로 확인합니다. 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+- 카드에 붙인 `data-slot="journal-card"`가 `Card`의 `data-slot="card"`를 덮어써, 나중에 공통 선택자를 쓰면 이 카드만 빠질 수 있었습니다. 쓰는 곳이 없어 지웠습니다.
+- 개수 `Badge`의 `text-meta`는 글자 크기와 함께 `muted-foreground` 색도 정해 `Badge`의 `text-secondary-foreground`와 겹쳤습니다. 크기만 정하는 `text-xs`로 바꿨습니다.
+- 지적된 필수 사항 "시각 기준선 미갱신"은 이 저장소의 절차대로 CI 이미지를 확인한 뒤 갱신합니다.
+- 1차 보완 후: `npm run test -w frontend -- src/period.test.tsx` 25 pass, `npm run lint`, `npm run typecheck -w frontend` 통과

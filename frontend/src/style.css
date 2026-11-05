@@ -586,71 +586,6 @@
 .modal .rest-auto input {
   width: auto;
 }
-.routine-progress {
-  margin-bottom: 24px;
-}
-.progress-body {
-  padding: 8px 24px 22px;
-  font-size: 13px;
-}
-.progress-body h3 {
-  font-size: 13px;
-  margin: 18px 0 6px;
-}
-.target-list {
-  margin: 6px 0;
-  padding-left: 18px;
-}
-.target-list li {
-  margin: 6px 0;
-}
-.target-list small {
-  color: var(--muted-foreground);
-}
-.progress-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-.rest-preview {
-  margin-top: 14px;
-  padding: 14px;
-  background: var(--muted);
-  border-radius: calc(var(--radius) - 2px);
-}
-.rest-preview button {
-  margin: 6px 6px 0 0;
-}
-.week-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 8px;
-  font-size: 12px;
-}
-.week-table th,
-.week-table td {
-  text-align: left;
-  vertical-align: top;
-  padding: 7px 6px;
-  border-top: 1px solid var(--border);
-}
-.week-table ul {
-  margin: 0;
-  padding-left: 16px;
-}
-.week-table .excluded {
-  color: var(--muted-foreground);
-}
-@media (max-width: 760px) {
-  .progress-body {
-    padding: 8px 16px 18px;
-  }
-  .week-table {
-    display: block;
-    overflow-x: auto;
-  }
-}
 /* #64: per-field messages from the shared input contract. */
 .field-error {
   display: block;
@@ -713,8 +648,8 @@
 }
 /* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA
    4.5:1. Text on these surfaces mixes in more of the foreground colour instead. */
-:is(.count, .subtle-button, .machine-icon, .form-hint, div.official-ref, .rest-preview),
-:is(.form-hint, div.official-ref, .rest-preview) * {
+:is(.count, .subtle-button, .machine-icon, .form-hint, div.official-ref),
+:is(.form-hint, div.official-ref) * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }
 

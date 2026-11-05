@@ -15,7 +15,8 @@ import { openPage } from './test/nav';
 const plan = routineSchema.parse(routineInput(2));
 const today = '2024-03-04'; // Monday, the second training slot: split 2, week 1.
 
-function mount(options: { routine?: boolean; plan?: RoutinePlan } = {}) {
+function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: number } = {}) {
+  let progressFailures = options.failProgress ?? 0;
   vi.stubGlobal('confirm', () => true);
   let rests: string[] = [];
   let holdRest: Promise<void> | undefined;
@@ -37,7 +38,13 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan } = {}) {
         };
   const api = mockApi(async ({ method, url }) => {
     const pathname = url.pathname;
-    if (pathname === '/api/routine-progress') return serverProgress();
+    if (pathname === '/api/routine-progress') {
+      if (progressFailures > 0) {
+        progressFailures--;
+        return json({ error: '루틴 목표를 불러오지 못했습니다' }, 500);
+      }
+      return serverProgress();
+    }
     if (pathname === '/api/routines/7/rests' && method === 'POST') {
       const pending = holdRest;
       holdRest = undefined;
@@ -267,8 +274,7 @@ test('rest shows the preview first, applies once on rapid clicks and can be canc
   expect(posts(ui, '/api/routines/7/rests')).toHaveLength(1);
   expect(posts(ui, '/api/routines/7/rests')[0].body).toEqual({ date: today });
   expect(screen.queryAllByRole('button', { name: '오늘 루틴으로 기록하기' })).toHaveLength(0);
-  const excludedRow = () =>
-    [...document.querySelectorAll('li')].filter((e) => e.className === 'excluded');
+  const excludedRow = () => [...document.querySelectorAll('li[data-excluded]')];
   expect(excludedRow()).toHaveLength(1);
   expect(ui.text(excludedRow()[0])).toMatch(/제외됨 · 분할 2/);
   await ui.click('휴식 취소');
@@ -286,9 +292,7 @@ test('auto routine targets show firm values today and label future sessions as p
   expect(content).toMatch(/자동 목표/);
   expect(content, "today's session label").toMatch(/1주차 1번째 · 전신/);
   expect(content).toMatch(/벤치프레스 3세트 · 총중량 100 kg · 10회/);
-  const todayList = [...document.querySelectorAll('ul')].filter(
-    (e) => e.className === 'target-list',
-  )[0];
+  const todayList = document.querySelector<HTMLElement>('ul[data-slot=target-list]')!;
   expect(ui.text(todayList), "today's target is not a projection").not.toMatch(/예상/);
   const rows = weekRows();
   expect(ui.text(rows[1])).toMatch(/예상/);
@@ -299,4 +303,30 @@ test('auto routine targets show firm values today and label future sessions as p
   await ui.click('오늘 루틴으로 기록하기');
   expect(ui.setRows(), '3 exercises × 3 sets').toHaveLength(9);
   expect(Number(ui.field(ui.setRows()[0], '총중량').value)).toBe(100);
+});
+
+// #101: the card's buttons moved to the common Button; their behaviour stays the same.
+test('a failed load shows the error with a reload button that recovers the card', async () => {
+  // Progress loads on every page change: the dashboard's load and the journal's both fail.
+  const ui = mount({ failProgress: 2 });
+  await openPage('운동 일지');
+  const alert = await screen.findByRole('alert');
+  expect(card()!.contains(alert), 'error is inside the routine card').toBe(true);
+  expect(ui.text(alert)).toMatch(/루틴 목표를 불러오지 못했습니다/);
+  const loads = progressLoads(ui);
+  await ui.click('루틴 목표 다시 불러오기');
+  await waitFor(() => expect(progressLoads(ui)).toBe(loads + 1));
+  await waitFor(() => expect(ui.text(card()!)).toMatch(/오늘 목표 · 2024-03-04/));
+  expect(card()!.querySelector('[role=alert]')).toBeNull();
+});
+
+test('going back from the rest preview sends nothing and offers rest again', async () => {
+  const ui = mount();
+  await openJournal();
+  await ui.click('오늘 하루 휴식하기');
+  expect(screen.queryByRole('button', { name: '오늘 하루 휴식하기' })).toBeNull();
+  await ui.click('돌아가기');
+  expect(document.querySelector('[aria-label="휴식 전 확인"]')).toBeNull();
+  expect(ui.button('오늘 하루 휴식하기')).toBeEnabled();
+  expect(posts(ui, '/api/routines/7/rests')).toHaveLength(0);
 });

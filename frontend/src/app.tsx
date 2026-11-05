@@ -1105,7 +1105,7 @@ function Workspace() {
                     </p>
                     <Button
                       variant="link"
-                      className="relative z-10 mt-2 self-start px-0 text-foreground"
+                      className="relative z-10 mt-2 self-start px-0 text-foreground has-[>svg]:px-0"
                       onClick={() => setPage('goals')}
                     >
                       나의 목표 확인하기 <ArrowRight aria-hidden />

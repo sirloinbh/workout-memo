@@ -47,3 +47,8 @@
 - 반영하지 않음: "범례·y축·날짜·빈 안내·THE NEXT CHAPTER에 흐린 글자색이 빠졌다"는 지적. 공통 토큰의 `text-meta`·`text-caption` 유틸리티가 `color: var(--color-muted-foreground)`를 함께 지정해 이미 흐린 색입니다(`@sirloinbh/design-tokens/tailwind.css`).
 - 리뷰는 2회까지라 3차 리뷰는 하지 않습니다.
 - 2차 보완 후: `npm run test -w frontend -- src/period.test.tsx src/custom-range.test.tsx` 30 pass, `npm run lint`·`npm run typecheck -w frontend`·prettier 통과, 빌드 CSS에 `@container (min-width:480px)` 생성 확인
+
+## 변경 — fix: 안내 카드 링크 버튼 여백
+
+- CI 시각 기준선 이미지를 확인하다 발견했습니다. "나의 목표 확인하기"가 위 문장보다 약 12px 안쪽에 있었습니다. 공통 `Button`의 `has-[>svg]:px-3`가 `px-0`보다 우선했기 때문입니다. `has-[>svg]:px-0`을 넣어 이전처럼 문장과 왼쪽을 맞췄습니다.
+- 시각 기준선: 이 커밋의 CI `e2e-visual`에서 바뀐 이미지를 확인한 뒤 다음 커밋에서 갱신합니다.

@@ -29,3 +29,10 @@
 - `npm run test -w frontend`: 209 pass, 4 skip
 - `npm run typecheck -w frontend`, `npm run lint`, prettier: 통과
 - 시각 기준선과 e2e(반응형·axe)는 PR CI로 확인합니다. 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+- 12주 표의 가로 스크롤 상자에 키보드로 들어갈 수 없었습니다. 360px에서 표가 넘치면 키보드 사용자는 스크롤할 수 없고, axe `scrollable-region-focusable`에도 걸릴 수 있습니다. 이전 `display: block` 표도 같았습니다. 상자에 `role="region"`, 이름 "12주 전체 목표 표", `tabIndex={0}`, 포커스 테두리(`ring-ring`)를 넣었습니다. lint 규칙 `no-noninteractive-tabindex`는 이 한 줄만 이유를 적고 끕니다.
+- 불러오기 실패 테스트가 페이지 이동 때마다 몇 번 불러오는지(`failProgress: 2`)에 묶여 있었습니다. "복구할 때까지 실패"하는 플래그와 `recoverProgress()`로 바꿨습니다. 같은 테스트에서 표 상자가 포커스를 받고 12주가 모두 있는지도 확인합니다.
+- 반영하지 않음: "회색 바탕 위 흐린 글자 대비가 4.35:1로 AA 미달"이라는 지적. 이 수치는 라이트 모드 기준입니다. 이 앱은 다크 전용이고, 다크 `muted` 바탕 위 `muted-foreground` 대비는 약 5.8:1입니다. CI의 axe 검사로 확인합니다.
+- 1차 보완 후: `npm run test -w frontend -- src/routine-progress.test.tsx` 9 pass, `npm run lint`, `npm run typecheck -w frontend` 통과

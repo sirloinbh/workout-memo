@@ -203,8 +203,15 @@ export function RoutineProgress({
             )}
             <details className="mt-4">
               <summary className="cursor-pointer text-sm font-medium">12주 전체 목표</summary>
-              {/* Narrow screens scroll the table sideways instead of widening the page. */}
-              <div className="mt-2 overflow-x-auto">
+              {/* Narrow screens scroll the table sideways instead of widening the page. The
+                  box takes focus so keyboard users can scroll it too (axe scrollable-region-focusable). */}
+              <div
+                role="region"
+                aria-label="12주 전체 목표 표"
+                // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- a scrollable region must be focusable.
+                tabIndex={0}
+                className="mt-2 overflow-x-auto rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+              >
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr className={cell}>

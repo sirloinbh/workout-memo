@@ -15,8 +15,8 @@ import { openPage } from './test/nav';
 const plan = routineSchema.parse(routineInput(2));
 const today = '2024-03-04'; // Monday, the second training slot: split 2, week 1.
 
-function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: number } = {}) {
-  let progressFailures = options.failProgress ?? 0;
+function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: boolean } = {}) {
+  let progressFails = options.failProgress ?? false;
   vi.stubGlobal('confirm', () => true);
   let rests: string[] = [];
   let holdRest: Promise<void> | undefined;
@@ -39,8 +39,7 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: 
   const api = mockApi(async ({ method, url }) => {
     const pathname = url.pathname;
     if (pathname === '/api/routine-progress') {
-      if (progressFailures > 0) {
-        progressFailures--;
+      if (progressFails) {
         return json({ error: '루틴 목표를 불러오지 못했습니다' }, 500);
       }
       return serverProgress();
@@ -98,6 +97,9 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: 
     field,
     change,
     submit,
+    recoverProgress() {
+      progressFails = false;
+    },
     holdNextRest() {
       const gate = deferred();
       holdRest = gate.promise;
@@ -307,17 +309,22 @@ test('auto routine targets show firm values today and label future sessions as p
 
 // #101: the card's buttons moved to the common Button; their behaviour stays the same.
 test('a failed load shows the error with a reload button that recovers the card', async () => {
-  // Progress loads on every page change: the dashboard's load and the journal's both fail.
-  const ui = mount({ failProgress: 2 });
+  // The server fails until it recovers, however many times the app asks.
+  const ui = mount({ failProgress: true });
   await openPage('운동 일지');
   const alert = await screen.findByRole('alert');
   expect(card()!.contains(alert), 'error is inside the routine card').toBe(true);
   expect(ui.text(alert)).toMatch(/루틴 목표를 불러오지 못했습니다/);
   const loads = progressLoads(ui);
+  ui.recoverProgress();
   await ui.click('루틴 목표 다시 불러오기');
   await waitFor(() => expect(progressLoads(ui)).toBe(loads + 1));
   await waitFor(() => expect(ui.text(card()!)).toMatch(/오늘 목표 · 2024-03-04/));
   expect(card()!.querySelector('[role=alert]')).toBeNull();
+  // The 12-week table scrolls sideways on phones, so its box takes keyboard focus.
+  const table = card()!.querySelector('[aria-label="12주 전체 목표 표"]')!;
+  expect(table).toHaveAttribute('tabindex', '0');
+  expect(table.querySelectorAll('tbody tr')).toHaveLength(12);
 });
 
 test('going back from the rest preview sends nothing and offers rest again', async () => {

@@ -359,3 +359,23 @@ test('volume chart thins date labels by the plot width past a week', async () =>
   const quarter = ['always', 'wide', 'medium', 'wide'];
   expect(labelTiers()).toEqual([...quarter, ...quarter, ...quarter]);
 });
+
+// #101: the workout list card moved to the common Card, Badge and EmptyState.
+test('workout list card names its count, links to the journal and starts a record when empty', async () => {
+  const ui = mount([workout(1, '2026-10-13', 100), workout(2, '2026-10-15', 100)]);
+  await loaded();
+  expect(screen.getByRole('heading', { level: 2, name: '운동 기록 2' })).toBeInTheDocument();
+  await ui.user.click(screen.getByRole('button', { name: '전체 기록' }));
+  await waitFor(() => expect(window.location.pathname).toBe('/journal'));
+  expect(screen.queryByRole('button', { name: '전체 기록' })).toBeNull();
+  await ui.select('1일', '2026-10-14');
+  await loaded();
+  const empty = screen.getByRole('heading', { level: 3, name: '첫 번째 기록을 남겨보세요' });
+  expect(screen.getByRole('heading', { level: 2, name: '운동 기록 0' })).toBeInTheDocument();
+  await ui.user.click(
+    within(empty.closest('[data-slot=empty-state]') as HTMLElement).getByRole('button', {
+      name: '운동 기록하기',
+    }),
+  );
+  expect(screen.getByRole('dialog', { name: '새로운 운동 기록' })).toBeInTheDocument();
+});

@@ -34,6 +34,7 @@ import { StatCard } from './components/stat-card';
 import { Switch } from './components/switch';
 import { ToggleChips } from './components/toggle-chips';
 import { Button } from './components/ui/button';
+import { Card, CardAction, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Toaster } from './components/ui/sonner';
@@ -1073,42 +1074,51 @@ function Workspace() {
                 />
               )}
               {page === 'overview' && (
-                <div className="overview-grid">
-                  <section className="card">
-                    <div className="section-title">
-                      <div>
-                        <h2>트레이닝 볼륨</h2>
-                        <p>기록이 쌓일수록 선명해지는 성장</p>
-                      </div>
-                      <span className="legend">
-                        <i />
+                <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_230px] xl:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+                  <Card className="gap-0 py-0 shadow-none">
+                    <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
+                      <CardTitle asHeading="h2" className="text-body font-semibold">
+                        트레이닝 볼륨
+                      </CardTitle>
+                      <CardDescription className="text-caption">
+                        기록이 쌓일수록 선명해지는 성장
+                      </CardDescription>
+                      <CardAction className="flex items-center gap-1.5 text-meta whitespace-nowrap">
+                        <i aria-hidden className="size-1.5 rounded-xs bg-primary" />
                         볼륨 (kg)
-                      </span>
-                    </div>
+                      </CardAction>
+                    </CardHeader>
                     <Chart workouts={workouts} from={from} to={to} custom={!!customRange} />
-                  </section>
-                  <section className="focus-card">
-                    <div className="focus-top">
-                      THE NEXT CHAPTER <ArrowUpRight size={19} />
+                  </Card>
+                  <Card className="relative min-h-52 gap-0 overflow-hidden bg-muted p-5 shadow-none xl:p-6">
+                    <div className="flex items-center justify-between text-meta tracking-widest">
+                      THE NEXT CHAPTER <ArrowUpRight aria-hidden size={19} />
                     </div>
-                    <h2>
+                    <h2 className="mt-4 mb-2 text-2xl leading-normal font-semibold tracking-tight md:text-xl xl:text-2xl">
                       조금 더 무겁게.
                       <br />한 번 더 해내기.
                     </h2>
-                    <p>
+                    <p className="text-caption">
                       작은 도전이 모여
                       <br />
                       나만의 성장을 만듭니다.
                     </p>
-                    <button onClick={() => setPage('goals')}>
-                      나의 목표 확인하기 <ArrowRight size={17} />
-                    </button>
-                    <div className="rings">
-                      <span />
-                      <span />
-                      <span />
+                    <Button
+                      variant="link"
+                      className="relative z-10 mt-2 self-start px-0 text-foreground has-[>svg]:px-0"
+                      onClick={() => setPage('goals')}
+                    >
+                      나의 목표 확인하기 <ArrowRight aria-hidden />
+                    </Button>
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute -right-10 -bottom-[75px] size-[200px]"
+                    >
+                      <span className="absolute inset-0 rounded-full border" />
+                      <span className="absolute inset-5 rounded-full border" />
+                      <span className="absolute inset-10 rounded-full border" />
                     </div>
-                  </section>
+                  </Card>
                 </div>
               )}
               <section className="card journal-card">
@@ -2112,36 +2122,70 @@ function Chart({
     });
   }
   const max = Math.max(100, ...values.map((v) => v.value));
+  // Past a week of bars the labels thin out by the plot's own width (the sidebar and the
+  // side card make it independent of the screen width): every 4th, every 2nd, then all.
+  const labelClass = (i: number) =>
+    values.length <= 7 || i % (labelStep * 4) === 0
+      ? undefined
+      : i % (labelStep * 2) === 0
+        ? 'hidden @min-[200px]:inline'
+        : 'hidden @min-[480px]:inline';
   return (
     <div
-      className="chart"
+      data-slot="volume-chart"
+      className="flex h-56 gap-3 px-4 pt-6 pb-5 md:px-6 2xl:h-64"
       role="img"
       aria-label={`기간별 운동 볼륨: ${values.map((v) => v.label + ' ' + fmt(v.value) + 'kg').join(', ')}`}
     >
-      <div className="chart-y">
+      <div className="flex shrink-0 flex-col justify-between pb-6 text-right text-meta tabular-nums">
         {[1, 0.75, 0.5, 0.25, 0].map((v) => (
-          <span key={v}>{fmt(max * v)}</span>
+          <span key={v} className="-my-2">
+            {fmt(max * v)}
+          </span>
         ))}
       </div>
-      <div className="plot">
-        <div className="grid-lines">
+      <div className="@container relative min-w-0 flex-1">
+        <div className="absolute inset-x-0 top-0 bottom-6 flex flex-col justify-between">
           {[1, 2, 3, 4, 5].map((i) => (
-            <i key={i} />
+            <i key={i} className="border-t border-dashed" />
           ))}
         </div>
-        <div className="bars">
+        <div className="absolute inset-0 flex justify-around gap-px @sm:gap-1 @lg:gap-2.5">
+          {/* min-w-0 and absolutely placed labels keep 31 bars inside a narrow plot (#101). */}
           {values.map((v, i) => (
-            <div className="bar-column" key={i}>
-              <div
-                className={'bar ' + (i === values.length - 1 ? 'last' : '')}
-                style={{ height: Math.max(v.value ? 3 : 0, (v.value / max) * 145) }}
-                title={`${v.label}: ${fmt(v.value)}kg`}
-              />
-              <span>{i % labelStep === 0 ? v.label : ''}</span>
+            <div className="flex max-w-10 min-w-0 flex-1 flex-col items-center" key={i}>
+              <div className="flex w-full flex-1 items-end justify-center">
+                <div
+                  data-slot="volume-bar"
+                  className={cn(
+                    'w-3/4 min-w-0.5 rounded-t-sm',
+                    i === values.length - 1 ? 'bg-primary' : 'bg-foreground/20',
+                  )}
+                  style={{ height: `${(v.value / max) * 100}%`, minHeight: v.value ? 3 : 0 }}
+                  title={`${v.label}: ${fmt(v.value)}kg`}
+                />
+              </div>
+              <span className="relative h-6 w-full text-meta leading-6">
+                {i % labelStep === 0 && (
+                  <span
+                    data-slot="volume-label"
+                    className={cn(
+                      'absolute left-1/2 -translate-x-1/2 whitespace-nowrap',
+                      labelClass(i),
+                    )}
+                  >
+                    {v.label}
+                  </span>
+                )}
+              </span>
             </div>
           ))}
         </div>
-        {!workouts.length && <div className="chart-empty">첫 기록부터 그래프가 채워져요</div>}
+        {!workouts.length && (
+          <div className="absolute inset-x-0 top-[30%] text-center text-caption">
+            첫 기록부터 그래프가 채워져요
+          </div>
+        )}
       </div>
     </div>
   );

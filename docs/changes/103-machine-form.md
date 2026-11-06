@@ -35,3 +35,10 @@
 - 선택: 공식 참고값 제목과 상자 여백의 크기 변화를 위 "화면 차이"에 적었습니다.
 - 선택(6단계로 미룸): `selectField`·`textareaField`(app.tsx)와 백업 화면의 `nativeSelect`가 거의 같은 문자열입니다. 신체 기록·인바디 화면에도 같은 select가 있어, 6단계 정리에서 한 곳으로 모읍니다.
 - `npm run test -w frontend -- src/official-weights.test.tsx src/rest-by-exercise.test.tsx`: 15 pass. `tsc -p e2e/tsconfig.json`, eslint, prettier: 통과. 터치 e2e는 PR CI로 확인합니다.
+
+## 변경 — fix: 2차 리뷰 보완
+
+- 체크박스 누름 영역(필수): 공통 `Checkbox`의 `::after`(`-inset-3.5`)는 1px 테두리 안쪽을 기준으로 잡혀 44px이 아니라 42×42px입니다. 1차 보완에서 강화한 터치 e2e가 이를 실패로 잡게 됩니다. 앱 쪽 className에 `pointer-coarse:after:-inset-[15px]`를 넣어 44px로 맞췄습니다. `tailwind-merge`가 공통의 `-inset-3.5`를 지우고 새 값만 남기는 것을 확인했습니다. 공통 파일의 근본 수정(`sirloinbh/project-standards`의 `checkbox.tsx`)은 중앙 리포 일이라 조율 창에 알렸습니다.
+- 선택(확인만): 안내 상자의 `text-muted-foreground` on `bg-muted` 대비는 라이트 토큰 기준 4.35:1이라는 지적이 있었습니다. 앱은 다크 전용(#184)이고 나의 목표 폼도 같은 조합으로 axe를 통과하고 있어, CI의 axe 결과로 확인합니다.
+- 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- `npm run test -w frontend -- src/official-weights.test.tsx src/rest-by-exercise.test.tsx`: 15 pass. eslint, prettier: 통과

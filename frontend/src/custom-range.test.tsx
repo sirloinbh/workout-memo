@@ -100,11 +100,12 @@ test('invalid ranges are explained per field and not requested', async () => {
   const before = ui.workoutQueries().length;
   await choose(ui, '2026-10-10', '2026-10-01');
   expect(field('종료일')).toHaveAttribute('aria-invalid', 'true');
-  expect(form().textContent).toMatch(/종료일은 시작일과 같거나 이후여야 합니다/);
+  expect(field('종료일')).toHaveAccessibleDescription('종료일은 시작일과 같거나 이후여야 합니다');
   fireEvent.change(field('시작일'), { target: { value: '2025-01-01' } });
   fireEvent.change(field('종료일'), { target: { value: '2026-10-01' } });
   await ui.user.click(within(form()).getByRole('button', { name: '적용' }));
-  expect(form().textContent).toMatch(/최대 371일/);
+  // The hint under the form also says 371 days, so check the message linked to the field.
+  expect(field('종료일')).toHaveAccessibleDescription('기간은 최대 371일까지 선택할 수 있습니다');
   expect(ui.workoutQueries()).toHaveLength(before);
   expect(window.location.search).toBe('');
 });

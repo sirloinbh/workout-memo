@@ -741,7 +741,7 @@ function Workspace() {
           }}
         >
           <div className="flex flex-col gap-1">
-            <Label htmlFor="range-from" className="text-meta">
+            <Label htmlFor="range-from" className="text-meta leading-none">
               시작일
             </Label>
             <CommonInput
@@ -761,7 +761,7 @@ function Workspace() {
             <FieldError name="range-from">{customErrors.from}</FieldError>
           </div>
           <div className="flex flex-col gap-1">
-            <Label htmlFor="range-to" className="text-meta">
+            <Label htmlFor="range-to" className="text-meta leading-none">
               종료일
             </Label>
             <CommonInput
@@ -780,7 +780,7 @@ function Workspace() {
             />
             <FieldError name="range-to">{customErrors.to}</FieldError>
           </div>
-          {/* The label row is 12px plus a 4px gap, so the button lines up with the inputs. */}
+          {/* The label row is 12px (leading-none) plus a 4px gap, so the button lines up with the inputs. */}
           <Button type="submit" variant="secondary" className="mt-4">
             적용
           </Button>

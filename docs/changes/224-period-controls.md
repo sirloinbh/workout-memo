@@ -21,7 +21,7 @@
   - `.range-label`을 `RangeSummary`로 바꿨습니다.
 - `frontend/src/style.css`: 쓰는 곳이 없어진 `.custom-range`, `.custom-range label`, `.custom-range .form-hint`, `.date-control button`을 지웠습니다. `.period-bar`, `.date-control`, `.date-control input`, `.range-label`과 모바일 규칙은 종목 분석 화면이 아직 써서 남겼습니다.
 - 남긴 것: 주소의 기간이 잘못됐을 때의 안내 `p.error`(`role="alert"`)는 #223에서 정할 공통 알림 부품으로 함께 옮깁니다.
-- 화면 차이: 날짜 입력에 테두리가 생기고 글자가 커집니다. 이전·다음 버튼이 공통 아이콘 버튼 크기(36px, 터치 화면 44px)가 됩니다. 직접 선택 폼의 입력에 테두리가 생기고, 안내 문구가 회색 상자 없이 아래 줄로 갑니다.
+- 화면 차이: 날짜 입력에 테두리가 생기고 글자가 커집니다. 이전·다음 버튼이 공통 아이콘 버튼 크기(36px, 터치 화면 44px)가 됩니다. 직접 선택 폼의 입력에 테두리가 생기고, 안내 문구가 회색 상자 없이 아래 줄로 갑니다. 기간 표시 글자는 10px(모바일 9px)에서 12px로 커지고 위 여백이 15px에서 16px가 됩니다. 기간 줄의 줄바꿈은 이전에는 모바일에서만 켜졌지만 이제 모든 폭에서 켜지므로, 폭이 좁으면 태블릿에서도 날짜 이동이 탭 아래로 내려갈 수 있습니다.
 
 ## 테스트
 
@@ -31,3 +31,14 @@
 - `npm run test -w frontend`: 213 pass, 4 skip
 - `npm run typecheck -w frontend`, 바뀐 파일의 eslint(`--max-warnings 0`)와 prettier: 통과
 - 시각 기준선과 e2e(반응형·axe·터치 44px)는 PR CI로 확인합니다. 로컬 전체 `npm run check`와 e2e는 세 워크트리가 동시에 돌아 메모리 부족 이력이 있어 돌리지 않았습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+1차 리뷰는 필수 지적 없이 권장 4건이었고 모두 반영했습니다.
+
+- 직접 선택의 "적용" 버튼이 입력보다 4px 위에 놓였습니다. 라벨에 준 `text-meta`가 `cn`에서 `Label`의 `leading-none`을 지워 라벨 줄이 16px가 됐기 때문입니다. 라벨을 `text-meta leading-none`으로 바꿔 12px로 되돌렸고 주석을 맞췄습니다.
+- `custom-range.test.tsx`의 범위 오류 검사가 폼 아래 안내("최대 371일")에도 맞아 오류가 없어도 통과할 수 있었습니다. 두 오류를 종료일 입력의 접근 설명(`toHaveAccessibleDescription`, `aria-describedby` 연결)으로 확인하도록 바꿨습니다.
+- 위 "화면 차이"에 기간 표시 글자 크기와 줄바꿈 범위 변화를 더했습니다.
+- `style.css`에서 남긴 규칙을 설명하는 주석을 `.period-bar` 위로 옮겼습니다.
+- 참고만 하고 고치지 않은 것: `.field-error`의 음수 위 여백 때문에 오류 문구가 입력에 가깝게 붙습니다. `FieldError`는 className을 받지 않아, 시각 결과에서 거슬리면 따로 다룹니다.
+- 보완 후: `npm run test -w frontend -- src/components/date-stepper.test.tsx src/period.test.tsx src/custom-range.test.tsx` 34 pass, `npm run typecheck -w frontend`, 바뀐 파일 eslint·prettier 통과

@@ -80,6 +80,8 @@
 .primary:hover {
   background: color-mix(in oklch, var(--primary) 90%, transparent);
 }
+/* .period-bar, .date-control and .range-label remain for the analysis page only (#102);
+   the dashboard and journal use DateStepper and RangeSummary (#224). */
 .period-bar {
   display: flex;
   justify-content: space-between;
@@ -91,8 +93,6 @@
   align-items: center;
   gap: 8px;
 }
-/* .period-bar, .date-control and .range-label remain for the analysis page only (#102);
-   the dashboard and journal use DateStepper and RangeSummary (#224). */
 .date-control input {
   border: 0;
   background: transparent;

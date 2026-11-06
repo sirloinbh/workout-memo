@@ -27,3 +27,7 @@
 - `npm run test -w frontend -- src/backup.test.tsx`: 5 pass
 - `npm run typecheck -w frontend`, eslint(바뀐 파일), prettier: 통과
 - 시각 기준선과 e2e(반응형·axe)는 PR CI로 확인합니다. 로컬 전체 `npm run check`와 e2e는 메모리 부족 이력이 있고 세 워크트리가 동시에 돌아 실행하지 않았습니다.
+
+## main 병합
+
+- 병합 직전 main이 #226(#224 기간 선택 줄), #227(#102 나의 목표)만큼 앞서 있어 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/backup.test.tsx` 6 pass, `npm run typecheck -w frontend` 통과

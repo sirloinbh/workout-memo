@@ -38,3 +38,7 @@
 - 2차 리뷰는 보완점이 없었습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
 - `42b6331`의 CI `e2e-visual`에서 시각 비교 6건만 실패했고 axe·반응형·터치 포함 72건은 통과했습니다. 바뀐 것은 `machines` 360·390·768·1280과, 뒤에 머신 목록이 보이는 `machine-editor` 768·1280입니다. `machines-360`·`machines-1280`·`machine-editor-1280`을 직접 보고 브랜드 탭 묶음, 목록 행 간격·글자, 모달 뒤 배경 외에 차이가 없음을 확인했습니다. 모달 자체는 그대로입니다. 그 뒤 `visual-baselines` 아티팩트로 6장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
 - 한계: e2e 고정 데이터의 머신에는 공식 참고값이 연결돼 있지 않아 공식 참고값 줄과 "출처" 링크, 빈 상태는 이미지에 나오지 않습니다. 이 부분은 화면 테스트(`official-weights.test.tsx`)로만 확인했습니다.
+
+## main 병합
+
+- 병합 직전 main이 #229(#223 앱 위쪽 알림)만큼 앞서 있어 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/official-weights.test.tsx src/machines.contract.test.tsx` pass, `npm run typecheck -w frontend` 통과

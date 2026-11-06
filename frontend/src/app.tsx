@@ -1943,6 +1943,9 @@ function Workspace() {
             <div className="mb-4 flex items-center gap-2">
               <Checkbox
                 id="machine-single-joint"
+                // The legacy touch rule makes every .legacy button 44px; the box stays 16px and its
+                // ::after area is the 44px target, as with Switch.
+                className="pointer-coarse:min-h-4 pointer-coarse:min-w-4"
                 checked={machineEditor.single_joint === true}
                 onCheckedChange={(checked) =>
                   setMachineEditor({ ...machineEditor, single_joint: checked === true })

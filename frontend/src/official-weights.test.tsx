@@ -255,3 +255,32 @@ test('brand tabs pick one brand at a time and an empty brand shows the empty sta
   );
   expect(screen.getByRole('heading', { level: 2, name: '머신 라이브러리' })).toBeInTheDocument();
 });
+
+test('the machine form names every field and saves notes and the single-joint checkbox', async () => {
+  const ui = mount();
+  await ui.settle();
+  await openPage('머신 라이브러리', ui.user);
+  await ui.user.click(ui.button('머신 등록'));
+  const dialog = screen.getByRole('dialog', { name: '머신 등록' });
+  const form = within(dialog);
+  await ui.user.selectOptions(form.getByRole('combobox', { name: '브랜드' }), '2');
+  expect(form.getByRole('combobox', { name: '공식 참고값 (선택)' })).toHaveValue('');
+  await ui.user.type(form.getByRole('textbox', { name: '머신 이름' }), '케이블 플라이');
+  expect(form.getByRole('spinbutton', { name: /기본중량 \(kg\)/ })).toHaveValue(null);
+  await ui.user.type(form.getByRole('textbox', { name: '확인 자료 / 설정 메모' }), '핀 3번');
+  const singleJoint = form.getByRole('checkbox', { name: /단관절 운동 머신/ });
+  expect(singleJoint).not.toBeChecked();
+  // The visible label toggles the checkbox too.
+  await ui.user.click(form.getByText(/단관절 운동 머신/));
+  expect(singleJoint).toBeChecked();
+  await ui.submit();
+  await waitFor(() => expect(ui.mutations()).toHaveLength(1));
+  expect(ui.mutations()[0].body).toMatchObject({
+    brand_id: 2,
+    name: '케이블 플라이',
+    notes: '핀 3번',
+    single_joint: true,
+    base_weight: null,
+    official_weight_id: null,
+  });
+});

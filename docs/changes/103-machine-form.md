@@ -48,3 +48,9 @@
 
 - `097559e`의 CI `e2e-visual`에서 `machine-editor` 360·390·768·1280 4건만 실패했고, axe·반응형·강화한 터치 검사를 포함한 74건은 통과했습니다. 360·1280 이미지를 직접 보고 라벨·입력 높이, 안내 상자, 공통 체크박스 외에 차이가 없음을 확인한 뒤 `visual-baselines` 아티팩트로 4장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
 - 한계: e2e 고정 데이터의 브랜드에는 공식 참고값이 없어 공식 참고값 선택과 안내 상자는 이미지에 나오지 않습니다. 이 부분은 화면 테스트(`official-weights.test.tsx`)로만 확인했습니다.
+
+## main 병합
+
+- 병합 직전 main에 #102(종목 분석) 변경이 들어와 `frontend/src/style.css`와 `e2e/ui-touch.spec.ts`가 이 브랜치와 겹쳐 `origin/main`을 merge했습니다.
+- `style.css` 충돌: 같은 자리에서 main은 종목 분석 규칙(`.analysis-week`, `.exercise-pr`, `.part-editor`, `.trend*`)을, 이 브랜치는 `.modal .rest-auto`를 지웠습니다. 두 삭제를 모두 살려 그 자리를 비웠습니다. `ui-touch.spec.ts`는 자동 병합으로 main의 부위 칩 검사와 이 브랜치의 체크박스 검사가 함께 남았습니다.
+- 병합 뒤 `npm run test -w frontend -- src/official-weights.test.tsx src/rest-by-exercise.test.tsx src/analysis.test.tsx` 20 pass, `npm run typecheck -w frontend`, `tsc -p e2e/tsconfig.json`, prettier 통과

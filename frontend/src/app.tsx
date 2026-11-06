@@ -1924,6 +1924,8 @@ function Workspace() {
 // A field label stacked over its input. `.legacy .modal label` still sets the margin and
 // column direction for the other modals; here the utilities name them.
 const fieldLabel = 'mb-4 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
+// The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
+const touchText = 'md:pointer-coarse:text-base';
 // #64: React Hook Form with the shared goal schema. Messages come from the same
 // contract the server uses, and each one is linked to its field for screen readers.
 function GoalForm({
@@ -1954,6 +1956,7 @@ function GoalForm({
       <Label className={fieldLabel}>
         운동명
         <CommonInput
+          className={touchText}
           maxLength={120}
           placeholder="일지와 같은 운동명을 입력하세요"
           {...register('exercise')}
@@ -1969,6 +1972,7 @@ function GoalForm({
         <Label className={fieldLabel}>
           목표 총중량 (kg)
           <CommonInput
+            className={touchText}
             type="number"
             min="0"
             max="99999"
@@ -1980,6 +1984,7 @@ function GoalForm({
         <Label className={fieldLabel}>
           목표 반복 수
           <CommonInput
+            className={touchText}
             type="number"
             min="1"
             max="1000"
@@ -1989,11 +1994,21 @@ function GoalForm({
         </Label>
         <Label className={fieldLabel}>
           시작일
-          <CommonInput type="date" {...register('start_date')} {...field('start_date')} />
+          <CommonInput
+            className={touchText}
+            type="date"
+            {...register('start_date')}
+            {...field('start_date')}
+          />
         </Label>
         <Label className={fieldLabel}>
           종료일
-          <CommonInput type="date" {...register('deadline')} {...field('deadline')} />
+          <CommonInput
+            className={touchText}
+            type="date"
+            {...register('deadline')}
+            {...field('deadline')}
+          />
         </Label>
       </div>
       {message('target_weight')}
@@ -2093,6 +2108,7 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
         <Label className={cn(fieldLabel, 'mb-0')}>
           이 운동의 증량 단위 (kg)
           <CommonInput
+            className={touchText}
             type="number"
             min="0.01"
             max="100"

@@ -85,6 +85,9 @@ test('without goals the empty state explains what to add', async () => {
   const ui = mount([]);
   render(<App />);
   await openPage('나의 목표', ui.user);
-  const empty = await screen.findByRole('heading', { name: '다음 운동의 목표를 세워보세요' });
+  const empty = await screen.findByRole('heading', {
+    level: 2,
+    name: '다음 운동의 목표를 세워보세요',
+  });
   expect(empty.closest('[data-slot="empty-state"]')!.textContent).toMatch(/10회 달성/);
 });

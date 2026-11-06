@@ -31,3 +31,11 @@
 - `npm run test -w frontend`: 214 pass, 4 skip
 - `npm run typecheck -w frontend`, eslint·prettier(바꾼 파일): 통과
 - 시각 기준선과 e2e(반응형·axe)는 PR CI로 확인합니다. 세 워크트리가 동시에 돌아 메모리 부족 이력이 있어 로컬 전체 `npm run check`와 e2e는 돌리지 않았습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+- 공통 `Input`은 768px 이상에서 글자가 14px(`md:text-body-sm`)이고, `style.css`의 터치 16px 규칙은 components 레이어라 이 유틸리티를 이기지 못합니다. 터치 768px의 목표 폼에서 `ui-touch` 검사(16px 미만 위반)가 실패하고 iPad에서 입력 시 확대될 수 있었습니다. 운동 기록 폼과 같은 `md:pointer-coarse:text-base`를 목표 폼 입력 5개와 증량 단위 입력에 붙였습니다.
+- 빈 상태 테스트가 제목 단계(h2)도 확인하도록 했습니다.
+- 반영하지 않음: 공통 `Label`의 `leading-none`이 `text-meta`의 줄 높이와 겹친다는 지적(nit). 이름표는 한 줄이라 화면 차이가 없고, 기준선 이미지로 확인합니다.
+- 시각 기준선: goals·goal-editor 기준선 8장은 바뀔 것으로 봅니다. CI `e2e-visual` 결과 이미지를 확인한 뒤 `visual-baselines` 아티팩트로 갱신합니다.
+- 1차 보완 후: `npm run test -w frontend -- src/goal-list.test.tsx src/goal-suggestion.test.tsx src/forms.test.tsx` 9 pass, eslint·`npm run typecheck -w frontend` 통과

@@ -39,3 +39,9 @@
 - 반영하지 않음: 공통 `Label`의 `leading-none`이 `text-meta`의 줄 높이와 겹친다는 지적(nit). 이름표는 한 줄이라 화면 차이가 없고, 기준선 이미지로 확인합니다.
 - 시각 기준선: goals·goal-editor 기준선 8장은 바뀔 것으로 봅니다. CI `e2e-visual` 결과 이미지를 확인한 뒤 `visual-baselines` 아티팩트로 갱신합니다.
 - 1차 보완 후: `npm run test -w frontend -- src/goal-list.test.tsx src/goal-suggestion.test.tsx src/forms.test.tsx` 9 pass, eslint·`npm run typecheck -w frontend` 통과
+
+## 변경 — test: 시각 기준선 갱신
+
+- 2차 리뷰는 보완점이 없었습니다. 1차 보완(터치 16px 입력 6개, 빈 상태 h2 확인)이 모두 들어간 것을 확인했습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- `3b9a70d`의 CI `e2e-visual`에서 `goals-360·390·768·1280`, `goal-editor-360·390·768·1280` 8장만 실패했고 axe·반응형 포함 나머지 70건은 통과했습니다.
+- 1280px·360px 목표 화면과 390px 목표 추가 창을 이전 기준선과 나란히 보았습니다. 상태 배지 모양(도전 중 테두리, 달성 완료 초록), 카드 안 글자 크기(11px→14px), 입력 글자 크기가 바뀐 것 외에 배치 차이나 넘침이 없어 `visual-baselines` 아티팩트로 8장을 갱신했습니다.

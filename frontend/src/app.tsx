@@ -1602,7 +1602,7 @@ function Workspace() {
                   </label>
                   {/* Stacked on phones: two − / + fields side by side leave no room for the digits. */}
                   <div className="grid gap-3 min-[480px]:grid-cols-2 md:col-span-2">
-                    <div className="flex min-w-0 flex-col gap-1">
+                    <div className="flex min-w-0 flex-col gap-2">
                       <label htmlFor={`set-${i}-weight`} className="mb-0 text-meta">
                         총중량 kg
                       </label>
@@ -1623,7 +1623,7 @@ function Workspace() {
                         {...invalid(`sets.${i}.weight`)}
                       />
                     </div>
-                    <div className="flex min-w-0 flex-col gap-1">
+                    <div className="flex min-w-0 flex-col gap-2">
                       <label htmlFor={`set-${i}-reps`} className="mb-0 text-meta">
                         횟수
                       </label>

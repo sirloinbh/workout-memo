@@ -86,8 +86,12 @@ export function NumberInput({
 // #105: NumberInput for a field kept as a number (like a set's weight and reps). The typed text
 // is kept while it still reads as the stored number, so "12." or an emptied field is not
 // rewritten mid-typing; a new number from outside (a − or + press, a restored draft) replaces it.
-// A decimal comma (some phone keypads) counts as a point. Text that does not read as a number
-// is not taken, so the stored value is always finite (NaN would empty a saved draft).
+// A decimal comma (some phone keypads) counts as a point. Only digits with at most one point
+// are taken, so the stored value is always finite (NaN would empty a saved draft) and pasted
+// "0x10" or "1e3" is refused rather than read as 16 or 1000. A lone "." reads as 0 until the
+// digits after it arrive, so ".5" can be typed.
+const typedNumber = /^\d*\.?\d*$/;
+const readNumber = (text: string) => (text === '.' ? 0 : Number(text));
 export function NumberValueInput({
   value,
   onValueChange,
@@ -97,17 +101,16 @@ export function NumberValueInput({
   onValueChange: (value: number) => void;
 }) {
   const [text, setText] = useState(String(value));
-  const shown = Object.is(Number(text), value) ? text : String(value);
+  const shown = Object.is(readNumber(text), value) ? text : String(value);
   return (
     <NumberInput
       {...props}
       value={shown}
       onValueChange={(next) => {
         const normalized = next.replace(',', '.');
-        const number = Number(normalized);
-        if (!Number.isFinite(number)) return;
+        if (!typedNumber.test(normalized)) return;
         setText(normalized);
-        onValueChange(number);
+        onValueChange(readNumber(normalized));
       }}
     />
   );

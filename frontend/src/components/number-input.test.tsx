@@ -155,9 +155,19 @@ test('a decimal comma reads as a point and unreadable text is not taken', () => 
   fireEvent.change(field(), { target: { value: '12,5' } });
   expect(field()).toHaveValue('12.5');
   expect(stored()).toBe('12.5');
-  for (const typed of ['12.5a', '-', '1..', 'Infinity']) {
+  for (const typed of ['12.5a', '-', '1..', 'Infinity', '0x10', '1e3', ' 5']) {
     fireEvent.change(field(), { target: { value: typed } });
     expect(field()).toHaveValue('12.5');
     expect(stored()).toBe('12.5');
   }
+});
+
+test('a value can start with the decimal point', () => {
+  render(<NumericWeight />);
+  fireEvent.change(field(), { target: { value: '.' } });
+  expect(field()).toHaveValue('.');
+  expect(stored()).toBe('0');
+  fireEvent.change(field(), { target: { value: '.5' } });
+  expect(field()).toHaveValue('.5');
+  expect(stored()).toBe('0.5');
 });

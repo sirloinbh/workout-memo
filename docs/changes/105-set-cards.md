@@ -48,3 +48,12 @@
 - 권장 7(변경 없음): md 2열에서 오류가 반 칸만 차지한다는 지적은 `.field-error`에 `grid-column: 1 / -1`이 있어 해당하지 않았습니다.
 - 추가 테스트: `number-input.test.tsx`에 쉼표·읽을 수 없는 글자 1개, `workout-draft.test.tsx`에 잘못된 중량 글자가 초안에 들어가지 않는지 1개
 - 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/number-input.test.tsx src/workout-draft.test.tsx src/routine-progress.test.tsx src/forms.test.tsx src/new-workout-defaults.test.tsx` 49 pass, typecheck·eslint·prettier 통과
+
+## 변경 — fix: 2차 리뷰 보완
+
+2차 리뷰는 필수 지적 없이 권장 2건이었고 둘 다 반영했습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+
+- 총중량·횟수의 라벨과 입력 사이가 4px로 운동명·머신(`.modal label`의 8px)과 달랐습니다. `gap-2`로 맞췄습니다.
+- 숫자 칸이 `Number()`로 읽히는 글자를 모두 받아 붙여 넣은 "0x10"이 16, "1e3"이 1000이 되고, "."으로 시작하는 ".5"는 칠 수 없었습니다. 이제 숫자와 소수점 하나만 받고(`/^\d*\.?\d*$/`), "."만 친 동안은 0으로 봅니다. 쉼표를 소수점으로 읽으므로 붙여 넣은 "1,000"은 1이 됩니다. 쉼표 소수점 키패드를 받기 위한 선택입니다.
+- 추가 테스트: `number-input.test.tsx`에 "."으로 시작하는 입력 1개, 거절 목록에 "0x10"·"1e3"·" 5" 추가
+- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/number-input.test.tsx src/workout-draft.test.tsx src/routine-progress.test.tsx src/set-completion.test.tsx src/period.test.tsx` 78 pass, typecheck·eslint·prettier 통과

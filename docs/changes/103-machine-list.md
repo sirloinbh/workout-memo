@@ -20,8 +20,15 @@
 
 ## 테스트
 
-- 추가: `frontend/src/official-weights.test.tsx`에 1개. 처음에 "전체 브랜드"가 선택돼 있는지, 브랜드를 고르면 그 브랜드만 선택되고 머신이 없으면 빈 상태(h3)가 보이는지, 현재 탭을 다시 눌러도 선택이 남는지, "전체 브랜드"로 돌아오면 목록이 다시 보이는지 확인합니다.
+- 추가: `frontend/src/official-weights.test.tsx`에 1개. 처음에 "전체 브랜드"가 선택돼 있는지, 브랜드를 고르면 그 탭만 선택되고("전체 브랜드" 해제) 머신이 없으면 빈 상태(h3)가 보이는지, 머신이 있는 브랜드를 고르면 그 머신이 남는지, 현재 탭을 다시 눌러도 선택이 남는지, "전체 브랜드"로 돌아오면 목록이 다시 보이는지 확인합니다.
 - 수정: 같은 파일과 `machines.contract.test.tsx`의 `.workout-row` 선택자를 `data-slot="machine-row"`와 "머신" 목록 역할로, 브랜드 버튼 조회를 `radio` 역할로 바꿨습니다. 검증 내용은 같습니다.
 - `npm run test -w frontend -- src/official-weights.test.tsx src/machines.contract.test.tsx src/forms.test.tsx src/rest-by-exercise.test.tsx src/routing.test.tsx`: 23 pass
 - `npm run typecheck -w frontend`, eslint(바뀐 파일), prettier: 통과
 - 로컬 전체 `npm run check`와 e2e는 메모리 부족 이력이 있어 실행하지 않았습니다. e2e(반응형·axe·터치·시각 기준선)는 PR CI로 확인합니다.
+
+## 변경 — test: 1차 리뷰 보완
+
+- 1차 리뷰는 필수 보완점이 없었고 선택 2건을 반영했습니다.
+  - 새 테스트가 머신이 없는 브랜드만 골라, 탭 값(문자열)과 브랜드 id(숫자)의 비교가 깨져도 통과할 수 있었습니다. 머신이 있는 "Hammer Strength"를 골라 그 머신이 남는지 확인하는 단계를 넣었습니다.
+  - 브랜드를 고르면 "전체 브랜드"가 해제되는지도 확인합니다.
+- `npm run test -w frontend -- src/official-weights.test.tsx`: 7 pass

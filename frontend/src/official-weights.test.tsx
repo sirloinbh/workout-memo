@@ -236,6 +236,7 @@ test('brand tabs pick one brand at a time and an empty brand shows the empty sta
   );
   await ui.user.click(within(tabs).getByRole('radio', { name: 'Arsenal Strength' }));
   expect(within(tabs).getByRole('radio', { name: 'Arsenal Strength' })).toBeChecked();
+  expect(within(tabs).getByRole('radio', { name: '전체 브랜드' })).not.toBeChecked();
   expect(screen.queryByRole('list', { name: '머신' })).toBeNull();
   expect(
     screen.getByRole('heading', { level: 3, name: '나만의 머신을 등록하세요' }),
@@ -243,6 +244,11 @@ test('brand tabs pick one brand at a time and an empty brand shows the empty sta
   // Clicking the current tab again keeps it selected.
   await ui.user.click(within(tabs).getByRole('radio', { name: 'Arsenal Strength' }));
   expect(within(tabs).getByRole('radio', { name: 'Arsenal Strength' })).toBeChecked();
+  // A brand that has a machine keeps it (the tab value is a string, the brand id a number).
+  await ui.user.click(within(tabs).getByRole('radio', { name: 'Hammer Strength' }));
+  expect(
+    within(screen.getByRole('list', { name: '머신' })).getByRole('heading', { level: 3 }),
+  ).toHaveTextContent('내 체스트 프레스');
   await ui.user.click(within(tabs).getByRole('radio', { name: '전체 브랜드' }));
   expect(within(screen.getByRole('list', { name: '머신' })).getAllByRole('listitem')).toHaveLength(
     1,

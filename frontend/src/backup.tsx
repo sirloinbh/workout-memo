@@ -116,7 +116,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
       <h2>백업·내보내기</h2>
       <Card>
         <CardHeader>
-          <CardTitle>분석용 CSV</CardTitle>
+          <CardTitle className="text-body font-semibold">분석용 CSV</CardTitle>
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>
@@ -139,7 +139,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>복원용 백업 (JSON)</CardTitle>
+          <CardTitle className="text-body font-semibold">복원용 백업 (JSON)</CardTitle>
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>
@@ -159,7 +159,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>백업에서 복원</CardTitle>
+          <CardTitle className="text-body font-semibold">백업에서 복원</CardTitle>
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>

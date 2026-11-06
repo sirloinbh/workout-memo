@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
 import { App } from './app';
-import { json, mockApi } from './test/api';
+import { deferred, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/backup-ui.test.ts (vm hook harness) to a real DOM. Real file
@@ -194,4 +194,30 @@ test('downloads are named links and the preview lists one row per table', async 
     within(screen.getByRole('list', { name: '충돌' })).getByRole('listitem'),
   ).toHaveTextContent('Arsenal Strength / 레그 프레스: 기존 값 유지');
   expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('미리보기 · 추가만');
+});
+
+test('while a restore runs the status says it is restoring, not checking', async () => {
+  const gate = deferred();
+  mockApi(async ({ url, body }) => {
+    const mode = String((body as { mode?: unknown } | undefined)?.mode);
+    if (url.pathname === '/api/backup/preview') return summary(mode, true);
+    if (url.pathname === '/api/backup/restore') {
+      await gate.promise;
+      return summary(mode, false);
+    }
+    return [];
+  });
+  const user = userEvent.setup();
+  render(<App />);
+  await openPage('백업·내보내기', user);
+  await user.upload(
+    screen.getByLabelText('백업 파일 선택'),
+    new File([JSON.stringify(backup)], 'backup.json'),
+  );
+  await user.click(await screen.findByRole('button', { name: '복원 실행' }));
+  expect(await screen.findByText('복원하는 중…')).toBeInTheDocument();
+  expect(screen.queryByText('백업을 확인하는 중…')).toBeNull();
+  gate.resolve();
+  expect(await screen.findByText('복원을 완료했습니다.')).toBeInTheDocument();
+  expect(screen.queryByText('복원하는 중…')).toBeNull();
 });

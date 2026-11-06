@@ -4,8 +4,6 @@ import {
   Activity,
   ArrowRight,
   ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
   DatabaseBackup,
   Dumbbell,
   LayoutDashboard,
@@ -24,7 +22,8 @@ import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-
 import { Analysis } from './analysis';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
-import { FieldError, Input } from './components/field';
+import { DateStepper, RangeSummary } from './components/date-stepper';
+import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { List, ListItem } from './components/list';
@@ -700,7 +699,8 @@ function Workspace() {
   // #17 period selection, shared by the dashboard, journal and body measurements.
   const periodControls = (
     <>
-      <div className="period-bar">
+      {/* #71: on narrow phones the date control wraps under the period tabs. */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <SegmentedControl
           label="기간"
           options={periodOptions}
@@ -722,25 +722,12 @@ function Workspace() {
           }}
         />
         {!customRange && !customOpen && (
-          <div className="date-control">
-            <button aria-label="이전 기간" onClick={() => move(-1)}>
-              <ChevronLeft size={17} />
-            </button>
-            <input
-              aria-label="기준 날짜"
-              type="date"
-              value={anchor}
-              onChange={(e) => e.target.value && setAnchor(e.target.value)}
-            />
-            <button aria-label="다음 기간" onClick={() => move(1)}>
-              <ChevronRight size={17} />
-            </button>
-          </div>
+          <DateStepper label="기준 날짜" value={anchor} onValueChange={setAnchor} onMove={move} />
         )}
       </div>
       {(customOpen || customRange) && (
         <form
-          className="custom-range"
+          className="mt-3 flex flex-wrap items-start gap-x-3 gap-y-2"
           aria-label="기간 직접 선택"
           noValidate
           onSubmit={(e) => {
@@ -753,10 +740,14 @@ function Workspace() {
             setCustomOpen(false);
           }}
         >
-          <label>
-            시작일
-            <input
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="range-from" className="text-meta leading-none">
+              시작일
+            </Label>
+            <CommonInput
+              id="range-from"
               type="date"
+              className="w-36 md:pointer-coarse:text-base"
               value={customOpen ? customDraft.from : from}
               onChange={(e) => {
                 setCustomOpen(true);
@@ -767,12 +758,16 @@ function Workspace() {
               }}
               {...invalidProps('range-from', customErrors.from)}
             />
-          </label>
-          <FieldError name="range-from">{customErrors.from}</FieldError>
-          <label>
-            종료일
-            <input
+            <FieldError name="range-from">{customErrors.from}</FieldError>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="range-to" className="text-meta leading-none">
+              종료일
+            </Label>
+            <CommonInput
+              id="range-to"
               type="date"
+              className="w-36 md:pointer-coarse:text-base"
               value={customOpen ? customDraft.to : to}
               onChange={(e) => {
                 setCustomOpen(true);
@@ -783,12 +778,13 @@ function Workspace() {
               }}
               {...invalidProps('range-to', customErrors.to)}
             />
-          </label>
-          <FieldError name="range-to">{customErrors.to}</FieldError>
-          <button type="submit" className="subtle-button">
+            <FieldError name="range-to">{customErrors.to}</FieldError>
+          </div>
+          {/* The label row is 12px (leading-none) plus a 4px gap, so the button lines up with the inputs. */}
+          <Button type="submit" variant="secondary" className="mt-4">
             적용
-          </button>
-          <span className="form-hint">양 끝 날짜 포함 · 최대 {maxRangeDays}일</span>
+          </Button>
+          <p className="m-0 basis-full text-meta">양 끝 날짜 포함 · 최대 {maxRangeDays}일</p>
         </form>
       )}
       {badRangeAddress && (
@@ -796,9 +792,9 @@ function Workspace() {
           주소의 기간이 올바르지 않아 기본 기간을 표시합니다. 기간을 다시 선택하세요.
         </p>
       )}
-      <div className="range-label">
-        {from} — {to} <span>선택한 기간의 기록</span>
-      </div>
+      <RangeSummary from={from} to={to}>
+        선택한 기간의 기록
+      </RangeSummary>
     </>
   );
   const timerPanel = (
@@ -1266,54 +1262,63 @@ function Workspace() {
               </Card>
             </>
           )}
-          {page === 'goals' && (
-            <div className="goal-grid">
-              {goals.length === 0 ? (
-                <section className="card empty">
-                  <Target size={32} />
-                  <h3>다음 운동의 목표를 세워보세요</h3>
-                  <p>예: 레그 프레스 총중량 100kg, 10회 달성</p>
-                </section>
-              ) : (
-                goals.map((g) => (
-                  <section className="card goal-card" key={g.id}>
-                    <span className={'badge ' + (g.achieved ? 'success' : '')}>
-                      {g.achieved
-                        ? '달성 완료'
-                        : cleanDate(g.deadline) < today()
-                          ? '기간 종료'
-                          : '도전 중'}
-                    </span>
-                    <h2>{g.exercise}</h2>
-                    <div className="goal-number">
-                      {g.target_weight}
-                      <small> kg × </small>
-                      {g.target_reps}
-                      <small> 회</small>
-                    </div>
-                    <p>
-                      {cleanDate(g.start_date)} — {cleanDate(g.deadline)}
-                    </p>
-                    <p>
-                      {g.achieved
-                        ? '목표 기간에 중량과 반복 수를 모두 달성했어요.'
-                        : '같은 운동명으로 기록하면 달성 여부를 확인해요.'}
-                    </p>
-                    <button
-                      className="text-button"
-                      disabled={saving}
-                      onClick={() => {
-                        if (confirm('이 목표를 삭제할까요?'))
-                          void action(() => api('/goals/' + g.id, 'DELETE'));
-                      }}
+          {page === 'goals' &&
+            (goals.length === 0 ? (
+              <EmptyState
+                icon={<Target />}
+                title="다음 운동의 목표를 세워보세요"
+                description="예: 레그 프레스 총중량 100kg, 10회 달성"
+              />
+            ) : (
+              <div data-slot="goal-grid" className="grid gap-5 md:grid-cols-2">
+                {goals.map((g) => {
+                  const ended = !g.achieved && cleanDate(g.deadline) < today();
+                  return (
+                    <Card
+                      key={g.id}
+                      className="items-start gap-0 px-6 py-6 shadow-none md:px-7 md:py-7"
                     >
-                      목표 삭제
-                    </button>
-                  </section>
-                ))
-              )}
-            </div>
-          )}
+                      <Badge
+                        variant={g.achieved ? 'success' : ended ? 'warning' : 'outline'}
+                        className="mb-5"
+                      >
+                        {g.achieved ? '달성 완료' : ended ? '기간 종료' : '도전 중'}
+                      </Badge>
+                      <CardTitle asHeading="h2" className="text-body font-semibold">
+                        {g.exercise}
+                      </CardTitle>
+                      <div className="mt-5 text-[32px] leading-tight">
+                        {g.target_weight}
+                        <small className="text-body-sm text-muted-foreground"> kg × </small>
+                        {g.target_reps}
+                        <small className="text-body-sm text-muted-foreground"> 회</small>
+                      </div>
+                      <p className="mt-3 text-body-sm text-muted-foreground">
+                        {cleanDate(g.start_date)} — {cleanDate(g.deadline)}
+                      </p>
+                      <p className="mt-1 text-body-sm text-muted-foreground">
+                        {g.achieved
+                          ? '목표 기간에 중량과 반복 수를 모두 달성했어요.'
+                          : '같은 운동명으로 기록하면 달성 여부를 확인해요.'}
+                      </p>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="mt-3 px-0"
+                        aria-label={`${g.exercise} 목표 삭제`}
+                        disabled={saving}
+                        onClick={() => {
+                          if (confirm('이 목표를 삭제할까요?'))
+                            void action(() => api('/goals/' + g.id, 'DELETE'));
+                        }}
+                      >
+                        목표 삭제
+                      </Button>
+                    </Card>
+                  );
+                })}
+              </div>
+            ))}
           {page === 'machines' && (
             <>
               <div className="brand-tabs">
@@ -1912,6 +1917,11 @@ function Workspace() {
     </>
   );
 }
+// A field label stacked over its input. `.legacy .modal label` still sets the margin and
+// column direction for the other modals; here the utilities name them.
+const fieldLabel = 'mb-4 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
+// The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
+const touchText = 'md:pointer-coarse:text-base';
 // #64: React Hook Form with the shared goal schema. Messages come from the same
 // contract the server uses, and each one is linked to its field for screen readers.
 function GoalForm({
@@ -1939,24 +1949,26 @@ function GoalForm({
   );
   return (
     <form noValidate onSubmit={(event) => void handleSubmit(onSave)(event)}>
-      <label>
+      <Label className={fieldLabel}>
         운동명
-        <Input
+        <CommonInput
+          className={touchText}
           maxLength={120}
           placeholder="일지와 같은 운동명을 입력하세요"
           {...register('exercise')}
           {...field('exercise')}
         />
-      </label>
+      </Label>
       {message('exercise')}
       <GoalSuggestion
         exercise={watch('exercise') ?? ''}
         apply={(weight) => setValue('target_weight', weight, { shouldValidate: true })}
       />
-      <div className="form-grid">
-        <label>
+      <div className="grid grid-cols-2 gap-x-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
+        <Label className={fieldLabel}>
           목표 총중량 (kg)
-          <Input
+          <CommonInput
+            className={touchText}
             type="number"
             min="0"
             max="99999"
@@ -1964,31 +1976,42 @@ function GoalForm({
             {...register('target_weight', { valueAsNumber: true })}
             {...field('target_weight')}
           />
-        </label>
-        <label>
+        </Label>
+        <Label className={fieldLabel}>
           목표 반복 수
-          <Input
+          <CommonInput
+            className={touchText}
             type="number"
             min="1"
             max="1000"
             {...register('target_reps', { valueAsNumber: true })}
             {...field('target_reps')}
           />
-        </label>
-        <label>
+        </Label>
+        <Label className={fieldLabel}>
           시작일
-          <Input type="date" {...register('start_date')} {...field('start_date')} />
-        </label>
-        <label>
+          <CommonInput
+            className={touchText}
+            type="date"
+            {...register('start_date')}
+            {...field('start_date')}
+          />
+        </Label>
+        <Label className={fieldLabel}>
           종료일
-          <Input type="date" {...register('deadline')} {...field('deadline')} />
-        </label>
+          <CommonInput
+            className={touchText}
+            type="date"
+            {...register('deadline')}
+            {...field('deadline')}
+          />
+        </Label>
       </div>
       {message('target_weight')}
       {message('target_reps')}
       {message('start_date')}
       {message('deadline')}
-      <p className="form-hint">
+      <p className="mb-4 rounded-md bg-muted p-3 text-meta text-muted-foreground">
         기간 안에 한 세트에서 목표 중량 이상, 목표 반복 수 이상을 수행하면 달성 처리됩니다.
       </p>
       <Button className="w-full" disabled={saving}>
@@ -2053,28 +2076,35 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
   }
   if (!name) return null;
   return (
-    <section className="goal-suggestion" aria-label="다음 목표 제안">
+    <section
+      aria-label="다음 목표 제안"
+      className="mb-4 rounded-lg border border-input p-3 text-body-sm"
+    >
       {suggestion &&
         (suggestion.base && suggestion.target_weight !== null ? (
-          <p>
+          <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-muted-foreground">
             제안 {fmt(suggestion.target_weight)} kg ·{' '}
             {suggestion.base.source === 'goal' ? '최근 목표' : '직전 기록'}{' '}
             {fmt(suggestion.base.weight)} kg + {fmt(suggestion.weight_step)} kg{' '}
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               onClick={() => apply(suggestion.target_weight!)}
             >
               제안 적용
             </Button>
           </p>
         ) : (
-          <p>이 운동의 목표나 완료 기록이 없어 제안할 수 없습니다.</p>
+          <p className="mb-2 text-body-sm text-muted-foreground">
+            이 운동의 목표나 완료 기록이 없어 제안할 수 없습니다.
+          </p>
         ))}
-      <div className="goal-step">
-        <label>
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+        <Label className={cn(fieldLabel, 'mb-0')}>
           이 운동의 증량 단위 (kg)
-          <Input
+          <CommonInput
+            className={touchText}
             type="number"
             min="0.01"
             max="100"
@@ -2082,7 +2112,7 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
             value={step}
             onChange={(e) => setStep(e.target.value)}
           />
-        </label>
+        </Label>
         <Button
           type="button"
           variant="secondary"
@@ -2097,7 +2127,11 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
           </Button>
         )}
       </div>
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p role="status" className="mt-2 text-body-sm text-muted-foreground">
+          {message}
+        </p>
+      )}
     </section>
   );
 }

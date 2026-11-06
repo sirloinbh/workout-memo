@@ -1,0 +1,32 @@
+# #102 루틴짜기의 루틴 폼을 공통 컴포넌트로 교체 (3단계)
+
+- 이슈: [#102](https://github.com/sirloinbh/workout-memo/issues/102)
+- 브랜치: `feat/102-routine-form`
+- 앞 단계: 1단계 나의 목표 [#227](https://github.com/sirloinbh/workout-memo/pull/227), 2단계 종목 분석 [#228](https://github.com/sirloinbh/workout-memo/pull/228)
+
+## 목적
+
+루틴짜기 화면의 머리 안내, 오류·저장 안내, 루틴 목록, 루틴 폼(일정 방식·분할·부위·운동·주차 목표)을 공통 컴포넌트로 바꾸고, 폼만 쓰던 `style.css` 규칙을 지웁니다. 12주 미리보기(`Preview`)와 계획 보기(`selected` 상세)는 4단계에서 옮깁니다. 단계별 입력 흐름은 범위 밖이며 #102 뒤에 따로 합니다(조율 창 결정).
+
+## 변경 — feat: 루틴 폼 교체
+
+- `frontend/src/routines.tsx`
+  - 오류: `.error` 대신 #223의 `AlertBanner`입니다. 저장 완료와 불러오는 중은 `Notice`(`role="status"`)입니다.
+  - "새 루틴 만들기"는 공통 `Button`(아이콘 포함), 목록의 "계획 보기"는 `outline`·`sm`입니다. 목록은 테두리 상자 안에 줄로 나눴습니다.
+  - 폼은 `Card` 안에 둡니다. 이름표는 공통 `Label`, 글자·숫자·날짜 입력은 공통 `Input`(터치 768px 이상에서도 16px)입니다.
+  - 선택 칸(주차 목표 방식·분할 방식·운동 일정 방식·머신·주차 목표 대상)은 브라우저 기본 `select`를 유지하고 공통 입력과 같은 모양의 유틸리티를 붙였습니다. #101의 머신 선택과 같은 예외입니다. 공통 `Select`(Radix)는 "자유 운동"의 빈 값을 항목으로 쓸 수 없고, 화면 테스트가 기본 `select`를 직접 조작합니다.
+  - 휴식 요일: 기본 체크박스 대신 공통 `Checkbox`입니다. 공통 `Checkbox`의 터치 누름 영역이 42px인 문제(project-standards#415)는 #231과 같은 `pointer-coarse:after:-inset-[15px]`로 맞췄습니다.
+  - 분할 묶음·휴식 요일·주차 목표: `fieldset`은 유틸리티 테두리 상자, `legend`는 굵은 글자입니다.
+  - 부위 추가 버튼은 `outline`·`sm`, 추가된 부위는 둥근 칩 안의 "삭제"(`ghost`)입니다. 버튼 이름("가슴 추가", "분할 1 부위 1 삭제")은 그대로입니다.
+  - 운동 행은 2열(768px 이상 3열) 그리드이고 "운동 삭제"는 `outline`·`sm`, "운동 추가"는 `secondary`입니다.
+  - "루틴 저장하기"·"취소"는 한 줄에 둡니다.
+- `frontend/src/style.css`: `.routine-page fieldset`, `.routine-page button`, `.routine-page input[type='checkbox']`, `.routine-exercise`를 지웠습니다. `.routine-page li`는 4단계에서 옮길 미리보기·계획 보기 목록이 아직 써서 남겼습니다.
+
+## 테스트
+
+- 수정: `frontend/src/routines.test.tsx`의 입력 도우미 `change()`가 공통 `Checkbox`(`role="checkbox"`)를 눌러 휴식 요일을 고르도록 했습니다. 기존 테스트의 검증 내용은 같습니다.
+- 추가: 같은 파일에서 저장 실패 오류가 `role="alert"`로, 저장 완료가 `role="status"`로 보이는지 확인합니다.
+- `npm run test -w frontend -- src/routines.test.tsx src/routine-progress.test.tsx`: 17 pass
+- `npm run typecheck -w frontend`, eslint·prettier(바꾼 파일): 통과
+- 시각 기준선과 e2e(반응형·axe·터치)는 PR CI로 확인합니다. 세 워크트리가 동시에 돌아 메모리가 부족해 로컬 전체 `npm run check`와 e2e는 돌리지 않았습니다.
+- 한계: 터치 화면의 `.legacy button` 44px 규칙이 공통 `Checkbox` 상자 자체를 44px로 키우는 문제는 agent2의 #231이 고칩니다. #231 병합 전에는 휴식 요일 상자가 터치 화면에서 크게 보입니다. 이 PR은 #231 병합 뒤 `origin/main`을 받아 확인합니다. 고정 데이터의 루틴짜기 화면은 폼을 열지 않아 시각 기준선과 터치 검사에 폼이 나오지 않습니다.

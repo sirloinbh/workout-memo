@@ -1,5 +1,5 @@
 import { MinusIcon, PlusIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import { type ComponentProps, useState } from 'react';
 
 import { cn } from '../lib/utils';
 import { stepValue } from './number-step';
@@ -37,7 +37,9 @@ export function NumberInput({
   const atMax = max !== undefined && parsed >= max;
   const limitClass = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
   return (
-    <div role="group" aria-label={label} className={cn('flex items-center gap-1', className)}>
+    // #105: the group is not named after the field: the input already carries the name, and a
+    // second element with the same label would make label lookups ambiguous.
+    <div role="group" className={cn('flex items-center gap-1', className)}>
       <Button
         type="button"
         variant="outline"
@@ -78,5 +80,31 @@ export function NumberInput({
         <PlusIcon aria-hidden />
       </Button>
     </div>
+  );
+}
+
+// #105: NumberInput for a field kept as a number (like a set's weight and reps). The typed text
+// is kept while it still reads as the stored number, so "12." or an emptied field is not
+// rewritten mid-typing; a new number from outside (a − or + press, a restored draft) replaces it.
+export function NumberValueInput({
+  value,
+  onValueChange,
+  ...props
+}: Omit<ComponentProps<typeof NumberInput>, 'value' | 'onValueChange'> & {
+  value: number;
+  onValueChange: (value: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+  // Object.is also matches NaN, so unreadable text stays as typed for the form to report.
+  const shown = Object.is(Number(text), value) ? text : String(value);
+  return (
+    <NumberInput
+      {...props}
+      value={shown}
+      onValueChange={(next) => {
+        setText(next);
+        onValueChange(Number(next));
+      }}
+    />
   );
 }

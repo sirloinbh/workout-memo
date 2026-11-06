@@ -162,7 +162,9 @@ for (const mutation of ['delete'] as const) {
     } else {
       await ui.user.click(screen.getByRole('button', { name: '수정' }));
       const dialog = screen.getByRole('dialog');
-      const weight = dialog.querySelector<HTMLInputElement>('input[type="number"][step="0.25"]')!;
+      const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', {
+        name: '총중량 kg',
+      })[0];
       await ui.user.clear(weight);
       await ui.user.type(weight, '150');
       await ui.user.click(within(dialog).getByRole('button', { name: /저장/ }));
@@ -258,7 +260,7 @@ test('period statistics and graph combine same-day sessions and refresh after ed
   expect(rows()[0]).toHaveTextContent('기록 3');
   await ui.user.click(within(rows()[0] as HTMLElement).getByRole('button', { name: '수정' }));
   const dialog = screen.getByRole('dialog', { name: '운동 일지 수정' });
-  const weight = dialog.querySelector<HTMLInputElement>('input[type="number"][step="0.25"]')!;
+  const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', { name: '총중량 kg' })[0];
   await ui.user.clear(weight);
   await ui.user.type(weight, '60');
   await ui.user.click(within(dialog).getByRole('button', { name: /저장/ }));
@@ -292,7 +294,7 @@ test('a delayed edit keeps the page blocked until it finishes, then the new peri
   const pending = ui.holdNextMutation();
   await ui.user.click(screen.getByRole('button', { name: '수정' }));
   const dialog = screen.getByRole('dialog');
-  const weight = dialog.querySelector<HTMLInputElement>('input[type="number"][step="0.25"]')!;
+  const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', { name: '총중량 kg' })[0];
   await ui.user.clear(weight);
   await ui.user.type(weight, '150');
   await ui.user.click(within(dialog).getByRole('button', { name: /저장/ }));

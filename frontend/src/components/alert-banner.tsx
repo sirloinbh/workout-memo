@@ -1,0 +1,28 @@
+import type { ComponentProps, ReactNode } from 'react';
+
+import { cn } from '../lib/utils';
+
+// #223: a failure or warning that needs attention, in a tinted box with an optional action
+// such as "다시 연결". Screen readers announce it at once (role="alert"). components/ui has no
+// Alert yet; for a plain progress or success line use Notice from components/ui/notice instead.
+export function AlertBanner({
+  children,
+  action,
+  className,
+  ...props
+}: Omit<ComponentProps<'div'>, 'role'> & { action?: ReactNode }) {
+  return (
+    <div
+      role="alert"
+      data-slot="alert-banner"
+      className={cn(
+        'mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm text-destructive',
+        className,
+      )}
+      {...props}
+    >
+      <span className="min-w-0 flex-1">{children}</span>
+      {action}
+    </div>
+  );
+}

@@ -399,6 +399,34 @@ test('write quota failure still permits server save and reports the local persis
   expect(content()).toMatch(/서버 저장 완료/);
 });
 
+// #223: the warning is announced at once and the save progress politely, in the common parts.
+test('the storage warning is an alert banner and the save state a status line', async () => {
+  const ui = mount([], 'write');
+  await fill(ui);
+  const warning = within(dialog())
+    .getAllByRole('alert')
+    .find((el) => /로컬 저장 공간 오류/.test(el.textContent));
+  expect(warning).toHaveAttribute('data-slot', 'alert-banner');
+  submit();
+  await saved();
+  // The editor closes after the save, so the status line is the one above the page.
+  const status = screen.getAllByRole('status').find((el) => /서버 저장 완료/.test(el.textContent));
+  expect(status).toHaveAttribute('data-slot', 'notice');
+});
+
+test('a failed save offers 다시 저장 재시도 inside its alert banner', async () => {
+  const ui = mount();
+  await fill(ui);
+  ui.offline();
+  submit();
+  await saveFailed();
+  const failure = within(dialog())
+    .getAllByRole('alert')
+    .find((el) => el.getAttribute('data-slot') === 'alert-banner' && /저장/.test(el.textContent));
+  expect(failure).toBeDefined();
+  expect(within(failure!).getByRole('button', { name: '다시 저장 재시도' })).toBeEnabled();
+});
+
 test('cleanup failure keeps server acknowledgment separate from the local storage warning', async () => {
   const ui = mount([], 'remove');
   await fill(ui);

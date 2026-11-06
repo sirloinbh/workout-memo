@@ -61,7 +61,7 @@ test('새 일지는 오늘 날짜·제목과 오늘 루틴의 세트·머신으�
   for (let i = 0; i < 2; i++) {
     await expect(sets.nth(i).getByLabel('운동명')).toHaveValue(`E2E 레그프레스 ${suffix}`);
     await expect(sets.nth(i).getByLabel('머신')).toHaveValue(String(machineId));
-    await expect(sets.nth(i).getByLabel('총중량 kg')).toHaveValue('150');
-    await expect(sets.nth(i).getByLabel('횟수')).toHaveValue('10');
+    await expect(sets.nth(i).getByLabel('총중량 kg', { exact: true })).toHaveValue('150');
+    await expect(sets.nth(i).getByLabel('횟수', { exact: true })).toHaveValue('10');
   }
 });

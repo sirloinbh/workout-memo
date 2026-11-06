@@ -138,7 +138,8 @@ const titleInput = () => dialog().querySelector<HTMLInputElement>('input[maxleng
 const exerciseInputs = () => [
   ...dialog().querySelectorAll<HTMLInputElement>('input[list="exercise-names"]'),
 ];
-const weightInputs = () => [...dialog().querySelectorAll<HTMLInputElement>('input[step="0.25"]')];
+const weightInputs = () =>
+  within(dialog()).getAllByRole<HTMLInputElement>('textbox', { name: '총중량 kg' });
 const key = (request: ApiRequest) => request.headers['idempotency-key'];
 const storageSize = () => localStorage.length;
 const storageKeys = () =>
@@ -162,9 +163,9 @@ async function fill(ui: UI) {
   await ui.user.clear(titleInput());
   await ui.user.type(titleInput(), 'Recovery workout');
   await ui.user.type(exerciseInputs()[0], 'Squat');
-  // Number inputs drop partial decimals ("100.") while typing in jsdom; set the value.
+  // Set the whole value at once, as a paste would; typing is covered by the NumberInput tests.
   fireEvent.change(weightInputs()[0], { target: { value: '100.25' } });
-  await waitFor(() => expect(weightInputs()[0]).toHaveValue(100.25));
+  await waitFor(() => expect(weightInputs()[0]).toHaveValue('100.25'));
 }
 function submit() {
   fireEvent.submit(dialog().querySelector('form')!);
@@ -480,4 +481,43 @@ test('a new journal starts with three empty set rows and keeps the draft flow', 
   expect(weightInputs().every((e) => Number(e.value) === 0)).toBe(true);
   expect(storageSize(), 'the three-row editor is a local draft').toBeGreaterThan(0);
   expect(ui.mutations()).toHaveLength(0);
+});
+
+// #105: each set is a card with − / + for weight and reps and a number keypad.
+test('a set card steps weight by 2.5 kg and reps by one, with number keypads', async () => {
+  const ui = mount();
+  await fill(ui);
+  const card = dialog().querySelector<HTMLElement>('[data-slot=set-row]')!;
+  const weight = within(card).getByRole('textbox', { name: '총중량 kg' });
+  const reps = within(card).getByRole('textbox', { name: '횟수' });
+  expect(weight).toHaveAttribute('inputmode', 'decimal');
+  expect(reps).toHaveAttribute('inputmode', 'numeric');
+  await ui.user.click(within(card).getByRole('button', { name: '총중량 kg 늘리기' }));
+  expect(weight).toHaveValue('102.75');
+  const before = Number((reps as HTMLInputElement).value);
+  await ui.user.click(within(card).getByRole('button', { name: '횟수 줄이기' }));
+  expect(reps).toHaveValue(String(before - 1));
+  expect(within(card).getByText('1세트')).toBeInTheDocument();
+  // The stepped value is what the draft keeps.
+  await waitFor(() =>
+    expect(
+      storageKeys()
+        .map((k) => localStorage.getItem(k))
+        .join(),
+    ).toMatch(/"weight":102\.75/),
+  );
+});
+
+// #105: text weight fields could hand NaN to the draft, which is saved as null and then
+// discards the whole draft as corrupt on the next visit.
+test('unreadable weight text never reaches the draft, so it can still be recovered', async () => {
+  const first = mount();
+  await fill(first);
+  fireEvent.change(weightInputs()[0], { target: { value: '100.2x' } });
+  expect(weightInputs()[0]).toHaveValue('100.25');
+  const saved = storageKeys()
+    .map((k) => localStorage.getItem(k))
+    .join();
+  expect(saved).toMatch(/"weight":100\.25/);
+  expect(saved).not.toMatch(/"weight":null/);
 });

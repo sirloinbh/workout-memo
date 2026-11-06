@@ -29,6 +29,7 @@ import { invalidProps } from './components/field-props';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { List, ListItem } from './components/list';
 import { Modal } from './components/modal';
+import { NumberValueInput } from './components/number-input';
 import { SegmentedControl } from './components/segmented-control';
 import { StatCard } from './components/stat-card';
 import { Switch } from './components/switch';
@@ -277,6 +278,8 @@ const dateLabel = (v: string) =>
   });
 const vol = (w: Workout) => w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * s.reps, 0);
 const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
+// #105: weight − / + moves by the smallest common plate pair; typing still allows 0.25 kg.
+const weightStep = 2.5;
 // #223: the save progress line ("저장 중…", "서버 저장 완료") as a polite Notice.
 const statusNotice = (text: string): NoticeValue | undefined =>
   text ? { kind: 'status', text } : undefined;
@@ -1530,20 +1533,40 @@ function Workspace() {
                 세트
               </p>
               {editor.sets?.map((s, i) => (
+                // #105: one card per set; weight and reps take − / + presses and a number
+                // keypad, and the completion button spans the card for a one-handed tap.
                 <div
                   data-slot="set-row"
-                  className="mb-4 grid grid-cols-[18px_1fr_1fr_44px] items-center gap-2 border-b border-border md:mb-0 md:grid-cols-[22px_1.5fr_1.5fr_85px_65px_36px] md:border-b-0 md:pointer-coarse:grid-cols-[22px_1.5fr_1.5fr_85px_65px_44px]"
+                  className={cn(
+                    'mb-3 grid gap-x-3 gap-y-2.5 rounded-lg border border-border bg-card p-3 md:grid-cols-2',
+                    done(s) && 'border-primary/60',
+                  )}
                   key={i}
                 >
-                  <div
-                    className={cn(
-                      'row-span-2 text-meta text-muted-foreground md:row-span-1',
-                      done(s) && 'font-bold text-foreground',
-                    )}
-                  >
-                    {i + 1}
+                  <div className="flex items-center justify-between gap-2 md:col-span-2">
+                    <span
+                      className={cn(
+                        'text-meta text-muted-foreground',
+                        done(s) && 'font-bold text-foreground',
+                      )}
+                    >
+                      {i + 1}세트
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground"
+                      disabled={editor.sets!.length === 1}
+                      aria-label="세트 삭제"
+                      onClick={() =>
+                        setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) })
+                      }
+                    >
+                      <X size={15} />
+                    </Button>
                   </div>
-                  <label htmlFor={`set-${i}-exercise`} className="text-meta max-md:mb-2.5">
+                  <label htmlFor={`set-${i}-exercise`} className="mb-0 text-meta">
                     운동명
                     <CommonInput
                       id={`set-${i}-exercise`}
@@ -1559,7 +1582,7 @@ function Workspace() {
                       {...invalid(`sets.${i}.exercise`)}
                     />
                   </label>
-                  <label className="text-meta max-md:mb-2.5">
+                  <label className="mb-0 text-meta">
                     머신
                     <select
                       className="h-9 px-2 py-0 text-body-sm pointer-coarse:text-base"
@@ -1593,62 +1616,54 @@ function Workspace() {
                       ))}
                     </select>
                   </label>
-                  <label
-                    htmlFor={`set-${i}-weight`}
-                    className="text-meta max-md:col-start-2 max-md:mb-2.5"
-                  >
-                    총중량 kg
-                    <CommonInput
-                      id={`set-${i}-weight`}
-                      className="px-2 md:pointer-coarse:text-base"
-                      type="number"
-                      required
-                      min="0"
-                      max="99999"
-                      step="0.25"
-                      value={s.weight}
-                      onChange={(e) => {
-                        const sets = [...editor.sets!];
-                        sets[i] = { ...s, weight: Number(e.target.value) };
-                        setEditor({ ...editor, sets });
-                      }}
-                      {...invalid(`sets.${i}.weight`)}
-                    />
-                  </label>
-                  <label htmlFor={`set-${i}-reps`} className="text-meta max-md:mb-2.5">
-                    횟수
-                    <CommonInput
-                      id={`set-${i}-reps`}
-                      className="px-2 md:pointer-coarse:text-base"
-                      type="number"
-                      required
-                      min="1"
-                      max="1000"
-                      value={s.reps}
-                      onChange={(e) => {
-                        const sets = [...editor.sets!];
-                        sets[i] = { ...s, reps: Number(e.target.value) };
-                        setEditor({ ...editor, sets });
-                      }}
-                      {...invalid(`sets.${i}.reps`)}
-                    />
-                  </label>
-                  <div className="col-[2/-1] row-start-4 flex items-end gap-3 max-md:mb-2.5 md:col-[2/-2] md:row-start-3">
-                    <Button
-                      type="button"
-                      variant={done(s) ? 'default' : 'outline'}
-                      className="h-auto min-h-9 py-1.5 whitespace-normal"
-                      aria-pressed={done(s)}
-                      aria-label={`${i + 1}세트 완료`}
-                      onClick={() => markSet(i, !done(s))}
-                    >
-                      {done(s) ? '완료됨 · 취소하려면 다시 누르기' : '완료'}
-                    </Button>
+                  {/* Stacked on phones: two − / + fields side by side leave no room for the digits. */}
+                  <div className="grid gap-3 min-[480px]:grid-cols-2 md:col-span-2">
+                    <div className="flex min-w-0 flex-col gap-2">
+                      <label htmlFor={`set-${i}-weight`} className="mb-0 text-meta">
+                        총중량 kg
+                      </label>
+                      <NumberValueInput
+                        id={`set-${i}-weight`}
+                        label="총중량 kg"
+                        className="md:pointer-coarse:[&_input]:text-base"
+                        step={weightStep}
+                        min={0}
+                        max={99999}
+                        required
+                        value={s.weight}
+                        onValueChange={(weight) => {
+                          const sets = [...editor.sets!];
+                          sets[i] = { ...s, weight };
+                          setEditor({ ...editor, sets });
+                        }}
+                        {...invalid(`sets.${i}.weight`)}
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-2">
+                      <label htmlFor={`set-${i}-reps`} className="mb-0 text-meta">
+                        횟수
+                      </label>
+                      <NumberValueInput
+                        id={`set-${i}-reps`}
+                        label="횟수"
+                        className="md:pointer-coarse:[&_input]:text-base"
+                        min={1}
+                        max={1000}
+                        required
+                        value={s.reps}
+                        onValueChange={(reps) => {
+                          const sets = [...editor.sets!];
+                          sets[i] = { ...s, reps };
+                          setEditor({ ...editor, sets });
+                        }}
+                        {...invalid(`sets.${i}.reps`)}
+                      />
+                    </div>
                   </div>
                   {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
                     <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
                   ))}
-                  <label className="col-[2/-1] row-start-3 text-meta max-md:mb-2.5 md:col-[2/-2] md:row-start-2">
+                  <label className="mb-0 text-meta md:col-span-2">
                     세트 메모
                     <textarea
                       maxLength={4000}
@@ -1662,22 +1677,20 @@ function Workspace() {
                     />
                   </label>
                   {setReference(progress, s.exercise) && (
-                    <p className="col-[2/-1] text-meta text-muted-foreground md:col-[2/-2]">
+                    <p className="m-0 text-meta text-muted-foreground md:col-span-2">
                       {setReference(progress, s.exercise)}
                     </p>
                   )}
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="col-start-4 row-span-2 row-start-1 text-muted-foreground md:col-start-6 md:row-span-1 md:row-start-1"
-                    disabled={editor.sets!.length === 1}
-                    aria-label="세트 삭제"
-                    onClick={() =>
-                      setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) })
-                    }
+                    size="lg"
+                    variant={done(s) ? 'default' : 'outline'}
+                    className="h-auto min-h-12 w-full py-2 text-base whitespace-normal md:col-span-2"
+                    aria-pressed={done(s)}
+                    aria-label={`${i + 1}세트 완료`}
+                    onClick={() => markSet(i, !done(s))}
                   >
-                    <X size={15} />
+                    {done(s) ? '완료됨 · 취소하려면 다시 누르기' : '완료'}
                   </Button>
                 </div>
               ))}

@@ -1,5 +1,5 @@
 import { MinusIcon, PlusIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import { type ComponentProps, useState } from 'react';
 
 import { cn } from '../lib/utils';
 import { stepValue } from './number-step';
@@ -37,7 +37,9 @@ export function NumberInput({
   const atMax = max !== undefined && parsed >= max;
   const limitClass = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
   return (
-    <div role="group" aria-label={label} className={cn('flex items-center gap-1', className)}>
+    // #105: the group is not named after the field: the input already carries the name, and a
+    // second element with the same label would make label lookups ambiguous.
+    <div role="group" className={cn('flex items-center gap-1', className)}>
       <Button
         type="button"
         variant="outline"
@@ -78,5 +80,38 @@ export function NumberInput({
         <PlusIcon aria-hidden />
       </Button>
     </div>
+  );
+}
+
+// #105: NumberInput for a field kept as a number (like a set's weight and reps). The typed text
+// is kept while it still reads as the stored number, so "12." or an emptied field is not
+// rewritten mid-typing; a new number from outside (a − or + press, a restored draft) replaces it.
+// A decimal comma (some phone keypads) counts as a point. Only digits with at most one point
+// are taken, so the stored value is always finite (NaN would empty a saved draft) and pasted
+// "0x10" or "1e3" is refused rather than read as 16 or 1000. A lone "." reads as 0 until the
+// digits after it arrive, so ".5" can be typed.
+const typedNumber = /^\d*\.?\d*$/;
+const readNumber = (text: string) => (text === '.' ? 0 : Number(text));
+export function NumberValueInput({
+  value,
+  onValueChange,
+  ...props
+}: Omit<ComponentProps<typeof NumberInput>, 'value' | 'onValueChange'> & {
+  value: number;
+  onValueChange: (value: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+  const shown = Object.is(readNumber(text), value) ? text : String(value);
+  return (
+    <NumberInput
+      {...props}
+      value={shown}
+      onValueChange={(next) => {
+        const normalized = next.replace(',', '.');
+        if (!typedNumber.test(normalized)) return;
+        setText(normalized);
+        onValueChange(readNumber(normalized));
+      }}
+    />
   );
 }

@@ -50,3 +50,10 @@
 5. 남긴 것: 글자를 가진 채 새로 마운트되는 `role="status"`·`role="alert"`는 화면 낭독기에 따라 읽히지 않을 수 있습니다. 이전 코드도 같았고, 근본 해결은 중앙 `Notice`가 빈 영역을 항상 마운트하는 방식이라 `sirloinbh/project-standards`에서 다룰 일입니다.
 
 - 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/alert-banner.test.tsx src/workout-draft.test.tsx src/routing.test.tsx` 27 pass, 바뀐 파일 eslint·prettier 통과
+
+## 변경 — test: 시각 기준선 갱신
+
+- 2차 리뷰는 보완점이 없었습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- 처음에는 e2e 고정 화면에 이 알림들이 나오지 않을 것으로 봤지만, 새 기록 편집 창 맨 위에 저장 상태 "로컬 초안 · 서버 저장 전"이 나옵니다. `a2ea926`의 CI `e2e-visual`에서 `workout-editor` 360·390·768·1280의 4건만 실패했고 axe·반응형·터치 포함 나머지 74건은 통과했습니다.
+- `workout-editor-390`의 기준·실제 이미지를 직접 봤습니다. 저장 상태 글자가 12px에서 14px로 커지고 아래 12px 여백이 생겨 그 아래 내용이 조금 내려간 것 외에 차이가 없어 `visual-baselines` 아티팩트로 4장을 갱신했습니다.
+- 한계: 연결 오류·저장 경고·저장 실패 상자는 e2e 고정 화면에 나오지 않아 화면 테스트로만 확인했습니다.

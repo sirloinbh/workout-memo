@@ -29,3 +29,11 @@
 - `npm run typecheck -w frontend`, eslint·prettier(바꾼 파일): 통과
 - 시각 기준선과 e2e(반응형·axe)는 PR CI로 확인합니다. 세 워크트리가 동시에 돌아 메모리 부족 이력이 있어 로컬 전체 `npm run check`와 e2e는 돌리지 않았습니다.
 - 한계: 추이 그래프는 가로로 넘치면 스크롤되지만 키보드로 들어갈 수 없습니다. 이전 화면도 같았고 그래프 내용은 `role="img"` 이름으로 읽힙니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+- "종목별 PR" 제목 뒤 공백이 JSX 줄바꿈에서 사라져 제목과 접근성 이름이 "종목별 PR2"였습니다. 공백을 남겨 이전처럼 "종목별 PR 2"로 읽힙니다. 화면 테스트가 제목 글자를 확인합니다.
+- `ToggleChips` 칩은 터치 화면에서 높이만 44px였고, "등"처럼 한 글자 칩은 너비가 약 40px였습니다. `pointer-coarse:min-w-11`을 더했습니다. 일지 편집의 체감 피드백 칩도 같은 컴포넌트를 쓰며, 두 글자 칩이라 이미 44px 이상입니다. 시각 기준선은 터치가 아닌 화면이라 바뀌지 않습니다.
+- `e2e/ui-touch.spec.ts`에 터치 360·390·768px에서 종목 분석의 부위 지정을 열고 칩·버튼의 높이·너비와 가로 넘침을 확인하는 검사를 추가했습니다. 이전 검사는 편집기를 열지 않아 이 문제를 잡지 못했습니다.
+- 시각 기준선: analysis 4장은 바뀔 것으로 봅니다. CI `e2e-visual` 결과 이미지를 확인한 뒤 갱신합니다.
+- 1차 보완 후: `npm run test -w frontend -- src/analysis.test.tsx src/components/toggle-chips.test.tsx` 9 pass, eslint·`npm run typecheck` 통과. 추가한 e2e는 CI로 확인합니다.

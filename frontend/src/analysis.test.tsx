@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
@@ -208,6 +208,7 @@ test('cancelling the mapping editor sends nothing and the PR count badge matches
   await loaded();
   const prs = screen.getByRole('region', { name: '종목별 PR' });
   expect(prs.querySelector('[data-slot="badge"]')!.textContent).toBe('2');
+  expect(within(prs).getByRole('heading', { level: 2 }).textContent).toBe('종목별 PR 2');
   expect(screen.getByRole('region', { name: '부위별 주간 운동량' })).toBeInTheDocument();
 
   await ui.user.click(screen.getByRole('button', { name: 'Curl 부위 지정' }));

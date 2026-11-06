@@ -216,7 +216,7 @@ export function Analysis() {
           <Card role="region" aria-label="종목별 PR" className={card}>
             <CardHeader className={cardHeader}>
               <CardTitle asHeading="h2" className="text-body font-semibold">
-                종목별 PR
+                종목별 PR{' '}
                 <Badge variant="secondary" className="ml-1.5 align-middle">
                   {data.exercises.length}
                 </Badge>

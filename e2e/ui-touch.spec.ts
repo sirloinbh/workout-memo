@@ -76,6 +76,15 @@ for (const { width, height } of touchWidths) {
         expect(inner, `${modal.name} 모달 안 가로 넘침(px)`).toBeLessThanOrEqual(0);
       }
     });
+
+    // #102: the body-part chips appear only after opening the editor; "등" is one letter wide.
+    test('종목 분석의 부위 지정 칩이 기준을 지킨다', async ({ page }) => {
+      await openPage(page, '/analysis');
+      await page.getByRole('button', { name: '랫풀다운 부위 지정' }).click();
+      await expect(page.getByRole('group', { name: '랫풀다운 부위' })).toBeVisible();
+      expect(await violations(page.locator('main .legacy'))).toEqual([]);
+      expect(await overflow(page), '가로 넘침(px)').toBeLessThanOrEqual(0);
+    });
   });
 }
 

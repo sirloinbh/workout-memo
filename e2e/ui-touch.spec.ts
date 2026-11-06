@@ -77,7 +77,8 @@ for (const { width, height } of touchWidths) {
       }
     });
 
-    // #102: the body-part chips appear only after opening the editor; "등" is one letter wide.
+    // #102: the body-part chips appear only after opening the editor, so the page check above
+    // never sees them; this keeps their 44px touch size from regressing.
     test('종목 분석의 부위 지정 칩이 기준을 지킨다', async ({ page }) => {
       await openPage(page, '/analysis');
       await page.getByRole('button', { name: '랫풀다운 부위 지정' }).click();

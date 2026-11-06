@@ -22,6 +22,7 @@ import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-
 import { Analysis } from './analysis';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
+import { AlertBanner } from './components/alert-banner';
 import { DateStepper, RangeSummary } from './components/date-stepper';
 import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
@@ -38,6 +39,7 @@ import { Card, CardAction, CardDescription, CardHeader, CardTitle } from './comp
 import { EmptyState } from './components/ui/empty-state';
 import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
+import { Notice } from './components/ui/notice';
 import { Toaster } from './components/ui/sonner';
 import {
   defaultWeightStep,
@@ -52,6 +54,7 @@ import {
 } from './contract';
 import { dateTitle, seoulDate } from './date';
 import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
+import type { NoticeValue } from './lib/use-notice';
 import { cn } from './lib/utils';
 import { RoutineProgress } from './progress';
 import { type Progress, routineDraft, setReference } from './progress-data';
@@ -274,6 +277,9 @@ const dateLabel = (v: string) =>
   });
 const vol = (w: Workout) => w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * s.reps, 0);
 const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
+// #223: the save progress line ("저장 중…", "서버 저장 완료") as a polite Notice.
+const statusNotice = (text: string): NoticeValue | undefined =>
+  text ? { kind: 'status', text } : undefined;
 async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
@@ -788,9 +794,9 @@ function Workspace() {
         </form>
       )}
       {badRangeAddress && (
-        <p role="alert" className="error">
+        <AlertBanner className="mt-3 mb-0">
           주소의 기간이 올바르지 않아 기본 기간을 표시합니다. 기간을 다시 선택하세요.
-        </p>
+        </AlertBanner>
       )}
       <RangeSummary from={from} to={to}>
         선택한 기간의 기록
@@ -911,11 +917,7 @@ function Workspace() {
         라이브러리, 하체·상체는 종목 분석의 부위 지정을 따르며 운동명으로 추측하지 않습니다. 지정이
         없으면 위의 휴식 시간을 씁니다.
       </p>
-      {timerWarning && (
-        <p role="alert" className="error col-span-full m-0">
-          {timerWarning}
-        </p>
-      )}
+      {timerWarning && <AlertBanner className="col-span-full mb-0">{timerWarning}</AlertBanner>}
     </section>
   );
   return (
@@ -984,16 +986,18 @@ function Workspace() {
             </div>
           )}
           {error && (
-            <div role="alert" className="error">
-              {error} <button onClick={reconnect}>다시 연결</button>
-            </div>
+            <AlertBanner
+              action={
+                <Button type="button" variant="outline" size="sm" onClick={reconnect}>
+                  다시 연결
+                </Button>
+              }
+            >
+              {error}
+            </AlertBanner>
           )}
-          {storageWarning && !editor && (
-            <p role="alert" className="error">
-              {storageWarning}
-            </p>
-          )}
-          {saveState && !editor && <p role="status">{saveState}</p>}
+          {storageWarning && !editor && <AlertBanner>{storageWarning}</AlertBanner>}
+          {!editor && <Notice className="mb-5" notice={statusNotice(saveState)} />}
           {recovery && !editor && (
             <Card
               role="region"
@@ -1422,24 +1426,30 @@ function Workspace() {
               void saveWorkout();
             }}
           >
-            {saveState && <p role="status">{saveState}</p>}
-            {storageWarning && (
-              <p role="alert" className="error">
-                {storageWarning}
-              </p>
-            )}
+            <Notice className="mb-3" notice={statusNotice(saveState)} />
+            {storageWarning && <AlertBanner className="mb-3">{storageWarning}</AlertBanner>}
             <p className="form-hint">
               초안은 이 기기·브라우저의 localStorage에 마지막 입력부터 7일 보관합니다. 다른 기기와
               동기화되지 않으며 브라우저 데이터 삭제·비공개 모드에서는 사라질 수 있습니다. 서버 저장
               기록만 통계와 목표에 반영합니다.
             </p>
             {saveError && (
-              <div role="alert" className="error">
+              <AlertBanner
+                className="mb-3"
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => void saveWorkout()}
+                  >
+                    다시 저장 재시도
+                  </Button>
+                }
+              >
                 {saveError}
-                <button type="button" disabled={saving} onClick={() => void saveWorkout()}>
-                  다시 저장 재시도
-                </button>
-              </div>
+              </AlertBanner>
             )}
             {timerPanel}
             <fieldset disabled={saving} className="workout-fields">

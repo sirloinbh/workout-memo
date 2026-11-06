@@ -41,4 +41,4 @@
 
 ## main 병합
 
-- 병합 직전 main이 #229(#223 앱 위쪽 알림)만큼 앞서 있어 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/official-weights.test.tsx src/machines.contract.test.tsx` pass, `npm run typecheck -w frontend` 통과
+- 병합 직전 main이 #229(#223 앱 위쪽 알림)만큼 앞서 있어 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/official-weights.test.tsx src/machines.contract.test.tsx` 8 pass, `npm run typecheck -w frontend` 통과

@@ -1,0 +1,33 @@
+# #224 기간 선택 줄의 날짜 이동과 직접 선택 폼을 공통 컴포넌트로 교체
+
+- 이슈: [#224](https://github.com/sirloinbh/workout-memo/issues/224)
+- 브랜치: `feat/224-period-controls`
+- 상위 이슈: #213 화면을 공통 UI 컴포넌트로 교체
+
+## 목적
+
+#101 1단계에서 기간 탭만 공통 `SegmentedControl`로 옮겼습니다. 대시보드·운동 일지·신체 기록이 함께 쓰는 기간 선택 줄의 나머지(날짜 이동, 직접 선택 폼, 기간 표시)는 legacy `style.css` 규칙이었습니다. 이를 공통 컴포넌트로 바꿉니다.
+
+## 변경 — feat: 날짜 이동·직접 선택 폼·기간 표시 교체
+
+- 새 부품 `frontend/src/components/date-stepper.tsx`
+  - `DateStepper`: 기준 날짜 입력(공통 `Input`, `type="date"`)과 선택적인 이전·다음 버튼(공통 `Button` `ghost`/`icon`, `type="button"`). `onMove`를 주지 않으면 날짜 입력만 보입니다. 입력을 비우면 이전처럼 현재 날짜를 유지합니다.
+  - `RangeSummary`: "시작일 — 종료일 설명" 한 줄을 유틸리티 문단(`p`)으로 보여 줍니다.
+  - 종목 분석 화면(`analysis.tsx`)의 기준 날짜와 기간 표시도 같은 부품으로 옮길 수 있습니다(`<DateStepper label="분석 기준 날짜" … />`, `onMove` 없이). 이 화면은 #102 범위라 이번에는 고치지 않았습니다.
+- `frontend/src/app.tsx`
+  - `.period-bar`를 유틸리티 줄(`flex flex-wrap justify-between`)로 바꿨습니다. #71처럼 좁은 화면에서는 날짜 이동이 기간 탭 아래로 내려갑니다.
+  - `.date-control`을 `DateStepper`로 바꿨습니다. 접근 이름 "기준 날짜", "이전 기간", "다음 기간"은 그대로입니다.
+  - `form.custom-range`를 유틸리티 폼으로, 시작일·종료일을 공통 `Label` + `Input`(`id="range-from"`, `"range-to"`)으로, "적용"을 공통 `Button`(`secondary`)으로 바꿨습니다. 필드 오류(`FieldError`)는 각 입력 아래에 둡니다. 날짜 검증(`checkRange`)과 오류 문구는 바꾸지 않았습니다. 안내 "양 끝 날짜 포함 · 최대 N일"은 `.form-hint` 상자 대신 `text-meta` 문단으로 폼 아래 줄에 놓입니다.
+  - `.range-label`을 `RangeSummary`로 바꿨습니다.
+- `frontend/src/style.css`: 쓰는 곳이 없어진 `.custom-range`, `.custom-range label`, `.custom-range .form-hint`, `.date-control button`을 지웠습니다. `.period-bar`, `.date-control`, `.date-control input`, `.range-label`과 모바일 규칙은 종목 분석 화면이 아직 써서 남겼습니다.
+- 남긴 것: 주소의 기간이 잘못됐을 때의 안내 `p.error`(`role="alert"`)는 #223에서 정할 공통 알림 부품으로 함께 옮깁니다.
+- 화면 차이: 날짜 입력에 테두리가 생기고 글자가 커집니다. 이전·다음 버튼이 공통 아이콘 버튼 크기(36px, 터치 화면 44px)가 됩니다. 직접 선택 폼의 입력에 테두리가 생기고, 안내 문구가 회색 상자 없이 아래 줄로 갑니다.
+
+## 테스트
+
+- 추가: `frontend/src/components/date-stepper.test.tsx` 3개. 이전·다음 버튼이 -1·1로 움직이고 폼을 제출하지 않는 `type="button"`인지, 공통 `Input`인지, 날짜를 고르면 전달하고 비우면 무시하는지, `onMove`가 없으면 버튼이 없는지, 기간 표시가 "2026-10-12 — 2026-10-18 선택한 기간의 기록"으로 읽히는지 확인합니다.
+- 기존: `period.test.tsx`(날짜 이동)와 `custom-range.test.tsx`(직접 선택, 잘못된 범위 오류, 주소의 잘못된 기간)는 역할·접근 이름으로 찾으므로 고치지 않고 통과합니다.
+- `npm run test -w frontend -- src/components/date-stepper.test.tsx src/period.test.tsx src/custom-range.test.tsx`: 34 pass
+- `npm run test -w frontend`: 213 pass, 4 skip
+- `npm run typecheck -w frontend`, 바뀐 파일의 eslint(`--max-warnings 0`)와 prettier: 통과
+- 시각 기준선과 e2e(반응형·axe·터치 44px)는 PR CI로 확인합니다. 로컬 전체 `npm run check`와 e2e는 세 워크트리가 동시에 돌아 메모리 부족 이력이 있어 돌리지 않았습니다.

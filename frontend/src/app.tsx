@@ -4,8 +4,6 @@ import {
   Activity,
   ArrowRight,
   ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
   DatabaseBackup,
   Dumbbell,
   LayoutDashboard,
@@ -24,6 +22,7 @@ import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-
 import { Analysis } from './analysis';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
+import { DateStepper, RangeSummary } from './components/date-stepper';
 import { FieldError, Input } from './components/field';
 import { invalidProps } from './components/field-props';
 import { AppShell, type NavItem } from './components/layout/app-shell';
@@ -700,7 +699,8 @@ function Workspace() {
   // #17 period selection, shared by the dashboard, journal and body measurements.
   const periodControls = (
     <>
-      <div className="period-bar">
+      {/* #71: on narrow phones the date control wraps under the period tabs. */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <SegmentedControl
           label="기간"
           options={periodOptions}
@@ -722,25 +722,12 @@ function Workspace() {
           }}
         />
         {!customRange && !customOpen && (
-          <div className="date-control">
-            <button aria-label="이전 기간" onClick={() => move(-1)}>
-              <ChevronLeft size={17} />
-            </button>
-            <input
-              aria-label="기준 날짜"
-              type="date"
-              value={anchor}
-              onChange={(e) => e.target.value && setAnchor(e.target.value)}
-            />
-            <button aria-label="다음 기간" onClick={() => move(1)}>
-              <ChevronRight size={17} />
-            </button>
-          </div>
+          <DateStepper label="기준 날짜" value={anchor} onValueChange={setAnchor} onMove={move} />
         )}
       </div>
       {(customOpen || customRange) && (
         <form
-          className="custom-range"
+          className="mt-3 flex flex-wrap items-start gap-x-3 gap-y-2"
           aria-label="기간 직접 선택"
           noValidate
           onSubmit={(e) => {
@@ -753,10 +740,14 @@ function Workspace() {
             setCustomOpen(false);
           }}
         >
-          <label>
-            시작일
-            <input
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="range-from" className="text-meta">
+              시작일
+            </Label>
+            <CommonInput
+              id="range-from"
               type="date"
+              className="w-36 md:pointer-coarse:text-base"
               value={customOpen ? customDraft.from : from}
               onChange={(e) => {
                 setCustomOpen(true);
@@ -767,12 +758,16 @@ function Workspace() {
               }}
               {...invalidProps('range-from', customErrors.from)}
             />
-          </label>
-          <FieldError name="range-from">{customErrors.from}</FieldError>
-          <label>
-            종료일
-            <input
+            <FieldError name="range-from">{customErrors.from}</FieldError>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="range-to" className="text-meta">
+              종료일
+            </Label>
+            <CommonInput
+              id="range-to"
               type="date"
+              className="w-36 md:pointer-coarse:text-base"
               value={customOpen ? customDraft.to : to}
               onChange={(e) => {
                 setCustomOpen(true);
@@ -783,12 +778,13 @@ function Workspace() {
               }}
               {...invalidProps('range-to', customErrors.to)}
             />
-          </label>
-          <FieldError name="range-to">{customErrors.to}</FieldError>
-          <button type="submit" className="subtle-button">
+            <FieldError name="range-to">{customErrors.to}</FieldError>
+          </div>
+          {/* The label row is 12px plus a 4px gap, so the button lines up with the inputs. */}
+          <Button type="submit" variant="secondary" className="mt-4">
             적용
-          </button>
-          <span className="form-hint">양 끝 날짜 포함 · 최대 {maxRangeDays}일</span>
+          </Button>
+          <p className="m-0 basis-full text-meta">양 끝 날짜 포함 · 최대 {maxRangeDays}일</p>
         </form>
       )}
       {badRangeAddress && (
@@ -796,9 +792,9 @@ function Workspace() {
           주소의 기간이 올바르지 않아 기본 기간을 표시합니다. 기간을 다시 선택하세요.
         </p>
       )}
-      <div className="range-label">
-        {from} — {to} <span>선택한 기간의 기록</span>
-      </div>
+      <RangeSummary from={from} to={to}>
+        선택한 기간의 기록
+      </RangeSummary>
     </>
   );
   const timerPanel = (

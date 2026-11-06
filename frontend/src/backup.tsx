@@ -18,8 +18,9 @@ const text = 'text-body-sm text-muted-foreground';
 const field = 'flex flex-col gap-2';
 // The browser's own select stays, as in the #101 set rows: the common Select (Radix) picks
 // values differently, so every screen test and e2e step that chooses an option would change.
+// Touch screens keep 16px text at every width (iOS zooms in below that), as the #101 set rows do.
 const nativeSelect =
-  'h-9 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 md:text-body-sm dark:bg-input/30';
+  'h-9 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 md:text-body-sm md:pointer-coarse:text-base dark:bg-input/30';
 type Counts = { added: number; skipped: number; conflicts: number; deleted: number };
 type Summary = {
   mode: 'merge' | 'replace';
@@ -199,6 +200,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
               <Label htmlFor="backup-file">백업 파일 선택</Label>
               <Input
                 id="backup-file"
+                className="md:pointer-coarse:text-base"
                 type="file"
                 accept=".json,application/json"
                 disabled={busy}
@@ -268,6 +270,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                   <Label htmlFor="backup-confirm">확인 문구</Label>
                   <Input
                     id="backup-confirm"
+                    className="md:pointer-coarse:text-base"
                     value={typed}
                     placeholder={confirmation}
                     autoComplete="off"

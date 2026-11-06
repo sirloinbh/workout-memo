@@ -40,7 +40,7 @@
 
 ## main 병합
 
-- 리뷰 뒤 main에 #224(기간 선택 줄, `bc559eb`)와 #223(알림, `d02cfb1`)·#103 백업 화면이 병합돼 두 번 `origin/main`을 병합했습니다. 충돌은 없었습니다. 병합 뒤 `npm run typecheck -w frontend` 통과, `npm run test -w frontend -- src/analysis.test.tsx` 5 pass.
+- 리뷰 뒤 main에 #224(기간 선택 줄, `bc559eb`), #223(알림, `d02cfb1`)·#103 백업 화면, 기준선 갱신 뒤 #103 머신 목록(`5057409`)이 병합돼 세 번 `origin/main`을 병합했습니다. 세 번째에 들어온 `style.css` 삭제(`.brand-tabs`, `.machine-icon`)는 이 화면과 관계없습니다. 충돌은 없었습니다. 병합 뒤 `npm run typecheck -w frontend` 통과, `npm run test -w frontend -- src/analysis.test.tsx` 5 pass.
 - 분석 화면의 기간 줄과 오류 배너(`.error`)는 이 PR에서 바꾸지 않습니다. #224의 `DateStepper`·`RangeSummary`와 #223의 `AlertBanner`로 옮기는 일은 #102의 마지막 단계(분석 기간 줄)에서 함께 합니다.
 
 ## 변경 — test: 시각 기준선 갱신

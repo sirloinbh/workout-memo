@@ -42,3 +42,9 @@
 - 선택(확인만): 안내 상자의 `text-muted-foreground` on `bg-muted` 대비는 라이트 토큰 기준 4.35:1이라는 지적이 있었습니다. 앱은 다크 전용(#184)이고 나의 목표 폼도 같은 조합으로 axe를 통과하고 있어, CI의 axe 결과로 확인합니다.
 - 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
 - `npm run test -w frontend -- src/official-weights.test.tsx src/rest-by-exercise.test.tsx`: 15 pass. eslint, prettier: 통과
+- 중앙 수정 뒤 덮어쓰기 제거: sirloinbh/project-standards#415. 공통 `Checkbox`가 고쳐지면 머신 폼 체크박스의 `pointer-coarse:after:-inset-[15px]`(그리고 legacy 터치 규칙이 사라진 뒤에는 `min-h-4 min-w-4`)를 지웁니다.
+
+## 변경 — test: 시각 기준선 갱신
+
+- `097559e`의 CI `e2e-visual`에서 `machine-editor` 360·390·768·1280 4건만 실패했고, axe·반응형·강화한 터치 검사를 포함한 74건은 통과했습니다. 360·1280 이미지를 직접 보고 라벨·입력 높이, 안내 상자, 공통 체크박스 외에 차이가 없음을 확인한 뒤 `visual-baselines` 아티팩트로 4장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
+- 한계: e2e 고정 데이터의 브랜드에는 공식 참고값이 없어 공식 참고값 선택과 안내 상자는 이미지에 나오지 않습니다. 이 부분은 화면 테스트(`official-weights.test.tsx`)로만 확인했습니다.

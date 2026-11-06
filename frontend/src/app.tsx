@@ -1945,7 +1945,7 @@ function Workspace() {
                 id="machine-single-joint"
                 // The legacy touch rule makes every .legacy button 44px; the box stays 16px and its
                 // ::after area is the target. The common -inset-3.5 sits inside the 1px border, so
-                // it is 42px; 15px makes it 44px (central fix: project-standards checkbox.tsx).
+                // it is 42px; 15px makes it 44px. Drop this once project-standards#415 fixes checkbox.tsx.
                 className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
                 checked={machineEditor.single_joint === true}
                 onCheckedChange={(checked) =>

@@ -1600,11 +1600,12 @@ function Workspace() {
                       ))}
                     </select>
                   </label>
-                  <div className="grid grid-cols-2 gap-3 md:col-span-2">
+                  {/* Stacked on phones: two − / + fields side by side leave no room for the digits. */}
+                  <div className="grid gap-3 min-[480px]:grid-cols-2 md:col-span-2">
                     <div className="flex min-w-0 flex-col gap-1">
-                      <Label htmlFor={`set-${i}-weight`} className="text-meta leading-none">
+                      <label htmlFor={`set-${i}-weight`} className="mb-0 text-meta">
                         총중량 kg
-                      </Label>
+                      </label>
                       <NumberValueInput
                         id={`set-${i}-weight`}
                         label="총중량 kg"
@@ -1623,9 +1624,9 @@ function Workspace() {
                       />
                     </div>
                     <div className="flex min-w-0 flex-col gap-1">
-                      <Label htmlFor={`set-${i}-reps`} className="text-meta leading-none">
+                      <label htmlFor={`set-${i}-reps`} className="mb-0 text-meta">
                         횟수
-                      </Label>
+                      </label>
                       <NumberValueInput
                         id={`set-${i}-reps`}
                         label="횟수"

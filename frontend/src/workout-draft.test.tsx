@@ -163,7 +163,7 @@ async function fill(ui: UI) {
   await ui.user.clear(titleInput());
   await ui.user.type(titleInput(), 'Recovery workout');
   await ui.user.type(exerciseInputs()[0], 'Squat');
-  // Number inputs drop partial decimals ("100.") while typing in jsdom; set the value.
+  // Set the whole value at once, as a paste would; typing is covered by the NumberInput tests.
   fireEvent.change(weightInputs()[0], { target: { value: '100.25' } });
   await waitFor(() => expect(weightInputs()[0]).toHaveValue('100.25'));
 }
@@ -506,4 +506,18 @@ test('a set card steps weight by 2.5 kg and reps by one, with number keypads', a
         .join(),
     ).toMatch(/"weight":102\.75/),
   );
+});
+
+// #105: text weight fields could hand NaN to the draft, which is saved as null and then
+// discards the whole draft as corrupt on the next visit.
+test('unreadable weight text never reaches the draft, so it can still be recovered', async () => {
+  const first = mount();
+  await fill(first);
+  fireEvent.change(weightInputs()[0], { target: { value: '100.2x' } });
+  expect(weightInputs()[0]).toHaveValue('100.25');
+  const saved = storageKeys()
+    .map((k) => localStorage.getItem(k))
+    .join();
+  expect(saved).toMatch(/"weight":100\.25/);
+  expect(saved).not.toMatch(/"weight":null/);
 });

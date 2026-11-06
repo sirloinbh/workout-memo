@@ -149,3 +149,15 @@ test('the field name is on the input only, so a label lookup finds one element',
   render(<Weight />);
   expect(screen.getAllByLabelText('중량')).toEqual([field()]);
 });
+
+test('a decimal comma reads as a point and unreadable text is not taken', () => {
+  render(<NumericWeight />);
+  fireEvent.change(field(), { target: { value: '12,5' } });
+  expect(field()).toHaveValue('12.5');
+  expect(stored()).toBe('12.5');
+  for (const typed of ['12.5a', '-', '1..', 'Infinity']) {
+    fireEvent.change(field(), { target: { value: typed } });
+    expect(field()).toHaveValue('12.5');
+    expect(stored()).toBe('12.5');
+  }
+});

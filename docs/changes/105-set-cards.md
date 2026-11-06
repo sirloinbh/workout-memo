@@ -18,7 +18,7 @@
 
 - `frontend/src/app.tsx`
   - 세트 한 줄(`data-slot="set-row"`)을 모든 폭에서 테두리 카드로 바꿨습니다. 맨 위에 "N세트"와 삭제 버튼이 있고, 운동명·머신(`md`부터 2열), 총중량·횟수(2열), 세트 메모, 참고 기록, 완료 버튼 순서입니다. 완료한 세트는 카드 테두리가 진해집니다.
-  - 총중량과 횟수를 앱 고유 `NumberInput`(#99, − / + 버튼)으로 바꿨습니다. 총중량은 2.5 kg씩(소수 키패드 `inputmode="decimal"`), 횟수는 1회씩(숫자 키패드 `numeric`) 움직입니다. 0~99999 kg, 1~1000회 한도에서 버튼이 멈춥니다. 직접 입력은 이전처럼 0.25 kg 단위 등 자유롭고 검증은 공통 스키마가 합니다.
+  - 총중량과 횟수를 앱 고유 `NumberInput`(#99, − / + 버튼)으로 바꿨습니다. 총중량은 2.5 kg씩(소수 키패드 `inputmode="decimal"`), 횟수는 1회씩(숫자 키패드 `numeric`) 움직입니다. 0~99999 kg, 1~1000회 한도에서 버튼이 멈춥니다. 검증은 공통 스키마가 합니다. 이전 `step="0.25"`처럼 브라우저가 0.25 kg 단위를 막지는 않습니다(1차 리뷰 보완 참고).
   - 세트 완료 버튼을 카드 너비 전체, 높이 48px 이상(`min-h-12`), 16px 글자로 키웠습니다. 접근 이름 "N세트 완료"와 `aria-pressed`는 그대로입니다.
   - 증감 단위 2.5 kg은 한 쌍의 가장 흔한 원판(1.25 kg × 2) 기준으로 정했습니다. 바꾸려면 `weightStep` 하나만 고칩니다.
 - `frontend/src/components/number-input.tsx`
@@ -34,3 +34,17 @@
 - `npm run test -w frontend -- --maxWorkers=1`: 227 pass, 4 skip (메모리 부족으로 워커 1개)
 - `npm run typecheck -w frontend`, 바뀐 파일 eslint(`--max-warnings 0`)·prettier: 통과
 - 실행하지 않은 것: e2e와 로컬 `npm run check`는 메모리 부족으로 돌리지 않았습니다. 시각 기준선·axe·반응형·터치 44px는 PR CI로 확인합니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+1차 리뷰는 필수 3건, 권장 4건이었습니다.
+
+- 필수 1: 360·390px 터치 화면에서 총중량·횟수를 나란히 두면 44px 버튼 두 개를 빼고 입력칸이 약 25~40px만 남아 숫자가 보이지 않았습니다. 480px 미만에서는 두 칸을 위아래로 쌓습니다(`grid min-[480px]:grid-cols-2`).
+- 필수 2: 새 `Label`에 legacy `.modal label` 규칙(아래 17px 여백, 세로 flex)이 남아 라벨과 입력 사이가 벌어지고 글자가 가운데로 갔습니다. 같은 카드의 다른 칸처럼 `<label htmlFor … className="mb-0 text-meta">`로 바꿨습니다.
+- 필수 3: 텍스트 칸이라 "1..", "-", 영문 같은 입력이 `Number()`에서 NaN이 되어 상태에 들어갔습니다. NaN은 초안 JSON에 `null`로 저장되고, 다음에 열 때 손상된 초안으로 판정되어 초안 전체가 버려질 수 있었습니다. `NumberValueInput`은 쉼표 소수점을 점으로 읽고, 숫자로 읽히지 않는 글자는 받지 않습니다. 그래서 상태는 항상 유한한 숫자입니다.
+- 권장 4: 0.25 kg 단위는 이전에는 브라우저 `step`만 막고 있었고, 이제는 막지 않습니다. 위 기록을 고쳤습니다. 공통 스키마에 단위 검사를 넣는 일은 계약 변경이라 [#234](https://github.com/sirloinbh/workout-memo/issues/234)로 분리했습니다.
+- 권장 5(남김): 세트 `key`가 순번이라, 세트를 지운 뒤 같은 숫자로 읽히는 다른 글자(예: 빈 칸과 0)가 남을 수 있습니다. 저장 값에는 영향이 없고 보이는 모양만 다르므로 그대로 둡니다.
+- 권장 6: 낡은 테스트 주석을 고쳤습니다.
+- 권장 7(변경 없음): md 2열에서 오류가 반 칸만 차지한다는 지적은 `.field-error`에 `grid-column: 1 / -1`이 있어 해당하지 않았습니다.
+- 추가 테스트: `number-input.test.tsx`에 쉼표·읽을 수 없는 글자 1개, `workout-draft.test.tsx`에 잘못된 중량 글자가 초안에 들어가지 않는지 1개
+- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/number-input.test.tsx src/workout-draft.test.tsx src/routine-progress.test.tsx src/forms.test.tsx src/new-workout-defaults.test.tsx` 49 pass, typecheck·eslint·prettier 통과

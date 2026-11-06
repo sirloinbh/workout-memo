@@ -36,6 +36,7 @@ import { ToggleChips } from './components/toggle-chips';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Checkbox } from './components/ui/checkbox';
 import { EmptyState } from './components/ui/empty-state';
 import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -1789,10 +1790,11 @@ function Workspace() {
               );
             }}
           >
-            <label>
+            <Label className={fieldLabel}>
               브랜드
               <select
                 required
+                className={selectField}
                 value={machineEditor.brand_id ?? ''}
                 {...invalid('brand_id')}
                 onChange={(e) => {
@@ -1819,21 +1821,22 @@ function Workspace() {
                   </option>
                 ))}
               </select>
-            </label>
+            </Label>
             {issue('brand_id')}
             {(() => {
               const brandName = brands.find((b) => b.id === machineEditor.brand_id)?.name;
               const refs = (officialWeights ?? []).filter((r) => r.brand === brandName);
               const selected = refs.find((r) => r.id === machineEditor.official_weight_id);
               if (officialWeights === null)
-                return <p className="form-hint">공식 참고값을 불러오지 못했습니다.</p>;
+                return <p className={formHint}>공식 참고값을 불러오지 못했습니다.</p>;
               if (!refs.length)
-                return <p className="form-hint">이 브랜드의 공식 참고값 자료가 없습니다.</p>;
+                return <p className={formHint}>이 브랜드의 공식 참고값 자료가 없습니다.</p>;
               return (
                 <>
-                  <label>
+                  <Label className={fieldLabel}>
                     공식 참고값 (선택)
                     <select
+                      className={selectField}
                       value={selected?.id ?? ''}
                       onChange={(e) =>
                         setMachineEditor({
@@ -1850,11 +1853,17 @@ function Workspace() {
                         </option>
                       ))}
                     </select>
-                  </label>
+                  </Label>
                   {selected && (
-                    <div className="official-ref" role="note" aria-label="공식 참고값">
-                      <strong>공식 참고값: {officialLabel(selected)}</strong>
-                      <p>
+                    <div
+                      role="note"
+                      aria-label="공식 참고값"
+                      className="mb-4 flex flex-col gap-1.5 rounded-md border bg-muted p-3 [overflow-wrap:anywhere]"
+                    >
+                      <strong className="text-body-sm font-medium">
+                        공식 참고값: {officialLabel(selected)}
+                      </strong>
+                      <p className={noteText}>
                         {selected.brand} {selected.lineup}
                         {selected.model_number ? ` ${selected.model_number}` : ''} ·{' '}
                         {selected.official_item_name}
@@ -1862,10 +1871,15 @@ function Workspace() {
                           ? ` · 제조사 kg 표기 ${selected.official_kg_text}`
                           : ''}
                       </p>
-                      {selected.notes && <p>{selected.notes}</p>}
-                      <p>
+                      {selected.notes && <p className={noteText}>{selected.notes}</p>}
+                      <p className={noteText}>
                         {selected.source_url ? (
-                          <a href={selected.source_url} target="_blank" rel="noreferrer">
+                          <a
+                            className="text-foreground underline underline-offset-4"
+                            href={selected.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             제조사 공식 출처
                           </a>
                         ) : (
@@ -1873,7 +1887,7 @@ function Workspace() {
                         )}{' '}
                         · {selected.checked_date} 확인
                       </p>
-                      <p>
+                      <p className={noteText}>
                         공식 참고값은 플레이트 없는 시작 저항이며 아래 기본중량에 자동 반영되지
                         않습니다. 편측 값은 양쪽 합계가 아닙니다.
                       </p>
@@ -1882,20 +1896,22 @@ function Workspace() {
                 </>
               );
             })()}
-            <label>
+            <Label className={fieldLabel}>
               머신 이름
-              <input
+              <CommonInput
                 required
+                className={touchText}
                 maxLength={120}
                 value={machineEditor.name}
                 onChange={(e) => setMachineEditor({ ...machineEditor, name: e.target.value })}
                 {...invalid('name')}
               />
-            </label>
+            </Label>
             {issue('name')}
-            <label>
+            <Label className={fieldLabel}>
               기본중량 (kg) · 모르면 비워두세요
-              <input
+              <CommonInput
+                className={touchText}
                 type="number"
                 min="0"
                 max="99999"
@@ -1909,30 +1925,40 @@ function Workspace() {
                 }
                 {...invalid('base_weight')}
               />
-            </label>
+            </Label>
             {issue('base_weight')}
-            <p className="form-hint">
+            <p className={formHint}>
               확인하지 못한 기본중량은 비워두세요. 확인된 0 kg과 구분하여 저장하며, 기본중량을
               수정해도 과거 세트의 총중량은 변경되지 않습니다.
             </p>
-            <label>
+            <Label className={fieldLabel}>
               확인 자료 / 설정 메모
               <textarea
+                className={textareaField}
                 maxLength={2000}
                 value={machineEditor.notes}
                 onChange={(e) => setMachineEditor({ ...machineEditor, notes: e.target.value })}
               />
-            </label>
-            <label className="rest-auto">
-              <input
-                type="checkbox"
+            </Label>
+            <div className="mb-4 flex items-center gap-2">
+              <Checkbox
+                id="machine-single-joint"
+                // The legacy touch rule makes every .legacy button 44px; the box stays 16px and its
+                // ::after area is the target. The common -inset-3.5 sits inside the 1px border, so
+                // it is 42px; 15px makes it 44px. Drop this once project-standards#415 fixes checkbox.tsx.
+                className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
                 checked={machineEditor.single_joint === true}
-                onChange={(e) =>
-                  setMachineEditor({ ...machineEditor, single_joint: e.target.checked })
+                onCheckedChange={(checked) =>
+                  setMachineEditor({ ...machineEditor, single_joint: checked === true })
                 }
               />
-              단관절 운동 머신 (세트 완료 시 단관절 기본 휴식 사용)
-            </label>
+              <Label
+                htmlFor="machine-single-joint"
+                className="mb-0 flex-row text-meta font-normal text-foreground"
+              >
+                단관절 운동 머신 (세트 완료 시 단관절 기본 휴식 사용)
+              </Label>
+            </div>
             <Button className="w-full" disabled={saving}>
               머신 저장하기
             </Button>
@@ -1948,6 +1974,16 @@ function Workspace() {
 const fieldLabel = 'mb-4 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
 // The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
 const touchText = 'md:pointer-coarse:text-base';
+// The browser's own select and textarea dressed like the common Input (#103). The common Select
+// (Radix) picks values differently, so every test that chooses an option would change (#101).
+const fieldBox =
+  'w-full min-w-0 rounded-md border border-input bg-transparent px-3 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-body-sm dark:bg-input/30 ' +
+  touchText;
+const selectField = cn(fieldBox, 'h-9 py-0 pointer-coarse:min-h-11');
+const textareaField = cn(fieldBox, 'min-h-20 resize-y py-2');
+// A short explanation under a field, as in the goal form.
+const formHint = 'mb-4 rounded-md bg-muted p-3 text-meta text-muted-foreground';
+const noteText = 'text-meta text-muted-foreground';
 // #64: React Hook Form with the shared goal schema. Messages come from the same
 // contract the server uses, and each one is linked to its field for screen readers.
 function GoalForm({

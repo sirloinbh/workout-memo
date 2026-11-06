@@ -57,10 +57,10 @@ const page = () => document.body.textContent ?? '';
 const loaded = () =>
   waitFor(() => {
     expect(screen.queryByText('분석 불러오는 중…')).toBeNull();
-    expect(document.querySelector('.analysis-page .card')).not.toBeNull();
+    expect(document.querySelector('[data-slot="analysis-page"] [data-slot="card"]')).not.toBeNull();
   });
 const partRow = (week: string, name: string) => {
-  const article = [...document.querySelectorAll('.analysis-week')].find((e) =>
+  const article = [...document.querySelectorAll('[data-slot="analysis-week"]')].find((e) =>
     e.textContent.startsWith(week),
   );
   expect(article, `week ${week}`).toBeDefined();
@@ -69,7 +69,7 @@ const partRow = (week: string, name: string) => {
   return row!.textContent;
 };
 const exercise = (name: string) => {
-  const card = [...document.querySelectorAll<HTMLElement>('.exercise-pr')].find(
+  const card = [...document.querySelectorAll<HTMLElement>('[data-slot="exercise-pr"]')].find(
     (e) => e.querySelector('h3')?.textContent === name,
   );
   expect(card, `exercise ${name}`).toBeDefined();
@@ -200,4 +200,22 @@ test('the mapping editor offers 이두·삼두; a saved 팔 is shown only until 
     body_parts: ['팔', '이두'],
   });
   await waitFor(() => expect(exercise('Curl').textContent).toMatch(/부위: 팔, 이두/));
+});
+
+test('cancelling the mapping editor sends nothing and the PR count badge matches (#102)', async () => {
+  const ui = mount([row('2026-10-13', 'Curl', 20, 10), row('2026-10-13', 'Dip', 0, 10)]);
+  await openPage('종목 분석', ui.user);
+  await loaded();
+  const prs = screen.getByRole('region', { name: '종목별 PR' });
+  expect(prs.querySelector('[data-slot="badge"]')!.textContent).toBe('2');
+  expect(screen.getByRole('region', { name: '부위별 주간 운동량' })).toBeInTheDocument();
+
+  await ui.user.click(screen.getByRole('button', { name: 'Curl 부위 지정' }));
+  expect(screen.getByRole('group', { name: 'Curl 부위' })).toBeInTheDocument();
+  await ui.user.click(screen.getByRole('button', { name: '이두' }));
+  expect(screen.getByRole('button', { name: '이두' })).toHaveAttribute('aria-pressed', 'true');
+  await ui.user.click(screen.getByRole('button', { name: '취소' }));
+  expect(screen.queryByRole('group', { name: 'Curl 부위' })).toBeNull();
+  expect(ui.requests.some((r) => r.method === 'PUT')).toBe(false);
+  expect(exercise('Curl').textContent).toMatch(/부위: 미분류/);
 });

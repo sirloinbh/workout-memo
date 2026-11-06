@@ -29,6 +29,6 @@ test('a banner without an action shows only its message, and className adds to t
   render(<AlertBanner className="mb-0">로컬 저장 공간 오류</AlertBanner>);
   const alert = screen.getByRole('alert');
   expect(within(alert).queryByRole('button')).toBeNull();
-  expect(alert).toHaveClass('mb-0', 'text-destructive');
+  expect(alert).toHaveClass('mb-0', 'border-l-destructive');
   expect(alert).not.toHaveClass('mb-5');
 });

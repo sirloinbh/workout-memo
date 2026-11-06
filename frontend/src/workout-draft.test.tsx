@@ -422,9 +422,14 @@ test('a failed save offers 다시 저장 재시도 inside its alert banner', asy
   await saveFailed();
   const failure = within(dialog())
     .getAllByRole('alert')
-    .find((el) => el.getAttribute('data-slot') === 'alert-banner' && /저장/.test(el.textContent));
-  expect(failure).toBeDefined();
-  expect(within(failure!).getByRole('button', { name: '다시 저장 재시도' })).toBeEnabled();
+    .find((el) => /입력은 화면에 유지됩니다/.test(el.textContent));
+  expect(failure).toHaveAttribute('data-slot', 'alert-banner');
+  const retry = within(failure!).getByRole('button', { name: '다시 저장 재시도' });
+  expect(retry).toHaveAttribute('type', 'button');
+  ui.online();
+  await ui.user.click(retry);
+  await waitFor(() => expect(ui.mutations()).toHaveLength(2));
+  await saved();
 });
 
 test('cleanup failure keeps server acknowledgment separate from the local storage warning', async () => {

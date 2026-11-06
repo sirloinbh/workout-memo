@@ -442,21 +442,6 @@
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
-.backup-page .card {
-  margin: 16px 0;
-}
-.backup-page a.primary {
-  display: inline-flex;
-  margin-top: 8px;
-  text-decoration: none;
-}
-.backup-page label {
-  display: block;
-  margin: 12px 0;
-}
-.backup-page li {
-  margin: 6px 0;
-}
 .body-form {
   margin-bottom: 18px;
 }

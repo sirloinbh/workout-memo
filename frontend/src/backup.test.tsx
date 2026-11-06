@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
@@ -162,4 +162,36 @@ test('unreadable, oversized or rejected files never reach restore', async () => 
   await waitFor(() => expect(page()).toMatch(/지원하지 않는 백업 버전입니다/));
   expect(rejected.restoreButton()).toBeNull();
   expect(rejected.requests.filter((r) => r.path === '/api/backup/restore')).toHaveLength(0);
+});
+
+test('downloads are named links and the preview lists one row per table', async () => {
+  const ui = mount();
+  await openBackup(ui);
+  expect(screen.getByRole('link', { name: 'CSV 내려받기' })).toHaveAttribute(
+    'href',
+    '/api/export/workouts.csv',
+  );
+  expect(screen.getByRole('link', { name: '백업 파일 내려받기' })).toHaveAttribute(
+    'href',
+    '/api/backup',
+  );
+  // Each section is a titled card.
+  for (const name of ['분석용 CSV', '복원용 백업 (JSON)', '백업에서 복원'])
+    expect(screen.getByRole('heading', { level: 3, name })).toBeInTheDocument();
+  await ui.choose(ui.file(JSON.stringify(backup)));
+  const rows = within(await screen.findByRole('list', { name: '변경 요약' })).getAllByRole(
+    'listitem',
+  );
+  expect(rows.map((r) => r.textContent)).toEqual([
+    '운동 일지 · 추가 7 · 건너뜀 2',
+    '세트 · 추가 21 · 건너뜀 6',
+    '목표 · 추가 1 · 건너뜀 0',
+    '루틴 · 추가 0 · 건너뜀 1',
+    '머신 · 추가 1 · 건너뜀 0 · 충돌(기존 유지) 1',
+    '브랜드 · 추가 0 · 건너뜀 4',
+  ]);
+  expect(
+    within(screen.getByRole('list', { name: '충돌' })).getByRole('listitem'),
+  ).toHaveTextContent('Arsenal Strength / 레그 프레스: 기존 값 유지');
+  expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('미리보기 · 추가만');
 });

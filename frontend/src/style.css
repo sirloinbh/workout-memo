@@ -221,31 +221,6 @@
   text-decoration: underline;
   color: inherit;
 }
-.brand-tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 25px 0;
-}
-.brand-tabs button {
-  border: 1px solid var(--border);
-  background: var(--card);
-  border-radius: calc(var(--radius) - 2px);
-  padding: 10px 15px;
-  color: var(--muted-foreground);
-  font-size: 11px;
-}
-.brand-tabs .selected {
-  color: var(--foreground);
-  background: var(--accent);
-  border-color: var(--border);
-}
-.machine-icon {
-  background: var(--muted);
-  color: var(--muted-foreground);
-  border-radius: 7px;
-  padding: 12px;
-}
 .modal label {
   display: flex;
   flex-direction: column;
@@ -498,7 +473,7 @@
 }
 /* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA
    4.5:1. Text on these surfaces mixes in more of the foreground colour instead. */
-:is(.count, .subtle-button, .machine-icon, .form-hint, div.official-ref),
+:is(.count, .subtle-button, .form-hint, div.official-ref),
 :is(.form-hint, div.official-ref) * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }

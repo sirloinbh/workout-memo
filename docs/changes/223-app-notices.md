@@ -57,3 +57,9 @@
 - 처음에는 e2e 고정 화면에 이 알림들이 나오지 않을 것으로 봤지만, 새 기록 편집 창 맨 위에 저장 상태 "로컬 초안 · 서버 저장 전"이 나옵니다. `a2ea926`의 CI `e2e-visual`에서 `workout-editor` 360·390·768·1280의 4건만 실패했고 axe·반응형·터치 포함 나머지 74건은 통과했습니다.
 - `workout-editor-390`의 기준·실제 이미지를 직접 봤습니다. 저장 상태 글자가 12px에서 14px로 커지고 아래 12px 여백이 생겨 그 아래 내용이 조금 내려간 것 외에 차이가 없어 `visual-baselines` 아티팩트로 4장을 갱신했습니다.
 - 한계: 연결 오류·저장 경고·저장 실패 상자는 e2e 고정 화면에 나오지 않아 화면 테스트로만 확인했습니다.
+
+## 변경 — merge: origin/main 병합
+
+- CI를 기다리는 동안 #225(#103 백업 화면)가 main에 병합되어 `origin/main`을 merge했습니다(rebase·강제 push 없음). 충돌은 없었습니다.
+- #225는 `backup.tsx`, `style.css`, `backup-*` 기준선을 바꿨고 이 브랜치는 `app.tsx`와 `workout-editor-*` 기준선을 바꿨습니다. 겹치는 파일은 `style.css`뿐이었고 자동 병합됐습니다. 병합 결과는 다시 CI로 확인합니다.
+- 병합 후: `npm run typecheck -w frontend` 통과

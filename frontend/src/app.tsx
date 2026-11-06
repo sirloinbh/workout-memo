@@ -1325,89 +1325,105 @@ function Workspace() {
             ))}
           {page === 'machines' && (
             <>
-              <div className="brand-tabs">
-                <button className={!brand ? 'selected' : ''} onClick={() => setBrand(0)}>
-                  전체 브랜드
-                </button>
-                {brands.map((b) => (
-                  <button
-                    key={b.id}
-                    className={brand === b.id ? 'selected' : ''}
-                    onClick={() => setBrand(b.id)}
-                  >
-                    {b.name}
-                  </button>
-                ))}
-              </div>
-              <section className="card">
-                <div className="section-title">
-                  <div>
-                    <h2>머신 라이브러리</h2>
-                    <p>
-                      기본중량은 기종·설정에 따라 다릅니다. 머신 표기와 제조사 자료를 확인해
-                      입력하세요.
-                    </p>
-                  </div>
-                </div>
+              <SegmentedControl
+                label="브랜드"
+                className="mb-6"
+                options={[
+                  { value: '0', label: '전체 브랜드' },
+                  ...brands.map((b) => ({ value: String(b.id), label: b.name })),
+                ]}
+                value={String(brand)}
+                onValueChange={(value) => setBrand(Number(value))}
+              />
+              <Card className="gap-0 py-0 shadow-none">
+                <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
+                  <CardTitle asHeading="h2" className="text-body font-semibold">
+                    머신 라이브러리
+                  </CardTitle>
+                  <CardDescription className="text-caption">
+                    기본중량은 기종·설정에 따라 다릅니다. 머신 표기와 제조사 자료를 확인해
+                    입력하세요.
+                  </CardDescription>
+                </CardHeader>
                 {machines.filter((m) => !brand || m.brand_id === brand).length === 0 ? (
-                  <div className="empty">
-                    <Dumbbell size={32} />
-                    <h3>나만의 머신을 등록하세요</h3>
-                    <p>확인되지 않은 기본중량은 미입력으로 보관할 수 있어요.</p>
-                  </div>
+                  <EmptyState
+                    className="m-4 md:m-6"
+                    headingLevel="h3"
+                    icon={<Dumbbell />}
+                    title="나만의 머신을 등록하세요"
+                    description="확인되지 않은 기본중량은 미입력으로 보관할 수 있어요."
+                  />
                 ) : (
-                  machines
-                    .filter((m) => !brand || m.brand_id === brand)
-                    .map((m) => (
-                      <div className="workout-row" key={m.id}>
-                        <div className="machine-icon">
-                          <Dumbbell size={22} />
-                        </div>
-                        <div className="workout-info">
-                          <h3>{m.name}</h3>
-                          <p>
-                            {m.brand}
-                            {m.single_joint ? ' · 단관절' : ''} · {m.notes || '메모 없음'}
-                          </p>
-                          {m.official_status && (
-                            <p className="official-ref">
-                              공식 참고값({m.official_model_name}
-                              {m.official_setting ? ` · ${m.official_setting}` : ''}):{' '}
-                              {officialLabel({
-                                status: m.official_status,
-                                raw_value: m.official_raw_value,
-                                raw_unit: m.official_raw_unit,
-                                weight_kg: m.official_weight_kg,
-                                basis: m.official_basis,
-                              })}
-                              {m.official_source_url && (
-                                <>
-                                  {' · '}
-                                  <a href={m.official_source_url} target="_blank" rel="noreferrer">
-                                    출처
-                                  </a>
-                                  {` (${m.official_checked_date} 확인)`}
-                                </>
-                              )}
-                            </p>
-                          )}
-                        </div>
-                        <strong>{m.base_weight === null ? '미입력' : `${m.base_weight} kg`}</strong>
-                        <button
-                          className="text-button"
-                          onClick={() =>
-                            setMachineEditor({
-                              ...m,
-                              base_weight: m.base_weight === null ? null : Number(m.base_weight),
-                            })
-                          }
+                  <List aria-label="머신" className="px-4 py-1 md:px-6 md:py-2.5">
+                    {machines
+                      .filter((m) => !brand || m.brand_id === brand)
+                      .map((m) => (
+                        <ListItem
+                          data-slot="machine-row"
+                          className="flex-wrap gap-2.5 py-4 md:flex-nowrap md:gap-4"
+                          key={m.id}
                         >
-                          수정
-                        </button>
-                      </div>
-                    ))
+                          <div
+                            aria-hidden
+                            className="flex size-12 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
+                          >
+                            <Dumbbell size={22} />
+                          </div>
+                          <div className="min-w-0 flex-1 [overflow-wrap:anywhere] max-md:basis-[calc(100%-3.625rem)]">
+                            <h3 className="text-body-sm font-semibold">{m.name}</h3>
+                            <p className="mt-1 text-meta text-muted-foreground">
+                              {m.brand}
+                              {m.single_joint ? ' · 단관절' : ''} · {m.notes || '메모 없음'}
+                            </p>
+                            {m.official_status && (
+                              <p className="mt-1 text-meta text-muted-foreground">
+                                공식 참고값({m.official_model_name}
+                                {m.official_setting ? ` · ${m.official_setting}` : ''}):{' '}
+                                {officialLabel({
+                                  status: m.official_status,
+                                  raw_value: m.official_raw_value,
+                                  raw_unit: m.official_raw_unit,
+                                  weight_kg: m.official_weight_kg,
+                                  basis: m.official_basis,
+                                })}
+                                {m.official_source_url && (
+                                  <>
+                                    {' · '}
+                                    <a
+                                      className="text-foreground underline underline-offset-4"
+                                      href={m.official_source_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      출처
+                                    </a>
+                                    {` (${m.official_checked_date} 확인)`}
+                                  </>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                          <strong className="text-body-sm font-medium whitespace-nowrap max-md:ml-14.5">
+                            {m.base_weight === null ? '미입력' : `${m.base_weight} kg`}
+                          </strong>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="max-md:ml-auto"
+                            onClick={() =>
+                              setMachineEditor({
+                                ...m,
+                                base_weight: m.base_weight === null ? null : Number(m.base_weight),
+                              })
+                            }
+                          >
+                            수정
+                          </Button>
+                        </ListItem>
+                      ))}
+                  </List>
                 )}
-              </section>
+              </Card>
             </>
           )}
         </div>

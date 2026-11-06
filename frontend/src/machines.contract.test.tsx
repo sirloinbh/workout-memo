@@ -42,5 +42,7 @@ test('the machine library lists machines answered by the contract mock', async (
   render(<App />);
   await openPage('머신 라이브러리', user);
   expect(await screen.findByText(/내 체스트 프레스/)).toBeInTheDocument();
-  expect(document.querySelector('.workout-row')?.textContent).toMatch(/Hammer Strength/);
+  expect(document.querySelector('[data-slot="machine-row"]')?.textContent).toMatch(
+    /Hammer Strength/,
+  );
 });

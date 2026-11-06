@@ -37,3 +37,8 @@
 - `e2e/ui-touch.spec.ts`에 터치 360·390·768px에서 종목 분석의 부위 지정을 열고 칩·버튼의 높이·너비와 가로 넘침을 확인하는 검사를 추가했습니다. 이전 검사는 편집기를 열지 않아 이 문제를 잡지 못했습니다.
 - 시각 기준선: analysis 4장은 바뀔 것으로 봅니다. CI `e2e-visual` 결과 이미지를 확인한 뒤 갱신합니다.
 - 1차 보완 후: `npm run test -w frontend -- src/analysis.test.tsx src/components/toggle-chips.test.tsx` 9 pass, eslint·`npm run typecheck` 통과. 추가한 e2e는 CI로 확인합니다.
+
+## main 병합
+
+- 리뷰 뒤 main에 #224(기간 선택 줄, `bc559eb`)와 #223(알림, `d02cfb1`)·#103 백업 화면이 병합돼 두 번 `origin/main`을 병합했습니다. 충돌은 없었습니다. 병합 뒤 `npm run typecheck -w frontend` 통과, `npm run test -w frontend -- src/analysis.test.tsx` 5 pass.
+- 분석 화면의 기간 줄과 오류 배너(`.error`)는 이 PR에서 바꾸지 않습니다. #224의 `DateStepper`·`RangeSummary`와 #223의 `AlertBanner`로 옮기는 일은 #102의 마지막 단계(분석 기간 줄)에서 함께 합니다.

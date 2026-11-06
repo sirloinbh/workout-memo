@@ -49,3 +49,10 @@
 - `677142f`의 CI `e2e-visual`에서 16건만 실패했고 axe·반응형·터치 44px 포함 나머지 62건은 통과했습니다. 실패는 기간 선택 줄이 보이는 `dashboard`·`journal`·`body`와 뒤에 대시보드가 보이는 `workout-editor`의 360·390·768·1280입니다.
 - `dashboard-360` 실제 화면과 `journal-1280` 실제·차이 이미지를 직접 봤습니다. 날짜 입력 테두리, 공통 아이콘 버튼, 12px 기간 표시와 그 때문에 아래 내용이 조금 내려간 것 외에 차이가 없어 `visual-baselines` 아티팩트로 16장을 갱신했습니다.
 - 한계: e2e 고정 화면에는 직접 선택 폼과 범위 오류가 나오지 않습니다. 이 둘은 화면 테스트(`custom-range.test.tsx`)로만 확인했고, 적용 버튼 정렬은 클래스 계산으로만 확인했습니다.
+
+## 변경 — merge: origin/main 병합
+
+- 기다리는 동안 #227(#102 나의 목표)이 main에 병합되어 `origin/main`을 merge했습니다(rebase·강제 push 없음).
+- 충돌은 `frontend/src/app.tsx`의 import 한 곳뿐이었습니다. main은 쓰지 않게 된 `components/field`의 `Input`을 뺐고, 이 브랜치는 `DateStepper`·`RangeSummary` import를 더했습니다. 두 변경을 모두 살렸습니다. `style.css`는 자동 병합됐고, 종목 분석이 쓰는 `.period-bar`·`.date-control`·`.range-label`은 그대로 남아 있습니다.
+- 시각 기준선은 겹치지 않습니다. main은 `goals`·`goal-editor` 8장, 이 브랜치는 `dashboard`·`journal`·`body`·`workout-editor` 16장을 바꿨습니다. 병합 결과는 다시 CI로 확인합니다.
+- 병합 후: `npm run typecheck -w frontend`, `app.tsx` eslint 통과, `npm run test -w frontend` 217 pass, 4 skip

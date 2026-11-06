@@ -42,3 +42,10 @@
 - `style.css`에서 남긴 규칙을 설명하는 주석을 `.period-bar` 위로 옮겼습니다.
 - 참고만 하고 고치지 않은 것: `.field-error`의 음수 위 여백 때문에 오류 문구가 입력에 가깝게 붙습니다. `FieldError`는 className을 받지 않아, 시각 결과에서 거슬리면 따로 다룹니다.
 - 보완 후: `npm run test -w frontend -- src/components/date-stepper.test.tsx src/period.test.tsx src/custom-range.test.tsx` 34 pass, `npm run typecheck -w frontend`, 바뀐 파일 eslint·prettier 통과
+
+## 변경 — test: 시각 기준선 갱신
+
+- 2차 리뷰는 보완점이 없었습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- `677142f`의 CI `e2e-visual`에서 16건만 실패했고 axe·반응형·터치 44px 포함 나머지 62건은 통과했습니다. 실패는 기간 선택 줄이 보이는 `dashboard`·`journal`·`body`와 뒤에 대시보드가 보이는 `workout-editor`의 360·390·768·1280입니다.
+- `dashboard-360` 실제 화면과 `journal-1280` 실제·차이 이미지를 직접 봤습니다. 날짜 입력 테두리, 공통 아이콘 버튼, 12px 기간 표시와 그 때문에 아래 내용이 조금 내려간 것 외에 차이가 없어 `visual-baselines` 아티팩트로 16장을 갱신했습니다.
+- 한계: e2e 고정 화면에는 직접 선택 폼과 범위 오류가 나오지 않습니다. 이 둘은 화면 테스트(`custom-range.test.tsx`)로만 확인했고, 적용 버튼 정렬은 클래스 계산으로만 확인했습니다.

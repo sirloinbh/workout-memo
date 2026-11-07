@@ -256,20 +256,6 @@
   padding: 12px;
   border-radius: calc(var(--radius) - 4px);
 }
-.official-ref {
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-:where(.legacy) div.official-ref {
-  border: 1px solid var(--border);
-  background: var(--muted);
-  padding: 12px;
-  border-radius: calc(var(--radius) - 4px);
-  margin-bottom: 12px;
-}
-:where(.legacy) div.official-ref p {
-  margin: 6px 0 0;
-}
 .modal .subtle-button {
   margin: 4px 0 22px;
 }
@@ -406,71 +392,6 @@
     grid-template-columns: 1fr;
   }
 }
-.analysis-page > .card {
-  margin-top: 20px;
-}
-.analysis-week {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-}
-.analysis-week table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.analysis-week th,
-.analysis-week td {
-  padding: 4px 8px;
-  text-align: left;
-}
-.exercise-pr {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
-}
-.exercise-pr dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
-}
-.exercise-pr dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.part-editor {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 8px 0;
-}
-.part-editor .selected {
-  font-weight: 700;
-  outline: 2px solid currentColor;
-}
-.trend {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  min-height: 100px;
-  overflow-x: auto;
-}
-.trend-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-size: 11px;
-}
-.trend-bar {
-  width: 14px;
-  border-radius: 4px 4px 0 0;
-  background: var(--primary);
-}
-/* #84: the machine form's single-joint checkbox. */
-.modal .rest-auto {
-  flex-direction: row;
-  align-items: center;
-}
-.modal .rest-auto input {
-  width: auto;
-}
 /* #64: per-field messages from the shared input contract. */
 .field-error {
   display: block;
@@ -513,8 +434,8 @@
 }
 /* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA
    4.5:1. Text on these surfaces mixes in more of the foreground colour instead. */
-:is(.count, .subtle-button, .form-hint, div.official-ref),
-:is(.form-hint, div.official-ref) * {
+:is(.count, .subtle-button, .form-hint),
+.form-hint * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }
 

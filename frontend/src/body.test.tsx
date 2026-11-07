@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
@@ -190,7 +190,11 @@ async function openWeek() {
   // The period anchor is reused on the body page.
   await ui.setAnchor('2024-03-06');
   // 3/4..3/7 are the four records of the anchored week.
-  await waitFor(() => expect(document.querySelectorAll('.body-list > li')).toHaveLength(4));
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole('list', { name: '신체 기록' })).getAllByRole('listitem'),
+    ).toHaveLength(4),
+  );
   return ui;
 }
 
@@ -347,4 +351,34 @@ test('a failed load reports the error without claiming the metrics are empty', a
   const alert = await screen.findByRole('alert');
   expect(alert).toHaveTextContent('다시 연결');
   expect(page()).not.toMatch(/값이 없는 지표/);
+});
+
+test('the record form, its messages and the list are named for assistive technology', async () => {
+  const ui = await openWeek();
+  const list = screen.getByRole('list', { name: '신체 기록' });
+  // The card title carries the count.
+  expect(screen.getByRole('heading', { level: 2, name: '신체 기록 4' })).toBeInTheDocument();
+  expect(
+    within(list)
+      .getAllByRole('heading', { level: 3 })
+      .map((h) => h.textContent),
+  ).toEqual(['2024-03-07', '2024-03-06', '2024-03-05', '2024-03-04']);
+  expect(within(list).getByRole('button', { name: '2024-03-05 신체 기록 수정' })).toBeEnabled();
+  await ui.click('신체 기록 추가');
+  expect(screen.getByRole('heading', { level: 2, name: '새 신체 기록' })).toBeInTheDocument();
+  for (const name of ['체중 kg', '체지방률 %', '골격근량 kg'])
+    expect(screen.getByRole('spinbutton', { name })).toHaveValue(null);
+  // A blank form is refused with an alert next to the form.
+  await ui.submit();
+  expect(await screen.findByRole('alert')).toHaveTextContent(/하나 이상을 입력하세요/);
+  await ui.user.type(screen.getByRole('spinbutton', { name: '체중 kg' }), '70.5');
+  await ui.change('측정 날짜', '2024-03-09');
+  await ui.submit();
+  expect(await screen.findByRole('status')).toHaveTextContent('신체 기록을 저장했습니다');
+  expect(screen.queryByRole('heading', { name: '새 신체 기록' })).toBeNull();
+  // Cancel closes the form without saving.
+  await ui.click('신체 기록 추가');
+  await ui.click('취소');
+  expect(screen.queryByRole('heading', { name: '새 신체 기록' })).toBeNull();
+  expect(ui.requests.filter((r) => r.method === 'POST')).toHaveLength(1);
 });

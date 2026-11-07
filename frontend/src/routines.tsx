@@ -483,7 +483,9 @@ export function Routines() {
                   {days.map((day, i) => (
                     <Label key={day} className="min-h-9 gap-2 text-body-sm pointer-coarse:min-h-11">
                       <Checkbox
-                        className="pointer-coarse:after:-inset-[15px]"
+                        // Same as the machine form (#231): the box stays 16px against the legacy 44px button
+                        // rule and its ::after area is 44px. Drop once project-standards#415 lands.
+                        className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
                         checked={draft.rest_days.includes(i)}
                         onCheckedChange={(checked) =>
                           setDraft({

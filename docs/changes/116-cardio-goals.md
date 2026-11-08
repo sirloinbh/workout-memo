@@ -54,3 +54,8 @@
 - `e2e/support/ui-fixtures.ts`(공통 e2e 도우미): `/api/cardio-goals` 고정 데이터를 실제 판정 함수로 만들어 더했습니다. 없으면 나의 목표 화면이 404 오류를 보입니다.
 - 통과: 판정 단위 테스트 9건, api-contract·openapi·contract·migrations 테스트, frontend 관련 6개 파일, `typecheck`(backend·frontend·e2e), eslint·prettier(바꾼 파일). 통합 테스트는 이 PC에 PostgreSQL이 없어 CI에서 확인합니다. 로컬 전체 `npm run check`·e2e는 메모리 부족으로 돌리지 않았습니다.
 - 시각 기준선: 나의 목표(goals) 4장이 바뀝니다. CI 이미지를 확인한 뒤 갱신합니다.
+
+## 변경 — test: 시각 기준선 갱신
+
+- `b5146de`의 CI `e2e-visual`에서 goals 4장과 goal-editor 4장만 실패했고 나머지 82건(터치·반응형·axe 포함)은 통과했습니다.
+- 390px·1280px 이미지를 확인했습니다. 근력 목표 아래 "유산소 목표" 영역에 진행 중 주간 거리(이번 주 5.2 km / 15 km, 진행 막대, 달성한 주 1 / 전체 3주), 달성한 5 km 기록(가장 빠른 기록 29:10), 기간이 끝난 주간 횟수 목표가 보이고 넘침은 없습니다. goal-editor는 뒤 배경의 머리글 설명 문구만 바뀌었습니다. `visual-baselines` 아티팩트로 8장을 갱신했습니다.

@@ -68,10 +68,21 @@ const partRow = (week: string, name: string) => {
   expect(row, `row ${name}`).toBeDefined();
   return row!.textContent;
 };
-const exercise = (name: string) => {
-  const card = [...document.querySelectorAll<HTMLElement>('[data-slot="exercise-pr"]')].find(
+// #125: one exercise is shown in detail at a time; picking it from the list shows it.
+const shownDetail = (name: string) =>
+  [...document.querySelectorAll<HTMLElement>('[data-slot="exercise-pr"]')].find(
     (e) => e.querySelector('h3')?.textContent === name,
   );
+const exercise = (name: string) => {
+  if (!shownDetail(name)) {
+    const list = screen.getByRole('list', { name: '운동 목록' });
+    const item = [...list.querySelectorAll('button')].find(
+      (b) => b.querySelector('span')?.textContent === name,
+    );
+    expect(item, `list item ${name}`).toBeDefined();
+    fireEvent.click(item!);
+  }
+  const card = shownDetail(name);
   expect(card, `exercise ${name}`).toBeDefined();
   return card!;
 };
@@ -181,6 +192,7 @@ test('the mapping editor offers 이두·삼두; a saved 팔 is shown only until 
   expect(exercise('Curl').textContent).toMatch(/부위: 팔/);
   expect(partRow('2026-10-12', '팔')).toBe('팔1세트200kg');
 
+  exercise('Dip');
   await ui.user.click(screen.getByRole('button', { name: 'Dip 부위 지정' }));
   expect(screen.getByRole('button', { name: '이두' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '삼두' })).toBeInTheDocument();
@@ -189,6 +201,7 @@ test('the mapping editor offers 이두·삼두; a saved 팔 is shown only until 
   await ui.user.click(screen.getByRole('button', { name: '부위 저장' }));
   await waitFor(() => expect(exercise('Dip').textContent).toMatch(/부위: 삼두/));
 
+  exercise('Curl');
   await ui.user.click(screen.getByRole('button', { name: 'Curl 부위 지정' }));
   const legacy = screen.getByRole('button', { name: '팔' });
   expect(legacy).toHaveAttribute('aria-pressed', 'true');
@@ -211,6 +224,7 @@ test('cancelling the mapping editor sends nothing and the PR count badge matches
   expect(within(prs).getByRole('heading', { level: 2 }).textContent).toBe('종목별 PR 2');
   expect(screen.getByRole('region', { name: '부위별 주간 운동량' })).toBeInTheDocument();
 
+  exercise('Curl');
   await ui.user.click(screen.getByRole('button', { name: 'Curl 부위 지정' }));
   expect(screen.getByRole('group', { name: 'Curl 부위' })).toBeInTheDocument();
   await ui.user.click(screen.getByRole('button', { name: '이두' }));
@@ -253,4 +267,57 @@ test('a failed load shows an alert whose 다시 연결 button reloads the analys
   await loaded();
   expect(screen.queryByRole('alert')).toBeNull();
   expect(api.requests.filter((r) => r.path.startsWith('/api/analysis'))).toHaveLength(2);
+});
+
+test('the list shows one summary line per exercise and one exercise in detail at a time (#125)', async () => {
+  const ui = mount([
+    row('2026-10-12', 'Bench Press', 100, 5),
+    row('2026-10-13', 'Row', 80, 8),
+    row('2026-10-14', 'Dip', 0, 10),
+  ]);
+  await openPage('종목 분석', ui.user);
+  await loaded();
+  const list = screen.getByRole('list', { name: '운동 목록' });
+  const items = within(list).getAllByRole('button');
+  // The server orders exercises by their latest date.
+  expect(items.map((b) => b.textContent)).toEqual([
+    'Dip중량 기록 없음 · 2026-10-14',
+    'Row최고 80kg · 추정 1RM 101.33kg · 2026-10-13',
+    'Bench Press최고 100kg · 추정 1RM 116.67kg · 2026-10-12',
+  ]);
+  // The first exercise is shown until one is picked; only one detail exists.
+  expect(document.querySelectorAll('[data-slot="exercise-pr"]')).toHaveLength(1);
+  expect(items[0]).toHaveAttribute('aria-current', 'true');
+  expect(screen.getByRole('heading', { level: 3, name: 'Dip' })).toBeInTheDocument();
+
+  await ui.user.click(items[1]);
+  const heading = screen.getByRole('heading', { level: 3, name: 'Row' });
+  expect(heading).toHaveFocus();
+  expect(items[1]).toHaveAttribute('aria-current', 'true');
+  expect(items[0]).not.toHaveAttribute('aria-current');
+  expect(document.querySelectorAll('[data-slot="exercise-pr"]')).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Row 부위 지정' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Dip 부위 지정' })).toBeNull();
+
+  // "운동 목록" goes back to the list; the first exercise is shown again on wide screens.
+  await ui.user.click(screen.getByRole('button', { name: '운동 목록' }));
+  expect(items[0]).toHaveAttribute('aria-current', 'true');
+  expect(ui.requests.filter((r) => r.method !== 'GET')).toHaveLength(0);
+});
+
+test('parts without sets fold into a closed details under the week (#125)', async () => {
+  const ui = mount([row('2026-10-13', 'Curl', 20, 10)]);
+  ui.server.mappings = [{ exercise: 'curl', body_part: '이두' }];
+  await openPage('종목 분석', ui.user);
+  await loaded();
+  const week = document.querySelector<HTMLElement>('[data-slot="analysis-week"]')!;
+  const folded = week.querySelector('details')!;
+  expect(folded.open).toBe(false);
+  expect(folded.querySelector('summary')!.textContent).toMatch(
+    /^기록 없는 부위 8개 · 가슴, 등, 어깨, 삼두/,
+  );
+  // The visible table lists only parts with sets.
+  const visible = [...week.querySelectorAll('tr')].filter((tr) => !folded.contains(tr));
+  expect(visible.map((tr) => tr.textContent)).toEqual(['부위세트볼륨', '이두1세트200kg']);
+  expect(partRow('2026-10-12', '가슴')).toBe('가슴0세트0kg');
 });

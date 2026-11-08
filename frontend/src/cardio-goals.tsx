@@ -1,6 +1,7 @@
 import { Plus, Timer } from 'lucide-react';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 
+import { cardioKindLabels, formatDistance, formatDuration } from './cardio/format';
 import { AlertBanner } from './components/alert-banner';
 import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
@@ -26,19 +27,8 @@ import {
 import { seoulDate } from './date';
 
 // #116: cardio goals on the 나의 목표 page, next to the strength goals. The server judges them;
-// this screen only shows the judgment. The kind labels and time format repeat the ones of the
-// cardio session screen (#115, frontend/src/cardio/format.ts); merge them there once it lands.
-const kindLabels: Record<CardioKind, string> = {
-  running: '러닝',
-  walking: '걷기',
-  outdoor_cycling: '실외 사이클',
-  indoor_cycling: '실내 자전거',
-  rowing: '로잉',
-  stairs: '계단',
-  elliptical: '일립티컬',
-  swimming: '수영',
-  other: '기타',
-};
+// this screen only shows the judgment. Kind labels and time/distance formats come from the
+// cardio session screen (#115).
 const typeLabels: Record<CardioGoalType, string> = {
   distance: '거리 누적',
   duration: '시간 누적',
@@ -66,14 +56,6 @@ type StoredGoal = {
 };
 
 const km = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 3 }).format(n);
-/** Seconds as 1:05:09 or 28:30. */
-function clock(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  const two = (n: number) => String(n).padStart(2, '0');
-  return h ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
-}
 /** Seconds as 2시간 30분 (totals are shown in minutes). */
 const minutes = (seconds: number) => {
   const total = Math.floor(seconds / 60);
@@ -86,7 +68,10 @@ const amount = (goal: StoredGoal, value: number) =>
     ? `${value}회`
     : goal.goal_type === 'duration'
       ? minutes(value)
-      : `${km(value)} km`;
+      : distanceOf(goal, value);
+// Swimming goals read in metres like the session screen; every kind together stays in km.
+const distanceOf = (goal: StoredGoal, value: number) =>
+  goal.kind ? formatDistance(goal.kind, value)! : `${km(value)} km`;
 const targetOf = (goal: StoredGoal) =>
   goal.goal_type === 'count'
     ? goal.target_count!
@@ -96,11 +81,11 @@ const targetOf = (goal: StoredGoal) =>
 
 /** The goal in one line, e.g. "주간 러닝 15 km" or "러닝 5 km 30:00 이내". */
 function goalTitle(goal: StoredGoal) {
-  const kind = goal.kind ? kindLabels[goal.kind] : '유산소';
+  const kind = goal.kind ? cardioKindLabels[goal.kind] : '유산소';
   if (goal.goal_type === 'record_time')
-    return `${kind} ${km(goal.target_distance_km!)} km ${clock(goal.target_duration_sec!)} 이내`;
+    return `${kind} ${distanceOf(goal, goal.target_distance_km!)} ${formatDuration(goal.target_duration_sec!)} 이내`;
   if (goal.goal_type === 'longest_distance')
-    return `${kind} 한 번에 ${km(goal.target_distance_km!)} km`;
+    return `${kind} 한 번에 ${distanceOf(goal, goal.target_distance_km!)}`;
   return `${goal.period === 'week' ? '주간' : '월간'} ${kind} ${amount(goal, targetOf(goal))}`;
 }
 
@@ -305,11 +290,11 @@ function GoalCard({
         <p className="mt-5 text-body-sm">
           {goal.goal_type === 'record_time'
             ? p.best === null
-              ? `${km(goal.target_distance_km!)} km 이상 기록이 아직 없어요.`
-              : `가장 빠른 기록 ${clock(p.best)}`
+              ? `${distanceOf(goal, goal.target_distance_km!)} 이상 기록이 아직 없어요.`
+              : `가장 빠른 기록 ${formatDuration(p.best)}`
             : p.best === null
               ? '거리가 있는 기록이 아직 없어요.'
-              : `가장 긴 거리 ${km(p.best)} km`}
+              : `가장 긴 거리 ${distanceOf(goal, p.best)}`}
         </p>
       )}
       <p className="mt-3 text-body-sm text-muted-foreground">
@@ -447,7 +432,7 @@ function CardioGoalForm({
             {record && draft.kind === '' && <option value="">선택하세요</option>}
             {cardioKinds.map((k) => (
               <option key={k} value={k}>
-                {kindLabels[k]}
+                {cardioKindLabels[k]}
               </option>
             ))}
           </select>

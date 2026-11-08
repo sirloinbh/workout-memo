@@ -21,7 +21,7 @@
 - 키 발급은 셀프 서비스입니다. Garmin Connect 웹의 Personal API Key 화면에서 만들고 약관에 동의하며, 키는 만들 때 한 번만 보입니다. 만료는 30·90·180일·1년 중에서 고르고, 만료 약 1주 전에 메일이 옵니다. — [personal-api](https://developer.garmin.com/gc-developer-program/personal/personal-api), [personal-faq](https://developer.garmin.com/gc-developer-program/personal/personal-faq/)
 - 인증: 키로 `POST https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token`(헤더 `Authorization: ApiKey …`)을 호출해 OAuth2 access token을 받습니다. 토큰은 24시간(또는 키 만료 중 먼저 오는 때)까지 유효하고 refresh token은 없어 다시 발급받습니다. — 같은 FAQ
 - 확인 못 함: 엔드포인트 목록, 받는 형식(요약 JSON·FIT), 요청 한도, 과거 기록 범위, 비용. FAQ가 안내하는 [Swagger 문서](https://developer.garmin.com/gc-developer-program/personal/swagger-docs/)에서 확인해야 합니다. API로 받는 FIT가 원본과 같은지도 공개되지 않았다는 보도가 있습니다([the5krunner](https://the5krunner.com/2026/10/22/garmin-personal-api/)).
-- 이 앱에 적용할 때: 키는 사용자가 만들어 서버 환경 변수(또는 서버 비밀 저장소)에 두고 커밋하지 않습니다. 토큰은 24시간마다 다시 받고, 서버 작업이 하루 몇 번 최근 활동을 읽어 `source='garmin'`, `external_id=활동 ID`로 저장합니다(#114의 출처·외부 ID 중복 방지 그대로). 키 만료(최대 1년) 전에 다시 만들어야 합니다.
+- 이 앱에 적용할 때: 키는 사용자가 만들어 서버 환경 변수(또는 서버 비밀 저장소)에 두고 커밋하지 않습니다. 토큰은 24시간마다 다시 받고, 서버 작업이 정해진 주기(아래 "공통" 절)로 최근 활동을 읽어 `source='garmin'`, `external_id=활동 ID`로 저장합니다(#114의 출처·외부 ID 중복 방지 그대로). 키 만료(최대 1년) 전에 다시 만들어야 합니다.
 
 ### 1.3 사용자가 직접 내보내기
 
@@ -44,7 +44,7 @@
 
 ## 3. Strava 중계
 
-- 앱 등록은 셀프 서비스이고 새 앱은 "Single Player Mode"(사용자 1명, 개발자 본인)로 시작합니다. 호출 한도는 기본 전체 200회/15분·2,000회/일(읽기 100회/15분·1,000회/일)입니다. — [rate-limits](https://developers.strava.com/docs/rate-limits/)
+- 앱 등록은 셀프 서비스이고 새 앱은 "Single Player Mode"(사용자 1명, 개발자 본인)로 시작합니다. 호출 한도는 기본 전체 200회/15분·2,000회/일(업로드 외 요청 100회/15분·1,000회/일)입니다. — [rate-limits](https://developers.strava.com/docs/rate-limits/)
 - 비공개 활동까지 읽으려면 `activity:read_all` 스코프가 필요합니다. 활동 요약·랩·스트림은 읽지만, 기록된 활동의 원본 파일(FIT)을 내려받는 엔드포인트는 찾지 못했습니다(문서 일부만 확인). — [API reference](https://developers.strava.com/docs/reference/)
 - API 약관(2026-06-01 시행): 사용자의 데이터는 그 사용자에게만 보여 주고, 토큰 하나는 앱 하나에만 씁니다. 지금은 무료이고 사전 고지 뒤 유료화될 수 있습니다. — [Strava API Agreement](https://www.strava.com/legal/api)
 - 쓸모: NRC 기록을 자동으로 가져올 유일한 공식 경로입니다(NRC→Strava→이 앱). 가민은 Personal API가 더 직접적입니다.
@@ -53,7 +53,7 @@
 
 - 데이터는 기기 안에만 있고 Google 클라우드에 올라가지 않습니다. 웹 앱은 읽을 수 없고 Jetpack SDK를 쓰는 안드로이드 앱이 필요합니다. — [Android 도움말](https://support.google.com/android/answer/13770320), [Health Connect 가이드](https://developer.android.com/health-and-fitness/guides/health-connect)
 - 관련 데이터: `ExerciseSessionRecord`(운동 종류, segments, laps), `DistanceRecord`, `HeartRateRecord`, `TotalCaloriesBurnedRecord`, `ElevationGainedRecord`, `StepsCadenceRecord`, `CyclingPedalingCadenceRecord` 등. — [data-types](https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types)
-- 처음 권한을 받은 때보다 30일 넘게 지난 기록은 `READ_HEALTH_DATA_HISTORY` 권한이 있어야 읽습니다. 앱을 다시 설치하면 기준이 초기화됩니다. — [read-data](https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data)
+- 처음 권한을 받은 때보다 30일 넘게 지난 기록은 `READ_HEALTH_DATA_HISTORY`(`PERMISSION_READ_HEALTH_DATA_HISTORY`) 권한이 있어야 읽습니다. 앱을 다시 설치하면 기준이 초기화됩니다. — [read-data](https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data)
 - Garmin → Health Connect 운동 세션 동기화는 2차 출처뿐이고(공식 FAQ는 열리지 않음), NRC도 공식 문서를 확인 못 함. — [Sonar Health](https://www.sonarhealth.co/blog/sync-health-connect-to-garmin/)
 - [모바일 앱 결정(#108)](mobile-app.md)은 PWA·TWA를 먼저 하고 Health Connect가 꼭 필요할 때 Capacitor로 옮기는 것입니다. 가민 Personal API로 충분하면 이 경로는 필요 없습니다.
 
@@ -98,22 +98,29 @@
 
 ## 7. 경로별 정리
 
-| 경로                      | 가능 여부                        | 비용       | 주요 제약                                                          |
-| ------------------------- | -------------------------------- | ---------- | ------------------------------------------------------------------ |
-| 파일 업로드(TCX·GPX)      | 가능, 새 패키지 없음             | 무료       | 수동, GPX는 요약값이 없어 계산 필요                                |
-| 파일 업로드(FIT)          | 가능, 패키지 또는 직접 구현      | 무료       | 패키지 설치 승인 또는 구현 비용                                    |
-| 가민 Personal API         | 가능(본인 데이터)                | 확인 못 함 | 키 최대 1년마다 재발급, 토큰 24시간, 한도·과거 범위·형식 확인 필요 |
-| 가민 Business API         | 사실상 불가(신규 신청 중단 보도) | 확인 못 함 | 승인·약관                                                          |
-| NRC 데이터 요청 파일      | 가능성 있음(형식 확인 필요)      | 무료       | 수동, 대기 시간                                                    |
-| NRC → Strava → Strava API | 가능(공식)                       | 현재 무료  | 연동 뒤 기록만, 원본 파일 없음, 약관                               |
-| NRC·가민 비공식 API       | 쓰지 않음                        | —          | 약관 위반, 불안정                                                  |
-| Health Connect            | 안드로이드 앱 필요               | 개발 비용  | 기기 안에만 있음, 30일 제한, #108 Capacitor 전환                   |
+| 경로                      | 가능 여부                        | 비용       | 주요 제약                                                                            |
+| ------------------------- | -------------------------------- | ---------- | ------------------------------------------------------------------------------------ |
+| 파일 업로드(TCX·GPX)      | 가능, 새 패키지 없음             | 무료       | 수동, GPX는 요약값이 없어 계산 필요                                                  |
+| 파일 업로드(FIT)          | 가능, 패키지 또는 직접 구현      | 무료       | 패키지 설치 승인 또는 구현 비용                                                      |
+| 가민 Personal API         | 가능(본인 데이터)                | 확인 못 함 | 키 최대 1년마다 재발급, 토큰 24시간, 한도·과거 범위·형식 확인 필요                   |
+| 가민 Business API         | 사실상 불가(신규 신청 중단 보도) | 확인 못 함 | 승인·약관                                                                            |
+| NRC 데이터 요청 파일      | 가능성 있음(형식 확인 필요)      | 무료       | 수동, 대기 시간                                                                      |
+| NRC → Strava → Strava API | 가능(공식)                       | 현재 무료  | 연동 뒤 기록만, 원본 파일 없음, 약관                                                 |
+| NRC·가민 비공식 API       | 쓰지 않음                        | —          | 약관 위반, 불안정                                                                    |
+| Health Connect            | 안드로이드 앱 필요               | 개발 비용  | 기기 안에만 있음, 권한 받기 30일 전보다 오래된 기록은 별도 권한, #108 Capacitor 전환 |
+
+## 7-1. 공통: 중복, 토큰, 개인정보, 주기
+
+- **출처가 달라도 같은 기록**: 같은 달리기가 파일(`file`)과 Personal API(`garmin`) 또는 Strava 경유(`nike`)로 두 번 들어올 수 있습니다. 출처+외부 ID 중복 검사(#114)만으로는 막지 못하므로, 가져오는 모든 경로가 "같은 날짜·시작 시각 ±2분·거리 ±1%(또는 거리 없으면 시간 ±1%)인 기존 기록"을 중복 후보로 보여 주고 기본으로 건너뛰게 합니다(#119 미리보기 규칙을 공통으로).
+- **토큰·키 보관**: 가민 Personal API 키와 Strava refresh token은 서버에만 두고 저장소에 커밋하지 않습니다. 환경 변수 또는 서버 비밀 파일(권한 600)에 두고, DB에 넣어야 하면 서버 비밀 키로 암호화합니다. 화면·로그·백업 파일에는 넣지 않습니다. 가민 키는 만료(최대 1년) 1주 전 메일과 앱 안 알림으로 갱신을 알립니다.
+- **원본 파일과 개인정보**: 업로드하거나 내려받은 FIT·TCX·GPX·ZIP은 요약값을 뽑은 뒤 저장하지 않습니다(GPS 경로에는 집 위치가 들어 있음). 인바디 사진처럼 브라우저 안에서 읽는 방식을 우선합니다.
+- **동기화 주기**: 하루 2회(예: 06:00·22:00 서울)와 화면의 "지금 가져오기" 버튼으로 제안합니다. Personal API 한도를 확인한 뒤 조정합니다. Strava는 1인 모드 한도(15분 200회) 안에서 같은 주기로 충분합니다.
 
 ## 8. 후속 이슈 범위 제안
 
 - **#119 파일 가져오기**: TCX·GPX를 `DOMParser`로 먼저 만들고, FIT·ZIP은 아래 결정에 따릅니다. 미리보기·중복(출처+외부 ID 또는 시작 시각+거리)·저장 흐름은 이슈 범위대로입니다. 랩은 버립니다(#114 결정).
 - **#121 가민 자동 동기화**: 범위 A(Developer Program 승인)를 **Garmin Personal API**로 바꿉니다. OAuth 연결 대신 사용자가 만든 키를 서버에 두고, 주기 조회·중복 방지·키 만료 알림을 만듭니다. 시작 전에 Swagger로 엔드포인트·형식·한도를 확인합니다.
-- **#120 NRC**: 사용자가 본인 데이터를 요청해 파일 형식을 확인할 때까지 보류합니다. 자동 경로를 원하면 NRC→Strava 연동 뒤 Strava API(1인 모드)로 범위를 바꿉니다.
+- **#120 NRC**: 사용자가 본인 데이터를 요청해 파일 형식을 확인할 때까지 보류합니다. 자동 경로를 원하면 NRC→Strava 연동 뒤 Strava API(1인 모드)로 범위를 바꿉니다. Strava로 받으면 `source`는 원래 기록한 서비스인 `nike`로 두고 `external_id`는 Strava 활동 ID로 씁니다(지금 `source`에 `strava` 값은 없음, `015_cardio_sessions.sql`). `strava`를 따로 두려면 마이그레이션이 필요합니다(결정 항목 7).
 
 ## 9. 사용자 결정 항목
 
@@ -123,3 +130,5 @@
 4. NRC: 본인 데이터 요청으로 형식 확인 / NRC→Strava 연동 경로 / 보류·종료 중 선택.
 5. 기록 시간 기준: FIT `total_timer_time`(일시정지 제외, 추천) 또는 `total_elapsed_time`(일시정지 포함).
 6. Health Connect: 지금은 쓰지 않고 가민 Personal API로 충분한지 본 뒤 다시 판단(추천).
+7. Strava로 받은 NRC 기록의 `source`: `nike`로 둠(추천, 마이그레이션 없음) 또는 `strava` 값을 새로 추가.
+8. 출처가 다른 중복 판단 기준(7-1절의 시작 시각 ±2분·거리 ±1% 제안)과 동기화 주기(하루 2회 + 수동).

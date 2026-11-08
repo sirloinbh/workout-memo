@@ -22,6 +22,7 @@ import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-
 import { Analysis } from './analysis';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
+import { CardioGoals } from './cardio-goals';
 import { AlertBanner } from './components/alert-banner';
 import { DateStepper, RangeSummary } from './components/date-stepper';
 import { FieldError } from './components/field';
@@ -965,7 +966,7 @@ function Workspace() {
                   : page === 'journal'
                     ? '모든 세트에는 어제보다 나아진 내가 담겨 있어요.'
                     : page === 'goals'
-                      ? '중량과 반복 수로 구체적인 성장 목표를 세워보세요.'
+                      ? '중량·반복 수와 유산소 거리·시간으로 구체적인 성장 목표를 세워보세요.'
                       : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'
               }
               actions={
@@ -1335,6 +1336,8 @@ function Workspace() {
                 })}
               </div>
             ))}
+          {/* #116: cardio goals load and save on their own, below the strength goals. */}
+          {page === 'goals' && <CardioGoals deadline={to} />}
           {page === 'machines' && (
             <>
               <SegmentedControl

@@ -274,7 +274,7 @@ test(
       );
       const backup = exported.data;
       assert.equal(backup.format, 'workout-memo-backup');
-      assert.equal(backup.version, 2);
+      assert.equal(backup.version, 3);
       assert.equal(backup.data.workouts.length, 4);
       assert.equal(backup.data.workouts[0].sets.length, 3, 'Sets nest inside their workout');
       assert.equal(backup.data.workouts[0].sets[0].weight, 100.25, 'Total kg is a JSON number');

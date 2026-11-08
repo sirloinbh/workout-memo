@@ -112,3 +112,8 @@
 - 갱신: `journal-cardio` 4장(새 화면), `dashboard` 4장(유산소 카드), `journal` 4장("기록 종류" 탭), `workout-editor` 768·1280 2장(모달 뒤 대시보드에 카드가 더해짐). 모두 14장입니다.
 - 확인 방법: `journal-cardio` 1280·390과 `dashboard-1280`을 직접 보고 의도한 변화만 있음을 확인한 뒤 `visual-baselines` 아티팩트로 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
 - 발견한 결함: 러닝 페이스 추이의 점이 1280px에서 납작한 타원으로 그려집니다. SVG가 `preserveAspectRatio="none"`으로 늘어나기 때문이며, PR ②에서 생긴 문제입니다. 리뷰 2회를 마친 뒤라 이 PR에서 고치지 않고 #263으로 분리했습니다.
+
+## main 병합
+
+- 병합 직전 main에 #257(백업에 유산소 목표 포함), #259(모바일 앱 문서), #262(수영 목표 m)가 들어왔습니다. `shared/**`와 `e2e/**`가 바뀌어 바로 병합 조건에 맞지 않아 `origin/main`을 merge했습니다. 충돌은 없었습니다.
+- 병합 뒤 `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/backup.test.tsx` 91 pass, `npm run typecheck -w frontend`, `tsc -p e2e/tsconfig.json` 통과

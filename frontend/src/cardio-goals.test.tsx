@@ -182,3 +182,26 @@ test('deleting a cardio goal removes only that card', async () => {
     true,
   );
 });
+
+// Distances follow the cardio session screen (#115): swimming in metres.
+test('a swimming goal reads its distance in metres', async () => {
+  const ui = mount([
+    {
+      ...fiveK,
+      id: 4,
+      goal_type: 'longest_distance',
+      kind: 'swimming',
+      target_distance_km: 1.5,
+      target_duration_sec: null,
+      achieved: false,
+      progress: { kind: 'record', best: 1.2 },
+    },
+  ]);
+  render(<App />);
+  await openPage('나의 목표', ui.user);
+  const swim = card(
+    (await within(section()).findByRole('heading', { level: 3, name: '수영 한 번에 1,500 m' }))
+      .textContent,
+  );
+  expect(swim.textContent).toMatch(/가장 긴 거리 1,200 m/);
+});

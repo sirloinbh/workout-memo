@@ -44,3 +44,12 @@
 - 권장 4: e2e 좌표 비교를 모두 `toBeCloseTo(…, 0)`로 바꿔 소수 픽셀에 흔들리지 않게 했습니다.
 - 추가 테스트: `keyboardInset`에 확대(`scale: 2`) 1건
 - 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck·eslint·prettier 통과
+
+## 변경 — fix: 2차 리뷰 보완
+
+2차 리뷰는 1차 지적 4건이 모두 반영됐다고 확인했고, 필수 1건·권장 2건을 냈습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+
+- 필수(해당 없음, 변경 없음): "모달 입력칸이 `.modal label`의 11px을 물려받아 iOS가 포커스 때 자동 확대하고, 그러면 `scale > 1.01`이라 키보드 대응이 꺼진다"는 지적입니다. 터치 화면(`pointer: coarse`)에서는 `style.css`의 #104 규칙이 `.legacy` 안의 입력·선택·여러 줄 칸을 16px로 맞춥니다. 모달은 `legacy` 클래스를 달고 있으므로 휴대폰에서는 자동 확대가 일어나지 않습니다. 사용자가 직접 확대한 채 키보드를 열면 키보드 대응이 꺼지는 것은 의도한 한계입니다(확대 중에는 키보드와 확대를 구분할 수 없음).
+- 권장 1: 키보드가 열린 동안 `visualViewport`의 `scroll`마다 입력 중인 칸으로 되돌리던 것을, 키보드 높이가 늘었을 때만 하도록 바꿨습니다. 사용자의 스크롤을 끌어당기지 않습니다. 단위 테스트에 키보드가 열린 뒤 `scroll` 이벤트에 다시 스크롤하지 않는지 확인을 더했습니다.
+- 권장 2: 기준선 갱신은 CI 결과를 보고 합니다(아래 시각 기준선).
+- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck·eslint·prettier 통과

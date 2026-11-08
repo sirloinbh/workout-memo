@@ -19,12 +19,16 @@ function useKeyboardInset(content: HTMLElement | null) {
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!content || !viewport) return;
+    let last = 0;
     const sync = () => {
       const inset = keyboardInset(window.innerHeight, viewport);
       content.style.setProperty('--keyboard-inset', `${inset}px`);
-      // The modal just got shorter: bring the field being typed into back into view.
+      // Only when the modal just got shorter (the keyboard opened or grew): bring the field
+      // being typed into back into view. Later scrolls are the user's and are left alone.
+      const grew = inset > last;
+      last = inset;
       const active = document.activeElement;
-      if (inset > 0 && active instanceof HTMLElement && content.contains(active))
+      if (grew && active instanceof HTMLElement && content.contains(active))
         active.scrollIntoView?.({ block: 'nearest' });
     };
     sync();

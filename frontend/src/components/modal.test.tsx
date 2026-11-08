@@ -94,6 +94,10 @@ test('Modal follows the visual viewport so the keyboard does not cover the field
     act(() => listeners.get('resize')!());
     expect(dialog.style.getPropertyValue('--keyboard-inset')).toBe('300px');
     expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+    expect(scrolled).toHaveBeenCalledTimes(1);
+    // With the keyboard still open, a visual-viewport scroll is the user's: no pulling back.
+    act(() => listeners.get('scroll')!());
+    expect(scrolled).toHaveBeenCalledTimes(1);
     unmount();
     expect(viewport.removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
     expect(viewport.removeEventListener).toHaveBeenCalledWith('scroll', expect.any(Function));

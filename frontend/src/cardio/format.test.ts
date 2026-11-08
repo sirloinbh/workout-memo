@@ -76,7 +76,9 @@ test('only plain decimals are read as numbers', () => {
   expect(optionalNumber('  ')).toBeNull();
   expect(optionalNumber('5')).toBe(5);
   expect(optionalNumber(' 5.02 ')).toBe(5.02);
-  expect(optionalNumber('1,5')).toBe(1.5);
+  // A comma is a thousands separator in Korean, never a decimal point.
+  expect(optionalNumber('1,5')).toBeNaN();
+  expect(optionalNumber('1,000')).toBeNaN();
   expect(optionalNumber('.5')).toBe(0.5);
   expect(optionalNumber('-1')).toBe(-1);
   for (const text of ['0x10', '1e3', '1,500.5', 'Infinity', 'abc', '1 5', '--1'])

@@ -59,7 +59,9 @@ export function CardioPanel({
         setError('');
       } catch (e) {
         if (current !== version.current) return;
-        setSessions([]);
+        // A failed reload after saving or deleting keeps the rows (and focus) under the error;
+        // a failed first load or period change has no rows of its own to show.
+        if (fresh) setSessions([]);
         setError((e as Error).message);
       } finally {
         if (current === version.current) setLoading(false);

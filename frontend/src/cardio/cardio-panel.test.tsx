@@ -284,6 +284,34 @@ test('switching to and from swimming keeps the typed distance in m or km', async
   // Between two km kinds nothing changes.
   await user.selectOptions(kind, '걷기');
   expect(field('거리 km')).toHaveValue('1.5');
+  // A decimal km value becomes whole metres; empty and unreadable text stay as typed.
+  await user.clear(field('거리 km'));
+  await user.type(field('거리 km'), '5.5');
+  await user.selectOptions(kind, '수영');
+  expect(field('거리 m')).toHaveValue('5500');
+  await user.clear(field('거리 m'));
+  await user.selectOptions(kind, '러닝');
+  expect(field('거리 km')).toHaveValue('');
+  await user.type(field('거리 km'), 'abc');
+  await user.selectOptions(kind, '수영');
+  expect(field('거리 m')).toHaveValue('abc');
+});
+
+test('a thousands comma is never read as a decimal point', async () => {
+  const user = userEvent.setup();
+  const { requests } = mount();
+  await list();
+  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
+  await user.type(field('운동 시간 분'), '30');
+  await user.selectOptions(within(dialog()).getByLabelText('종류'), '수영');
+  // "1,000" means one thousand metres here; it must not be saved as 1 m (0.001 km).
+  await user.type(field('거리 m'), '1,000');
+  await user.click(within(dialog()).getByRole('button', { name: '더 입력하기' }));
+  await user.type(field('칼로리 kcal (선택)'), '1,000');
+  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  expect(field('거리 m')).toHaveAttribute('aria-invalid', 'true');
+  expect(field('칼로리 kcal (선택)')).toHaveAccessibleDescription(/숫자로 입력하세요/);
+  expect(requests.some((r) => r.method === 'POST')).toBe(false);
 });
 
 test('a swimming distance must be whole metres', async () => {

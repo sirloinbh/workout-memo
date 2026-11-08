@@ -23,16 +23,17 @@ export const effortLabels: Record<Feedback, string> = {
   easy: '쉬움',
 };
 
-// A plain decimal: digits with at most one point or comma (a phone keypad's decimal comma),
-// optionally negative so the schema's range message answers "-1". Number() alone would also
-// read "0x10", "1e3" or "Infinity" and send a value nobody typed.
-const plainNumber = /^-?(\d+([.,]\d*)?|[.,]\d+)$/;
+// A plain decimal: digits with at most one decimal point, optionally negative so the schema's
+// range message answers "-1". A comma is never accepted: in Korean "1,000" is a thousands
+// separator, and reading it as a decimal comma would save 1 m for a 1,000 m swim (#115 review).
+// Number() alone would also read "0x10", "1e3" or "Infinity" and send a value nobody typed.
+const plainNumber = /^-?(\d+(\.\d*)?|\.\d+)$/;
 // Empty stays null (not recorded, never 0); anything that is not a plain decimal becomes NaN
 // so the schema reports "숫자로 입력하세요" on that field.
 export const optionalNumber = (value: string) => {
   const text = value.trim();
   if (text === '') return null;
-  return plainNumber.test(text) ? Number(text.replace(',', '.')) : Number.NaN;
+  return plainNumber.test(text) ? Number(text) : Number.NaN;
 };
 
 type DurationParts = { hours: string; minutes: string; seconds: string };

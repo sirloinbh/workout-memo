@@ -381,7 +381,13 @@ test(
       const backup = (await db.api('/backup')).data;
       const before = await db.count();
       const cases: [string, unknown, RegExp, number?, string?][] = [
-        ['corrupted JSON', undefined, /요청 형식/, 400, '{"mode":"merge","backup":{'],
+        [
+          'corrupted JSON',
+          undefined,
+          /요청 본문의 JSON 형식이 올바르지 않습니다/,
+          400,
+          '{"mode":"merge","backup":{',
+        ],
         ['other format', { ...backup, format: 'strong-app' }, /백업 파일 형식이 아닙니다/],
         ['unsupported version', { ...backup, version: 99 }, /지원하지 않는 백업 버전/],
         ['missing data', { ...backup, data: undefined }, /data/],

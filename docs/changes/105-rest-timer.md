@@ -60,3 +60,9 @@
 - 권장 2: 루틴짜기·백업·신체 기록·종목 분석 화면에서는 진행 중인 휴식의 타이머 줄이 화면 제목보다 위에 나옵니다. 다른 화면은 제목 다음입니다. 의도한 동작입니다. 이 화면들은 제목을 각 컴포넌트가 그리므로, 그 사이에 넣으려면 네 컴포넌트를 모두 고쳐야 합니다.
 - 권장 3: 위쪽 `scroll-padding`(144px)은 `layout="full"`의 모든 폭에 적용됩니다. 넓은 화면에서는 타이머 줄이 한 줄(약 80px)이라 여유분입니다. 포커스로 스크롤될 때만 작동하므로 화면 모양과 기준선은 바뀌지 않습니다.
 - 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/set-completion.test.tsx src/rest-by-exercise.test.tsx src/routines.test.tsx` 29 pass, typecheck·eslint·prettier 통과
+
+## 변경 — test: 시각 기준선 갱신
+
+- a246df2의 PR CI에서 e2e-visual은 360·390·768·1280px `workout-editor` 4장만 실패했습니다. 예상과 같습니다. 새 "390px 휴식 타이머"를 포함한 반응형 검사와 verify·docker-build·windows-auth는 통과했습니다.
+- diff 이미지로 바뀐 곳을 확인했습니다. 타이머 카드가 타이머 줄(남은 시간·휴식 시작)과 설정 카드(휴식 시간·자동 시작·운동별 기본 휴식·안내 문구)로 나뉘었고, 안내 문구에 진동 안내가 한 줄 늘었습니다. 그 외 화면 변화는 없습니다.
+- main이 섞이지 않도록 push 실행(run 42463940560)의 `visual-baselines` 산출물에서 이 4장만 `e2e/__screenshots__/ui-visual.spec.ts/`로 옮겼습니다.

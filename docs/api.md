@@ -60,6 +60,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 | PUT    | `/api/exercise-weight-steps`    | 운동 1개의 증량 단위 저장. `null`은 기본 5 kg으로 되돌림                  |
 | GET    | `/api/goal-suggestion`          | `?exercise=`의 다음 목표 제안(저장하지 않음)                              |
 | GET    | `/api/cardio-sessions`          | `?from&to` 기간의 유산소 기록(최근 순). `kind` 선택                       |
+| GET    | `/api/cardio-sessions/records`  | 유산소 개인 기록(전체 기간): 종류별 최장 거리, 러닝 5km·10km 최고 기록    |
 | GET    | `/api/cardio-sessions/:id`      | 유산소 기록 1개                                                           |
 | POST   | `/api/cardio-sessions`          | 유산소 기록 등록 → 201. 같은 출처·외부 ID는 409                           |
 | PUT    | `/api/cardio-sessions/:id`      | 유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 `null`                  |
@@ -165,6 +166,23 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 - 응답은 저장한 필드와 `id`, `created_at`, `updated_at`, 계산값 `pace_sec_per_km`(초/km, 소수 1자리)·`speed_kmh`(km/h, 소수 2자리)입니다. 계산값은 저장하지 않고 조회할 때 SQL로 계산하며 거리가 없으면 둘 다 `null`입니다.
 - 목록 `GET /api/cardio-sessions?from&to[&kind]`는 날짜·시작 시각 최근 순입니다. 없는 기록은 404 "유산소 기록을 찾을 수 없습니다", 잘못된 경로 ID는 400 "유산소 기록 ID가 올바르지 않습니다"입니다.
 - 구간(랩·인터벌)과 GPS 경로는 저장하지 않습니다(요약값만).
+
+### 유산소 개인 기록 `GET /api/cardio-sessions/records` (#115)
+
+```json
+{
+  "longest": [
+    { "kind": "running", "id": 12, "date": "2026-10-26", "distance_km": 21.1, "duration_sec": 7380 }
+  ],
+  "best5k": { "id": 9, "date": "2026-11-02", "distance_km": 5.02, "duration_sec": 1470 },
+  "best10k": null
+}
+```
+
+- 기간과 상관없이 저장된 모든 기록에서 찾습니다. 받는 입력이 없어 400이 없습니다.
+- `longest`: 거리가 있는 종류마다 가장 긴 기록 1개입니다. 순서는 `kind` 목록 순(러닝 먼저)이고 거리가 없는 종류는 빠집니다. 같은 거리면 날짜가 이른 기록입니다.
+- `best5k`·`best10k`: 러닝 중 거리가 5km·10km의 ±2%(4.9~5.1 km, 9.8~10.2 km, 경계 포함)인 기록에서 전체 시간이 가장 짧은 기록입니다. 더 긴 기록의 시간을 페이스로 줄여 추정하지 않습니다(2026-11-08 사용자 결정 4). 해당 기록이 없으면 `null`이고, 같은 시간이면 날짜가 이른 기록입니다.
+- 이 경로는 `/api/cardio-sessions/:id`보다 먼저 등록해 `records`가 ID로 읽히지 않습니다.
 
 ### 유산소 목표 `GET`·`POST /api/cardio-goals`, `DELETE /api/cardio-goals/:id` (#116)
 

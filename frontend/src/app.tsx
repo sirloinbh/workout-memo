@@ -980,7 +980,7 @@ function Workspace() {
             <BodyMeasurements from={from} to={to} workouts={workouts} controls={periodControls} />
           )}
           {page === 'analysis' && <Analysis />}
-          {page !== 'routines' && page !== 'body' && page !== 'analysis' && page !== 'backup' && (
+          {!ownPage && (
             <div className="page-heading">
               <div>
                 <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>

@@ -51,3 +51,12 @@
 - 권장 5: 위 테스트 항목을 테스트별로 묶었고, 진동 테스트가 실제 마지막 tick 경로를 지나지 않는다는 점을 적었습니다.
 - 추가 테스트: `set-completion.test.tsx`에 루틴짜기 화면에서 진행 중인 휴식이 맨 앞의 고정 줄에 있는지 1개
 - 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/set-completion.test.tsx src/rest-by-exercise.test.tsx src/components/modal.test.tsx` 24 pass, typecheck·eslint·prettier 통과
+
+## 변경 — fix: 2차 리뷰 보완
+
+2차 리뷰는 1차 권장 5건이 모두 반영됐다고 확인했고, 필수 지적 없이 권장 3건을 냈습니다. 모두 반영했습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+
+- 권장 1: 자체 컴포넌트 화면 목록이 타이머 위치(`ownPage`)와 페이지 머리글 조건에 따로 적혀 있었습니다. 머리글 조건도 `!ownPage`로 바꿔 목록을 한 곳에서 관리합니다. 동작은 같습니다.
+- 권장 2: 루틴짜기·백업·신체 기록·종목 분석 화면에서는 진행 중인 휴식의 타이머 줄이 화면 제목보다 위에 나옵니다. 다른 화면은 제목 다음입니다. 의도한 동작입니다. 이 화면들은 제목을 각 컴포넌트가 그리므로, 그 사이에 넣으려면 네 컴포넌트를 모두 고쳐야 합니다.
+- 권장 3: 위쪽 `scroll-padding`(144px)은 `layout="full"`의 모든 폭에 적용됩니다. 넓은 화면에서는 타이머 줄이 한 줄(약 80px)이라 여유분입니다. 포커스로 스크롤될 때만 작동하므로 화면 모양과 기준선은 바뀌지 않습니다.
+- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/set-completion.test.tsx src/rest-by-exercise.test.tsx src/routines.test.tsx` 29 pass, typecheck·eslint·prettier 통과

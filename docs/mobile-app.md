@@ -26,19 +26,19 @@
 
 ## 후보 비교
 
-| 기준                  | PWA만                                                                                                                           | TWA (Bubblewrap / PWABuilder)                                                                       | Capacitor                                                                                                                  |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 실행 방식             | 브라우저가 설치한 웹 앱                                                                                                         | Chrome(또는 TWA 지원 브라우저)이 주소창 없이 띄우는 안드로이드 앱                                   | 앱 안의 WebView + 네이티브 플러그인                                                                                        |
-| 선행 조건             | HTTPS, manifest(이름·192/512 아이콘·`start_url`·`display`)                                                                      | PWA 조건 + `/.well-known/assetlinks.json`(Digital Asset Links). 실패하면 주소창이 보이는 Custom Tab | 안드로이드 스튜디오 2025.2.1 이상, Node 22 이상. 웹 자원을 앱에 넣으면 앱 자체는 HTTPS 없이도 뜨지만 API 서버는 HTTPS 필요 |
-| 웹 배포만으로 갱신    | 예                                                                                                                              | 예(내용은 웹에서 불러옴). 아이콘·이름·패키지 설정만 앱 업데이트                                     | 아니오. 웹 자원을 앱에 넣으므로 매번 앱 빌드·스토어 업데이트. `server.url` 원격 로드는 공식 문서상 "운영용 아님"           |
-| 오프라인              | 서비스 워커 캐시(웹 작업)                                                                                                       | PWA와 같음(같은 서비스 워커)                                                                        | 앱 셸은 기본 포함. 데이터 오프라인은 역시 직접 구현                                                                        |
-| 화면 꺼짐 타이머 알림 | 불안정. 5분 넘게 숨겨진 페이지의 연쇄 타이머(5단계 이상)는 소리·WebRTC가 없으면 1분에 한 번으로 묶임. 예약 알림 API는 개발 중단 | PWA와 같음(웹 코드가 알림을 띄움)                                                                   | Local Notifications로 예약 가능. 정확한 시각은 `SCHEDULE_EXACT_ALARM`, Doze 중엔 `allowWhileIdle`(앱당 9분에 한 번)        |
-| 서버 Web Push로 대체  | 가능(서버가 종료 시각에 푸시). VAPID·구독 저장·발송 코드 필요                                                                   | 가능(같은 방식)                                                                                     | 필요 없음(로컬 알림)                                                                                                       |
-| Health Connect        | 불가(웹 API 없음)                                                                                                               | 불가(TWA 안은 웹 코드)                                                                              | 가능. 단 Kotlin 네이티브 코드(Jetpack `connect-client`)를 직접 쓰거나 커뮤니티 플러그인 필요                               |
-| iOS                   | 가능. Safari "홈 화면에 추가", iOS 16.4부터 홈 화면 앱 Web Push                                                                 | 없음(안드로이드 전용)                                                                               | 가능. Mac·Xcode 26 이상, Apple Developer Program 연 US$99                                                                  |
-| 비용                  | 도메인 비용                                                                                                                     | 도메인 + Play US$25(1회)                                                                            | 도메인 + Play US$25(1회), iOS면 연 US$99와 Mac                                                                             |
-| 유지보수              | 가장 적음                                                                                                                       | 적음. 서명 키·`assetlinks.json` 관리, Play 목표 API 수준 갱신 때 재빌드                             | 큼. 안드로이드 프로젝트·Gradle·플러그인 버전, 웹 변경마다 앱 릴리스                                                        |
-| npm 공급망            | 새 패키지 없음                                                                                                                  | Bubblewrap CLI는 의존성이 많음. PWABuilder 웹 서비스를 쓰면 로컬 설치 없음                          | `@capacitor/*` 3~4개가 앱 저장소 의존성으로 계속 남음                                                                      |
+| 기준                  | PWA만                                                                                                                                                 | TWA (Bubblewrap / PWABuilder)                                                                       | Capacitor                                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 실행 방식             | 브라우저가 설치한 웹 앱                                                                                                                               | Chrome(또는 TWA 지원 브라우저)이 주소창 없이 띄우는 안드로이드 앱                                   | 앱 안의 WebView + 네이티브 플러그인                                                                                        |
+| 선행 조건             | HTTPS, manifest(이름·192/512 아이콘·`start_url`·`display`)                                                                                            | PWA 조건 + `/.well-known/assetlinks.json`(Digital Asset Links). 실패하면 주소창이 보이는 Custom Tab | 안드로이드 스튜디오 2025.2.1 이상, Node 22 이상. 웹 자원을 앱에 넣으면 앱 자체는 HTTPS 없이도 뜨지만 API 서버는 HTTPS 필요 |
+| 웹 배포만으로 갱신    | 예                                                                                                                                                    | 예(내용은 웹에서 불러옴). 아이콘·이름·패키지 설정만 앱 업데이트                                     | 아니오. 웹 자원을 앱에 넣으므로 매번 앱 빌드·스토어 업데이트. `server.url` 원격 로드는 공식 문서상 "운영용 아님"           |
+| 오프라인              | 서비스 워커 캐시(웹 작업)                                                                                                                             | PWA와 같음(같은 서비스 워커)                                                                        | 앱 셸은 기본 포함. 데이터 오프라인은 역시 직접 구현                                                                        |
+| 화면 꺼짐 타이머 알림 | 불안정. 5분 넘게 숨겨진 페이지의 연쇄 타이머(5단계 이상)는 30초 이상 소리가 없고 WebRTC를 쓰지 않으면 1분에 한 번으로 묶임. 예약 알림 API는 개발 중단 | PWA와 같음(웹 코드가 알림을 띄움)                                                                   | Local Notifications로 예약 가능. 정확한 시각은 `SCHEDULE_EXACT_ALARM`, Doze 중엔 `allowWhileIdle`(앱당 9분에 한 번)        |
+| 서버 Web Push로 대체  | 가능(서버가 종료 시각에 푸시). VAPID·구독 저장·발송 코드 필요                                                                                         | 가능(같은 방식)                                                                                     | 필요 없음(로컬 알림)                                                                                                       |
+| Health Connect        | 불가(웹 API 없음)                                                                                                                                     | 불가(TWA 안은 웹 코드)                                                                              | 가능. 단 Kotlin 네이티브 코드(Jetpack `connect-client`)를 직접 쓰거나 커뮤니티 플러그인 필요                               |
+| iOS                   | 가능. Safari "홈 화면에 추가", iOS 16.4부터 홈 화면 앱 Web Push                                                                                       | 없음(안드로이드 전용)                                                                               | 가능. Mac·Xcode 26 이상, Apple Developer Program 연 US$99                                                                  |
+| 비용                  | 도메인 비용                                                                                                                                           | 도메인 + Play US$25(1회)                                                                            | 도메인 + Play US$25(1회), iOS면 연 US$99와 Mac                                                                             |
+| 유지보수              | 가장 적음                                                                                                                                             | 적음. 서명 키·`assetlinks.json` 관리, Play 목표 API 수준 갱신 때 재빌드                             | 큼. 안드로이드 프로젝트·Gradle·플러그인 버전, 웹 변경마다 앱 릴리스                                                        |
+| npm 공급망            | 새 패키지 없음                                                                                                                                        | Bubblewrap CLI는 의존성이 많음. PWABuilder 웹 서비스를 쓰면 로컬 설치 없음                          | `@capacitor/*` 3~4개가 앱 저장소 의존성으로 계속 남음                                                                      |
 
 ## 각 후보의 장단점
 
@@ -50,7 +50,7 @@
 ### TWA
 
 - 장점: PWA를 그대로 스토어 앱으로 만든다. 웹 배포가 곧 앱 갱신이라 지금의 자동 배포(#75)를 그대로 쓴다. PWABuilder 웹 서비스로 AAB·서명 키·`assetlinks.json`까지 받을 수 있다.
-- 단점: 알림·Health Connect 한계는 PWA와 같다. Digital Asset Links 검증이 실패하면 주소창이 보인다. 서명 키 지문을 Play App Signing 키 지문을 `assetlinks.json`에 더해야 한다(업로드 키 지문과 함께). 기기의 Chrome에 의존한다.
+- 단점: 알림·Health Connect 한계는 PWA와 같다. Digital Asset Links 검증이 실패하면 주소창이 보인다. 업로드 키 지문에 더해 Play App Signing 키 지문도 `assetlinks.json`에 넣어야 한다. 기기의 Chrome에 의존한다.
 
 ### Capacitor
 
@@ -137,7 +137,7 @@ PWABuilder(<https://www.pwabuilder.com>)는 서버에서 Bubblewrap을 돌려 TW
 
 ## 사용자 결정 항목
 
-1. **스토어 공개 대상**: 본인만 내부 테스트(추천, 테스터 요건 없음) / 일반 공개(테스터 12명·14일 비공개 테스트, 데이터 보안 양식, 건강 앱 신고, 심사 필요).
+1. **스토어 공개 대상**: 본인만 내부 테스트(추천, 테스터 요건·데이터 보안 양식 없음. 건강 앱 신고는 명시 면제가 없어 요구될 수 있음, "확인하지 못한 것" 참고) / 일반 공개(테스터 12명·14일 비공개 테스트, 데이터 보안 양식, 건강 앱 신고, 심사 필요).
 2. **iOS 필요 여부**: 필요 없음(추천) / iOS 홈 화면 PWA로 충분 / App Store 등록(Mac·Xcode·연 US$99, Capacitor 필요).
 3. **화면 꺼짐 알림 수준**: 화면 켜짐에서만 알림 / 서버 Web Push로 종료 알림(추천, 수 초 지연 가능) / 로컬 정확 알림(Capacitor).
 4. **Health Connect 시점**: #118 결론 후 결정(추천) / 지금부터 Capacitor로 시작.
@@ -148,7 +148,7 @@ PWABuilder(<https://www.pwabuilder.com>)는 서버에서 Bubblewrap을 돌려 TW
 
 - **#109 PWA 설치 지원**: 이슈 본문의 "manifest·아이콘·서비스 워커 없음"은 이미 해소됐다(중앙 템플릿 동기화). 남은 범위는 HTTPS에서 Chrome 설치 가능 판정과 Lighthouse 기록, 안드로이드 실기기 설치·전체 화면, 새 버전 반영 확인, 오프라인 앱 셸 캐시와 저장 실패 표시(#34 연결) 여부 결정, 서버 Web Push 휴식 알림을 여기서 할지 별도 이슈로 뺄지 결정. `vite-plugin-pwa`는 쓰지 않고 현재 직접 작성한 `sw.js`를 유지한다(새 npm 없음).
 - **#110 안드로이드 패키지**: TWA(PWABuilder)로 확정. 패키지 이름, 업로드 키 생성·보관, `/.well-known/assetlinks.json` 배포(로그인 예외, 업로드 키·앱 서명 키 지문 둘 다), 목표 API 36 이상 확인, 실기기 시나리오(로그인 유지·일지 저장·휴식 타이머·뒤로 가기·웹 배포 반영). APK 직접 설치 대신 Play 내부 테스트로 설치한다.
-- **#111 Play 등록**: 내부 테스트 트랙까지로 범위를 줄이는 것을 제안한다. 계정 등록(US$25, 기기 인증), 개인정보처리방침 공개 페이지, 스토어 등록정보 최소본. 일반 공개를 고르면 비공개 테스트(12명·14일), 데이터 보안 양식, 건강 앱 신고("Activity and Fitness"), 콘텐츠 등급을 더한다.
+- **#111 Play 등록**: 내부 테스트 트랙까지로 범위를 줄이는 것을 제안한다. 계정 등록(US$25, 기기 인증), 개인정보처리방침 공개 페이지, 스토어 등록정보 최소본, 건강 앱 신고(내부 테스트에도 요구되면 함께 제출). 일반 공개를 고르면 비공개 테스트(12명·14일), 데이터 보안 양식, 건강 앱 신고("Activity and Fitness"), 콘텐츠 등급을 더한다.
 - **새 이슈(보류)**: 화면 꺼짐 휴식 알림(서버 Web Push), Capacitor 전환과 Health Connect 연동(#118 결과에 따라).
 
 ## 확인하지 못한 것
@@ -177,7 +177,7 @@ PWABuilder(<https://www.pwabuilder.com>)는 서버에서 Bubblewrap을 돌려 TW
   - [Health Connect 시작하기](https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started)
   - [Trusted Web Activity 개요](https://developer.chrome.com/docs/android/trusted-web-activity/overview)
   - [TWA 통합 가이드(assetlinks.json)](https://developer.chrome.com/docs/android/trusted-web-activity/integration-guide)
-  - [Chrome 88 타이머 제한(숨은 페이지 5분 뒤 1분에 한 번)](https://developer.chrome.com/blog/timer-throttling-in-chrome-88)
+  - [Chrome 88 타이머 제한(조건부로 1분에 한 번)](https://developer.chrome.com/blog/timer-throttling-in-chrome-88)
   - [Notification Triggers API 개발 중단](https://developer.chrome.com/docs/web-platform/notification-triggers)
   - [PWA 설치 조건](https://web.dev/articles/install-criteria)
 - Capacitor

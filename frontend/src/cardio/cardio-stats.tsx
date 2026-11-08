@@ -50,7 +50,7 @@ const text = (t: Totals, metric: Metric, kind: CardioKind | null) =>
 export function CardioStats({
   from,
   to,
-  sessions,
+  sessions: given,
   refreshKey,
 }: {
   from: string;
@@ -60,8 +60,16 @@ export function CardioStats({
   // Passed to CardioRecords: change it after a save or delete to reload the records.
   refreshKey?: number;
 }) {
-  // Long periods start per month, like the volume chart's groups (rangeBuckets).
-  const [unit, setUnit] = useState<StatUnit>(() => (rangeDays(from, to) > 92 ? 'month' : 'week'));
+  // Every figure below uses only the sessions of from..to, so totals, buckets and the per-kind
+  // views always agree even if a caller passes a wider list.
+  const sessions = given.filter((s) => s.date.slice(0, 10) >= from && s.date.slice(0, 10) <= to);
+  // Long periods start per month, like the volume chart's groups (rangeBuckets). A new period
+  // starts again from its own default; a choice made by the user holds within the period.
+  const period = `${from}~${to}`;
+  const defaultUnit: StatUnit = rangeDays(from, to) > 92 ? 'month' : 'week';
+  const [chosen, setChosen] = useState<{ period: string; unit: StatUnit } | null>(null);
+  const unit = chosen?.period === period ? chosen.unit : defaultUnit;
+  const setUnit = (next: StatUnit) => setChosen({ period, unit: next });
   const [metric, setMetric] = useState<Metric>('distance');
   const kinds = kindsOf(sessions);
   const total = totalsOf(sessions);

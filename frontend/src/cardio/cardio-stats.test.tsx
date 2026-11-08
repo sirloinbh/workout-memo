@@ -136,7 +136,7 @@ test('records: loaded from the records endpoint, swim distance in m, missing bes
   expect(api.requests.map((r) => r.path)).toEqual(['/api/cardio-sessions/records']);
   const items = within(list).getAllByRole('listitem');
   expect(items.map((i) => i.textContent)).toEqual([
-    '5km 최고 기록24:305.02 km · 4:53/km · 2026-11-02',
+    '5km 최고 기록24:305.02 km · 4:53/km · 12.3 km/h · 2026-11-02',
     '10km 최고 기록9.8~10.2 km 러닝 기록이 없습니다',
     '러닝 최장 거리21.1 km2:03:00 · 2026-10-26',
     '수영 최장 거리1,500 m40:00 · 2026-10-02',
@@ -154,4 +154,32 @@ test('records: a failed load shows an alert with 다시 연결 and retries', asy
     await screen.findByRole('heading', { name: '아직 개인 기록이 없습니다' }),
   ).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+test('sessions outside the period never count, in totals or per kind', () => {
+  // A wider list than the period (e.g. a stale one): 10/30 must not reach any figure.
+  renderStats([...sessions, session('2026-10-30', 'rowing', 3600, 10)]);
+  const totals = screen.getByLabelText('기간 합계');
+  expect(within(totals).getByText('11.52 km')).toBeInTheDocument();
+  expect(within(totals).getByText('4회')).toBeInTheDocument();
+  expect(screen.queryByText('로잉')).toBeNull();
+});
+
+test('a new period starts again from its default unit; a chosen unit holds within a period', async () => {
+  const user = userEvent.setup();
+  mockApi(() => noRecords);
+  const { rerender } = render(
+    <CardioStats from="2026-11-02" to="2026-11-15" sessions={sessions} />,
+  );
+  expect(chart(/^전체 주별 거리/)).toBeInTheDocument();
+  await user.click(screen.getByRole('radio', { name: '월별' }));
+  expect(chart(/^전체 월별 거리/)).toBeInTheDocument();
+  // Same period again: the choice stays.
+  rerender(<CardioStats from="2026-11-02" to="2026-11-15" sessions={sessions} />);
+  expect(chart(/^전체 월별 거리/)).toBeInTheDocument();
+  // A short new period goes back to weekly; a year-long one starts monthly.
+  rerender(<CardioStats from="2026-11-09" to="2026-11-15" sessions={sessions} />);
+  expect(chart(/^전체 주별 거리/)).toBeInTheDocument();
+  rerender(<CardioStats from="2025-11-16" to="2026-11-15" sessions={sessions} />);
+  expect(chart(/^전체 월별 거리/)).toBeInTheDocument();
 });

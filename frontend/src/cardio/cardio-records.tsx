@@ -7,7 +7,15 @@ import { Button } from '../components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
 import { type CardioRecord, type CardioRecords as Records, getCardioRecords } from './api';
-import { cardioKindLabels, formatDistance, formatDuration, formatPace, paceOf } from './format';
+import {
+  cardioKindLabels,
+  formatDistance,
+  formatDuration,
+  formatPace,
+  formatSpeed,
+  paceOf,
+  speedOf,
+} from './format';
 
 // #115: all-time personal records, loaded on their own because they do not depend on the
 // period. `refreshKey` lets the caller reload them after a session is saved or deleted.
@@ -43,6 +51,7 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
           {[
             formatDistance('running', record.distance_km),
             formatPace(paceOf(record.duration_sec, record.distance_km)),
+            formatSpeed(speedOf(record.duration_sec, record.distance_km)),
             record.date.slice(0, 10),
           ].join(' · ')}
         </p>

@@ -81,3 +81,9 @@
 - (선택) v1 백업 파일에 `cardio_sessions` 키가 있으면 버리는 값인데도 검증해서, 잘못된 값이 있으면 v1 복원이 400으로 실패했습니다. v1이면 검증 전에 이 키를 지웁니다. `backup.test.ts`에 잘못된 유산소 목록이 든 v1 파일도 복원되는지 확인을 넣었습니다.
 - (선택) `database/README.md`의 전체 교체 설명에 "유산소가 없는 v1 백업으로 전체 교체하면 지금 있는 유산소 기록도 지워진다"를 적었습니다.
 - `tsx --test test/backup.test.ts test/cardio.test.ts`: 23 pass. `npm run typecheck -w backend`, eslint, prettier 통과. DB 통합 테스트는 여전히 CI에서 처음 실행됩니다.
+
+## main 병합
+
+- #242(#222 페이지 머리글) 병합 뒤 `origin/main`을 merge했습니다(`ba79e40`). 충돌은 없었고 바뀐 파일은 이 PR의 20개 그대로입니다. 이 merge 커밋의 CI는 전체 통과했습니다.
+- 이어서 #245(#198 터치 검사, `e2e/`·`docs/`만 변경)가 들어왔습니다. 겹치는 파일은 없지만 `e2e/**` 변경이라 바로 병합 조건에 맞지 않아 다시 merge했습니다. 충돌은 없었습니다. 병합 뒤 `tsc -p e2e/tsconfig.json` 통과, `tsx --test test/cardio.test.ts test/backup.test.ts test/api-contract.test.ts test/openapi.test.ts` 통과
+- 작업 중 사고: #242 병합에 쓴 임시 worktree에 이 워크트리의 `node_modules`를 정션으로 연결한 상태로 `git worktree remove`를 실행했습니다. 이 때문에 이 워크트리의 `backend/`·`frontend/` 작업 파일과 `node_modules`가 지워졌습니다. index와 커밋은 그대로여서 `git restore -- backend frontend`로 추적 파일을 되살리고 `npm ci`로 의존성을 다시 설치했습니다. 이 PR의 커밋 내용에는 영향이 없습니다.

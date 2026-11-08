@@ -4,6 +4,7 @@ import { type AnalysisSet, analyze } from '../../backend/src/analysis.js';
 import { type CardioGoalSession, judgeCardioGoal } from '../../backend/src/cardio-goals.js';
 import {
   cardioGoalSchema,
+  cardioKinds,
   defaultWeightStep,
   type RoutinePlan,
   routineSchedule,
@@ -25,6 +26,8 @@ export const now = new Date('2026-10-15T10:00:00+09:00');
 export const pages = [
   { path: '/', name: 'dashboard' },
   { path: '/journal', name: 'journal' },
+  // #115: the journal's 유산소 tab (list, statistics and personal records).
+  { path: '/journal?tab=cardio', name: 'journal-cardio' },
   { path: '/goals', name: 'goals' },
   { path: '/analysis', name: 'analysis' },
   { path: '/routines', name: 'routines' },
@@ -162,6 +165,60 @@ const cardioSessions: CardioGoalSession[] = [
   { date: '2026-10-13', kind: 'running', duration_sec: 1750, distance_km: 5.2 },
   { date: '2026-10-14', kind: 'indoor_cycling', duration_sec: 2700, distance_km: null },
 ];
+// #115: the same sessions as GET /api/cardio-sessions answers them (newest first, pace and
+// speed rounded like the server), for the journal's cardio tab and the dashboard card.
+const cardioRows = cardioSessions
+  .map((s, i) => ({
+    id: i + 1,
+    start_time: i === 2 ? '07:10' : null,
+    avg_heart_rate: i === 2 ? 152 : null,
+    max_heart_rate: null,
+    calories_kcal: null,
+    elevation_gain_m: null,
+    avg_cadence: null,
+    effort: i === 2 ? 'medium' : null,
+    workout_id: null,
+    source: 'manual',
+    external_id: null,
+    memo: i === 2 ? '한강' : '',
+    ...s,
+    pace_sec_per_km:
+      s.distance_km === null ? null : Math.round((s.duration_sec / s.distance_km) * 10) / 10,
+    speed_kmh:
+      s.distance_km === null
+        ? null
+        : Math.round((s.distance_km * 3600 * 100) / s.duration_sec) / 100,
+  }))
+  .reverse();
+// Same rules as GET /api/cardio-sessions/records: the longest distance per kind, and the
+// fastest running time within ±2% of 5 km and 10 km.
+const record = ({ id, date, distance_km, duration_sec }: (typeof cardioRows)[number]) => ({
+  id,
+  date,
+  distance_km: distance_km!,
+  duration_sec,
+});
+const bestTime = (km: number) =>
+  cardioRows
+    .filter(
+      (s) =>
+        s.kind === 'running' &&
+        s.distance_km !== null &&
+        s.distance_km >= km * 0.98 &&
+        s.distance_km <= km * 1.02,
+    )
+    .sort((a, b) => a.duration_sec - b.duration_sec || a.date.localeCompare(b.date) || a.id - b.id)
+    .map(record)[0] ?? null;
+const cardioRecords = {
+  longest: cardioKinds.flatMap((kind) => {
+    const longest = cardioRows
+      .filter((s) => s.kind === kind && s.distance_km !== null)
+      .sort((a, b) => b.distance_km! - a.distance_km! || a.date.localeCompare(b.date))[0];
+    return longest ? [{ kind, ...record(longest) }] : [];
+  }),
+  best5k: bestTime(5),
+  best10k: bestTime(10),
+};
 const cardioGoals = [
   {
     id: 3,
@@ -309,6 +366,8 @@ function respond(url: URL): unknown {
   if (path === '/workouts') return inRange(workouts, url);
   if (path === '/goals') return goals;
   if (path === '/cardio-goals') return cardioGoals;
+  if (path === '/cardio-sessions/records') return cardioRecords;
+  if (path === '/cardio-sessions') return inRange(cardioRows, url);
   if (path === '/machines') return machines;
   if (path === '/brands') return brands;
   if (path === '/official-machine-weights') return [];

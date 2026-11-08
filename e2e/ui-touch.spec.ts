@@ -91,6 +91,18 @@ for (const { width, height } of touchWidths) {
       expect(await violations(page.locator('main .legacy'))).toEqual([]);
       expect(await overflow(page), '가로 넘침(px)').toBeLessThanOrEqual(0);
     });
+
+    // #102: the routine form opens only on demand; the weekday mode adds the rest-day
+    // Checkboxes and the manual mode the 12 week fieldsets.
+    test('루틴짜기의 루틴 폼이 기준을 지킨다', async ({ page }) => {
+      await openPage(page, '/routines');
+      await page.getByRole('button', { name: '새 루틴 만들기' }).click();
+      await page.getByLabel('운동 일정 방식').selectOption('weekday');
+      await page.getByLabel('주차 목표 방식').selectOption('manual');
+      await expect(page.getByRole('checkbox', { name: '월' })).toBeVisible();
+      expect(await violations(page.locator('main .legacy'))).toEqual([]);
+      expect(await overflow(page), '가로 넘침(px)').toBeLessThanOrEqual(0);
+    });
   });
 }
 

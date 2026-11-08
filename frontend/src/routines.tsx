@@ -1,7 +1,27 @@
+import { Plus } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
+import { AlertBanner } from './components/alert-banner';
+import { Button } from './components/ui/button';
+import { Card } from './components/ui/card';
+import { Checkbox } from './components/ui/checkbox';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Notice } from './components/ui/notice';
 import { defaultWeightStep } from './contract';
+import { cn } from './lib/utils';
 import { byWeek, kindLabel, previewTargets } from './progression';
+
+// #102: the routine form on the common components. Selects stay native like the journal's
+// machine select (#101): the tests and the "자유 운동" empty value rely on a real <select>.
+const fieldLabel = 'flex-col items-stretch gap-1.5 text-meta font-normal text-muted-foreground';
+// The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
+const touchText = 'md:pointer-coarse:text-base';
+const nativeSelect =
+  'h-9 w-full rounded-md border border-input bg-transparent px-3 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 md:text-body-sm md:pointer-coarse:text-base dark:bg-input/30';
+const hint = 'rounded-md bg-muted p-3 text-meta text-muted-foreground';
+const box = 'my-5 min-w-0 rounded-xl border p-4';
+const legend = 'px-1 text-body-sm font-semibold text-foreground';
 
 // #88: 이두·삼두 replace 팔 for new choices; a saved 팔 still shows and can be removed.
 const parts = ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'];
@@ -243,22 +263,31 @@ export function Routines() {
     if (draft)
       setDraft({ ...draft, splits: draft.splits.map((s, i) => (i === index ? value : s)) });
   };
+  const setExercise = (i: number, s: Split, j: number, value: Partial<Exercise>) =>
+    changeSplit(i, {
+      ...s,
+      exercises: s.exercises.map((v, k) => (k === j ? { ...v, ...value } : v)),
+    });
   return (
     <section className="routine-page">
-      <h2>루틴짜기 · 12주 계획</h2>
-      <p>
+      <h2 className="mb-2 text-body font-semibold">루틴짜기 · 12주 계획</h2>
+      <p className="text-body-sm text-muted-foreground">
         운동일마다 분할을 순환하며 4·8·12주차는 디로딩입니다. 자동 목표는 현재 수행 능력에서 12주
         목표를 계산하고, 수동 목표는 주차별 변화량을 직접 입력합니다.
       </p>
-      <p>계획은 목표일 뿐이며 실제 수행은 운동 일지에 따로 기록하세요.</p>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      {savedId !== null && <p role="status">루틴 #{savedId}을 저장했습니다.</p>}
-      <button
-        className="primary"
+      <p className="mb-4 text-body-sm text-muted-foreground">
+        계획은 목표일 뿐이며 실제 수행은 운동 일지에 따로 기록하세요.
+      </p>
+      {error && <AlertBanner>{error}</AlertBanner>}
+      <Notice
+        className="mb-3"
+        notice={
+          savedId !== null
+            ? { kind: 'status', text: `루틴 #${savedId}을 저장했습니다.` }
+            : undefined
+        }
+      />
+      <Button
         disabled={saving}
         onClick={() => {
           setDraft(newPlan());
@@ -267,416 +296,466 @@ export function Routines() {
           setSavedId(null);
         }}
       >
-        새 루틴 만들기
-      </button>
-      {loading && <p role="status">루틴 불러오는 중…</p>}
-      {!loading && !plans.length && <p>저장된 루틴이 없습니다.</p>}
-      <ul>
-        {plans.map((p) => (
-          <li key={p.id}>
-            {p.name}{' '}
-            <button
-              disabled={saving}
-              onClick={() => {
-                setError('');
-                void request<Plan>('/' + p.id)
-                  .then((value) => {
-                    setSelected(value);
-                    setDraft(null);
-                  })
-                  .catch((e) => setError(e.message));
-              }}
-            >
-              계획 보기
-            </button>
-          </li>
-        ))}
-      </ul>
-      {draft && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (saving) return;
-            setSaving(true);
-            setError('');
-            void request<{ id: number }>('', payload(draft))
-              .then(async (result) => {
-                // The POST has succeeded even if a subsequent read fails.
-                // Close this draft so retrying a read cannot duplicate the plan.
-                const saved = { ...(payload(draft) as Plan), id: result.id };
-                setSavedId(result.id);
-                setDraft(null);
-                setSelected(saved);
-                setPlans((previous) => [saved, ...previous]);
-                const detail = await request<Plan>('/' + result.id);
-                setPlans(await request<Plan[]>(''));
-                setSelected(detail);
-              })
-              .catch((e) => setError(e.message))
-              .finally(() => setSaving(false));
-          }}
-        >
-          <label>
-            주차 목표 방식
-            <select
-              value={draft.progression ?? 'manual'}
-              onChange={(e) =>
-                setDraft({ ...draft, progression: e.target.value as 'manual' | 'auto' })
-              }
-            >
-              <option value="auto">자동 · 이중 점진 과부하</option>
-              <option value="manual">수동 · 주차별 직접 입력</option>
-            </select>
-          </label>
-          {draft.progression === 'auto' && <p className="form-hint">{autoRule}</p>}
-          <label>
-            루틴 이름
-            <input
-              required
-              maxLength={120}
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            />
-          </label>
-          <div className="form-grid">
-            <label>
-              시작일
-              <input
-                required
-                type="date"
-                value={draft.start_date}
-                onChange={(e) => setDraft({ ...draft, start_date: e.target.value })}
-              />
-            </label>
-            <label>
-              분할 방식
-              <select
-                value={draft.split_count}
-                onChange={(e) => setDraft(withSplitDefaults(draft, Number(e.target.value)))}
+        <Plus aria-hidden />새 루틴 만들기
+      </Button>
+      <Notice
+        className="mt-3"
+        notice={loading ? { kind: 'status', text: '루틴 불러오는 중…' } : undefined}
+      />
+      {!loading && !plans.length && (
+        <p className="mt-3 text-body-sm text-muted-foreground">저장된 루틴이 없습니다.</p>
+      )}
+      {plans.length > 0 && (
+        <ul data-slot="plan-list" className="mt-3 divide-y rounded-lg border">
+          {plans.map((p) => (
+            <li key={p.id} className="my-0 flex items-center justify-between gap-3 px-4 py-2">
+              <span className="min-w-0 text-body-sm [overflow-wrap:anywhere]">{p.name}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={saving}
+                onClick={() => {
+                  setError('');
+                  void request<Plan>('/' + p.id)
+                    .then((value) => {
+                      setSelected(value);
+                      setDraft(null);
+                    })
+                    .catch((e) => setError(e.message));
+                }}
               >
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>
-                    {n === 1 ? '무분할' : `${n}분할`}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              운동 일정 방식
+                계획 보기
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {draft && (
+        <Card className="mt-5 gap-0 px-4 py-5 shadow-none md:px-6 md:py-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (saving) return;
+              setSaving(true);
+              setError('');
+              void request<{ id: number }>('', payload(draft))
+                .then(async (result) => {
+                  // The POST has succeeded even if a subsequent read fails.
+                  // Close this draft so retrying a read cannot duplicate the plan.
+                  const saved = { ...(payload(draft) as Plan), id: result.id };
+                  setSavedId(result.id);
+                  setDraft(null);
+                  setSelected(saved);
+                  setPlans((previous) => [saved, ...previous]);
+                  const detail = await request<Plan>('/' + result.id);
+                  setPlans(await request<Plan[]>(''));
+                  setSelected(detail);
+                })
+                .catch((e) => setError(e.message))
+                .finally(() => setSaving(false));
+            }}
+          >
+            <Label className={cn(fieldLabel, 'mb-3')}>
+              주차 목표 방식
               <select
-                value={draft.schedule_mode ?? 'weekday'}
+                className={nativeSelect}
+                value={draft.progression ?? 'manual'}
                 onChange={(e) =>
-                  setDraft({ ...draft, schedule_mode: e.target.value as 'weekday' | 'cycle' })
+                  setDraft({ ...draft, progression: e.target.value as 'manual' | 'auto' })
                 }
               >
-                <option value="cycle">주기 · N일 운동 후 M일 휴식</option>
-                <option value="weekday">요일 · 휴식 요일 지정</option>
+                <option value="auto">자동 · 이중 점진 과부하</option>
+                <option value="manual">수동 · 주차별 직접 입력</option>
               </select>
-            </label>
-            {draft.schedule_mode === 'cycle' ? (
-              <>
-                <label>
-                  연속 운동일
-                  <input
+            </Label>
+            {draft.progression === 'auto' && <p className={cn(hint, 'mb-3')}>{autoRule}</p>}
+            <Label className={cn(fieldLabel, 'mb-3')}>
+              루틴 이름
+              <Input
+                className={touchText}
+                required
+                maxLength={120}
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              />
+            </Label>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
+              <Label className={fieldLabel}>
+                시작일
+                <Input
+                  className={touchText}
+                  required
+                  type="date"
+                  value={draft.start_date}
+                  onChange={(e) => setDraft({ ...draft, start_date: e.target.value })}
+                />
+              </Label>
+              <Label className={fieldLabel}>
+                분할 방식
+                <select
+                  className={nativeSelect}
+                  value={draft.split_count}
+                  onChange={(e) => setDraft(withSplitDefaults(draft, Number(e.target.value)))}
+                >
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n === 1 ? '무분할' : `${n}분할`}
+                    </option>
+                  ))}
+                </select>
+              </Label>
+              <Label className={fieldLabel}>
+                운동 일정 방식
+                <select
+                  className={nativeSelect}
+                  value={draft.schedule_mode ?? 'weekday'}
+                  onChange={(e) =>
+                    setDraft({ ...draft, schedule_mode: e.target.value as 'weekday' | 'cycle' })
+                  }
+                >
+                  <option value="cycle">주기 · N일 운동 후 M일 휴식</option>
+                  <option value="weekday">요일 · 휴식 요일 지정</option>
+                </select>
+              </Label>
+              {draft.schedule_mode === 'cycle' ? (
+                <>
+                  <Label className={fieldLabel}>
+                    연속 운동일
+                    <Input
+                      className={touchText}
+                      required
+                      type="number"
+                      min={1}
+                      max={7}
+                      value={draft.cycle?.train_days ?? ''}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          cycle: { rest_days: 1, ...draft.cycle, train_days: e.target.value },
+                        })
+                      }
+                    />
+                  </Label>
+                  <Label className={fieldLabel}>
+                    이어지는 휴식일
+                    <Input
+                      className={touchText}
+                      required
+                      type="number"
+                      min={0}
+                      max={7}
+                      value={draft.cycle?.rest_days ?? ''}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          cycle: { train_days: 1, ...draft.cycle, rest_days: e.target.value },
+                        })
+                      }
+                    />
+                  </Label>
+                </>
+              ) : (
+                <Label className={fieldLabel}>
+                  주당 운동 횟수
+                  <Input
+                    className={touchText}
                     required
                     type="number"
                     min={1}
                     max={7}
-                    value={draft.cycle?.train_days ?? ''}
+                    value={draft.weekly_workouts || ''}
                     onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        cycle: { rest_days: 1, ...draft.cycle, train_days: e.target.value },
-                      })
+                      setDraft({ ...draft, weekly_workouts: Number(e.target.value) })
                     }
                   />
-                </label>
-                <label>
-                  이어지는 휴식일
-                  <input
-                    required
-                    type="number"
-                    min={0}
-                    max={7}
-                    value={draft.cycle?.rest_days ?? ''}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        cycle: { train_days: 1, ...draft.cycle, rest_days: e.target.value },
-                      })
-                    }
-                  />
-                </label>
-              </>
-            ) : (
-              <label>
-                주당 운동 횟수
-                <input
-                  required
-                  type="number"
-                  min={1}
-                  max={7}
-                  value={draft.weekly_workouts || ''}
-                  onChange={(e) => setDraft({ ...draft, weekly_workouts: Number(e.target.value) })}
-                />
-              </label>
-            )}
-          </div>
-          {draft.schedule_mode === 'cycle' ? (
-            <p className="form-hint">
-              시작일부터 운동일과 휴식일을 반복합니다. 분할 방식을 고르면 기본 주기와 부위를 채우며,
-              바꿀 수 있습니다.
-            </p>
-          ) : (
-            <fieldset>
-              <legend>휴식 요일 · 운동 횟수와 합계 7일</legend>
-              {days.map((day, i) => (
-                <label key={day}>
-                  <input
-                    type="checkbox"
-                    checked={draft.rest_days.includes(i)}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        rest_days: e.target.checked
-                          ? [...draft.rest_days, i].sort()
-                          : draft.rest_days.filter((d) => d !== i),
-                      })
-                    }
-                  />
-                  {day}
-                </label>
-              ))}
-            </fieldset>
-          )}
-          {draft.splits.map((s, i) => (
-            <fieldset key={i}>
-              <legend>분할 {i + 1}</legend>
-              <label>
-                분할 이름
-                <input
-                  required
-                  value={s.name}
-                  maxLength={120}
-                  onChange={(e) => changeSplit(i, { ...s, name: e.target.value })}
-                />
-              </label>
-              <p>
-                부위 버튼을 누를 때마다 순서대로 추가됩니다. 같은 부위도 여러 번 추가할 수 있습니다.
+                </Label>
+              )}
+            </div>
+            {draft.schedule_mode === 'cycle' ? (
+              <p className={cn(hint, 'mt-3')}>
+                시작일부터 운동일과 휴식일을 반복합니다. 분할 방식을 고르면 기본 주기와 부위를
+                채우며, 바꿀 수 있습니다.
               </p>
-              {parts.map((p) => (
-                <button
-                  type="button"
-                  key={p}
-                  onClick={() => changeSplit(i, { ...s, body_parts: [...s.body_parts, p] })}
-                >
-                  {p} 추가
-                </button>
-              ))}
-              <ol>
-                {s.body_parts.map((p, j) => (
-                  <li key={j}>
-                    {p}{' '}
-                    <button
+            ) : (
+              <fieldset className={box}>
+                <legend className={legend}>휴식 요일 · 운동 횟수와 합계 7일</legend>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {days.map((day, i) => (
+                    <Label key={day} className="min-h-9 gap-2 text-body-sm pointer-coarse:min-h-11">
+                      <Checkbox
+                        id={`rest-day-${i}`}
+                        // Same as the machine form (#231): the box stays 16px against the legacy 44px button
+                        // rule and its ::after area is 44px. Drop once project-standards#415 lands.
+                        className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
+                        checked={draft.rest_days.includes(i)}
+                        onCheckedChange={(checked) =>
+                          setDraft({
+                            ...draft,
+                            rest_days:
+                              checked === true
+                                ? [...draft.rest_days, i].sort()
+                                : draft.rest_days.filter((d) => d !== i),
+                          })
+                        }
+                      />
+                      {day}
+                    </Label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            {draft.splits.map((s, i) => (
+              <fieldset key={i} className={box}>
+                <legend className={legend}>분할 {i + 1}</legend>
+                <Label className={fieldLabel}>
+                  분할 이름
+                  <Input
+                    className={touchText}
+                    required
+                    value={s.name}
+                    maxLength={120}
+                    onChange={(e) => changeSplit(i, { ...s, name: e.target.value })}
+                  />
+                </Label>
+                <p className="mt-3 mb-2 text-meta text-muted-foreground">
+                  부위 버튼을 누를 때마다 순서대로 추가됩니다. 같은 부위도 여러 번 추가할 수
+                  있습니다.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {parts.map((p) => (
+                    <Button
                       type="button"
-                      aria-label={`분할 ${i + 1} 부위 ${j + 1} 삭제`}
-                      onClick={() =>
-                        changeSplit(i, { ...s, body_parts: s.body_parts.filter((_, k) => j !== k) })
-                      }
+                      variant="outline"
+                      size="sm"
+                      key={p}
+                      onClick={() => changeSplit(i, { ...s, body_parts: [...s.body_parts, p] })}
                     >
-                      삭제
-                    </button>
-                  </li>
+                      {p} 추가
+                    </Button>
+                  ))}
+                </div>
+                <ol data-slot="split-parts" className="mt-2 flex flex-wrap gap-2">
+                  {s.body_parts.map((p, j) => (
+                    <li
+                      key={j}
+                      className="my-0 flex items-center gap-1 rounded-full border pl-3 text-body-sm"
+                    >
+                      {p}{' '}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-full"
+                        aria-label={`분할 ${i + 1} 부위 ${j + 1} 삭제`}
+                        onClick={() =>
+                          changeSplit(i, {
+                            ...s,
+                            body_parts: s.body_parts.filter((_, k) => j !== k),
+                          })
+                        }
+                      >
+                        삭제
+                      </Button>
+                    </li>
+                  ))}
+                </ol>
+                {s.exercises.map((ex, j) => (
+                  <div
+                    data-slot="routine-exercise"
+                    className="mt-3 grid grid-cols-2 items-end gap-3 border-t pt-3 md:grid-cols-3"
+                    key={j}
+                  >
+                    <Label className={cn(fieldLabel, 'col-span-2 md:col-span-1')}>
+                      운동명
+                      <Input
+                        className={touchText}
+                        required
+                        maxLength={120}
+                        value={ex.exercise}
+                        onChange={(e) => setExercise(i, s, j, { exercise: e.target.value })}
+                      />
+                    </Label>
+                    <Label className={cn(fieldLabel, 'col-span-2')}>
+                      머신
+                      <select
+                        className={nativeSelect}
+                        value={ex.machine_id ?? ''}
+                        onChange={(e) =>
+                          setExercise(i, s, j, {
+                            machine_id: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      >
+                        <option value="">자유 운동</option>
+                        {machines.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.brand} · {m.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Label>
+                    {(draft.progression === 'auto'
+                      ? (['sets', 'weight', 'reps', 'rep_min', 'rep_max'] as const)
+                      : (['sets', 'weight', 'reps'] as const)
+                    ).map((key) => (
+                      <Label key={key} className={fieldLabel}>
+                        {draft.progression === 'auto'
+                          ? {
+                              sets: '세트 수',
+                              weight: '현재 총중량 (kg, 머신 기본중량 포함)',
+                              reps: '현재 반복 수',
+                              rep_min: '반복 하한',
+                              rep_max: '반복 상한',
+                            }[key]
+                          : key === 'sets'
+                            ? '기준 세트 수'
+                            : key === 'weight'
+                              ? '기준 총중량 (kg, 머신 기본중량 포함)'
+                              : '기준 반복 수'}
+                        <Input
+                          className={touchText}
+                          required
+                          type="number"
+                          min={key === 'weight' ? 0 : 1}
+                          max={key === 'weight' ? 99999 : key === 'sets' ? 200 : 1000}
+                          step={key === 'weight' ? 'any' : 1}
+                          value={ex[key] ?? ''}
+                          onChange={(e) =>
+                            setExercise(i, s, j, {
+                              [key]: e.target.value === '' ? '' : Number(e.target.value),
+                            })
+                          }
+                        />
+                      </Label>
+                    ))}
+                    <div className="col-span-2 flex items-end md:col-span-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={s.exercises.length === 1}
+                        onClick={() =>
+                          changeSplit(i, {
+                            ...s,
+                            exercises: s.exercises.filter((_, k) => k !== j),
+                          })
+                        }
+                      >
+                        운동 삭제
+                      </Button>
+                    </div>
+                  </div>
                 ))}
-              </ol>
-              {s.exercises.map((ex, j) => (
-                <div className="routine-exercise" key={j}>
-                  <label>
-                    운동명
-                    <input
-                      required
-                      maxLength={120}
-                      value={ex.exercise}
-                      onChange={(e) =>
-                        changeSplit(i, {
-                          ...s,
-                          exercises: s.exercises.map((v, k) =>
-                            k === j ? { ...v, exercise: e.target.value } : v,
-                          ),
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    머신
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => changeSplit(i, { ...s, exercises: [...s.exercises, exercise()] })}
+                >
+                  <Plus aria-hidden />
+                  운동 추가
+                </Button>
+              </fieldset>
+            ))}
+            {draft.progression === 'auto' && <Preview plan={draft} steps={steps} />}
+            {draft.progression !== 'auto' &&
+              draft.weeks?.map((w, i) => (
+                <fieldset key={w.week} className={cn(box, 'grid grid-cols-2 gap-3')}>
+                  <legend className={legend}>
+                    {w.week}주차 {w.kind === 'deload' ? '디로딩' : '증가 목표'}
+                  </legend>
+                  <Label className={fieldLabel}>
+                    {w.kind === 'deload' ? '감소 대상' : '증가 대상'}
                     <select
-                      value={ex.machine_id ?? ''}
+                      className={nativeSelect}
+                      required
+                      value={w.kind === 'deload' ? (w.deload_metric ?? '') : w.kind}
                       onChange={(e) =>
-                        changeSplit(i, {
-                          ...s,
-                          exercises: s.exercises.map((v, k) =>
-                            k === j
+                        setDraft({
+                          ...draft,
+                          weeks: draft.weeks!.map((v, k) =>
+                            k === i
                               ? {
                                   ...v,
-                                  machine_id: e.target.value ? Number(e.target.value) : null,
+                                  amount: '',
+                                  ...(v.kind === 'deload'
+                                    ? { deload_metric: e.target.value }
+                                    : { kind: e.target.value }),
                                 }
                               : v,
                           ),
                         })
                       }
                     >
-                      <option value="">자유 운동</option>
-                      {machines.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.brand} · {m.name}
-                        </option>
-                      ))}
+                      {w.kind === 'deload' ? (
+                        <>
+                          <option value="" disabled>
+                            감소 대상 선택
+                          </option>
+                          <option value="weight">총중량 (kg)</option>
+                          <option value="sets">세트 수</option>
+                          <option value="reps">반복 수</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="increase_weight">총중량 (kg)</option>
+                          <option value="increase_reps">반복 수</option>
+                        </>
+                      )}
                     </select>
-                  </label>
-                  {(draft.progression === 'auto'
-                    ? (['sets', 'weight', 'reps', 'rep_min', 'rep_max'] as const)
-                    : (['sets', 'weight', 'reps'] as const)
-                  ).map((key) => (
-                    <label key={key}>
-                      {draft.progression === 'auto'
-                        ? {
-                            sets: '세트 수',
-                            weight: '현재 총중량 (kg, 머신 기본중량 포함)',
-                            reps: '현재 반복 수',
-                            rep_min: '반복 하한',
-                            rep_max: '반복 상한',
-                          }[key]
-                        : key === 'sets'
-                          ? '기준 세트 수'
-                          : key === 'weight'
-                            ? '기준 총중량 (kg, 머신 기본중량 포함)'
-                            : '기준 반복 수'}
-                      <input
-                        required
-                        type="number"
-                        min={key === 'weight' ? 0 : 1}
-                        max={key === 'weight' ? 99999 : key === 'sets' ? 200 : 1000}
-                        step={key === 'weight' ? 'any' : 1}
-                        value={ex[key] ?? ''}
-                        onChange={(e) =>
-                          changeSplit(i, {
-                            ...s,
-                            exercises: s.exercises.map((v, k) =>
-                              k === j
-                                ? {
-                                    ...v,
-                                    [key]: e.target.value === '' ? '' : Number(e.target.value),
-                                  }
-                                : v,
-                            ),
-                          })
-                        }
-                      />
-                    </label>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={s.exercises.length === 1}
-                    onClick={() =>
-                      changeSplit(i, { ...s, exercises: s.exercises.filter((_, k) => k !== j) })
-                    }
-                  >
-                    운동 삭제
-                  </button>
-                </div>
+                  </Label>
+                  <Label className={fieldLabel}>
+                    {w.kind === 'deload' ? '감소량' : '증가량'}
+                    <Input
+                      className={touchText}
+                      required
+                      type="number"
+                      min={
+                        w.kind === 'increase_weight' || w.deload_metric === 'weight'
+                          ? '0.000001'
+                          : 1
+                      }
+                      max={
+                        w.deload_metric === 'sets'
+                          ? 200
+                          : w.kind === 'increase_reps' || w.deload_metric === 'reps'
+                            ? 1000
+                            : 99999
+                      }
+                      step={
+                        w.kind === 'increase_weight' || w.deload_metric === 'weight' ? 'any' : 1
+                      }
+                      value={w.amount}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          weeks: draft.weeks!.map((v, k) =>
+                            k === i
+                              ? {
+                                  ...v,
+                                  amount: e.target.value === '' ? '' : Number(e.target.value),
+                                }
+                              : v,
+                          ),
+                        })
+                      }
+                    />
+                  </Label>
+                </fieldset>
               ))}
-              <button
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button disabled={saving}>{saving ? '저장 중…' : '루틴 저장하기'}</Button>
+              <Button
                 type="button"
-                onClick={() => changeSplit(i, { ...s, exercises: [...s.exercises, exercise()] })}
+                variant="outline"
+                disabled={saving}
+                onClick={() => setDraft(null)}
               >
-                운동 추가
-              </button>
-            </fieldset>
-          ))}
-          {draft.progression === 'auto' && <Preview plan={draft} steps={steps} />}
-          {draft.progression !== 'auto' &&
-            draft.weeks?.map((w, i) => (
-              <fieldset key={w.week}>
-                <legend>
-                  {w.week}주차 {w.kind === 'deload' ? '디로딩' : '증가 목표'}
-                </legend>
-                <label>
-                  {w.kind === 'deload' ? '감소 대상' : '증가 대상'}
-                  <select
-                    required
-                    value={w.kind === 'deload' ? (w.deload_metric ?? '') : w.kind}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        weeks: draft.weeks!.map((v, k) =>
-                          k === i
-                            ? {
-                                ...v,
-                                amount: '',
-                                ...(v.kind === 'deload'
-                                  ? { deload_metric: e.target.value }
-                                  : { kind: e.target.value }),
-                              }
-                            : v,
-                        ),
-                      })
-                    }
-                  >
-                    {w.kind === 'deload' ? (
-                      <>
-                        <option value="" disabled>
-                          감소 대상 선택
-                        </option>
-                        <option value="weight">총중량 (kg)</option>
-                        <option value="sets">세트 수</option>
-                        <option value="reps">반복 수</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="increase_weight">총중량 (kg)</option>
-                        <option value="increase_reps">반복 수</option>
-                      </>
-                    )}
-                  </select>
-                </label>
-                <label>
-                  {w.kind === 'deload' ? '감소량' : '증가량'}
-                  <input
-                    required
-                    type="number"
-                    min={
-                      w.kind === 'increase_weight' || w.deload_metric === 'weight' ? '0.000001' : 1
-                    }
-                    max={
-                      w.deload_metric === 'sets'
-                        ? 200
-                        : w.kind === 'increase_reps' || w.deload_metric === 'reps'
-                          ? 1000
-                          : 99999
-                    }
-                    step={w.kind === 'increase_weight' || w.deload_metric === 'weight' ? 'any' : 1}
-                    value={w.amount}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        weeks: draft.weeks!.map((v, k) =>
-                          k === i
-                            ? { ...v, amount: e.target.value === '' ? '' : Number(e.target.value) }
-                            : v,
-                        ),
-                      })
-                    }
-                  />
-                </label>
-              </fieldset>
-            ))}
-          <button className="primary" disabled={saving}>
-            {saving ? '저장 중…' : '루틴 저장하기'}
-          </button>
-          <button type="button" disabled={saving} onClick={() => setDraft(null)}>
-            취소
-          </button>
-        </form>
+                취소
+              </Button>
+            </div>
+          </form>
+        </Card>
       )}
       {selected && (
         <article>

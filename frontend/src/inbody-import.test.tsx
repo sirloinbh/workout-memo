@@ -71,6 +71,9 @@ test('a CSV export is previewed, corrected and saved row by row', async () => {
   ]);
   // The failed row keeps its values and the server's reason.
   expect(panel().textContent).toMatch(/이미 기록한 날짜입니다/);
+  // #223: the partial failure is an alert in the panel, apart from the saved count.
+  expect(within(panel()).getByRole('alert')).toHaveTextContent('1건은 저장하지 못했습니다');
+  expect(within(panel()).getByRole('status')).toHaveTextContent('2건을 저장했습니다.');
   expect(within(panel()).getByLabelText('2행 저장')).toBeChecked();
 });
 

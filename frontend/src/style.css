@@ -110,63 +110,11 @@
   color: var(--muted-foreground);
   margin-left: 10px;
 }
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-.section-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 23px 24px 0;
-  gap: 12px;
-}
 :where(.legacy) h2 {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.4px;
   margin: 0;
-}
-.section-title p {
-  font-size: 10px;
-  margin: 6px 0 0;
-}
-.count {
-  background: var(--muted);
-  color: var(--muted-foreground);
-  border-radius: 4px;
-  font-size: 10px;
-  padding: 2px 6px;
-  margin-left: 6px;
-}
-.text-button {
-  background: transparent;
-  border: 0;
-  color: var(--primary);
-  font-size: 11px;
-  padding: 8px;
-  white-space: nowrap;
-}
-.empty {
-  padding: 37px 24px 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted-foreground);
-  min-height: 220px;
-}
-.empty h3 {
-  color: var(--muted-foreground);
-  font-size: 13px;
-  font-weight: 500;
-  margin: 15px 0 0;
-}
-.empty p {
-  font-size: 11px;
-  margin-bottom: 18px;
 }
 .subtle-button {
   background: var(--secondary);
@@ -175,36 +123,6 @@
   border-radius: calc(var(--radius) - 4px);
   font-size: 11px;
   padding: 9px 13px;
-}
-.workout-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  border-bottom: 1px solid var(--border);
-  padding: 18px 24px;
-}
-.workout-row:last-child {
-  border-bottom: 0;
-}
-.workout-info {
-  flex: 1;
-  min-width: 0;
-}
-.workout-info h3 {
-  font-size: 12px;
-  margin: 0;
-  font-weight: 600;
-}
-.workout-info p {
-  font-size: 10px;
-  margin: 5px 0 0;
-  overflow-wrap: anywhere;
-}
-.icon-button {
-  background: none;
-  border: 0;
-  color: var(--muted-foreground);
-  padding: 7px;
 }
 .error {
   background: color-mix(in oklch, var(--destructive) 10%, transparent);
@@ -259,10 +177,6 @@
 .modal .subtle-button {
   margin: 4px 0 22px;
 }
-.full {
-  width: 100%;
-  margin-top: 5px;
-}
 @media (max-width: 1100px) {
   :where(.legacy) h1 {
     font-size: 23px;
@@ -302,19 +216,6 @@
   .range-label {
     font-size: 9px;
   }
-  .section-title {
-    padding: 20px 17px 0;
-  }
-  .workout-row {
-    gap: 9px;
-    padding: 15px;
-  }
-  .workout-info p {
-    font-size: 9px;
-  }
-  .workout-info h3 {
-    font-size: 11px;
-  }
   .form-grid {
     gap: 0 12px;
   }
@@ -348,7 +249,7 @@
 }
 /* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA
    4.5:1. Text on these surfaces mixes in more of the foreground colour instead. */
-:is(.count, .subtle-button, .form-hint),
+:is(.subtle-button, .form-hint),
 .form-hint * {
   color: color-mix(in oklch, var(--foreground) 80%, var(--muted));
 }

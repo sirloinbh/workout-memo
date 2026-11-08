@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
 
+import { AlertBanner } from './components/alert-banner';
+import { Button } from './components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
+import { Checkbox } from './components/ui/checkbox';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Notice } from './components/ui/notice';
 import { bodyMeasurementSchema, fieldErrors } from './contract';
 import {
   detectColumns,
@@ -10,6 +17,18 @@ import {
   type Target,
   targets,
 } from './inbody';
+import { cn } from './lib/utils';
+
+// Same field, hint and select look as the body and machine forms (merged in the #103 cleanup).
+const fieldLabel = 'mb-0 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
+// The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
+const touchText = 'md:pointer-coarse:text-base';
+const hint = 'rounded-md bg-muted p-3 text-meta text-muted-foreground';
+const selectField = cn(
+  'h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-0 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-body-sm dark:bg-input/30 pointer-coarse:min-h-11',
+  touchText,
+);
+const cell = 'px-3 py-2 text-left align-middle font-normal';
 
 const labels: Record<Target, string> = {
   date: '측정 날짜',
@@ -134,117 +153,148 @@ export function InbodyImport({
   }
 
   return (
-    <section className="card inbody-import" aria-label="인바디 가져오기">
-      <h2>인바디 가져오기</h2>
-      <p className="form-hint">
-        인바디에서 내보낸 CSV 파일이나 결과지 사진을 고르세요. 사진은 이 브라우저에서만 읽고 서버로
-        보내지 않으며, 원본 파일은 보관하지 않습니다. 읽지 못한 값은 비워 두니 확인한 뒤 저장하세요.
-      </p>
-      <label>
-        인바디 파일 또는 결과지 사진
-        <input
-          type="file"
-          accept=".csv,.txt,text/csv,image/*"
-          disabled={busy}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void open(file);
-            e.target.value = '';
-          }}
-        />
-      </label>
-      {error && (
-        <p role="alert" className="error">
-          {error}
+    <Card role="region" aria-label="인바디 가져오기" className="mt-4 gap-4 shadow-none">
+      <CardHeader>
+        <CardTitle asHeading="h2" className="text-body font-semibold">
+          인바디 가져오기
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className={hint}>
+          인바디에서 내보낸 CSV 파일이나 결과지 사진을 고르세요. 사진은 이 브라우저에서만 읽고
+          서버로 보내지 않으며, 원본 파일은 보관하지 않습니다. 읽지 못한 값은 비워 두니 확인한 뒤
+          저장하세요.
         </p>
-      )}
-      {status && <p role="status">{status}</p>}
-      {csv && (
-        <fieldset className="form-grid" disabled={busy}>
-          <legend>파일의 열</legend>
-          {targets.map((t) => (
-            <label key={t}>
-              {labels[t]} 열
-              <select
-                value={csv.columns[t] ?? ''}
-                onChange={(e) => remap(t, e.target.value === '' ? null : Number(e.target.value))}
-              >
-                <option value="">없음</option>
-                {csv.cells[0].map((h, i) => (
-                  <option key={i} value={i}>
-                    {h || `${i + 1}번째 열`}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
-        </fieldset>
-      )}
-      {text && (
-        <details>
-          <summary>사진에서 읽은 글자</summary>
-          <pre>{text}</pre>
-        </details>
-      )}
-      {rows.length > 0 && (
-        <>
-          <div className="table-scroll">
-            <table className="inbody-preview">
-              <thead>
-                <tr>
-                  <th>저장</th>
-                  {targets.map((t) => (
-                    <th key={t}>{labels[t]}</th>
+        <Label className={fieldLabel}>
+          인바디 파일 또는 결과지 사진
+          <Input
+            className={touchText}
+            type="file"
+            accept=".csv,.txt,text/csv,image/*"
+            disabled={busy}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void open(file);
+              e.target.value = '';
+            }}
+          />
+        </Label>
+        {error && <AlertBanner className="mb-0">{error}</AlertBanner>}
+        <Notice notice={status ? { kind: 'status', text: status } : undefined} />
+        {csv && (
+          <fieldset
+            className="m-0 grid min-w-0 grid-cols-2 gap-x-3 gap-y-4 border-0 p-0 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1"
+            disabled={busy}
+          >
+            <legend className="mb-2 text-body-sm font-medium">파일의 열</legend>
+            {targets.map((t) => (
+              <Label key={t} className={fieldLabel}>
+                {labels[t]} 열
+                <select
+                  className={selectField}
+                  value={csv.columns[t] ?? ''}
+                  onChange={(e) => remap(t, e.target.value === '' ? null : Number(e.target.value))}
+                >
+                  <option value="">없음</option>
+                  {csv.cells[0].map((h, i) => (
+                    <option key={i} value={i}>
+                      {h || `${i + 1}번째 열`}
+                    </option>
                   ))}
-                  <th>확인</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => {
-                  const problem = check(row).error;
-                  return (
-                    <tr key={i}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          aria-label={`${i + 1}행 저장`}
-                          checked={row.selected && !problem}
-                          disabled={busy || !!problem}
-                          onChange={(e) => update(i, { selected: e.target.checked })}
-                        />
-                      </td>
-                      {targets.map((t) => (
-                        <td key={t}>
-                          <input
-                            aria-label={`${i + 1}행 ${labels[t]}`}
-                            type={t === 'date' ? 'date' : 'number'}
-                            step={t === 'date' ? undefined : '0.01'}
-                            inputMode={t === 'date' ? undefined : 'decimal'}
-                            placeholder="미입력"
-                            disabled={busy}
-                            value={row[t]}
-                            onChange={(e) =>
-                              update(i, { [t]: e.target.value, selected: true, result: undefined })
-                            }
+                </select>
+              </Label>
+            ))}
+          </fieldset>
+        )}
+        {text && (
+          <details className="text-body-sm">
+            <summary className="cursor-pointer">사진에서 읽은 글자</summary>
+            <pre className="mt-2 rounded-md bg-muted p-3 text-meta whitespace-pre-wrap">{text}</pre>
+          </details>
+        )}
+        {rows.length > 0 && (
+          <>
+            {/* On a phone the table scrolls sideways inside the card; keyboard users reach it too. */}
+            <div
+              // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- a scrollable region must be focusable.
+              tabIndex={0}
+              role="region"
+              aria-label="인바디 미리보기"
+              className="max-w-full overflow-x-auto rounded-md border outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <table className="w-full border-collapse text-body-sm">
+                <thead className="bg-muted text-meta text-muted-foreground">
+                  <tr>
+                    <th scope="col" className={cell}>
+                      저장
+                    </th>
+                    {targets.map((t) => (
+                      <th scope="col" key={t} className={cell}>
+                        {labels[t]}
+                      </th>
+                    ))}
+                    <th scope="col" className={cell}>
+                      확인
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => {
+                    const problem = check(row).error;
+                    return (
+                      <tr key={i} className="border-t">
+                        <td className={cell}>
+                          <Checkbox
+                            aria-label={`${i + 1}행 저장`}
+                            // The legacy touch rule makes every .legacy button 44px; the box
+                            // stays 16px with a 44px ::after area, as in the machine form.
+                            // Drop once project-standards#415 fixes checkbox.tsx.
+                            className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
+                            checked={row.selected && !problem}
+                            disabled={busy || !!problem}
+                            onCheckedChange={(checked) => update(i, { selected: checked === true })}
                           />
                         </td>
-                      ))}
-                      <td>{row.result ?? (problem || '저장 가능')}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <button
-            className="primary"
-            disabled={busy || !chosen.length}
-            onClick={() => void saveAll()}
-          >
-            선택한 {chosen.length}건 저장
-          </button>
-        </>
-      )}
-    </section>
+                        {targets.map((t) => (
+                          <td key={t} className={cell}>
+                            <Input
+                              aria-label={`${i + 1}행 ${labels[t]}`}
+                              className={cn(touchText, t === 'date' ? 'min-w-36' : 'w-24')}
+                              type={t === 'date' ? 'date' : 'number'}
+                              step={t === 'date' ? undefined : '0.01'}
+                              inputMode={t === 'date' ? undefined : 'decimal'}
+                              placeholder="미입력"
+                              disabled={busy}
+                              value={row[t]}
+                              onChange={(e) =>
+                                update(i, {
+                                  [t]: e.target.value,
+                                  selected: true,
+                                  result: undefined,
+                                })
+                              }
+                            />
+                          </td>
+                        ))}
+                        <td className={cn(cell, 'min-w-32 text-meta text-muted-foreground')}>
+                          {row.result ?? (problem || '저장 가능')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <Button
+              className="self-start"
+              disabled={busy || !chosen.length}
+              onClick={() => void saveAll()}
+            >
+              선택한 {chosen.length}건 저장
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

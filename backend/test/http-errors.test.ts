@@ -150,3 +150,49 @@ test('a malformed JSON body is a 400 from the central handler', async () => {
     },
   );
 });
+
+test('routes registered before the JSON 404 still answer, including the backup routes', async () => {
+  await withApi(
+    () => ({ rows: [] }),
+    async (base) => {
+      assert.deepEqual(await call(base + '/health'), { status: 200, body: { status: 'ok' } });
+      // The backup routes come first with their own parser; a broken body still reaches the handler.
+      assert.deepEqual(
+        await call(base + '/backup/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{"mode":',
+        }),
+        { status: 400, body: { error: '요청 본문의 JSON 형식이 올바르지 않습니다' } },
+      );
+      assert.deepEqual(await call(base + '/backup/nope', { method: 'POST' }), {
+        status: 404,
+        body: { error: '요청한 API를 찾을 수 없습니다' },
+      });
+      assert.deepEqual(
+        await call(base + '/routines/abc/rests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        }),
+        { status: 400, body: { error: '루틴 ID가 올바르지 않습니다' } },
+      );
+    },
+  );
+});
+
+test('only the backup routes name the 10MB limit; other bodies over 256kb get the central message', async () => {
+  await withApi(
+    () => ({ rows: [] }),
+    async (base) => {
+      assert.deepEqual(
+        await call(base + '/goals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exercise: 'x'.repeat(300 * 1024) }),
+        }),
+        { status: 413, body: { error: '요청 본문이 너무 큽니다' } },
+      );
+    },
+  );
+});

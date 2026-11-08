@@ -10,7 +10,7 @@ export const seoulTodaySql = "(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::dat
 // standard/http.ts, which keeps the one `{ error }` shape for every app.
 export function appErrors(
   err: unknown,
-  _req: express.Request,
+  req: express.Request,
   res: express.Response,
   next: express.NextFunction,
 ) {
@@ -26,8 +26,9 @@ export function appErrors(
     sendError(res, 400, '선택한 머신 또는 브랜드가 존재하지 않습니다');
     return;
   }
-  // The backup restore is the one body that may be large, so the limit names it.
-  if (error.status === 413) {
+  // Only the backup routes take a large body, so only they name the 10MB limit. Other routes
+  // over the 256kb limit get the central "요청 본문이 너무 큽니다".
+  if (error.status === 413 && req.path.startsWith('/api/backup/')) {
     sendError(res, 413, '요청 크기 제한을 초과했습니다 (백업 파일은 최대 10MB).');
     return;
   }

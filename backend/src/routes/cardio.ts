@@ -2,7 +2,7 @@ import type express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
-import { cardioKinds, cardioSessionSchemaFor, date } from '../domain.js';
+import { cardioKinds, cardioSessionObject, cardioSessionSchemaFor, date } from '../domain.js';
 import { parseId, sendError } from '../standard/http.js';
 
 // #114: pace and speed are never stored. They are computed here from the stored duration (whole
@@ -80,6 +80,7 @@ export async function cardioRecords(pool: Pool) {
 // A duplicate (source, external_id) is a 409 and an unknown workout_id a 400; both are
 // answered by appErrors in routes/shared.ts so create and update share the messages.
 export function registerCardioRoutes(app: express.Express, pool: Pool, today: () => string) {
+  registerCardioImportRoute(app, pool, today);
   app.get('/api/cardio-sessions', async (req, res) => {
     const q = cardioQuery.parse(req.query);
     res.json(
@@ -151,5 +152,116 @@ export function registerCardioRoutes(app: express.Express, pool: Pool, today: ()
       return;
     }
     res.json({ ok: true });
+  });
+}
+
+// #119: activities read from files, saved together. Every row is checked first; if any row is
+// invalid or was imported before (same source and external id, in the table or twice in the
+// request), nothing is saved and each such row's reason comes back by its index, so the preview
+// can show it next to the row (2026-11-08 user decision 3). Cross-source look-alikes are only
+// candidates the preview asks about; they are not refused here.
+export const cardioImportLimit = 200;
+export const cardioImportRequest = z.object({
+  sessions: z
+    .array(z.unknown(), { error: '가져올 유산소 기록 목록(sessions)을 배열로 보내세요' })
+    .min(1, '가져올 유산소 기록을 1건 이상 선택하세요')
+    .max(cardioImportLimit, `유산소 기록은 한 번에 ${cardioImportLimit}건까지 가져올 수 있습니다`),
+});
+// The same body with the row schema spelled out, for the OpenAPI document.
+export const cardioImportDocument = z.object({
+  sessions: z.array(cardioSessionObject).min(1).max(cardioImportLimit),
+});
+export type CardioImportProblem = { index: number; message: string };
+const importedOnly = '가져온 기록에는 출처(file·garmin·nike)와 외부 ID가 필요합니다';
+const shownIssues = 3;
+
+function importRows(body: unknown, today: string) {
+  const { sessions } = cardioImportRequest.parse(body);
+  const schema = cardioSessionSchemaFor(today);
+  const rows: Cardio[] = [];
+  const problems: CardioImportProblem[] = [];
+  const seen = new Map<string, number>();
+  sessions.forEach((input, index) => {
+    const parsed = schema.safeParse(input);
+    if (!parsed.success) {
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      problems.push({ index, message: messages.slice(0, shownIssues).join(', ') });
+      return;
+    }
+    const row = parsed.data;
+    if (row.source === 'manual' || row.external_id === null) {
+      problems.push({ index, message: importedOnly });
+      return;
+    }
+    const key = `${row.source}\u0000${row.external_id}`;
+    const first = seen.get(key);
+    if (first !== undefined) {
+      problems.push({ index, message: `${first + 1}번째 행과 같은 활동입니다` });
+      return;
+    }
+    seen.set(key, index);
+    rows[index] = row;
+  });
+  return { rows, problems };
+}
+
+function sendImportProblems(
+  res: express.Response,
+  status: number,
+  problems: CardioImportProblem[],
+) {
+  const rows = [...problems].sort((a, b) => a.index - b.index);
+  res.status(status).json({
+    error: `${rows.length}건에 문제가 있어 아무것도 저장하지 않았습니다`,
+    rows,
+  });
+}
+
+function registerCardioImportRoute(app: express.Express, pool: Pool, today: () => string) {
+  app.post('/api/cardio-sessions/import', async (req, res) => {
+    const { rows, problems } = importRows(req.body, today());
+    if (problems.length) {
+      sendImportProblems(res, 400, problems);
+      return;
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query<{ source: string; external_id: string }>(
+        `SELECT source, external_id FROM cardio_sessions
+          WHERE (source, external_id) IN (SELECT * FROM unnest($1::text[], $2::text[]))`,
+        [rows.map((r) => r.source), rows.map((r) => r.external_id)],
+      );
+      const taken = new Set(existing.rows.map((r) => `${r.source}\u0000${r.external_id}`));
+      const repeated = rows.flatMap((r, index) =>
+        taken.has(`${r.source}\u0000${r.external_id}`)
+          ? [{ index, message: '이미 가져온 활동입니다' }]
+          : [],
+      );
+      if (repeated.length) {
+        await client.query('ROLLBACK');
+        sendImportProblems(res, 409, repeated);
+        return;
+      }
+      const saved = [];
+      for (const row of rows)
+        saved.push(
+          (
+            await client.query(
+              `INSERT INTO cardio_sessions(${cardioFields}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING ${cardioColumns}`,
+              values(row),
+            )
+          ).rows[0],
+        );
+      await client.query('COMMIT');
+      res.status(201).json({ sessions: saved });
+    } catch (e) {
+      // A concurrent import of the same activity ends in the unique index (409 by appErrors);
+      // an unknown workout_id in its foreign key (400). Either way nothing is kept.
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw e;
+    } finally {
+      client.release();
+    }
   });
 }

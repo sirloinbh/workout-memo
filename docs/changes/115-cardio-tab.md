@@ -105,3 +105,10 @@
 - 추가 테스트: 기간 프리셋을 바꿔도 고른 지표('시간')가 남고 `/api/cardio-sessions/records`를 다시 요청하지 않음
 - (선택, 반영 안 함) 기간이 바뀐 직후 한 번의 렌더에서 새 기간과 옛 목록이 섞일 수 있습니다. 기간 필터를 거쳐 대개 빈 상태가 잠깐 보이는 정도이고, 이제 불러오는 동안은 "불러오는 중"이 보여 한계로 남깁니다.
 - `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx`: 90 pass. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+
+## 변경 — test: 시각 기준선 갱신
+
+- `bfcce96`의 CI `e2e-visual`에서 시각 비교 14건만 실패했습니다. 새 `e2e/cardio.spec.ts`와 접근성·반응형·터치 검사를 포함한 83건은 통과했습니다.
+- 갱신: `journal-cardio` 4장(새 화면), `dashboard` 4장(유산소 카드), `journal` 4장("기록 종류" 탭), `workout-editor` 768·1280 2장(모달 뒤 대시보드에 카드가 더해짐). 모두 14장입니다.
+- 확인 방법: `journal-cardio` 1280·390과 `dashboard-1280`을 직접 보고 의도한 변화만 있음을 확인한 뒤 `visual-baselines` 아티팩트로 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
+- 발견한 결함: 러닝 페이스 추이의 점이 1280px에서 납작한 타원으로 그려집니다. SVG가 `preserveAspectRatio="none"`으로 늘어나기 때문이며, PR ②에서 생긴 문제입니다. 리뷰 2회를 마친 뒤라 이 PR에서 고치지 않고 #263으로 분리했습니다.

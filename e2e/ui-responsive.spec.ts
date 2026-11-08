@@ -70,3 +70,33 @@ for (const { width, height } of widths) {
     });
   });
 }
+
+// #105: on a phone the workout editor fills the screen, and its save button stays on the
+// bottom edge while the long form scrolls; short forms sit on the bottom edge as a sheet.
+test.describe('390px 모바일 모달', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+  test('일지 편집은 전체 화면이고 저장 버튼이 스크롤 중에도 화면 아래에 보인다', async ({
+    page,
+  }) => {
+    const dialog = await openModal(page, modals[0]);
+    const box = (await dialog.boundingBox())!;
+    expect(box).toMatchObject({ x: 0, y: 0, width: 390, height: 844 });
+    const save = dialog.getByRole('button', { name: '기록 저장하기' });
+    await expect(save).toBeInViewport();
+    for (const position of ['middle', 'top'] as const) {
+      await dialog.evaluate((el, at) => {
+        el.scrollTop = at === 'top' ? 0 : el.scrollHeight / 2;
+      }, position);
+      const r = (await save.boundingBox())!;
+      expect(r.y + r.height, `${position} 저장 버튼 아래 끝`).toBeGreaterThan(844 - 80);
+      expect(r.y + r.height, `${position} 저장 버튼 아래 끝`).toBeLessThanOrEqual(844);
+    }
+  });
+  test('짧은 폼은 화면 아래 시트로 뜬다', async ({ page }) => {
+    const dialog = await openModal(page, modals[1]);
+    const box = (await dialog.boundingBox())!;
+    expect(box.x).toBe(0);
+    expect(box.width).toBe(390);
+    expect(Math.round(box.y + box.height)).toBe(844);
+  });
+});

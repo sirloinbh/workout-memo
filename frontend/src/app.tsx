@@ -28,7 +28,7 @@ import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { List, ListItem } from './components/list';
-import { Modal } from './components/modal';
+import { Modal, ModalFooter } from './components/modal';
 import { NumberValueInput } from './components/number-input';
 import { SegmentedControl } from './components/segmented-control';
 import { StatCard } from './components/stat-card';
@@ -1435,6 +1435,7 @@ function Workspace() {
       {editor && (
         <Modal
           title={editor.id ? '운동 일지 수정' : '새로운 운동 기록'}
+          layout="full"
           close={() => {
             setIssues({});
             setEditor(null);
@@ -1759,9 +1760,11 @@ function Workspace() {
                   onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
                 />
               </label>
-              <Button className="w-full" disabled={saving}>
-                {saving ? '저장 중…' : '기록 저장하기'}
-              </Button>
+              <ModalFooter>
+                <Button className="w-full" disabled={saving}>
+                  {saving ? '저장 중…' : '기록 저장하기'}
+                </Button>
+              </ModalFooter>
             </fieldset>
           </form>
         </Modal>

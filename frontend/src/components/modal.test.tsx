@@ -1,10 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
 import { FieldError, Input } from './field';
 import { invalidProps } from './field-props';
-import { Modal } from './modal';
+import { keyboardInset } from './keyboard-inset';
+import { Modal, ModalFooter } from './modal';
 
 test('a field message is linked to its control and absent without a message', () => {
   const { rerender } = render(
@@ -51,4 +52,67 @@ test('Modal is labelled, keeps focus inside and closes on Escape or the close bu
   expect(close).toHaveBeenCalledTimes(1);
   await user.click(screen.getByRole('button', { name: '닫기' }));
   expect(close).toHaveBeenCalledTimes(2);
+});
+
+// #105: what an on-screen keyboard covers is the layout viewport below the visual one.
+test('keyboardInset is the part of the screen below the visible area', () => {
+  expect(keyboardInset(844, { height: 844, offsetTop: 0 })).toBe(0);
+  expect(keyboardInset(844, { height: 508, offsetTop: 0 })).toBe(336);
+  // iOS may also scroll the visible area up; only what is below it counts.
+  expect(keyboardInset(844, { height: 508, offsetTop: 100 })).toBe(236);
+  expect(keyboardInset(844, { height: 900, offsetTop: 0 })).toBe(0);
+});
+
+// #105: a mobile modal ends above the keyboard and brings the focused field back into view.
+test('Modal follows the visual viewport so the keyboard does not cover the field being typed', () => {
+  const listeners = new Map<string, () => void>();
+  const viewport = {
+    height: window.innerHeight,
+    offsetTop: 0,
+    addEventListener: (type: string, fn: () => void) => listeners.set(type, fn),
+    removeEventListener: vi.fn(),
+  };
+  vi.stubGlobal('visualViewport', viewport);
+  const scrolled = vi.fn();
+  HTMLElement.prototype.scrollIntoView = scrolled;
+  try {
+    const { unmount } = render(
+      <Modal title="새로운 운동 기록" layout="full" close={() => {}}>
+        <label>
+          운동 메모
+          <textarea />
+        </label>
+      </Modal>,
+    );
+    const dialog = screen.getByRole('dialog', { name: '새로운 운동 기록' });
+    expect(dialog).toHaveAttribute('data-layout', 'full');
+    expect(dialog.style.getPropertyValue('--keyboard-inset')).toBe('0px');
+    screen.getByLabelText('운동 메모').focus();
+    viewport.height = window.innerHeight - 300;
+    act(() => listeners.get('resize')!());
+    expect(dialog.style.getPropertyValue('--keyboard-inset')).toBe('300px');
+    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+    unmount();
+    expect(viewport.removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+  } finally {
+    vi.unstubAllGlobals();
+    // jsdom has no scrollIntoView of its own.
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+  }
+});
+
+test('a short form opens as a bottom sheet by default, with its footer inside the dialog', () => {
+  render(
+    <Modal title="머신 등록" close={() => {}}>
+      <form>
+        <ModalFooter>
+          <button>저장</button>
+        </ModalFooter>
+      </form>
+    </Modal>,
+  );
+  const dialog = screen.getByRole('dialog', { name: '머신 등록' });
+  expect(dialog).toHaveAttribute('data-layout', 'sheet');
+  const footer = screen.getByRole('button', { name: '저장' }).closest('[data-slot=modal-footer]');
+  expect(dialog).toContainElement(footer as HTMLElement);
 });

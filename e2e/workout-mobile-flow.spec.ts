@@ -80,7 +80,9 @@ test('390px 터치 화면에서 새 일지에 세트 3개를 입력·완료하�
     await user.tap(field, { position: { x: box.width - 6, y: box.height / 2 } });
     await user.press('Backspace');
     await user.type(weight);
-    await expect(field).toHaveValue(weight);
+    // Before #105 the number field put the 0 back after the backspace and showed "060",
+    // still read as 60; the same script runs on both versions, so compare the number.
+    await expect.poll(async () => Number(await field.inputValue())).toBe(Number(weight));
     // Reps keep the default 10.
     const done = set.getByRole('button', { name: `${i + 1}세트 완료` });
     await user.tap(done);

@@ -114,6 +114,8 @@ docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /dock
 
 중량은 kg 단위 총중량(머신 기본중량 포함), 반복 수는 양의 정수입니다. 기본중량 미확인은 NULL로 유지합니다. 일지 삭제 시 세트는 CASCADE 삭제됩니다. 목표 달성은 같은 운동명의 완료한 한 세트가 설정 기간 내 중량·횟수를 모두 충족한 경우입니다.
 
+유산소 기록(#114)을 쓰는 API 실행 전에는 `015_cardio_sessions.sql`을 적용하세요. `cardio_sessions`는 날짜·시작 시각(`TIME`, 서울 시각)·종류 9가지·시간(정수 초)·거리(`NUMERIC(8,3)` km, 1 m 단위)와 선택 값(심박·칼로리·상승 고도·케이던스·체감 강도·메모)을 둡니다. 페이스·속도는 저장하지 않고 API가 조회할 때 계산합니다. API 검증과 같은 범위를 CHECK로도 막고(오늘 이후 날짜 금지만 API에서 검사), `workout_id`는 `workouts`를 참조하며 일지를 지우면 `NULL`이 됩니다(`ON DELETE SET NULL`). `(source, external_id)`는 `external_id`가 있을 때만 고유한 부분 고유 인덱스이고, `manual`은 외부 ID를 가질 수 없습니다. 구간(랩)·GPS 경로는 저장하지 않습니다. 재실행해도 안전합니다.
+
 백업은 우산 저장소 `scripts/backup.ps1`, 복원은 아래 명령으로 수행합니다. 복원 대상은 비어 있는 별도 데이터베이스로 준비하세요.
 
 ```powershell
@@ -136,12 +138,17 @@ DB 스키마 변경은 없습니다(추가 마이그레이션 없음). `scripts/
 - 쉼표·큰따옴표·줄바꿈이 있는 값은 큰따옴표로 감싸고 내부 `"`는 `""`로 씁니다.
 - 수식 실행 방지: 글자 값이 `=`, `+`, `-`, `@`, 탭, CR로 시작하면 앞에 `'`를 붙입니다. 따라서 CSV는 원본과 다를 수 있으며 **복원에 사용할 수 없습니다.**
 
+**유산소 분석용 CSV**(#114) `GET /api/export/cardio.csv[?from=YYYY-MM-DD&to=YYYY-MM-DD]` → `workout-memo-cardio-YYYY-MM-DD.csv`
+
+- 위 근력 CSV는 그대로 두고 따로 내보냅니다. 인코딩·따옴표·수식 실행 방지 규칙은 같습니다. 기록 1개당 1행이며 날짜·시작 시각(없으면 먼저)·id 순입니다.
+- 열: `cardio_id, date, start_time, kind, duration_sec, distance_km, pace_sec_per_km, speed_kmh, avg_heart_rate, max_heart_rate, calories_kcal, elevation_gain_m, avg_cadence, effort, workout_id, source, external_id, memo`. `pace_sec_per_km`·`speed_kmh`는 계산값이며 거리가 없으면 빈 칸입니다. NULL은 모두 빈 칸입니다.
+
 **복원용 백업** `GET /api/backup` → `workout-memo-backup-YYYY-MM-DD.json`
 
 ```json
 {
   "format": "workout-memo-backup",
-  "version": 1,
+  "version": 2,
   "exported_at": "ISO 8601",
   "data": {
     "brands": [{ "id": 1, "name": "..." }],
@@ -176,18 +183,41 @@ DB 스키마 변경은 없습니다(추가 마이그레이션 없음). `scripts/
         "deadline": "YYYY-MM-DD"
       }
     ],
-    "routines": [{ "id": 1, "created_at": "ISO 8601", "plan": { "...": "루틴 API 계약과 동일" } }]
+    "routines": [{ "id": 1, "created_at": "ISO 8601", "plan": { "...": "루틴 API 계약과 동일" } }],
+    "cardio_sessions": [
+      {
+        "id": 1,
+        "date": "YYYY-MM-DD",
+        "start_time": "07:30",
+        "kind": "running",
+        "duration_sec": 1800,
+        "distance_km": 5.25,
+        "avg_heart_rate": null,
+        "max_heart_rate": null,
+        "calories_kcal": null,
+        "elevation_gain_m": null,
+        "avg_cadence": null,
+        "effort": null,
+        "source": "garmin",
+        "external_id": "...",
+        "memo": "",
+        "workout_id": 1,
+        "created_at": "ISO 8601"
+      }
+    ]
   }
 }
 ```
 
 - 한 REPEATABLE READ 스냅샷에서 읽습니다. `id`는 파일 안의 참조 키일 뿐이며 복원 시 새 id가 발급됩니다. 세트는 일지 안에 순서대로 들어 있고 `machine_id`→`machines.id`→`brand_id`→`brands.id`로 연결됩니다. 중량은 총중량 kg 숫자, 기본중량 미확인은 `null`입니다. 일지의 `feedback`(#83)은 `hard`·`medium`·`easy` 또는 `null`입니다. 이 필드가 없는 이전 백업도 v1으로 그대로 복원되며 `null`이 됩니다. 일지 중복 판정에는 `feedback`을 쓰지 않으므로, 피드백만 다른 같은 일지는 건너뜁니다(기존 값 유지). 머신의 `single_joint`(#84)가 없는 이전 백업은 `false`로 복원합니다. 이미 있는 같은 머신과 연결할 때는 기존 머신의 값을 유지합니다.
+- v2(#114)는 `cardio_sessions`를 더했습니다. 필드 규칙은 유산소 API와 같고(오늘 이후 날짜 검사는 제외), `workout_id`는 같은 파일의 `workouts.id`를 가리킵니다. v2 파일에는 이 목록이 꼭 있어야 하며(비어 있어도 됨), 그 전에 만든 v1 파일은 유산소 기록이 없는 백업으로 그대로 복원합니다.
 - `workout_requests`(저장 재시도 키)는 포함하지 않습니다. 기기별 일시적 중복 방지 기록이고 응답 id가 원본 DB에만 유효하기 때문입니다. 추가만 복원은 이 테이블을 건드리지 않습니다. 전체 교체는 같은 트랜잭션에서 이 테이블도 비웁니다(삭제된 일지 id를 과거 키가 재전송해 저장된 것처럼 보이는 것을 막기 위함). 이후 같은 키로 재시도하면 새 일지로 저장됩니다. 인증 정보·환경변수·Terraform state는 어떤 파일에도 들어가지 않습니다.
 
 **복원** `POST /api/backup/preview`, `POST /api/backup/restore` — 본문 `{ "mode": "merge" | "replace", "backup": {...}, "confirm"?: "전체 교체" }`
 
-- 요청 본문 최대 10MB(+64KB). 형식 `format`→`version`(현재 v1만 지원)→스키마(날짜·총중량·반복 수·문자 길이·목표 기간·루틴 규칙)→참조(브랜드·머신 존재, id 중복, 브랜드 이름·브랜드별 머신 이름 중복)를 검사하며 실패하면 400으로 아무것도 바꾸지 않습니다.
+- 요청 본문 최대 10MB(+64KB). 형식 `format`→`version`(v1·v2 지원)→스키마(날짜·총중량·반복 수·문자 길이·목표 기간·루틴 규칙·유산소 값 범위)→참조(브랜드·머신·유산소가 연결한 일지 존재, id 중복, 브랜드 이름·브랜드별 머신 이름 중복, 유산소의 같은 출처·외부 ID 중복)를 검사하며 실패하면 400으로 아무것도 바꾸지 않습니다.
 - `merge`(기본, 추가만): 기존 행을 수정·삭제하지 않습니다. 브랜드는 이름, 머신은 브랜드+이름으로 기존 행과 연결합니다. 머신의 기본중량·메모가 다르면 **기존 값을 유지**하고 충돌로 보고하며 복원 세트는 기존 머신에 연결합니다. 일지(세트 내용·순서 포함)·목표·루틴은 내용이 동일한 기존 행이 있으면 건너뜁니다. 동일 행 1개는 들어오는 행 1개만 흡수하므로 같은 백업을 다시 복원해도 늘지 않고, 원래 2개였던 동일 일지는 2개로 복원됩니다.
-- `replace`(전체 교체): 브랜드·머신·일지·세트·목표·루틴과 저장 재시도 키(`workout_requests`)를 모두 삭제한 뒤 백업 내용으로 채웁니다. `confirm`이 정확히 `전체 교체`가 아니면 400이며 아무것도 삭제하지 않습니다.
+- 유산소 기록(#114): 외부 ID가 있으면 출처+외부 ID로 기존 행과 비교해 내용이 같으면 건너뛰고, 다르면 **기존 값을 유지**하고 충돌로 보고합니다. 외부 ID가 없으면 일지처럼 내용이 같은 기존 행을 1개씩 건너뜁니다. 일지 연결(`workout_id`)은 비교에 쓰지 않으며, 복원한 기록은 복원(또는 같은 내용으로 건너뛴 기존) 일지에 연결합니다.
+- `replace`(전체 교체): 브랜드·머신·일지·세트·목표·루틴·유산소 기록과 저장 재시도 키(`workout_requests`)를 모두 삭제한 뒤 백업 내용으로 채웁니다. `confirm`이 정확히 `전체 교체`가 아니면 400이며 아무것도 삭제하지 않습니다. 유산소가 없는 v1 백업으로 전체 교체하면 지금 있는 유산소 기록도 모두 지워집니다(미리보기의 삭제 수에 나옵니다).
 - preview는 같은 절차를 한 트랜잭션에서 실행하고 ROLLBACK하여 추가·건너뜀·충돌·삭제 수를 돌려줍니다. restore는 같은 절차를 COMMIT합니다. 실행 중 쓰기 잠금(`LOCK ... IN EXCLUSIVE MODE`)으로 동시 저장을 기다리게 하며, 중간 오류는 전체 ROLLBACK 후 500을 반환합니다.
 - 복원된 일지는 새 기록으로 `version=1`이며 `created_at`은 보존합니다. 미리보기 ROLLBACK으로 id 시퀀스에 빈 번호가 생길 수 있습니다(무해).

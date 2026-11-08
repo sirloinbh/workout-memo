@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 
 import { AlertBanner } from './components/alert-banner';
+import {
+  fieldLabel as stackedLabel,
+  formHint as hint,
+  selectField,
+  touchText,
+} from './components/form-styles';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Checkbox } from './components/ui/checkbox';
@@ -19,15 +25,8 @@ import {
 } from './inbody';
 import { cn } from './lib/utils';
 
-// Same field, hint and select look as the body and machine forms (merged in the #103 cleanup).
-const fieldLabel = 'mb-0 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
-// The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
-const touchText = 'md:pointer-coarse:text-base';
-const hint = 'rounded-md bg-muted p-3 text-meta text-muted-foreground';
-const selectField = cn(
-  'h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-0 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-body-sm dark:bg-input/30 pointer-coarse:min-h-11',
-  touchText,
-);
+// The panel spaces its parts with gap, so its labels drop the shared bottom margin.
+const fieldLabel = cn(stackedLabel, 'mb-0');
 const cell = 'px-3 py-2 text-left align-middle font-normal';
 
 const labels: Record<Target, string> = {
@@ -146,9 +145,12 @@ export function InbodyImport({
       setRows([...next]);
     }
     setBusy(false);
-    setStatus(
-      `${saved}건을 저장했습니다.` + (saved < chosen.length ? ' 실패한 행을 확인하세요.' : ''),
-    );
+    setStatus(`${saved}건을 저장했습니다.`);
+    // #223: a partial failure is a warning, not a progress line; each row keeps its reason.
+    if (saved < chosen.length)
+      setError(
+        `${chosen.length - saved}건은 저장하지 못했습니다. 표의 확인 칸에서 이유를 보고 고친 뒤 다시 저장하세요.`,
+      );
     if (saved) done();
   }
 

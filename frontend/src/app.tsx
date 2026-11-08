@@ -26,6 +26,13 @@ import { AlertBanner } from './components/alert-banner';
 import { DateStepper, RangeSummary } from './components/date-stepper';
 import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
+import {
+  fieldLabel,
+  formHint,
+  selectField,
+  textareaField,
+  touchText,
+} from './components/form-styles';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { List, ListItem } from './components/list';
 import { Modal } from './components/modal';
@@ -1843,9 +1850,9 @@ function Workspace() {
               const refs = (officialWeights ?? []).filter((r) => r.brand === brandName);
               const selected = refs.find((r) => r.id === machineEditor.official_weight_id);
               if (officialWeights === null)
-                return <p className={formHint}>공식 참고값을 불러오지 못했습니다.</p>;
+                return <p className={fieldHint}>공식 참고값을 불러오지 못했습니다.</p>;
               if (!refs.length)
-                return <p className={formHint}>이 브랜드의 공식 참고값 자료가 없습니다.</p>;
+                return <p className={fieldHint}>이 브랜드의 공식 참고값 자료가 없습니다.</p>;
               return (
                 <>
                   <Label className={fieldLabel}>
@@ -1942,7 +1949,7 @@ function Workspace() {
               />
             </Label>
             {issue('base_weight')}
-            <p className={formHint}>
+            <p className={fieldHint}>
               확인하지 못한 기본중량은 비워두세요. 확인된 0 kg과 구분하여 저장하며, 기본중량을
               수정해도 과거 세트의 총중량은 변경되지 않습니다.
             </p>
@@ -1984,20 +1991,8 @@ function Workspace() {
     </>
   );
 }
-// A field label stacked over its input. `.legacy .modal label` still sets the margin and
-// column direction for the other modals; here the utilities name them.
-const fieldLabel = 'mb-4 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
-// The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
-const touchText = 'md:pointer-coarse:text-base';
-// The browser's own select and textarea dressed like the common Input (#103). The common Select
-// (Radix) picks values differently, so every test that chooses an option would change (#101).
-const fieldBox =
-  'w-full min-w-0 rounded-md border border-input bg-transparent px-3 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-body-sm dark:bg-input/30 ' +
-  touchText;
-const selectField = cn(fieldBox, 'h-9 py-0 pointer-coarse:min-h-11');
-const textareaField = cn(fieldBox, 'min-h-20 resize-y py-2');
-// A short explanation under a field, as in the goal form.
-const formHint = 'mb-4 rounded-md bg-muted p-3 text-meta text-muted-foreground';
+// A short explanation under a field in the goal and machine forms.
+const fieldHint = cn(formHint, 'mb-4');
 const noteText = 'text-meta text-muted-foreground';
 // #64: React Hook Form with the shared goal schema. Messages come from the same
 // contract the server uses, and each one is linked to its field for screen readers.
@@ -2088,7 +2083,7 @@ function GoalForm({
       {message('target_reps')}
       {message('start_date')}
       {message('deadline')}
-      <p className="mb-4 rounded-md bg-muted p-3 text-meta text-muted-foreground">
+      <p className={fieldHint}>
         기간 안에 한 세트에서 목표 중량 이상, 목표 반복 수 이상을 수행하면 달성 처리됩니다.
       </p>
       <Button className="w-full" disabled={saving}>

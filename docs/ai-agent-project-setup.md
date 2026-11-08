@@ -713,7 +713,7 @@ provider "aws" { region = var.region }
 
 - **로그인 없는 앱은 공개 인터넷에 그대로 노출하지 않는다.** VPN·사설 접속 또는 인증을 먼저 설계한다.
 - 배포할 때 함께 준비할 것: HTTPS, 원격 state(S3 + 잠금), GitHub OIDC 배포 역할(장기 키 없음), 이미지 버전 태그, health check, CloudWatch 로그 보존 기간, 백업·복원 절차, 이전 이미지로 되돌리는 방법.
-- 상세 비용 계산: workout-memo의 `docs/shared-hosting-costs.md`.
+- 상세 비용 계산: 중앙 리포의 [`docs/costs.md`](https://github.com/sirloinbh/project-standards/blob/main/docs/costs.md)(앱별 배분 기준 포함).
 
 ## 13. 이 프로젝트에서 확인된 함정
 
@@ -742,4 +742,4 @@ provider "aws" { region = var.region }
 - CI: `.github/workflows/ci.yml`, `frontend|backend|infrastructure/.github/workflows/ci.yml`
 - 저장소: `scripts/create-repositories.ps1`, `scripts/push-repositories.ps1`, `scripts/backup.ps1`, `scripts/claude-skills.mjs`
 - 인프라: `infrastructure/main.tf`, `infrastructure/versions.tf`, `infrastructure/README.md`
-- 문서: `docs/development-baseline.md`, `docs/project-github-auth.md`, `docs/local-agent-workflow.md`, `docs/shared-hosting-costs.md`, `docs/agent-issue-template.md`
+- 문서: `docs/development-baseline.md`, `docs/project-github-auth.md`, `docs/local-agent-workflow.md`, `docs/agent-issue-template.md`

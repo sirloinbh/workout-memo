@@ -26,6 +26,7 @@ const summary = (mode: string, dry_run: boolean): Summary => ({
     goals: { added: 1, skipped: 0, conflicts: 0, deleted: 0 },
     routines: { added: 0, skipped: 1, conflicts: 0, deleted: 0 },
     cardio_sessions: { added: 2, skipped: 1, conflicts: 0, deleted: 0 },
+    cardio_goals: { added: 1, skipped: 1, conflicts: 0, deleted: 0 },
   },
   conflicts: mode === 'merge' ? ['Arsenal Strength / 레그 프레스: 기존 값 유지'] : [],
   retry_keys_cleared: mode === 'replace' ? 3 : 0,
@@ -193,6 +194,7 @@ test('downloads are named links and the preview lists one row per table', async 
     '목표 · 추가 1 · 건너뜀 0',
     '루틴 · 추가 0 · 건너뜀 1',
     '유산소 · 추가 2 · 건너뜀 1',
+    '유산소 목표 · 추가 1 · 건너뜀 1',
     '머신 · 추가 1 · 건너뜀 0 · 충돌(기존 유지) 1',
     '브랜드 · 추가 0 · 건너뜀 4',
   ]);

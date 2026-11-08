@@ -80,6 +80,7 @@ async function isolated(run: (...dbs: Db[]) => Promise<void>, n = 1, wrap?: (p: 
           'goals',
           'routines',
           'cardio_sessions',
+          'cardio_goals',
         ])
           out[table] = (await pool.query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n;
         return out;
@@ -175,7 +176,28 @@ async function seed(api: Api) {
     ).status,
     201,
   );
+  // #253: a weekly running distance and a 5 km time record.
+  for (const goal of cardioGoals)
+    assert.equal((await api('/cardio-goals', 'POST', goal)).status, 201);
 }
+const cardioGoals = [
+  {
+    goal_type: 'distance',
+    kind: 'running',
+    period: 'week',
+    target_distance_km: 15.5,
+    start_date: '2024-02-05',
+    deadline: '2024-03-31',
+  },
+  {
+    goal_type: 'record_time',
+    kind: 'running',
+    target_distance_km: 5,
+    target_duration_sec: 1800,
+    start_date: '2024-02-01',
+    deadline: '2024-12-31',
+  },
+];
 const garminRun = (workoutId: number | null) => ({
   date: '2024-02-29',
   start_time: '06:45',
@@ -232,6 +254,7 @@ function normalize(backup: Backup) {
         workout_id: c.workout_id === null ? null : workout.get(c.workout_id),
       })),
     ),
+    cardio_goals: sort(backup.data.cardio_goals.map((g) => ({ ...g, id: 0 }))),
   };
 }
 
@@ -325,10 +348,12 @@ test(
         'goals',
         'routines',
         'cardio_sessions',
+        'cardio_goals',
       ] as const)
         assert.equal(again.data.tables[table].added, 0, `${table} not duplicated`);
       assert.equal(again.data.tables.workouts.skipped, 4);
       assert.equal(again.data.tables.cardio_sessions.skipped, 2);
+      assert.equal(again.data.tables.cardio_goals.skipped, 2);
       // The restored link points to the restored workout, not to the source's id.
       const linked = await target.pool.query(
         "SELECT w.title FROM cardio_sessions c JOIN workouts w ON w.id=c.workout_id WHERE c.external_id='g-100'",
@@ -650,6 +675,7 @@ test('idempotency keys are not part of the backup', { skip }, async () => {
     assert.equal(exported.text.includes(key), false);
     assert.deepEqual(Object.keys(exported.data.data).sort(), [
       'brands',
+      'cardio_goals',
       'cardio_sessions',
       'goals',
       'machines',
@@ -767,7 +793,7 @@ test('a v1 backup restores as before, with no cardio sessions', { skip }, async 
   await isolated(async (source, target) => {
     await seed(source.api);
     const current = (await source.api('/backup')).data;
-    const { cardio_sessions: _cardio, ...data } = current.data;
+    const { cardio_sessions: _cardio, cardio_goals: _goals, ...data } = current.data;
     const v1 = { ...current, version: 1, data };
     const preview = await target.api('/backup/preview', 'POST', { backup: v1 });
     assert.equal(preview.status, 200);
@@ -783,13 +809,14 @@ test('a v1 backup restores as before, with no cardio sessions', { skip }, async 
     assert.deepEqual(restored.data.tables, preview.data.tables);
     const roundTrip = normalize((await target.api('/backup')).data);
     assert.deepEqual(roundTrip.cardio_sessions, []);
+    assert.deepEqual(roundTrip.cardio_goals, []);
     assert.deepEqual(
-      { ...roundTrip, cardio_sessions: undefined },
-      { ...normalize(current), cardio_sessions: undefined },
+      { ...roundTrip, cardio_sessions: undefined, cardio_goals: undefined },
+      { ...normalize(current), cardio_sessions: undefined, cardio_goals: undefined },
     );
-    // A v2 file must list its cardio sessions.
+    // A v3 file must list its cardio sessions.
     const missing = await target.api('/backup/preview', 'POST', {
-      backup: { ...current, data },
+      backup: { ...current, data: { ...data, cardio_goals: [] } },
     });
     assert.equal(missing.status, 400);
     assert.match(missing.data.error, /cardio_sessions/);
@@ -892,4 +919,49 @@ test('cardio CSV is separate, computes pace and speed and guards formulas', { sk
     assert.equal(ranged[1][col('kind')], 'indoor_cycling');
     assert.equal((await db.api('/export/cardio.csv?from=2024-03-02&to=2024-03-01')).status, 400);
   });
+});
+
+// #253: v3 adds cardio goals. A merge restores them once; a replace with an older (v2) file,
+// which has none, leaves none (2026-11-08 user decision B2) and counts the deleted goals.
+test('cardio goals round-trip in a v3 backup and a v2 replace removes them', { skip }, async () => {
+  await isolated(async (source, target) => {
+    await seed(source.api);
+    const backup = (await source.api('/backup')).data;
+    assert.equal(backup.version, 3);
+    assert.equal(backup.data.cardio_goals.length, 2);
+    assert.equal(backup.data.cardio_goals[0].target_distance_km, 15.5);
+
+    const merged = await target.api('/backup/restore', 'POST', { backup });
+    assert.equal(merged.status, 200);
+    assert.deepEqual(merged.data.tables.cardio_goals, {
+      added: 2,
+      skipped: 0,
+      conflicts: 0,
+      deleted: 0,
+    });
+    assert.deepEqual(
+      normalize((await target.api('/backup')).data).cardio_goals,
+      normalize(backup).cardio_goals,
+    );
+    // The restored goals are judged like any other (GET /api/cardio-goals answers).
+    assert.equal(((await target.api('/cardio-goals')).data as unknown as unknown[]).length, 2);
+
+    const { cardio_goals: _goals, ...v2Data } = backup.data;
+    const v2 = { ...backup, version: 2, data: v2Data };
+    const preview = await target.api('/backup/preview', 'POST', { mode: 'replace', backup: v2 });
+    assert.equal(preview.status, 200);
+    assert.deepEqual(preview.data.tables.cardio_goals, {
+      added: 0,
+      skipped: 0,
+      conflicts: 0,
+      deleted: 2,
+    });
+    const replaced = await target.api('/backup/restore', 'POST', {
+      mode: 'replace',
+      backup: v2,
+      confirm: '전체 교체',
+    });
+    assert.equal(replaced.status, 200);
+    assert.equal((await target.count()).cardio_goals, 0);
+  }, 2);
 });

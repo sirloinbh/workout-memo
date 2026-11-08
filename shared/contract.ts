@@ -343,92 +343,97 @@ const goalTargetLabels = {
   target_duration_sec: '목표 시간',
   target_count: '목표 횟수',
 } as const;
-export const cardioGoalSchema = z
-  .object({
-    goal_type: z.enum(cardioGoalTypes, {
-      error: '목표 종류는 거리·시간·횟수·기록 시간·최장 거리 중에서 선택하세요',
-    }),
-    kind: z
-      .enum(cardioKinds, {
-        error:
-          '운동 종류는 러닝·걷기·실외 사이클·실내 자전거·로잉·계단·일립티컬·수영·기타 중에서 선택하세요',
-      })
-      .nullable()
-      .default(null),
-    period: z
-      .enum(cardioGoalPeriods, { error: '기간 단위는 주간·월간 중에서 선택하세요' })
-      .nullable()
-      .default(null),
-    target_distance_km: z
-      .number(numberError('목표 거리를 숫자로 입력하세요', goalDistanceMessage))
-      .positive(goalDistanceMessage)
-      .max(10000, goalDistanceMessage)
-      .refine(threeDecimals, '목표 거리는 소수점 셋째 자리(1 m)까지 입력하세요')
-      .nullable()
-      .default(null),
-    target_duration_sec: z
-      .number(numberError('목표 시간을 숫자로 입력하세요', goalDurationMessage))
-      .int(goalDurationMessage)
-      .min(1, goalDurationMessage)
-      .max(2678400, goalDurationMessage)
-      .nullable()
-      .default(null),
-    target_count: z
-      .number(numberError('목표 횟수를 숫자로 입력하세요', goalCountMessage))
-      .int(goalCountMessage)
-      .min(1, goalCountMessage)
-      .max(1000, goalCountMessage)
-      .nullable()
-      .default(null),
-    start_date: date,
-    deadline: date,
-  })
-  .superRefine((v, ctx) => {
-    if (v.deadline < v.start_date)
+// Field rules without the cross-field checks, so the backup format can add its id (#253).
+export const cardioGoalObject = z.object({
+  goal_type: z.enum(cardioGoalTypes, {
+    error: '목표 종류는 거리·시간·횟수·기록 시간·최장 거리 중에서 선택하세요',
+  }),
+  kind: z
+    .enum(cardioKinds, {
+      error:
+        '운동 종류는 러닝·걷기·실외 사이클·실내 자전거·로잉·계단·일립티컬·수영·기타 중에서 선택하세요',
+    })
+    .nullable()
+    .default(null),
+  period: z
+    .enum(cardioGoalPeriods, { error: '기간 단위는 주간·월간 중에서 선택하세요' })
+    .nullable()
+    .default(null),
+  target_distance_km: z
+    .number(numberError('목표 거리를 숫자로 입력하세요', goalDistanceMessage))
+    .positive(goalDistanceMessage)
+    .max(10000, goalDistanceMessage)
+    .refine(threeDecimals, '목표 거리는 소수점 셋째 자리(1 m)까지 입력하세요')
+    .nullable()
+    .default(null),
+  target_duration_sec: z
+    .number(numberError('목표 시간을 숫자로 입력하세요', goalDurationMessage))
+    .int(goalDurationMessage)
+    .min(1, goalDurationMessage)
+    .max(2678400, goalDurationMessage)
+    .nullable()
+    .default(null),
+  target_count: z
+    .number(numberError('목표 횟수를 숫자로 입력하세요', goalCountMessage))
+    .int(goalCountMessage)
+    .min(1, goalCountMessage)
+    .max(1000, goalCountMessage)
+    .nullable()
+    .default(null),
+  start_date: date,
+  deadline: date,
+});
+// Cross-field rules shared by the API and the backup format.
+export function checkCardioGoal(
+  v: z.output<typeof cardioGoalObject>,
+  ctx: { addIssue: (issue: { code: 'custom'; message: string; path: string[] }) => void },
+) {
+  if (v.deadline < v.start_date)
+    ctx.addIssue({
+      code: 'custom',
+      message: '종료일은 시작일과 같거나 이후여야 합니다',
+      path: ['deadline'],
+    });
+  // Period goals list every week or month of the goal, so the span is capped at five years.
+  else if (Date.parse(v.deadline) - Date.parse(v.start_date) > goalMaxDays * 86400000)
+    ctx.addIssue({
+      code: 'custom',
+      message: '목표 기간은 5년(1826일) 이하로 정하세요',
+      path: ['deadline'],
+    });
+  const record = v.goal_type === 'record_time' || v.goal_type === 'longest_distance';
+  if (record && v.kind === null)
+    ctx.addIssue({
+      code: 'custom',
+      message: '기록 목표는 운동 종류를 하나 선택하세요',
+      path: ['kind'],
+    });
+  if (!record && v.period === null)
+    ctx.addIssue({
+      code: 'custom',
+      message: '누적 목표는 주간·월간 중 기간 단위를 선택하세요',
+      path: ['period'],
+    });
+  if (record && v.period !== null)
+    ctx.addIssue({
+      code: 'custom',
+      message: '기록 목표에는 기간 단위를 넣지 않습니다',
+      path: ['period'],
+    });
+  const wanted: readonly string[] = goalTargets[v.goal_type];
+  for (const [field, label] of Object.entries(goalTargetLabels)) {
+    const value = v[field as keyof typeof goalTargetLabels];
+    if (wanted.includes(field) && value === null)
+      ctx.addIssue({ code: 'custom', message: `${obj(label)} 입력하세요`, path: [field] });
+    if (!wanted.includes(field) && value !== null)
       ctx.addIssue({
         code: 'custom',
-        message: '종료일은 시작일과 같거나 이후여야 합니다',
-        path: ['deadline'],
+        message: `이 목표 종류에는 ${obj(label)} 넣지 않습니다`,
+        path: [field],
       });
-    // Period goals list every week or month of the goal, so the span is capped at five years.
-    else if (Date.parse(v.deadline) - Date.parse(v.start_date) > goalMaxDays * 86400000)
-      ctx.addIssue({
-        code: 'custom',
-        message: '목표 기간은 5년(1826일) 이하로 정하세요',
-        path: ['deadline'],
-      });
-    const record = v.goal_type === 'record_time' || v.goal_type === 'longest_distance';
-    if (record && v.kind === null)
-      ctx.addIssue({
-        code: 'custom',
-        message: '기록 목표는 운동 종류를 하나 선택하세요',
-        path: ['kind'],
-      });
-    if (!record && v.period === null)
-      ctx.addIssue({
-        code: 'custom',
-        message: '누적 목표는 주간·월간 중 기간 단위를 선택하세요',
-        path: ['period'],
-      });
-    if (record && v.period !== null)
-      ctx.addIssue({
-        code: 'custom',
-        message: '기록 목표에는 기간 단위를 넣지 않습니다',
-        path: ['period'],
-      });
-    const wanted: readonly string[] = goalTargets[v.goal_type];
-    for (const [field, label] of Object.entries(goalTargetLabels)) {
-      const value = v[field as keyof typeof goalTargetLabels];
-      if (wanted.includes(field) && value === null)
-        ctx.addIssue({ code: 'custom', message: `${obj(label)} 입력하세요`, path: [field] });
-      if (!wanted.includes(field) && value !== null)
-        ctx.addIssue({
-          code: 'custom',
-          message: `이 목표 종류에는 ${obj(label)} 넣지 않습니다`,
-          path: [field],
-        });
-    }
-  });
+  }
+}
+export const cardioGoalSchema = cardioGoalObject.superRefine(checkCardioGoal);
 export type CardioGoalInput = z.input<typeof cardioGoalSchema>;
 export type CardioGoal = z.output<typeof cardioGoalSchema>;
 

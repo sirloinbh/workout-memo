@@ -25,6 +25,7 @@ const summary = (mode: string, dry_run: boolean): Summary => ({
     sets: { added: 21, skipped: 6, conflicts: 0, deleted: mode === 'replace' ? 15 : 0 },
     goals: { added: 1, skipped: 0, conflicts: 0, deleted: 0 },
     routines: { added: 0, skipped: 1, conflicts: 0, deleted: 0 },
+    cardio_sessions: { added: 2, skipped: 1, conflicts: 0, deleted: 0 },
   },
   conflicts: mode === 'merge' ? ['Arsenal Strength / 레그 프레스: 기존 값 유지'] : [],
   retry_keys_cleared: mode === 'replace' ? 3 : 0,
@@ -160,7 +161,7 @@ test('unreadable, oversized or rejected files never reach restore', async () => 
 
   // A second, independent app whose server rejects the preview.
   cleanup();
-  const rejected = mount('지원하지 않는 백업 버전입니다 (v2). 지원 버전: v1');
+  const rejected = mount('지원하지 않는 백업 버전입니다 (v3). 지원 버전: v1, v2');
   await openBackup(rejected);
   await rejected.choose(rejected.file(JSON.stringify(backup)));
   await waitFor(() => expect(page()).toMatch(/지원하지 않는 백업 버전입니다/));
@@ -191,6 +192,7 @@ test('downloads are named links and the preview lists one row per table', async 
     '세트 · 추가 21 · 건너뜀 6',
     '목표 · 추가 1 · 건너뜀 0',
     '루틴 · 추가 0 · 건너뜀 1',
+    '유산소 · 추가 2 · 건너뜀 1',
     '머신 · 추가 1 · 건너뜀 0 · 충돌(기존 유지) 1',
     '브랜드 · 추가 0 · 건너뜀 4',
   ]);

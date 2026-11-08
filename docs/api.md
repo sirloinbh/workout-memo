@@ -1,6 +1,6 @@
 # REST API 계약
 
-Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·머신·목표·신체 기록의 입력 검증 원본은 [shared/contract.ts](../shared/contract.ts)의 Zod 스키마입니다. 서버(400 응답)와 화면(저장 전 항목별 오류)이 같은 스키마와 한국어 메시지를 사용합니다. 루틴 등 나머지 스키마는 [domain.ts](../backend/src/domain.ts)에 있습니다. 이 문서는 그 의미와 엔드포인트 목록을 정리합니다. 아래 엔드포인트 표는 `backend/test/api-contract.test.ts`가 실제 등록된 Express 라우트와 비교하므로, 라우트를 추가·삭제하면 이 표도 함께 고쳐야 `npm test`가 통과합니다.
+Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·머신·목표·신체 기록·유산소 기록의 입력 검증 원본은 [shared/contract.ts](../shared/contract.ts)의 Zod 스키마입니다. 서버(400 응답)와 화면(저장 전 항목별 오류)이 같은 스키마와 한국어 메시지를 사용합니다. 루틴 등 나머지 스키마는 [domain.ts](../backend/src/domain.ts)에 있습니다. 이 문서는 그 의미와 엔드포인트 목록을 정리합니다. 아래 엔드포인트 표는 `backend/test/api-contract.test.ts`가 실제 등록된 Express 라우트와 비교하므로, 라우트를 추가·삭제하면 이 표도 함께 고쳐야 `npm test`가 통과합니다.
 
 ## 공통 규칙
 
@@ -16,15 +16,15 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 
 모든 오류 응답은 `{ "error": "<한국어 메시지>" }` 형식입니다.
 
-| 상태 | 의미                                                                                                                                            |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400  | 입력 검증 실패(Zod 메시지를 `, `로 연결, 최대 10개), JSON 형식 오류, 잘못된 경로 ID, 존재하지 않는 머신·브랜드·공식 참고값 참조, 백업 형식 오류 |
-| 404  | 대상 일지·머신·루틴·신체 기록·목표가 없음. 없는 `/api` 경로는 `{ "error": "요청한 API를 찾을 수 없습니다" }`                                    |
-| 409  | 고유값 중복(같은 이름·날짜), 일지 버전 충돌, 같은 재시도 키에 다른 내용 또는 만료된 키, 루틴 휴식의 날짜·상태 조건 불일치                       |
-| 413  | 요청 크기 한도 초과. 백업 경로는 10MB 한도를 알려 주는 메시지, 나머지는 "요청 본문이 너무 큽니다"                                               |
-| 500  | DB 연결 오류 등 서버 오류. 응답은 `{ "error": "서버 오류가 발생했습니다" }`이고, 상세 내용은 서버 로그(`request_error`)에만 남깁니다            |
+| 상태 | 의미                                                                                                                                                      |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400  | 입력 검증 실패(Zod 메시지를 `, `로 연결, 최대 10개), JSON 형식 오류, 잘못된 경로 ID, 존재하지 않는 머신·브랜드·공식 참고값·근력 일지 참조, 백업 형식 오류 |
+| 404  | 대상 일지·머신·루틴·신체 기록·목표·유산소 기록이 없음. 없는 `/api` 경로는 `{ "error": "요청한 API를 찾을 수 없습니다" }`                                  |
+| 409  | 고유값 중복(같은 이름·날짜, 유산소의 같은 출처·외부 ID), 일지 버전 충돌, 같은 재시도 키에 다른 내용 또는 만료된 키, 루틴 휴식의 날짜·상태 조건 불일치     |
+| 413  | 요청 크기 한도 초과. 백업 경로는 10MB 한도를 알려 주는 메시지, 나머지는 "요청 본문이 너무 큽니다"                                                         |
+| 500  | DB 연결 오류 등 서버 오류. 응답은 `{ "error": "서버 오류가 발생했습니다" }`이고, 상세 내용은 서버 로그(`request_error`)에만 남깁니다                      |
 
-오류 처리는 다른 앱과 같은 중앙 관리 파일 `backend/src/standard/http.ts`(sirloinbh/project-standards#309)가 맡습니다. 이 앱만의 메시지(머신·브랜드·공식 참고값 참조 오류, 백업 10MB 한도)는 `routes/shared.ts`의 `appErrors`가 먼저 처리합니다(#172).
+오류 처리는 다른 앱과 같은 중앙 관리 파일 `backend/src/standard/http.ts`(sirloinbh/project-standards#309)가 맡습니다. 이 앱만의 메시지(머신·브랜드·공식 참고값·근력 일지 참조 오류, 유산소 외부 ID 중복, 백업 10MB 한도)는 `routes/shared.ts`의 `appErrors`가 먼저 처리합니다(#172).
 
 ## 엔드포인트
 
@@ -59,6 +59,12 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 | GET    | `/api/exercise-weight-steps`    | 운동별 증량 단위(#86). 지정한 운동만                                      |
 | PUT    | `/api/exercise-weight-steps`    | 운동 1개의 증량 단위 저장. `null`은 기본 5 kg으로 되돌림                  |
 | GET    | `/api/goal-suggestion`          | `?exercise=`의 다음 목표 제안(저장하지 않음)                              |
+| GET    | `/api/cardio-sessions`          | `?from&to` 기간의 유산소 기록(최근 순). `kind` 선택                       |
+| GET    | `/api/cardio-sessions/:id`      | 유산소 기록 1개                                                           |
+| POST   | `/api/cardio-sessions`          | 유산소 기록 등록 → 201. 같은 출처·외부 ID는 409                           |
+| PUT    | `/api/cardio-sessions/:id`      | 유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 `null`                  |
+| DELETE | `/api/cardio-sessions/:id`      | 유산소 기록 삭제 → `{ ok: true }`                                         |
+| GET    | `/api/export/cardio.csv`        | 유산소 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                 |
 | GET    | `/api/export/workouts.csv`      | 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                        |
 | GET    | `/api/backup`                   | 복원용 JSON 백업 파일                                                     |
 | POST   | `/api/backup/preview`           | 복원 미리보기(같은 절차 후 ROLLBACK)                                      |
@@ -121,6 +127,41 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 `{ "date": "2026-10-20", "body_weight_kg": 72.4, "body_fat_percent": null, "skeletal_muscle_kg": 33.1 }`
 
 - 세 값 중 하나 이상이 필요하고 소수점 둘째 자리까지만 받습니다. 셋째 자리 이상은 반올림하지 않고 400으로 거부합니다.
+
+### 유산소 기록 `POST /api/cardio-sessions`, `PUT /api/cardio-sessions/:id` (#114)
+
+```json
+{
+  "date": "2026-11-08",
+  "start_time": "07:30",
+  "kind": "running",
+  "duration_sec": 1800,
+  "distance_km": 5.25,
+  "avg_heart_rate": 152,
+  "max_heart_rate": 171,
+  "calories_kcal": 380,
+  "elevation_gain_m": 35,
+  "avg_cadence": 168,
+  "effort": "medium",
+  "workout_id": null,
+  "source": "manual",
+  "external_id": null,
+  "memo": ""
+}
+```
+
+- 필수는 `date`, `kind`, `duration_sec`입니다. 나머지는 생략하면 `null`(메모는 `""`, 출처는 `manual`)이며 0으로 채우지 않습니다. PUT은 전체 교체라 생략한 선택 값이 `null`이 됩니다.
+- `date`는 실제 날짜이고 오늘(`Asia/Seoul`) 이후면 400 "유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다"입니다. 근력 일지는 계획 기록 때문에 미래 날짜를 허용하므로 둘이 다르게 동작합니다. 이 규칙은 오늘 날짜가 필요해 OpenAPI 스키마에는 없습니다.
+- `start_time`은 서울 시각 `HH:MM`(00:00~23:59)입니다.
+- `kind`: `running`(러닝)·`walking`(걷기)·`outdoor_cycling`(실외 사이클)·`indoor_cycling`(실내 자전거)·`rowing`(로잉)·`stairs`(계단)·`elliptical`(일립티컬)·`swimming`(수영)·`other`(기타).
+- `duration_sec`는 1~86400(24시간)의 정수 초입니다. `distance_km`는 모든 종류에서 km이며 0 초과 1000 이하, 소수점 셋째 자리(1 m)까지입니다. 수영은 화면에서만 m로 보여 줍니다.
+- 심박 `avg_heart_rate`·`max_heart_rate`는 30~250 bpm 정수이고 둘 다 있으면 최대가 평균 이상이어야 합니다. `calories_kcal` 0~20000, `elevation_gain_m`(누적 상승 고도) 0~10000 m, `avg_cadence` 1~300(걸음/분 또는 회전/분)의 정수입니다. `memo`는 2000자 이하입니다.
+- `effort`(체감 강도)는 일지 피드백(#83)과 같은 `hard`·`medium`·`easy` 또는 `null`입니다.
+- `workout_id`는 같은 날 근력 일지와의 선택 연결입니다. 없는 일지면 400 "연결할 근력 일지가 존재하지 않습니다"이고, 일지를 지우면 연결만 `null`이 됩니다.
+- `source`는 `manual`·`garmin`·`nike`·`file`이고 `external_id`는 가져온 기록의 원본 ID(공백 제거 후 1~200자)입니다. `manual`에는 `external_id`를 넣을 수 없습니다(400). 같은 `source`와 `external_id`가 이미 있으면 409 "같은 출처와 외부 ID의 유산소 기록이 이미 있습니다"이며, `external_id`가 `null`인 기록끼리는 중복으로 보지 않습니다.
+- 응답은 저장한 필드와 `id`, `created_at`, `updated_at`, 계산값 `pace_sec_per_km`(초/km, 소수 1자리)·`speed_kmh`(km/h, 소수 2자리)입니다. 계산값은 저장하지 않고 조회할 때 SQL로 계산하며 거리가 없으면 둘 다 `null`입니다.
+- 목록 `GET /api/cardio-sessions?from&to[&kind]`는 날짜·시작 시각 최근 순입니다. 없는 기록은 404 "유산소 기록을 찾을 수 없습니다", 잘못된 경로 ID는 400 "유산소 기록 ID가 올바르지 않습니다"입니다.
+- 구간(랩·인터벌)과 GPS 경로는 저장하지 않습니다(요약값만).
 
 ### 루틴, 백업
 

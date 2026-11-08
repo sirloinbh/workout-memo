@@ -9,6 +9,8 @@ import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { EmptyState } from './components/ui/empty-state';
+import { SkeletonCard } from './components/ui/skeleton';
+import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { cn } from './lib/utils';
 
@@ -215,8 +217,23 @@ export function Analysis() {
           {error}
         </AlertBanner>
       )}
-      {loading && (
-        <p role="status" className="text-body-sm text-muted-foreground">
+      {/* #173: placeholders in the shape of the two cards on the first load; a reload keeps the
+          cards and shows a short status line instead. */}
+      {loading && !data && (
+        <div aria-busy="true" aria-label="종목 분석" className="mt-4 flex flex-col gap-4">
+          <p role="status" className="sr-only">
+            분석 불러오는 중…
+          </p>
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      )}
+      {loading && data && (
+        <p
+          role="status"
+          className="mt-2 flex items-center gap-2 text-body-sm text-muted-foreground"
+        >
+          <Spinner size="sm" aria-hidden />
           분석 불러오는 중…
         </p>
       )}
@@ -327,6 +344,7 @@ export function Analysis() {
                             disabled={saving}
                             onClick={() => void saveParts()}
                           >
+                            {saving && <Spinner size="sm" aria-hidden />}
                             부위 저장
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>

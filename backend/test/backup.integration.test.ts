@@ -72,7 +72,15 @@ async function isolated(run: (...dbs: Db[]) => Promise<void>, n = 1, wrap?: (p: 
       };
       const count = async () => {
         const out: Record<string, number> = {};
-        for (const table of ['brands', 'machines', 'workouts', 'sets', 'goals', 'routines'])
+        for (const table of [
+          'brands',
+          'machines',
+          'workouts',
+          'sets',
+          'goals',
+          'routines',
+          'cardio_sessions',
+        ])
           out[table] = (await pool.query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n;
         return out;
       };
@@ -154,7 +162,34 @@ async function seed(api: Api) {
     201,
   );
   assert.equal((await api('/routines', 'POST', routineInput(2))).status, 201);
+  // #114: an imported session linked to the first workout and a manual one without distance.
+  assert.equal((await api('/cardio-sessions', 'POST', garminRun(first.data.id))).status, 201);
+  assert.equal(
+    (
+      await api('/cardio-sessions', 'POST', {
+        date: '2024-03-01',
+        kind: 'indoor_cycling',
+        duration_sec: 1200,
+        memo: tricky,
+      })
+    ).status,
+    201,
+  );
 }
+const garminRun = (workoutId: number | null) => ({
+  date: '2024-02-29',
+  start_time: '06:45',
+  kind: 'running',
+  duration_sec: 1800,
+  distance_km: 5.25,
+  avg_heart_rate: 150,
+  max_heart_rate: 172,
+  effort: 'hard',
+  workout_id: workoutId,
+  source: 'garmin',
+  external_id: 'g-100',
+  memo: '=HYPERLINK("x")',
+});
 
 // Compare content without database ids, resolving every reference to natural keys.
 function normalize(backup: Backup) {
@@ -162,6 +197,7 @@ function normalize(backup: Backup) {
   const machine = new Map(
     backup.data.machines.map((m) => [m.id, `${brand.get(m.brand_id)}/${m.name}`]),
   );
+  const workout = new Map(backup.data.workouts.map((w) => [w.id, `${w.date}/${w.title}`]));
   const sort = (list: unknown[]) => list.map((x) => JSON.stringify(x)).sort();
   return {
     brands: sort(backup.data.brands.map((b) => b.name)),
@@ -188,6 +224,14 @@ function normalize(backup: Backup) {
     ),
     goals: sort(backup.data.goals.map((g) => ({ ...g, id: 0 }))),
     routines: sort(backup.data.routines.map((r) => ({ ...r, id: 0 }))),
+    // #114: links resolve to the workout's date and title.
+    cardio_sessions: sort(
+      backup.data.cardio_sessions.map((c) => ({
+        ...c,
+        id: 0,
+        workout_id: c.workout_id === null ? null : workout.get(c.workout_id),
+      })),
+    ),
   };
 }
 
@@ -207,7 +251,7 @@ test(
       );
       const backup = exported.data;
       assert.equal(backup.format, 'workout-memo-backup');
-      assert.equal(backup.version, 1);
+      assert.equal(backup.version, 2);
       assert.equal(backup.data.workouts.length, 4);
       assert.equal(backup.data.workouts[0].sets.length, 3, 'Sets nest inside their workout');
       assert.equal(backup.data.workouts[0].sets[0].weight, 100.25, 'Total kg is a JSON number');
@@ -241,6 +285,17 @@ test(
       assert.equal(preview.data.tables.brands.skipped, backup.data.brands.length);
       assert.equal(preview.data.tables.goals.added, 1);
       assert.equal(preview.data.tables.routines.added, 1);
+      assert.deepEqual(preview.data.tables.cardio_sessions, {
+        added: 2,
+        skipped: 0,
+        conflicts: 0,
+        deleted: 0,
+      });
+      assert.equal(backup.data.cardio_sessions.length, 2);
+      const run = backup.data.cardio_sessions.find((c) => c.source === 'garmin')!;
+      assert.equal(run.start_time, '06:45', 'TIME is exported as HH:MM');
+      assert.equal(run.distance_km, 5.25, 'Distance is a JSON number');
+      assert.equal(run.workout_id, backup.data.workouts[0].id, 'The workout link is a backup id');
       assert.equal(preview.data.dry_run, true);
       assert.deepEqual(await target.count(), before, 'Preview never writes');
 
@@ -263,9 +318,22 @@ test(
       const after = await target.count();
       const again = await target.api('/backup/restore', 'POST', { mode: 'merge', backup });
       assert.equal(again.status, 200);
-      for (const table of ['brands', 'machines', 'workouts', 'goals', 'routines'] as const)
+      for (const table of [
+        'brands',
+        'machines',
+        'workouts',
+        'goals',
+        'routines',
+        'cardio_sessions',
+      ] as const)
         assert.equal(again.data.tables[table].added, 0, `${table} not duplicated`);
       assert.equal(again.data.tables.workouts.skipped, 4);
+      assert.equal(again.data.tables.cardio_sessions.skipped, 2);
+      // The restored link points to the restored workout, not to the source's id.
+      const linked = await target.pool.query(
+        "SELECT w.title FROM cardio_sessions c JOIN workouts w ON w.id=c.workout_id WHERE c.external_id='g-100'",
+      );
+      assert.equal(linked.rows[0].title, '=SUM(A1) 하체');
       assert.deepEqual(await target.count(), after);
       // Restoring into the source itself is also a no-op.
       const self = await source.api('/backup/restore', 'POST', { backup });
@@ -582,6 +650,7 @@ test('idempotency keys are not part of the backup', { skip }, async () => {
     assert.equal(exported.text.includes(key), false);
     assert.deepEqual(Object.keys(exported.data.data).sort(), [
       'brands',
+      'cardio_sessions',
       'goals',
       'machines',
       'routines',
@@ -692,3 +761,135 @@ test(
     }, 2);
   },
 );
+
+// #114: files exported before cardio sessions existed are v1 and still restore.
+test('a v1 backup restores as before, with no cardio sessions', { skip }, async () => {
+  await isolated(async (source, target) => {
+    await seed(source.api);
+    const current = (await source.api('/backup')).data;
+    const { cardio_sessions: _cardio, ...data } = current.data;
+    const v1 = { ...current, version: 1, data };
+    const preview = await target.api('/backup/preview', 'POST', { backup: v1 });
+    assert.equal(preview.status, 200);
+    assert.equal(preview.data.tables.workouts.added, 4);
+    assert.deepEqual(preview.data.tables.cardio_sessions, {
+      added: 0,
+      skipped: 0,
+      conflicts: 0,
+      deleted: 0,
+    });
+    const restored = await target.api('/backup/restore', 'POST', { backup: v1 });
+    assert.equal(restored.status, 200);
+    assert.deepEqual(restored.data.tables, preview.data.tables);
+    const roundTrip = normalize((await target.api('/backup')).data);
+    assert.deepEqual(roundTrip.cardio_sessions, []);
+    assert.deepEqual(
+      { ...roundTrip, cardio_sessions: undefined },
+      { ...normalize(current), cardio_sessions: undefined },
+    );
+    // A v2 file must list its cardio sessions.
+    const missing = await target.api('/backup/preview', 'POST', {
+      backup: { ...current, data },
+    });
+    assert.equal(missing.status, 400);
+    assert.match(missing.data.error, /cardio_sessions/);
+  }, 2);
+});
+
+test(
+  'merge keeps an existing imported cardio session with the same external id',
+  { skip },
+  async () => {
+    await isolated(async (source, target) => {
+      await seed(source.api);
+      const backup = (await source.api('/backup')).data;
+      const existing = await target.api('/cardio-sessions', 'POST', {
+        ...garminRun(null),
+        duration_sec: 2000,
+      });
+      assert.equal(existing.status, 201);
+      const result = await target.api('/backup/restore', 'POST', { mode: 'merge', backup });
+      assert.equal(result.status, 200);
+      assert.deepEqual(result.data.tables.cardio_sessions, {
+        added: 1,
+        skipped: 0,
+        conflicts: 1,
+        deleted: 0,
+      });
+      assert.match(
+        result.data.conflicts.join('\n'),
+        /유산소 2024-02-29 garmin \/ g-100: 기존 값 유지/,
+      );
+      const kept = await target.pool.query(
+        "SELECT duration_sec FROM cardio_sessions WHERE source='garmin' AND external_id='g-100'",
+      );
+      assert.deepEqual(kept.rows, [{ duration_sec: 2000 }], 'Existing values are not overwritten');
+
+      // Replace deletes cardio sessions too and then mirrors the backup.
+      const replaced = await target.api('/backup/restore', 'POST', {
+        mode: 'replace',
+        backup,
+        confirm: '전체 교체',
+      });
+      assert.equal(replaced.status, 200);
+      assert.equal(replaced.data.tables.cardio_sessions.deleted, 2);
+      assert.equal(replaced.data.tables.cardio_sessions.added, 2);
+      assert.deepEqual(normalize((await target.api('/backup')).data), normalize(backup));
+    }, 2);
+  },
+);
+
+test('cardio CSV is separate, computes pace and speed and guards formulas', { skip }, async () => {
+  await isolated(async (db) => {
+    await seed(db.api);
+    const csv = await db.api('/export/cardio.csv');
+    assert.equal(csv.status, 200);
+    assert.match(csv.headers.get('content-type') ?? '', /^text\/csv; charset=utf-8/);
+    assert.match(
+      csv.headers.get('content-disposition') ?? '',
+      /attachment; filename="?workout-memo-cardio-\d{4}-\d{2}-\d{2}\.csv"?$/,
+    );
+    assert.ok(csv.text.startsWith('﻿'), 'UTF-8 BOM like the workouts CSV');
+    const rows = parseCsv(csv.text);
+    assert.deepEqual(rows[0], [
+      'cardio_id',
+      'date',
+      'start_time',
+      'kind',
+      'duration_sec',
+      'distance_km',
+      'pace_sec_per_km',
+      'speed_kmh',
+      'avg_heart_rate',
+      'max_heart_rate',
+      'calories_kcal',
+      'elevation_gain_m',
+      'avg_cadence',
+      'effort',
+      'workout_id',
+      'source',
+      'external_id',
+      'memo',
+    ]);
+    assert.equal(rows.length, 3);
+    const col = (name: string) => rows[0].indexOf(name);
+    const run = rows[1];
+    assert.equal(run[col('start_time')], '06:45');
+    assert.equal(run[col('distance_km')], '5.25');
+    assert.equal(run[col('pace_sec_per_km')], '342.9', '1800 s / 5.25 km');
+    assert.equal(run[col('speed_kmh')], '10.5');
+    assert.equal(run[col('memo')], '\'=HYPERLINK("x")', 'Formula-like memos are neutralized');
+    const ride = rows[2];
+    assert.equal(ride[col('distance_km')], '');
+    assert.equal(ride[col('pace_sec_per_km')], '', 'No distance, no pace');
+    assert.equal(ride[col('memo')], tricky);
+    // The workouts CSV is unchanged by cardio sessions.
+    assert.equal(parseCsv((await db.api('/export/workouts.csv')).text).length, 1 + 6);
+    const ranged = parseCsv(
+      (await db.api('/export/cardio.csv?from=2024-03-01&to=2024-03-01')).text,
+    );
+    assert.equal(ranged.length, 2);
+    assert.equal(ranged[1][col('kind')], 'indoor_cycling');
+    assert.equal((await db.api('/export/cardio.csv?from=2024-03-02&to=2024-03-01')).status, 400);
+  });
+});

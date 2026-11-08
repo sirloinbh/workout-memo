@@ -6,6 +6,7 @@ import { registerBackupRoutes } from './backup.js';
 import { seoulToday } from './progress.js';
 import { registerAnalysisRoutes } from './routes/analysis.js';
 import { registerBodyMeasurementRoutes } from './routes/body-measurements.js';
+import { registerCardioRoutes } from './routes/cardio.js';
 import { registerGoalRoutes } from './routes/goals.js';
 import { registerMachineRoutes } from './routes/machines.js';
 import { registerRoutineRoutes } from './routes/routines.js';
@@ -35,6 +36,7 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
   registerGoalRoutes(app, pool);
   registerAnalysisRoutes(app, pool);
   registerWeightStepRoutes(app, pool);
+  registerCardioRoutes(app, pool, today);
   // #172: an unknown /api path is a JSON 404; the app's own messages come before the central handler.
   app.use('/api', notFound);
   app.use(appErrors);

@@ -56,6 +56,8 @@ workout-memo는 8개 앱 공통 디자인 시스템을 씁니다(#159, 중앙 pr
 
 `StatCard`(#101)는 `Card` 위에 만든 요약 숫자 카드입니다. 라벨, 값과 단위, 짧은 설명을 받습니다.
 
+`PageHeader`(#222)는 페이지 맨 위의 머리글입니다. eyebrow, `h1`(끝의 흐린 점 포함), 설명, 주요 버튼 자리(`actions`)를 받습니다. 버튼은 공통 `Button`을 넣고, 폰에서는 글 아래로, `md`부터는 오른쪽에 놓입니다.
+
 ```tsx
 <SegmentedControl label="기간" options={periods} value={period} onValueChange={setPeriod} />
 <NumberInput label="중량" value={weight} onValueChange={setWeight} step={2.5} min={0} />

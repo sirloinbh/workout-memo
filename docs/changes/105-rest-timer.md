@@ -66,3 +66,10 @@
 - a246df2의 PR CI에서 e2e-visual은 360·390·768·1280px `workout-editor` 4장만 실패했습니다. 예상과 같습니다. 새 "390px 휴식 타이머"를 포함한 반응형 검사와 verify·docker-build·windows-auth는 통과했습니다.
 - diff 이미지로 바뀐 곳을 확인했습니다. 타이머 카드가 타이머 줄(남은 시간·휴식 시작)과 설정 카드(휴식 시간·자동 시작·운동별 기본 휴식·안내 문구)로 나뉘었고, 안내 문구에 진동 안내가 한 줄 늘었습니다. 그 외 화면 변화는 없습니다.
 - main이 섞이지 않도록 push 실행(run 42463940560)의 `visual-baselines` 산출물에서 이 4장만 `e2e/__screenshots__/ui-visual.spec.ts/`로 옮겼습니다.
+
+## main 병합
+
+- 병합 직전 `git merge-base --is-ancestor origin/main HEAD`가 실패했습니다. main에 #242(페이지 머리글 공통 컴포넌트)·#245·#247·#248·#249·#250이 들어왔고 `app.tsx`와 `workout-editor` 768·1280 기준선이 겹쳐 origin/main을 병합했습니다.
+- `app.tsx` 충돌: main의 `PageHeader`를 그대로 쓰고, 표시 조건만 이 브랜치의 `!ownPage`로 바꿨습니다.
+- 기준선 2장은 이 브랜치 것을 임시로 두고, 병합 후 CI 결과로 다시 받습니다.
+- 병합 후: typecheck·eslint·prettier 통과, `npm run test -w frontend -- --maxWorkers=1`로 set-completion·rest-by-exercise·routines·modal·workout-draft·page-header·loading-placeholders 7개 파일 62 pass

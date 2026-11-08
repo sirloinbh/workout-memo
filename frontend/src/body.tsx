@@ -1,9 +1,10 @@
-import { Scale } from 'lucide-react';
+import { Plus, Scale } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlertBanner } from './components/alert-banner';
 import { fieldLabel, formHint as hint, touchText } from './components/form-styles';
 import { List, ListItem } from './components/list';
+import { PageHeader } from './components/page-header';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
@@ -11,6 +12,8 @@ import { EmptyState } from './components/ui/empty-state';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { SkeletonList } from './components/ui/skeleton';
+import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { InbodyImport } from './inbody-import';
 import { cn } from './lib/utils';
@@ -173,26 +176,26 @@ export function BodyMeasurements({
   };
   return (
     <section>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">BODY CHANGES, SIDE BY SIDE</div>
-          <h1>
-            몸의 변화도 함께 기록해요<span className="heading-dot">.</span>
-          </h1>
-          <p>
-            체중·체지방률·골격근량을 날짜별로 기록합니다. 측정하지 않은 값은 비워두면 미입력으로
-            보관하며 추정하지 않습니다.
-          </p>
-        </div>
-        <div className="heading-actions">
-          <button className="subtle-button" onClick={() => setImporting(!importing)}>
-            인바디 가져오기
-          </button>
-          <button className="primary" disabled={saving} onClick={() => edit()}>
-            신체 기록 추가
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="BODY CHANGES, SIDE BY SIDE"
+        title="몸의 변화도 함께 기록해요"
+        description="체중·체지방률·골격근량을 날짜별로 기록합니다. 측정하지 않은 값은 비워두면 미입력으로 보관하며 추정하지 않습니다."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              aria-expanded={importing}
+              onClick={() => setImporting(!importing)}
+            >
+              인바디 가져오기
+            </Button>
+            <Button disabled={saving} onClick={() => edit()}>
+              <Plus aria-hidden />
+              신체 기록 추가
+            </Button>
+          </>
+        }
+      />
       {controls}
       {error && (
         <AlertBanner
@@ -261,7 +264,10 @@ export function BodyMeasurements({
                 소수점 둘째 자리까지 저장하며, 하나 이상 입력해야 합니다.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button disabled={saving}>{saving ? '저장 중…' : '신체 기록 저장'}</Button>
+                <Button disabled={saving}>
+                  {saving && <Spinner size="sm" aria-hidden />}
+                  {saving ? '저장 중…' : '신체 기록 저장'}
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -304,10 +310,20 @@ export function BodyMeasurements({
             선택한 기간의 측정값과 같은 날 운동 볼륨
           </CardDescription>
         </CardHeader>
-        {loading ? (
-          <p className="px-6 py-14 text-center text-sm text-muted-foreground">
+        {/* #173: a reload keeps the list on screen; the status line is for screen readers. */}
+        {loading && rows.length > 0 && (
+          <p role="status" className="sr-only">
             기록을 불러오는 중…
           </p>
+        )}
+        {loading && rows.length === 0 ? (
+          // #173: row placeholders while the list first loads; the hidden line keeps the status.
+          <div aria-busy="true" aria-label="신체 기록 목록" className="px-6 py-6">
+            <p role="status" className="sr-only">
+              기록을 불러오는 중…
+            </p>
+            <SkeletonList />
+          </div>
         ) : rows.length === 0 ? (
           <EmptyState
             className="m-4 md:m-6"

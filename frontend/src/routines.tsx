@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 
 import { AlertBanner } from './components/alert-banner';
 import { Button } from './components/ui/button';
-import { Card } from './components/ui/card';
+import { Card, CardTitle } from './components/ui/card';
 import { Checkbox } from './components/ui/checkbox';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -22,6 +22,7 @@ const nativeSelect =
 const hint = 'rounded-md bg-muted p-3 text-meta text-muted-foreground';
 const box = 'my-5 min-w-0 rounded-xl border p-4';
 const legend = 'px-1 text-body-sm font-semibold text-foreground';
+const list = 'mt-2 space-y-1.5 pl-1 text-body-sm';
 
 // #88: 이두·삼두 replace 팔 for new choices; a saved 팔 still shows and can be removed.
 const parts = ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'];
@@ -165,24 +166,44 @@ const withSteps = (plan: Plan, steps: Steps) => ({
     exercises: s.exercises.map((e) => ({ ...e, weight_step: stepOf(steps, e.exercise) })),
   })),
 });
-function Preview({ plan, steps }: { plan: Plan; steps: Steps }) {
+// #102: native <details> stay (components/ui has no accordion); the deload weeks are marked
+// with data-deload and a stronger text colour instead of the old .deload class.
+function Preview({
+  plan,
+  steps,
+  heading: Heading = 'h4',
+}: {
+  plan: Plan;
+  steps: Steps;
+  heading?: 'h3' | 'h4';
+}) {
   const preview = previewTargets(withSteps(plan, steps));
   if (!preview)
-    return <p>시작일과 일정(주기 또는 휴식 요일)을 입력하면 12주 예상 목표를 표시합니다.</p>;
+    return (
+      <p className={cn(hint, 'my-5')}>
+        시작일과 일정(주기 또는 휴식 요일)을 입력하면 12주 예상 목표를 표시합니다.
+      </p>
+    );
   return (
-    <section className="routine-preview">
-      <h4>12주 예상 목표 · 기록에 따라 바뀔 수 있음</h4>
+    <section data-slot="routine-preview" className="my-5 rounded-xl border p-4">
+      <Heading className="mb-2 text-body-sm font-semibold">
+        12주 예상 목표 · 기록에 따라 바뀔 수 있음
+      </Heading>
       {preview.map((split, i) =>
         split
           .filter((ex) => ex.exercise.trim())
           .map((ex, j) => (
-            <details key={`${i}-${j}`} open>
-              <summary>
+            <details key={`${i}-${j}`} open className="border-t first-of-type:border-t-0">
+              <summary className="cursor-pointer py-2 text-body-sm font-medium [overflow-wrap:anywhere] pointer-coarse:py-3">
                 {plan.splits[i].name} · {ex.exercise}
               </summary>
-              <ol>
+              <ol className="mb-3 space-y-1.5 pl-1 text-meta text-muted-foreground">
                 {byWeek(ex.rows).map((w) => (
-                  <li key={w.week} className={w.week % 4 === 0 ? 'deload' : ''}>
+                  <li
+                    key={w.week}
+                    data-deload={w.week % 4 === 0 || undefined}
+                    className="[overflow-wrap:anywhere] data-deload:font-medium data-deload:text-foreground"
+                  >
                     {`${w.week}주차${w.week % 4 === 0 ? ' 디로딩' : ''}: `}
                     {w.rows
                       .map(
@@ -269,7 +290,7 @@ export function Routines() {
       exercises: s.exercises.map((v, k) => (k === j ? { ...v, ...value } : v)),
     });
   return (
-    <section className="routine-page">
+    <section data-slot="routine-page">
       <h2 className="mb-2 text-body font-semibold">루틴짜기 · 12주 계획</h2>
       <p className="text-body-sm text-muted-foreground">
         운동일마다 분할을 순환하며 4·8·12주차는 디로딩입니다. 자동 목표는 현재 수행 능력에서 12주
@@ -308,7 +329,7 @@ export function Routines() {
       {plans.length > 0 && (
         <ul data-slot="plan-list" className="mt-3 divide-y rounded-lg border">
           {plans.map((p) => (
-            <li key={p.id} className="my-0 flex items-center justify-between gap-3 px-4 py-2">
+            <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-2">
               <span className="min-w-0 text-body-sm [overflow-wrap:anywhere]">{p.name}</span>
               <Button
                 variant="outline"
@@ -538,7 +559,7 @@ export function Routines() {
                   {s.body_parts.map((p, j) => (
                     <li
                       key={j}
-                      className="my-0 flex items-center gap-1 rounded-full border pl-3 text-body-sm"
+                      className="flex items-center gap-1 rounded-full border pl-3 text-body-sm"
                     >
                       {p}{' '}
                       <Button
@@ -657,7 +678,7 @@ export function Routines() {
                 </Button>
               </fieldset>
             ))}
-            {draft.progression === 'auto' && <Preview plan={draft} steps={steps} />}
+            {draft.progression === 'auto' && <Preview plan={draft} steps={steps} heading="h3" />}
             {draft.progression !== 'auto' &&
               draft.weeks?.map((w, i) => (
                 <fieldset key={w.week} className={cn(box, 'grid grid-cols-2 gap-3')}>
@@ -758,59 +779,86 @@ export function Routines() {
         </Card>
       )}
       {selected && (
-        <article>
-          <h3>{selected.name}</h3>
-          <p>
-            {selected.split_count === 1 ? '무분할' : `${selected.split_count}분할`} · 시작일{' '}
-            {selected.start_date} ·{' '}
-            {selected.schedule_mode === 'cycle' && selected.cycle
-              ? `${selected.cycle.train_days}일 운동 · ${selected.cycle.rest_days}일 휴식 반복`
-              : `주 ${selected.weekly_workouts}회 · 휴식 ${
-                  selected.rest_days.map((d) => days[d]).join(', ') || '없음'
-                }`}
-          </p>
-          {selected.splits.map((s, i) => (
-            <section key={i}>
-              <h4>{s.name}</h4>
-              <p>{s.body_parts.join(' → ')}</p>
-              <ul>
-                {s.exercises.map((ex, j) => (
-                  <li key={j}>
-                    {ex.exercise}
-                    {machineName(machines, ex.machine_id) &&
-                      ` (${machineName(machines, ex.machine_id)})`}{' '}
-                    · {ex.sets}세트 · 총중량 {ex.weight} kg · {ex.reps}회
-                    {selected.progression === 'auto' &&
-                      ` · 반복 범위 ${ex.rep_min}~${ex.rep_max}회 · 증량 단위 ${stepOf(steps, ex.exercise)} kg`}
+        <Card
+          role="region"
+          aria-labelledby="routine-plan-title"
+          className="mt-5 gap-0 px-4 py-5 shadow-none md:px-6 md:py-6"
+        >
+          <article>
+            <CardTitle
+              id="routine-plan-title"
+              asHeading="h3"
+              className="text-body font-semibold [overflow-wrap:anywhere]"
+            >
+              {selected.name}
+            </CardTitle>
+            <p className="mt-1.5 text-body-sm text-muted-foreground">
+              {selected.split_count === 1 ? '무분할' : `${selected.split_count}분할`} · 시작일{' '}
+              {selected.start_date} ·{' '}
+              {selected.schedule_mode === 'cycle' && selected.cycle
+                ? `${selected.cycle.train_days}일 운동 · ${selected.cycle.rest_days}일 휴식 반복`
+                : `주 ${selected.weekly_workouts}회 · 휴식 ${
+                    selected.rest_days.map((d) => days[d]).join(', ') || '없음'
+                  }`}
+            </p>
+            {selected.splits.map((s, i) => (
+              <section key={i} className="mt-4 border-t pt-3">
+                <h4 className="text-body-sm font-semibold [overflow-wrap:anywhere]">{s.name}</h4>
+                <p className="mt-1 text-meta text-muted-foreground">{s.body_parts.join(' → ')}</p>
+                <ul className={list}>
+                  {s.exercises.map((ex, j) => (
+                    <li key={j} className="[overflow-wrap:anywhere]">
+                      {ex.exercise}
+                      {machineName(machines, ex.machine_id) &&
+                        ` (${machineName(machines, ex.machine_id)})`}{' '}
+                      · {ex.sets}세트 · 총중량 {ex.weight} kg · {ex.reps}회
+                      {selected.progression === 'auto' &&
+                        ` · 반복 범위 ${ex.rep_min}~${ex.rep_max}회 · 증량 단위 ${stepOf(steps, ex.exercise)} kg`}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+            {selected.progression === 'auto' ? (
+              <>
+                <p className={cn(hint, 'mt-4')}>자동 · 이중 점진 과부하. {autoRule}</p>
+                <Preview plan={selected} steps={steps} />
+              </>
+            ) : (
+              <section className="mt-4 border-t pt-3">
+                <h4 className="text-body-sm font-semibold">주차별 목표</h4>
+                <ol className={list}>
+                  {selected.weeks?.map((w) => (
+                    <li
+                      key={w.week}
+                      data-deload={w.kind === 'deload' || undefined}
+                      className="text-muted-foreground data-deload:font-medium data-deload:text-foreground"
+                    >
+                      {w.week}주차 · {goalLabel(w)}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+            <section className="mt-4 border-t pt-3">
+              <h4 className="text-body-sm font-semibold">
+                운동 일정 · 시작일부터 12주 (Asia/Seoul)
+              </h4>
+              <ul className={cn(list, 'md:columns-2 md:gap-6')}>
+                {selected.schedule?.map((day) => (
+                  <li
+                    key={day.date}
+                    data-deload={day.is_deload || undefined}
+                    className="break-inside-avoid [overflow-wrap:anywhere] text-muted-foreground data-deload:text-foreground"
+                  >
+                    {day.date} · {day.week}주차 · {selected.splits[day.split_index].name}
+                    {day.is_deload ? ' · 디로딩' : ''}
                   </li>
                 ))}
               </ul>
             </section>
-          ))}
-          {selected.progression === 'auto' ? (
-            <>
-              <p>자동 · 이중 점진 과부하. {autoRule}</p>
-              <Preview plan={selected} steps={steps} />
-            </>
-          ) : (
-            <ol>
-              {selected.weeks?.map((w) => (
-                <li key={w.week}>
-                  {w.week}주차 · {goalLabel(w)}
-                </li>
-              ))}
-            </ol>
-          )}
-          <h4>운동 일정 · 시작일부터 12주 (Asia/Seoul)</h4>
-          <ul>
-            {selected.schedule?.map((day) => (
-              <li key={day.date}>
-                {day.date} · {day.week}주차 · {selected.splits[day.split_index].name}{' '}
-                {day.is_deload ? '· 디로딩' : ''}
-              </li>
-            ))}
-          </ul>
-        </article>
+          </article>
+        </Card>
       )}
     </section>
   );

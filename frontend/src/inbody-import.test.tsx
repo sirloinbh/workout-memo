@@ -112,3 +112,47 @@ test('a photo is read in the browser and only its values are sent after review',
   // The image itself is never uploaded: every request body is JSON values only.
   expect(ui.requests.every((r) => !(r.body instanceof File))).toBe(true);
 });
+
+test('the preview is a scrollable named table with checkbox rows and announced results', async () => {
+  const ui = mount();
+  await openImport(ui);
+  expect(within(panel()).getByRole('heading', { level: 2, name: '인바디 가져오기' })).toBeVisible();
+  const csv = [
+    '측정일시,체중(kg),체지방률(%),골격근량(kg)',
+    '2026.10.01 07:30,72.4,18.3,33.1',
+  ].join('\n');
+  await ui.user.upload(
+    within(panel()).getByLabelText('인바디 파일 또는 결과지 사진'),
+    file(csv, 'inbody.csv', 'text/csv'),
+  );
+  // The table sits in a focusable scroll region so a phone or keyboard can reach every column.
+  const scroller = within(panel()).getByRole('region', { name: '인바디 미리보기' });
+  expect(scroller).toHaveAttribute('tabindex', '0');
+  const table = within(scroller).getByRole('table');
+  expect(
+    within(table)
+      .getAllByRole('columnheader')
+      .map((h) => h.textContent),
+  ).toEqual(['저장', '측정 날짜', '체중 kg', '체지방률 %', '골격근량 kg', '확인']);
+  const save = within(table).getByRole('checkbox', { name: '1행 저장' });
+  expect(save).toBeChecked();
+  // Unticking a row leaves nothing to save; ticking it again restores it.
+  await ui.user.click(save);
+  expect(save).not.toBeChecked();
+  expect(within(panel()).getByRole('button', { name: '선택한 0건 저장' })).toBeDisabled();
+  await ui.user.click(save);
+  await ui.user.click(within(panel()).getByRole('button', { name: '선택한 1건 저장' }));
+  expect(await within(panel()).findByRole('status')).toHaveTextContent('1건을 저장했습니다.');
+  expect(within(table).getByRole('cell', { name: '저장함' })).toBeInTheDocument();
+});
+
+test('an unreadable file is reported as an alert inside the panel', async () => {
+  const ui = mount();
+  await openImport(ui);
+  await ui.user.upload(
+    within(panel()).getByLabelText('인바디 파일 또는 결과지 사진'),
+    file('아무 열도 없음', 'inbody.csv', 'text/csv'),
+  );
+  expect(await within(panel()).findByRole('alert')).toBeVisible();
+  expect(within(panel()).queryByRole('table')).toBeNull();
+});

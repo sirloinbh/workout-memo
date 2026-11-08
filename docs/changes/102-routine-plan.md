@@ -42,3 +42,8 @@
 - must-fix 없음. 1차 보완이 모두 맞게 들어갔음을 확인했습니다. 위 "계획 보기" 설명이 고정 이름으로 남아 있던 것을 고쳤습니다.
 - 반영하지 않음: 새 h3/h4 테스트가 `document.querySelector('form')`으로 폼을 찾는다는 nit. 루틴짜기 화면의 폼은 이것 하나이고 폼에 접근성 이름이 없어, 이름으로 찾으려면 화면에 없는 이름을 새로 붙여야 합니다.
 - 목록 간격(`.routine-page li` 삭제)은 CI 시각 기준선으로 확인합니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+
+## main 병합
+
+- 리뷰 뒤 main에 #236(인바디 미리보기, #103)이 병합됐습니다. 이 PR도 `style.css`를 바꾸므로 병합 규칙에 따라 `origin/main`을 병합했습니다. 충돌은 없었고, 병합 결과의 `style.css`는 main과 비교해 `.routine-page li` 삭제만 다릅니다.
+- 병합 뒤: `npm run typecheck -w frontend` 통과, `npm run test -w frontend -- src/routines.test.tsx` 10 pass. 병합 전 `1057822`의 CI `e2e-visual`은 통과해 루틴짜기 기준선은 바뀌지 않았습니다(고정 데이터가 계획 보기를 열지 않음).

@@ -37,48 +37,10 @@
   justify-content: center;
   gap: 8px;
 }
-.page-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 35px;
-}
-.eyebrow {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--muted-foreground);
-  font-weight: 600;
-}
-:where(.legacy) h1 {
-  font-size: 28px;
-  letter-spacing: -1.2px;
-  font-weight: 600;
-  margin: 12px 0;
-}
-.heading-dot {
-  color: var(--muted-foreground);
-}
 :where(.legacy) p {
   color: var(--muted-foreground);
   font-size: 12px;
   line-height: 1.7;
-}
-.page-heading p {
-  margin: 0;
-}
-.primary {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: 1px solid var(--primary);
-  border-radius: calc(var(--radius) - 2px);
-  padding: 12px 17px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-.primary:hover {
-  background: color-mix(in oklch, var(--primary) 90%, transparent);
 }
 :where(.legacy) h2 {
   font-size: 15px;
@@ -132,31 +94,7 @@
 .modal .subtle-button {
   margin: 4px 0 22px;
 }
-@media (max-width: 1100px) {
-  :where(.legacy) h1 {
-    font-size: 23px;
-  }
-}
 @media (max-width: 760px) {
-  .page-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    margin-bottom: 23px;
-    gap: 16px;
-  }
-  :where(.legacy) h1 {
-    font-size: 23px;
-  }
-  .eyebrow {
-    font-size: 8px;
-  }
-  .page-heading p {
-    font-size: 11px;
-  }
-  .primary {
-    padding: 10px 14px;
-    font-size: 11px;
-  }
   .form-grid {
     gap: 0 12px;
   }
@@ -178,12 +116,6 @@
 }
 [aria-invalid='true'] {
   border-color: var(--destructive);
-}
-/* #89: the body page heading's two buttons (InBody import, new record). */
-.heading-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 /* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA
    4.5:1. Text on these surfaces mixes in more of the foreground colour instead. */
@@ -210,11 +142,6 @@
   .legacy summary {
     min-height: 44px;
     padding-block: 12px;
-  }
-  .legacy a.primary {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
   }
 }
 /* Two 16px date fields do not fit side by side on a phone. */

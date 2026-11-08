@@ -29,6 +29,16 @@
           "200": {
             "description": "성공"
           },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "대상 없음",
             "content": {
@@ -101,6 +111,145 @@
         }
       }
     },
+    "/api/cardio-sessions/{id}": {
+      "delete": {
+        "summary": "유산소 기록 삭제 → { ok: true }",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "유산소 기록 1개",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 null",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardioSession"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/goals/{id}": {
       "delete": {
         "summary": "목표 삭제 → { ok }",
@@ -118,6 +267,16 @@
         "responses": {
           "200": {
             "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
             "description": "대상 없음",
@@ -159,6 +318,16 @@
           "200": {
             "description": "성공"
           },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "대상 없음",
             "content": {
@@ -199,6 +368,16 @@
         "responses": {
           "200": {
             "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
             "description": "대상 없음",
@@ -420,6 +599,103 @@
         }
       }
     },
+    "/api/cardio-sessions": {
+      "get": {
+        "summary": "?from&to 기간의 유산소 기록(최근 순). kind 선택",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "running",
+                "walking",
+                "outdoor_cycling",
+                "indoor_cycling",
+                "rowing",
+                "stairs",
+                "elliptical",
+                "swimming",
+                "other"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "유산소 기록 등록 → 201. 같은 출처·외부 ID는 409",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardioSession"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "생성됨"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/exercise-body-parts": {
       "get": {
         "summary": "운동별 부위 매핑",
@@ -482,6 +758,53 @@
         "responses": {
           "200": {
             "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/export/cardio.csv": {
+      "get": {
+        "summary": "유산소 분석용 CSV(?from&to 선택). 복원에 사용할 수 없음",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "description": "입력 검증 실패 또는 존재하지 않는 참조",
@@ -779,6 +1102,16 @@
           "200": {
             "description": "성공"
           },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "대상 없음",
             "content": {
@@ -1013,6 +1346,16 @@
           "201": {
             "description": "생성됨"
           },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "대상 없음",
             "content": {
@@ -1160,6 +1503,146 @@
         },
         "required": [
           "date"
+        ]
+      },
+      "CardioSession": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "start_time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "default": null
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "running",
+              "walking",
+              "outdoor_cycling",
+              "indoor_cycling",
+              "rowing",
+              "stairs",
+              "elliptical",
+              "swimming",
+              "other"
+            ]
+          },
+          "duration_sec": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 86400
+          },
+          "distance_km": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "maximum": 1000,
+            "default": null
+          },
+          "avg_heart_rate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 30,
+            "maximum": 250,
+            "default": null
+          },
+          "max_heart_rate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 30,
+            "maximum": 250,
+            "default": null
+          },
+          "calories_kcal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 20000,
+            "default": null
+          },
+          "elevation_gain_m": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000,
+            "default": null
+          },
+          "avg_cadence": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 300,
+            "default": null
+          },
+          "effort": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "hard",
+              "medium",
+              "easy"
+            ],
+            "default": null
+          },
+          "workout_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "maximum": 2147483647,
+            "default": null
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "garmin",
+              "nike",
+              "file"
+            ],
+            "default": "manual"
+          },
+          "external_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 200,
+            "default": null
+          },
+          "memo": {
+            "type": "string",
+            "maxLength": 2000,
+            "default": ""
+          }
+        },
+        "required": [
+          "date",
+          "kind",
+          "duration_sec"
         ]
       },
       "Goal": {

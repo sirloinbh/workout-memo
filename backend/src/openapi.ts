@@ -8,6 +8,7 @@ import { bodyPartMappingSchema } from './analysis.js';
 import { exportQuery, restoreRequest } from './backup.js';
 import {
   bodyMeasurementSchema,
+  cardioSessionSchema,
   date,
   dateRange,
   goalSchema,
@@ -18,6 +19,7 @@ import {
   workoutSchema,
 } from './domain.js';
 import { analysisQuery } from './routes/analysis.js';
+import { cardioQuery } from './routes/cardio.js';
 import { goalSuggestionQuery } from './routes/weight-steps.js';
 
 type Json = Record<string, unknown>;
@@ -152,16 +154,19 @@ export const operations: Record<string, Operation> = {
     status: [200, 400, 404, 409],
     idempotencyKey: true,
   },
-  'DELETE /api/workouts/:id': { status: [200, 404] },
+  'DELETE /api/workouts/:id': { status: [200, 400, 404] },
   'GET /api/goals': { status: [200] },
   'POST /api/goals': { body: ['Goal', goalSchema], status: [201, 400] },
-  'DELETE /api/goals/:id': { status: [200, 404] },
+  'DELETE /api/goals/:id': { status: [200, 400, 404] },
   'GET /api/routines': { status: [200] },
   'POST /api/routines': { body: ['Routine', routineSchema], status: [201, 400] },
-  'GET /api/routines/:id': { status: [200, 404] },
+  'GET /api/routines/:id': { status: [200, 400, 404] },
   'GET /api/routine-progress': { status: [200] },
-  'POST /api/routines/:id/rests': { body: ['RoutineRest', restBody], status: [201, 200, 404, 409] },
-  'DELETE /api/routines/:id/rests/:date': { status: [200, 404, 409] },
+  'POST /api/routines/:id/rests': {
+    body: ['RoutineRest', restBody],
+    status: [201, 200, 400, 404, 409],
+  },
+  'DELETE /api/routines/:id/rests/:date': { status: [200, 400, 404, 409] },
   'GET /api/body-measurements': { query: dateRange, status: [200, 400] },
   'POST /api/body-measurements': {
     body: ['BodyMeasurement', bodyMeasurementSchema],
@@ -171,7 +176,7 @@ export const operations: Record<string, Operation> = {
     body: ['BodyMeasurement', bodyMeasurementSchema],
     status: [200, 400, 404, 409],
   },
-  'DELETE /api/body-measurements/:id': { status: [200, 404] },
+  'DELETE /api/body-measurements/:id': { status: [200, 400, 404] },
   'GET /api/analysis': { query: analysisQuery, status: [200, 400] },
   'GET /api/exercise-body-parts': { status: [200] },
   'PUT /api/exercise-body-parts': {
@@ -184,6 +189,19 @@ export const operations: Record<string, Operation> = {
     status: [200, 400],
   },
   'GET /api/goal-suggestion': { query: goalSuggestionQuery, status: [200, 400] },
+  // #114: the server also rejects a date after today (Asia/Seoul); see docs/api.md.
+  'GET /api/cardio-sessions': { query: cardioQuery, status: [200, 400] },
+  'GET /api/cardio-sessions/:id': { status: [200, 400, 404] },
+  'POST /api/cardio-sessions': {
+    body: ['CardioSession', cardioSessionSchema],
+    status: [201, 400, 409],
+  },
+  'PUT /api/cardio-sessions/:id': {
+    body: ['CardioSession', cardioSessionSchema],
+    status: [200, 400, 404, 409],
+  },
+  'DELETE /api/cardio-sessions/:id': { status: [200, 400, 404] },
+  'GET /api/export/cardio.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
   'GET /api/export/workouts.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
   'GET /api/backup': { status: [200] },
   'POST /api/backup/preview': {

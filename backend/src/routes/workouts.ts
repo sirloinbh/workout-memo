@@ -5,7 +5,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
 import { dateRange, workoutSchema } from '../domain.js';
-import { id } from './shared.js';
+import { parseId } from '../standard/http.js';
 
 export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
   app.get('/api/workouts', async (req, res) => {
@@ -25,7 +25,7 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
       const key = req.get('Idempotency-Key');
       // guid(), not uuid(): zod 4's uuid() also rejects keys with a nonstandard version digit.
       if (key !== undefined) z.guid().parse(key);
-      const target = method === 'put' ? id(req.params.id) : null;
+      const target = method === 'put' ? parseId(req.params.id, '일지') : null;
       if (method === 'put') z.number().int().positive().parse(w.version);
       // A request without feedback keeps the fingerprint it had before #83, so a retry key
       // stored by an older server still replays instead of reporting different content.
@@ -117,7 +117,9 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
       }
     });
   app.delete('/api/workouts/:id', async (req, res) => {
-    const r = await pool.query('DELETE FROM workouts WHERE id=$1', [id(req.params.id)]);
+    const r = await pool.query('DELETE FROM workouts WHERE id=$1', [
+      parseId(req.params.id, '일지'),
+    ]);
     res
       .status(r.rowCount ? 200 : 404)
       .json(r.rowCount ? { ok: true } : { error: '일지를 찾을 수 없습니다' });

@@ -186,6 +186,134 @@ export const weightStepSchema = z.object({
     .nullable(),
 });
 export type WeightStepInput = z.infer<typeof weightStepSchema>;
+
+// #114: cardio sessions. Labels: 러닝·걷기·실외 사이클·실내 자전거·로잉·계단·일립티컬·수영·기타.
+export const cardioKinds = [
+  'running',
+  'walking',
+  'outdoor_cycling',
+  'indoor_cycling',
+  'rowing',
+  'stairs',
+  'elliptical',
+  'swimming',
+  'other',
+] as const;
+export type CardioKind = (typeof cardioKinds)[number];
+// Where a session came from. Only imported sessions carry an external id.
+export const cardioSources = ['manual', 'garmin', 'nike', 'file'] as const;
+export type CardioSource = (typeof cardioSources)[number];
+
+// An optional whole number in [min, max]; missing stays null and never becomes 0.
+const optionalInt = (label: string, min: number, max: number, unit: string) => {
+  const message = `${topic(label)} ${min}~${max}${unit} 정수로 입력하세요`;
+  return z
+    .number(numberError(`${obj(label)} 숫자로 입력하세요`, message))
+    .int(message)
+    .min(min, message)
+    .max(max, message)
+    .nullable()
+    .default(null);
+};
+const durationMessage = '운동 시간은 1~86400초(24시간) 사이의 정수 초로 입력하세요';
+const distanceMessage = '거리는 0 km보다 크고 1000 km 이하로 입력하세요';
+// NUMERIC(8,3): 1 m precision. More decimals are rejected instead of silently rounded.
+const threeDecimals = (v: number) => Math.abs(v * 1000 - Math.round(v * 1000)) < 1e-6;
+
+// Field rules without the cross-field checks, so the backup format can add its own fields.
+export const cardioSessionObject = z.object({
+  date,
+  // Local start time in Asia/Seoul. Missing is null (not recorded).
+  start_time: z
+    .string({ error: '시작 시각은 HH:MM 형식으로 입력하세요' })
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, '시작 시각은 00:00~23:59의 HH:MM 형식으로 입력하세요')
+    .nullable()
+    .default(null),
+  kind: z.enum(cardioKinds, {
+    error:
+      '종류는 러닝·걷기·실외 사이클·실내 자전거·로잉·계단·일립티컬·수영·기타 중에서 선택하세요',
+  }),
+  // Whole seconds; pace and speed are computed from this and distance, never stored.
+  duration_sec: z
+    .number({
+      error: (issue: { input?: unknown }) =>
+        issue.input === undefined
+          ? '운동 시간을 입력하세요'
+          : numberError('운동 시간을 숫자로 입력하세요', durationMessage).error(issue),
+    })
+    .int(durationMessage)
+    .min(1, durationMessage)
+    .max(86400, durationMessage),
+  distance_km: z
+    .number(numberError('거리를 숫자로 입력하세요', distanceMessage))
+    .positive(distanceMessage)
+    .max(1000, distanceMessage)
+    .refine(threeDecimals, '거리는 소수점 셋째 자리(1 m)까지 입력하세요')
+    .nullable()
+    .default(null),
+  avg_heart_rate: optionalInt('평균 심박', 30, 250, ' bpm의'),
+  max_heart_rate: optionalInt('최대 심박', 30, 250, ' bpm의'),
+  calories_kcal: optionalInt('칼로리', 0, 20000, ' kcal의'),
+  elevation_gain_m: optionalInt('상승 고도', 0, 10000, ' m의'),
+  avg_cadence: optionalInt('케이던스', 1, 300, '의'),
+  // #83 levels reused for perceived effort.
+  effort: z
+    .enum(feedbackLevels, { error: '체감 강도는 힘듦·중간·쉬움 중에서 선택하세요' })
+    .nullable()
+    .default(null),
+  // Optional link to a strength workout of the app.
+  workout_id: z
+    .number({ error: '연결할 근력 일지를 다시 선택하세요' })
+    .int('연결할 근력 일지를 다시 선택하세요')
+    .positive('연결할 근력 일지를 다시 선택하세요')
+    .max(2147483647, '연결할 근력 일지를 다시 선택하세요')
+    .nullable()
+    .default(null),
+  source: z
+    .enum(cardioSources, { error: '출처는 manual·garmin·nike·file 중 하나여야 합니다' })
+    .default('manual'),
+  external_id: limitLength(z.string({ error: '외부 ID는 문자열이어야 합니다' }).trim(), {
+    min: 1,
+    max: 200,
+    tooShort: '외부 ID를 입력하거나 null로 보내세요',
+    tooLong: '외부 ID는 200자 이하로 입력하세요',
+  })
+    .nullable()
+    .default(null),
+  memo: memo(2000).default(''),
+});
+type CardioFields = Pick<
+  z.output<typeof cardioSessionObject>,
+  'avg_heart_rate' | 'max_heart_rate' | 'source' | 'external_id'
+>;
+// Cross-field rules shared by the API and the backup format.
+export function checkCardioSession(
+  v: CardioFields,
+  ctx: { addIssue: (issue: { code: 'custom'; message: string; path: string[] }) => void },
+) {
+  if (v.avg_heart_rate !== null && v.max_heart_rate !== null && v.max_heart_rate < v.avg_heart_rate)
+    ctx.addIssue({
+      code: 'custom',
+      message: '최대 심박은 평균 심박보다 낮을 수 없습니다',
+      path: ['max_heart_rate'],
+    });
+  if (v.source === 'manual' && v.external_id !== null)
+    ctx.addIssue({
+      code: 'custom',
+      message: '직접 입력한 기록(manual)에는 외부 ID를 넣지 않습니다',
+      path: ['external_id'],
+    });
+}
+export const cardioSessionSchema = cardioSessionObject.superRefine(checkCardioSession);
+export type CardioSessionInput = z.input<typeof cardioSessionSchema>;
+// Unlike strength workouts (planned sessions may be in the future), a cardio session is a
+// performed activity: its date may not be after today in Asia/Seoul. `today` is injected so
+// the server (createApp's today) and tests use the same rule.
+export const cardioSessionSchemaFor = (today: string) =>
+  cardioSessionSchema.refine((v) => v.date <= today, {
+    error: '유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다',
+    path: ['date'],
+  });
 // Issues keyed by their dotted path (e.g. "sets.0.weight") for per-field messages.
 export function fieldErrors(error: z.ZodError) {
   const errors: Record<string, string> = {};

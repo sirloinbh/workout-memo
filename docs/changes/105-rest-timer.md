@@ -73,3 +73,4 @@
 - `app.tsx` 충돌: main의 `PageHeader`를 그대로 쓰고, 표시 조건만 이 브랜치의 `!ownPage`로 바꿨습니다.
 - 기준선 2장은 이 브랜치 것을 임시로 두고, 병합 후 CI 결과로 다시 받습니다.
 - 병합 후: typecheck·eslint·prettier 통과, `npm run test -w frontend -- --maxWorkers=1`로 set-completion·rest-by-exercise·routines·modal·workout-draft·page-header·loading-placeholders 7개 파일 62 pass
+- 병합 후 CI(e30a418)에서 e2e-visual은 `workout-editor` 768·1280px 2장만 실패했습니다. diff 이미지에서 모달 안쪽은 같고, 뒤 배경의 페이지 머리글과 "운동 기록하기" 버튼만 #242의 `PageHeader`로 바뀌었습니다. push 실행(run 42471364741)의 `visual-baselines` 산출물에서 이 2장을 옮겼습니다. 나머지 42장은 저장소와 같았습니다.

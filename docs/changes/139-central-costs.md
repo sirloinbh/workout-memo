@@ -6,7 +6,7 @@
 
 ## 목적
 
-앱 8개가 함께 쓰는 서버 비용 문서가 이 리포 `docs/shared-hosting-costs.md`에 있었습니다. 같은 내용과 앱별 배분 기준이 중앙 리포 [`docs/costs.md`](https://github.com/sirloinbh/project-standards/blob/main/docs/costs.md)로 옮겨져, 두 곳에 같은 문서가 있으면 금액이 바뀔 때 한쪽만 고쳐질 수 있습니다.
+앱 8개가 함께 쓰는 서버 비용 문서가 이 리포 `docs/shared-hosting-costs.md`에 있었습니다. 갱신된 내용(ECR 제외, 도메인 비용·앱별 배분 추가)이 중앙 리포 [`docs/costs.md`](https://github.com/sirloinbh/project-standards/blob/main/docs/costs.md)로 옮겨져, 두 곳에 같은 문서가 있으면 금액이 바뀔 때 한쪽만 고쳐질 수 있습니다.
 
 ## 변경 — docs: 중앙 비용 문서로 연결
 
@@ -16,8 +16,12 @@
 - `docs/changes/`의 과거 기록은 당시 기록이라 고치지 않았습니다.
 - `docs/deployment.md`의 이 앱 배포 비용(약 $7~8)은 이 앱 서버 기준이라 그대로 두었습니다.
 
+## 리뷰
+
+- 1차: 필수 지적 없음. 지운 문서에만 있던 "현재 Terraform 범위"는 #141에서 인프라를 없앤 뒤 낡은 내용이고, `localhost:8101` 바인딩은 중앙 문서에 "SSH 터널·사설 접속 전제"로 들어 있어 옮길 것이 없음을 확인했습니다. 반영: 위 "같은 내용" 표현과 테스트 문장을 바로잡았습니다.
+
 ## 테스트
 
-- `git grep shared-hosting-costs`: `docs/changes/` 밖에서는 이 기록 외 결과 없음
+- `git grep shared-hosting-costs`: 결과가 `docs/changes/` 안에서만 나옵니다(#21·#136·#139·#141 기록).
 - 중앙 `docs/costs.md`가 있는지 GitHub API로 확인했습니다.
 - prettier(바꾼 파일), `npm run test:docs`: 통과

@@ -271,6 +271,11 @@ test('a v3 backup carries cardio goals; v1 and v2 backups restore as ones withou
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).cardio_goals;
   }, /data\.cardio_goals: v3 백업에는 유산소 목표 목록이 필요합니다/);
+  // Both missing lists are reported at once.
+  rejects((b) => {
+    delete (b.data as Partial<typeof b.data>).cardio_goals;
+    delete (b.data as Partial<typeof b.data>).cardio_sessions;
+  }, /data\.cardio_sessions: v3 .* \/ data\.cardio_goals: v3/);
   assert.deepEqual(
     parseBackup({ ...validBackup(), data: { ...validBackup().data, cardio_goals: [] } }).data
       .cardio_goals,

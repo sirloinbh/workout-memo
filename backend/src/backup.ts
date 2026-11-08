@@ -249,14 +249,19 @@ export function parseBackup(value: unknown): Backup {
     return { ...file, data: rest };
   })();
   const parsed = backupSchema.safeParse(input);
-  if (parsed.success && parsed.data.version >= 2 && !parsed.data.data.cardio_sessions)
-    throw new BackupInvalid(
-      `백업 검증 실패 — data.cardio_sessions: v${parsed.data.version} 백업에는 유산소 기록 목록이 필요합니다`,
-    );
-  if (parsed.success && parsed.data.version === 3 && !parsed.data.data.cardio_goals)
-    throw new BackupInvalid(
-      '백업 검증 실패 — data.cardio_goals: v3 백업에는 유산소 목표 목록이 필요합니다',
-    );
+  if (parsed.success) {
+    // Both missing lists are reported together so one fix is enough.
+    const { version, data } = parsed.data;
+    const missing = [
+      version >= 2 && !data.cardio_sessions
+        ? `data.cardio_sessions: v${version} 백업에는 유산소 기록 목록이 필요합니다`
+        : null,
+      version === 3 && !data.cardio_goals
+        ? 'data.cardio_goals: v3 백업에는 유산소 목표 목록이 필요합니다'
+        : null,
+    ].filter((m) => m !== null);
+    if (missing.length) throw new BackupInvalid('백업 검증 실패 — ' + missing.join(' / '));
+  }
   if (!parsed.success) {
     const issues = parsed.error.issues.slice(0, 5).map((x) => {
       const path = x.path.join('.');

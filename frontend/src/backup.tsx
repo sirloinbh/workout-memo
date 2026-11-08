@@ -1,6 +1,8 @@
 import { Download } from 'lucide-react';
 import React, { useState } from 'react';
 
+import { AlertBanner } from './components/alert-banner';
+import { selectField, touchText } from './components/form-styles';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './components/ui/card';
 import { Input } from './components/ui/input';
@@ -16,11 +18,6 @@ const confirmation = '전체 교체';
 const copy = 'flex flex-col gap-2';
 const text = 'text-body-sm text-muted-foreground';
 const field = 'flex flex-col gap-2';
-// The browser's own select stays, as in the #101 set rows: the common Select (Radix) picks
-// values differently, so every screen test and e2e step that chooses an option would change.
-// Touch screens keep 16px text at every width (iOS zooms in below that), as the #101 set rows do.
-const nativeSelect =
-  'h-9 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 md:text-body-sm md:pointer-coarse:text-base dark:bg-input/30';
 type Counts = { added: number; skipped: number; conflicts: number; deleted: number };
 type Summary = {
   mode: 'merge' | 'replace';
@@ -182,7 +179,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
               <Label htmlFor="backup-mode">복원 방식</Label>
               <select
                 id="backup-mode"
-                className={nativeSelect}
+                className={selectField}
                 value={mode}
                 disabled={busy}
                 onChange={(e) => {
@@ -200,7 +197,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
               <Label htmlFor="backup-file">백업 파일 선택</Label>
               <Input
                 id="backup-file"
-                className="md:pointer-coarse:text-base"
+                className={touchText}
                 type="file"
                 accept=".json,application/json"
                 disabled={busy}
@@ -221,7 +218,14 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                 : undefined
             }
           />
-          <Notice notice={error ? { kind: 'error', text: error } : undefined} />
+          {error && <AlertBanner className="mb-0">{error}</AlertBanner>}
+          {/* #223: the deletion warning is its own alert, next to (not inside) the live summary. */}
+          {shown && shown.mode === 'replace' && !result && (
+            <AlertBanner className="mb-0">
+              기존 기록이 삭제됩니다. 삭제 수를 확인하세요. 진행 중이던 저장 재시도 기록도
+              초기화됩니다({shown.retry_keys_cleared}건).
+            </AlertBanner>
+          )}
           {shown && (
             <div role="status" className="flex flex-col gap-3 rounded-lg border p-4">
               <h4 className="text-body-sm font-semibold">
@@ -229,12 +233,6 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                   ? '복원을 완료했습니다.'
                   : `미리보기 · ${mode === 'replace' ? '전체 교체' : '추가만'} (아직 변경되지 않았습니다)`}
               </h4>
-              {shown.mode === 'replace' && !result && (
-                <p className="text-body-sm text-destructive">
-                  기존 기록이 삭제됩니다. 삭제 수를 확인하세요. 진행 중이던 저장 재시도 기록도
-                  초기화됩니다({shown.retry_keys_cleared}건).
-                </p>
-              )}
               <ul aria-label="변경 요약" className="flex flex-col gap-1.5 text-body-sm">
                 {labels.map(([key, label]) => {
                   const c = shown.tables[key];
@@ -270,7 +268,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                   <Label htmlFor="backup-confirm">확인 문구</Label>
                   <Input
                     id="backup-confirm"
-                    className="md:pointer-coarse:text-base"
+                    className={touchText}
                     value={typed}
                     placeholder={confirmation}
                     autoComplete="off"

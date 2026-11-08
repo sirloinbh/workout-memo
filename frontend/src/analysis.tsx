@@ -1,3 +1,4 @@
+import { ChevronLeft } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlertBanner } from './components/alert-banner';
@@ -79,6 +80,15 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   if (!response.ok) throw Error(data.error ?? '분석 요청에 실패했습니다');
   return data;
 }
+// #125: one line per exercise in the list: best weight, estimated 1RM and the last date.
+const summary = (x: Exercise) =>
+  [
+    x.prs.max_weight ? `최고 ${fmt(x.prs.max_weight.value)}kg` : '중량 기록 없음',
+    x.prs.estimated_1rm ? `추정 1RM ${fmt(x.prs.estimated_1rm.value)}kg` : null,
+    x.last_date,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 const record = (r: PersonalRecord | null, value: (r: PersonalRecord) => string, none: string) =>
   r ? `${value(r)} · ${r.date}${r.ties > 1 ? ` · 동률 ${r.ties}회` : ''}` : none;
 
@@ -92,6 +102,21 @@ export function Analysis() {
   const [editing, setEditing] = useState<{ exercise: string; key: string; parts: string[] } | null>(
     null,
   );
+  // #125: the exercise picked from the list; null shows the list on phones.
+  const [selected, setSelected] = useState<string | null>(null);
+  const detailHeading = useRef<HTMLHeadingElement>(null);
+  const listButtons = useRef(new Map<string, HTMLButtonElement>());
+  const focusAfter = useRef<{ to: 'detail' } | { to: 'list'; key: string } | null>(null);
+  useEffect(() => {
+    // On phones the list and the detail replace each other, so focus follows the one shown:
+    // the detail heading after a pick, the picked exercise's button after going back.
+    const target = focusAfter.current;
+    focusAfter.current = null;
+    if (target?.to === 'detail') {
+      detailHeading.current?.focus();
+      detailHeading.current?.scrollIntoView?.({ block: 'start' });
+    } else if (target) listButtons.current.get(target.key)?.focus();
+  }, [selected]);
   const { from, to } = analysisRange(anchor, weeks);
   const version = useRef(0);
   const load = useCallback(async () => {
@@ -128,19 +153,44 @@ export function Analysis() {
       setSaving(false);
     }
   }
+  // #125: one exercise in detail at a time. Phones show the list first and the detail after a
+  // tap; from 768px both sit side by side and the first exercise is shown until one is picked.
+  const shown = data?.exercises.find((x) => x.key === selected) ?? data?.exercises[0];
+  function pick(key: string | null) {
+    if (key === selected) return;
+    const previous = selected;
+    setSelected(key);
+    setEditing(null);
+    // From 768px the list and the detail stay side by side, so focus stays on the list.
+    const narrow = window.matchMedia('(max-width: 767px)').matches;
+    focusAfter.current = !narrow
+      ? null
+      : key !== null
+        ? { to: 'detail' }
+        : previous !== null
+          ? { to: 'list', key: previous }
+          : null;
+  }
   return (
     <section data-slot="analysis-page">
       <h2 className="mb-3 text-body font-semibold">종목 분석 · PR과 부위별 주간 운동량</h2>
-      <p className={hint}>
-        서울 기준 오늘까지 서버에 저장된 기록만 사용합니다. 미래 날짜 기록과 브라우저의 저장 전
-        초안은 포함하지 않으며, 일지를 수정·삭제하면 다시 조회할 때 반영됩니다. 같은 종목은 목표
-        판정과 같이 앞뒤 공백과 영문 대소문자를 무시해 묶습니다.
-      </p>
-      <p className={cn(hint, 'mt-2 mb-4')}>
-        추정 1RM = 총중량 kg × (1 + 반복 수 ÷ 30) (Epley 공식). 1~10회 세트에만 적용하며 1회 세트는
-        그 중량입니다. 0kg(맨몸·보조 등 중량 미입력) 세트와 기본중량 미확인 머신 세트는 제외합니다.
-        추정값은 실제로 들어 올린 기록이 아니며, 실측 1RM은 1회를 수행한 세트의 최고 총중량입니다.
-      </p>
+      {/* The long rules fold away so the exercise list fits the first phone screen (#125). */}
+      <details className="mb-4 rounded-md border px-3">
+        <summary className="cursor-pointer py-2 text-body-sm font-medium pointer-coarse:py-3">
+          분석 기준 안내
+        </summary>
+        <p className={hint}>
+          서울 기준 오늘까지 서버에 저장된 기록만 사용합니다. 미래 날짜 기록과 브라우저의 저장 전
+          초안은 포함하지 않으며, 일지를 수정·삭제하면 다시 조회할 때 반영됩니다. 같은 종목은 목표
+          판정과 같이 앞뒤 공백과 영문 대소문자를 무시해 묶습니다.
+        </p>
+        <p className={cn(hint, 'mt-2 mb-3')}>
+          추정 1RM = 총중량 kg × (1 + 반복 수 ÷ 30) (Epley 공식). 1~10회 세트에만 적용하며 1회
+          세트는 그 중량입니다. 0kg(맨몸·보조 등 중량 미입력) 세트와 기본중량 미확인 머신 세트는
+          제외합니다. 추정값은 실제로 들어 올린 기록이 아니며, 실측 1RM은 1회를 수행한 세트의 최고
+          총중량입니다.
+        </p>
+      </details>
       {/* #224's period controls; like the dashboard, the date wraps under the tabs on phones. */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <SegmentedControl
@@ -172,6 +222,182 @@ export function Analysis() {
       )}
       {data && (
         <>
+          <Card role="region" aria-label="종목별 PR" className={card}>
+            <CardHeader className={cardHeader}>
+              <CardTitle asHeading="h2" className="text-body font-semibold">
+                종목별 PR{' '}
+                <Badge variant="secondary" className="ml-1.5 align-middle">
+                  {data.exercises.length}
+                </Badge>
+              </CardTitle>
+              <CardDescription className="text-caption">
+                전체 기록의 최고값과 처음 달성한 날짜입니다. 운동을 고르면 자세히 봅니다.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className={cardContent}>
+              {!shown ? (
+                <EmptyState
+                  className="my-2"
+                  headingLevel="h3"
+                  title="분석할 기록이 없습니다"
+                  description="운동 일지를 저장하면 종목별 PR이 표시됩니다."
+                />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
+                  <ul
+                    aria-label="운동 목록"
+                    className={cn('flex flex-col gap-1 py-2', selected !== null && 'max-md:hidden')}
+                  >
+                    {data.exercises.map((x) => (
+                      <li key={x.key}>
+                        <button
+                          type="button"
+                          ref={(el) => {
+                            if (el) listButtons.current.set(x.key, el);
+                            else listButtons.current.delete(x.key);
+                          }}
+                          // The first exercise is shown on wide screens before any pick; only
+                          // a picked one is announced as current.
+                          aria-current={x.key === selected ? 'true' : undefined}
+                          data-shown={x.key === shown.key || undefined}
+                          className="flex w-full flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 md:data-shown:bg-accent pointer-coarse:min-h-11"
+                          onClick={() => pick(x.key)}
+                        >
+                          <span className="text-body-sm font-medium [overflow-wrap:anywhere]">
+                            {x.exercise}
+                          </span>
+                          <span className="text-meta text-muted-foreground">{summary(x)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className={cn('min-w-0', selected === null && 'max-md:hidden')}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 -ml-2 md:hidden"
+                      onClick={() => pick(null)}
+                    >
+                      <ChevronLeft aria-hidden />
+                      운동 목록
+                    </Button>
+                    <article data-slot="exercise-pr" className="py-2" key={shown.key}>
+                      <h3
+                        ref={detailHeading}
+                        tabIndex={-1}
+                        className="text-body font-semibold [overflow-wrap:anywhere] outline-none"
+                      >
+                        {shown.exercise}
+                      </h3>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 text-body-sm text-muted-foreground">
+                        부위: {shown.body_parts.length ? shown.body_parts.join(', ') : '미분류'} ·
+                        총 {shown.set_count}세트
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="px-0"
+                          aria-label={`${shown.exercise} 부위 지정`}
+                          disabled={saving}
+                          onClick={() =>
+                            setEditing({
+                              exercise: shown.exercise,
+                              key: shown.key,
+                              parts: [...shown.body_parts],
+                            })
+                          }
+                        >
+                          부위 지정
+                        </Button>
+                      </p>
+                      {editing?.key === shown.key && (
+                        <div className="my-2 flex flex-wrap items-center gap-2">
+                          <ToggleChips
+                            label={`${shown.exercise} 부위`}
+                            options={[
+                              ...parts,
+                              ...legacyParts.filter((p) => editing.parts.includes(p)),
+                            ]}
+                            value={editing.parts}
+                            onValueChange={(next) => setEditing({ ...editing, parts: next })}
+                          />
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={saving}
+                            onClick={() => void saveParts()}
+                          >
+                            부위 저장
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
+                            취소
+                          </Button>
+                        </div>
+                      )}
+                      <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-body-sm">
+                        <dt className="text-muted-foreground">최고 중량</dt>
+                        <dd className={value}>
+                          {record(
+                            shown.prs.max_weight,
+                            (r) => `${fmt(r.value)}kg × ${r.reps}회`,
+                            '중량 기록 없음',
+                          )}
+                        </dd>
+                        <dt className="text-muted-foreground">최다 반복</dt>
+                        <dd className={value}>
+                          {record(
+                            shown.prs.max_reps,
+                            (r) => `${r.value}회 · ${fmt(r.weight)}kg`,
+                            '기록 없음',
+                          )}
+                        </dd>
+                        <dt className="text-muted-foreground">최고 세트 볼륨</dt>
+                        <dd className={value}>
+                          {record(
+                            shown.prs.max_set_volume,
+                            (r) => `${fmt(r.value)}kg (${fmt(r.weight)}kg × ${r.reps}회)`,
+                            '중량 기록 없음',
+                          )}
+                        </dd>
+                        <dt className="text-muted-foreground">실측 1RM</dt>
+                        <dd className={value}>
+                          {record(
+                            shown.prs.actual_1rm,
+                            (r) => `${fmt(r.value)}kg`,
+                            '1회 세트 기록 없음',
+                          )}
+                        </dd>
+                        <dt className="text-muted-foreground">추정 1RM (Epley)</dt>
+                        <dd className={value}>
+                          {record(
+                            shown.prs.estimated_1rm,
+                            (r) => `${fmt(r.value)}kg 추정 (${fmt(r.weight)}kg × ${r.reps}회)`,
+                            '계산 대상 세트 없음',
+                          )}
+                        </dd>
+                      </dl>
+                      <p className="mt-2 text-meta text-muted-foreground">
+                        같은 값은 동률로 표시합니다.
+                      </p>
+                      {shown.unknown_base_sets > 0 && (
+                        <p className={cn(hint, 'mt-2')}>
+                          기본중량 미확인 머신 세트 {shown.unknown_base_sets}개는 1RM 계산에서
+                          제외했습니다.
+                        </p>
+                      )}
+                      {shown.bodyweight_sets > 0 && (
+                        <p className={cn(hint, 'mt-2')}>
+                          0kg 세트 {shown.bodyweight_sets}개는 반복 PR에만 포함하고
+                          중량·볼륨·1RM에서 제외했습니다.
+                        </p>
+                      )}
+                      <Trend exercise={shown} />
+                    </article>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <Card role="region" aria-label="부위별 주간 운동량" className={card}>
             <CardHeader className={cardHeader}>
               <CardTitle asHeading="h2" className="text-body font-semibold">
@@ -184,162 +410,59 @@ export function Analysis() {
               </CardDescription>
             </CardHeader>
             <CardContent className={cardContent}>
-              {data.weeks.map((w) => (
-                <article
-                  data-slot="analysis-week"
-                  className="border-b py-3 last:border-b-0"
-                  key={w.week_start}
-                >
-                  <h3 className="text-body-sm font-semibold">
-                    {w.week_start} — {w.week_end} · 전체 {w.sets}세트 · {fmt(w.volume)}kg
-                  </h3>
-                  <table className="mt-1 w-full border-collapse text-body-sm">
-                    <thead>
-                      <tr className={cell}>
-                        <th>부위</th>
-                        <th>세트</th>
-                        <th>볼륨</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {w.parts.map((p) => (
-                        <tr className={cn(cell, 'text-muted-foreground')} key={p.body_part}>
-                          <td>{p.body_part}</td>
-                          <td>{p.sets}세트</td>
-                          <td>{fmt(p.volume)}kg</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </article>
-              ))}
-            </CardContent>
-          </Card>
-          <Card role="region" aria-label="종목별 PR" className={card}>
-            <CardHeader className={cardHeader}>
-              <CardTitle asHeading="h2" className="text-body font-semibold">
-                종목별 PR{' '}
-                <Badge variant="secondary" className="ml-1.5 align-middle">
-                  {data.exercises.length}
-                </Badge>
-              </CardTitle>
-              <CardDescription className="text-caption">
-                전체 기록의 최고값과 처음 달성한 날짜입니다. 같은 값은 동률로 표시합니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className={cardContent}>
-              {!data.exercises.length && (
-                <EmptyState
-                  className="my-2"
-                  headingLevel="h3"
-                  title="분석할 기록이 없습니다"
-                  description="운동 일지를 저장하면 종목별 PR이 표시됩니다."
-                />
-              )}
-              {data.exercises.map((x) => (
-                <article
-                  data-slot="exercise-pr"
-                  className="border-b py-4 last:border-b-0"
-                  key={x.key}
-                >
-                  <h3 className="text-body-sm font-semibold">{x.exercise}</h3>
-                  <p className="mt-1 flex flex-wrap items-center gap-x-2 text-body-sm text-muted-foreground">
-                    부위: {x.body_parts.length ? x.body_parts.join(', ') : '미분류'} · 총{' '}
-                    {x.set_count}세트
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="px-0"
-                      aria-label={`${x.exercise} 부위 지정`}
-                      disabled={saving}
-                      onClick={() =>
-                        setEditing({ exercise: x.exercise, key: x.key, parts: [...x.body_parts] })
-                      }
-                    >
-                      부위 지정
-                    </Button>
-                  </p>
-                  {editing?.key === x.key && (
-                    <div className="my-2 flex flex-wrap items-center gap-2">
-                      <ToggleChips
-                        label={`${x.exercise} 부위`}
-                        options={[
-                          ...parts,
-                          ...legacyParts.filter((p) => editing.parts.includes(p)),
-                        ]}
-                        value={editing.parts}
-                        onValueChange={(next) => setEditing({ ...editing, parts: next })}
-                      />
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={saving}
-                        onClick={() => void saveParts()}
-                      >
-                        부위 저장
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
-                        취소
-                      </Button>
-                    </div>
-                  )}
-                  <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-body-sm">
-                    <dt className="text-muted-foreground">최고 중량</dt>
-                    <dd className={value}>
-                      {record(
-                        x.prs.max_weight,
-                        (r) => `${fmt(r.value)}kg × ${r.reps}회`,
-                        '중량 기록 없음',
-                      )}
-                    </dd>
-                    <dt className="text-muted-foreground">최다 반복</dt>
-                    <dd className={value}>
-                      {record(
-                        x.prs.max_reps,
-                        (r) => `${r.value}회 · ${fmt(r.weight)}kg`,
-                        '기록 없음',
-                      )}
-                    </dd>
-                    <dt className="text-muted-foreground">최고 세트 볼륨</dt>
-                    <dd className={value}>
-                      {record(
-                        x.prs.max_set_volume,
-                        (r) => `${fmt(r.value)}kg (${fmt(r.weight)}kg × ${r.reps}회)`,
-                        '중량 기록 없음',
-                      )}
-                    </dd>
-                    <dt className="text-muted-foreground">실측 1RM</dt>
-                    <dd className={value}>
-                      {record(x.prs.actual_1rm, (r) => `${fmt(r.value)}kg`, '1회 세트 기록 없음')}
-                    </dd>
-                    <dt className="text-muted-foreground">추정 1RM (Epley)</dt>
-                    <dd className={value}>
-                      {record(
-                        x.prs.estimated_1rm,
-                        (r) => `${fmt(r.value)}kg 추정 (${fmt(r.weight)}kg × ${r.reps}회)`,
-                        '계산 대상 세트 없음',
-                      )}
-                    </dd>
-                  </dl>
-                  {x.unknown_base_sets > 0 && (
-                    <p className={cn(hint, 'mt-2')}>
-                      기본중량 미확인 머신 세트 {x.unknown_base_sets}개는 1RM 계산에서 제외했습니다.
-                    </p>
-                  )}
-                  {x.bodyweight_sets > 0 && (
-                    <p className={cn(hint, 'mt-2')}>
-                      0kg 세트 {x.bodyweight_sets}개는 반복 PR에만 포함하고 중량·볼륨·1RM에서
-                      제외했습니다.
-                    </p>
-                  )}
-                  <Trend exercise={x} />
-                </article>
-              ))}
+              {data.weeks.map((w) => {
+                const done = w.parts.filter((p) => p.sets > 0);
+                const empty = w.parts.filter((p) => p.sets === 0);
+                return (
+                  <article
+                    data-slot="analysis-week"
+                    className="border-b py-3 last:border-b-0"
+                    key={w.week_start}
+                  >
+                    <h3 className="text-body-sm font-semibold">
+                      {w.week_start} — {w.week_end} · 전체 {w.sets}세트 · {fmt(w.volume)}kg
+                    </h3>
+                    {done.length > 0 && <PartTable rows={done} />}
+                    {/* #125: parts without a set this week fold away. */}
+                    {empty.length > 0 && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer py-1 text-meta text-muted-foreground pointer-coarse:py-3">
+                          기록 없는 부위 {empty.length}개 ·{' '}
+                          {empty.map((p) => p.body_part).join(', ')}
+                        </summary>
+                        <PartTable rows={empty} />
+                      </details>
+                    )}
+                  </article>
+                );
+              })}
             </CardContent>
           </Card>
         </>
       )}
     </section>
+  );
+}
+function PartTable({ rows }: { rows: Week['parts'] }) {
+  return (
+    <table className="mt-1 w-full border-collapse text-body-sm">
+      <thead>
+        <tr className={cell}>
+          <th>부위</th>
+          <th>세트</th>
+          <th>볼륨</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((p) => (
+          <tr className={cn(cell, 'text-muted-foreground')} key={p.body_part}>
+            <td>{p.body_part}</td>
+            <td>{p.sets}세트</td>
+            <td>{fmt(p.volume)}kg</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 function Trend({ exercise }: { exercise: Exercise }) {

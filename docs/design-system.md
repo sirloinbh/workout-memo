@@ -30,16 +30,17 @@ workout-memo는 8개 앱 공통 디자인 시스템을 씁니다(#159, 중앙 pr
 
 ## 구성
 
-| 파일                                        | 관리 | 역할                                                                                       |
-| ------------------------------------------- | ---- | ------------------------------------------------------------------------------------------ |
-| `frontend/src/index.css`                    | 앱   | Tailwind CSS 4, `tw-animate-css`, `@sirloinbh/design-tokens`(흑백 라이트·다크, Pretendard) |
-| `frontend/src/style.css`                    | 앱   | 전환 전부터 있던 페이지 스타일. `components` 레이어에 들어가고, 색은 공통 토큰만 참조      |
-| `frontend/src/components/ui/`               | 중앙 | shadcn/ui 공통 컴포넌트(Button, Dialog, Sheet 등). 직접 고치지 않음                        |
-| `frontend/src/components/layout/`           | 중앙 | `AppShell`(상단 바, 주 메뉴, 본문, footer). 화면 모드 메뉴는 다크 전용이라 그리지 않음     |
-| `frontend/src/lib/utils.ts`, `lib/theme.ts` | 중앙 | `cn()`, 화면 모드 적용. `lib/theme-config.ts`의 `DARK_ONLY`로 항상 다크                    |
-| `frontend/public/theme-init.js`             | 중앙 | 첫 화면 전에 다크 적용(깜빡임 방지). 저장값은 무시                                         |
-| `frontend/src/components/modal.tsx`         | 앱   | `Modal`: 공통 Dialog를 `title`·`close`로 여는 앱 래퍼. 내용은 `.legacy .modal` 폼 스타일   |
-| `frontend/src/components/field.tsx`         | 앱   | `Input`, `FieldError`, `invalidProps(name, message)`: 오류 문구와 입력란 연결              |
+| 파일                                        | 관리 | 역할                                                                                        |
+| ------------------------------------------- | ---- | ------------------------------------------------------------------------------------------- |
+| `frontend/src/index.css`                    | 앱   | Tailwind CSS 4, `tw-animate-css`, `@sirloinbh/design-tokens`(흑백 라이트·다크, Pretendard)  |
+| `frontend/src/style.css`                    | 앱   | 전환 전부터 있던 페이지 스타일. `components` 레이어에 들어가고, 색은 공통 토큰만 참조       |
+| `frontend/src/components/ui/`               | 중앙 | shadcn/ui 공통 컴포넌트(Button, Dialog, Sheet 등). 직접 고치지 않음                         |
+| `frontend/src/components/layout/`           | 중앙 | `AppShell`(상단 바, 주 메뉴, 본문, footer). 화면 모드 메뉴는 다크 전용이라 그리지 않음      |
+| `frontend/src/lib/utils.ts`, `lib/theme.ts` | 중앙 | `cn()`, 화면 모드 적용. `lib/theme-config.ts`의 `DARK_ONLY`로 항상 다크                     |
+| `frontend/public/theme-init.js`             | 중앙 | 첫 화면 전에 다크 적용(깜빡임 방지). 저장값은 무시                                          |
+| `frontend/src/components/modal.tsx`         | 앱   | `Modal`: 공통 Dialog를 `title`·`close`로 여는 앱 래퍼. 내용은 `.legacy .modal` 폼 스타일    |
+| `frontend/src/components/field.tsx`         | 앱   | `Input`, `FieldError`, `invalidProps(name, message)`: 오류 문구와 입력란 연결               |
+| `frontend/src/components/form-styles.ts`    | 앱   | 폼 공통 클래스(#103): `fieldLabel`, `touchText`, `selectField`, `textareaField`, `formHint` |
 
 ## 앱 고유 컴포넌트 (#99)
 

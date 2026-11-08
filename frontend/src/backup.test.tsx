@@ -121,6 +121,10 @@ test('replace mode previews deletions and requires the typed confirmation', asyn
   await ui.user.selectOptions(screen.getByLabelText('복원 방식'), 'replace');
   await ui.idle();
   await waitFor(() => expect(page()).toMatch(/기존 기록이 삭제됩니다/));
+  // #223: the deletion warning is an alert of its own, outside the live summary.
+  const warning = screen.getByRole('alert');
+  expect(warning).toHaveTextContent(/기존 기록이 삭제됩니다/);
+  expect(warning.closest('[role="status"]')).toBeNull();
   const previews = ui.requests.filter((r) => r.path === '/api/backup/preview');
   // Changing the mode refreshes the preview.
   expect(previews).toHaveLength(2);

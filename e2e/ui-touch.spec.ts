@@ -86,6 +86,11 @@ for (const { width, height } of touchWidths) {
     // never sees them; this keeps their 44px touch size from regressing.
     test('종목 분석의 부위 지정 칩이 기준을 지킨다', async ({ page }) => {
       await openPage(page, '/analysis');
+      // #125: pick the exercise from the list first; phones show its detail after the tap.
+      await page
+        .getByRole('list', { name: '운동 목록' })
+        .getByRole('button', { name: /^랫풀다운/ })
+        .click();
       await page.getByRole('button', { name: '랫풀다운 부위 지정' }).click();
       await expect(page.getByRole('group', { name: '랫풀다운 부위' })).toBeVisible();
       expect(await violations(page.locator('main .legacy'))).toEqual([]);
@@ -119,5 +124,26 @@ test.describe('터치 내비게이션', () => {
     );
     await menu.getByRole('link', { name: '운동 일지' }).click();
     await expect(page).toHaveURL(/\/journal$/);
+  });
+});
+
+// #125: on a phone the exercise list is on the first screen and an exercise's detail is one tap
+// away; going back shows the list again.
+test.describe('종목 분석 모바일 정보 구조', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('첫 화면에 운동 목록이 보이고 한 번 눌러 상세로 간다', async ({ page }) => {
+    await openPage(page, '/analysis');
+    const list = page.getByRole('list', { name: '운동 목록' });
+    const first = list.getByRole('button').first();
+    await expect(first).toBeInViewport();
+    await expect(page.getByRole('heading', { level: 3, name: '랫풀다운' })).toBeHidden();
+    await list.getByRole('button', { name: /^랫풀다운/ }).click();
+    const heading = page.getByRole('heading', { level: 3, name: '랫풀다운' });
+    await expect(heading).toBeInViewport();
+    await expect(heading).toBeFocused();
+    await expect(list).toBeHidden();
+    await page.getByRole('button', { name: '운동 목록' }).click();
+    await expect(list).toBeVisible();
   });
 });

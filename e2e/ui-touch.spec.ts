@@ -61,10 +61,16 @@ const overflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 
 // #198: what sits inside a closed details is not rendered, so the checks above would skip it.
-// Open them all first; only these touch checks see the opened state.
+// Open them all first; only these touch checks see the opened state. Returns how many it found.
 const openDetails = (root: Locator) =>
   root.evaluateAll((roots) => {
-    for (const scope of roots) for (const el of scope.querySelectorAll('details')) el.open = true;
+    let found = 0;
+    for (const scope of roots)
+      for (const el of scope.querySelectorAll('details')) {
+        el.open = true;
+        found++;
+      }
+    return found;
   });
 
 // #198: an InBody CSV export with the four columns found automatically, as in the unit test.
@@ -82,7 +88,9 @@ for (const { width, height } of touchWidths) {
     test('모든 화면의 입력·누름 영역이 기준을 지키고 가로로 넘치지 않는다', async ({ page }) => {
       for (const { path } of pages) {
         await openPage(page, path);
-        await openDetails(page.locator('main .legacy'));
+        const opened = await openDetails(page.locator('main .legacy'));
+        // The analysis page always has its folded rules, so opening cannot silently find nothing.
+        if (path === '/analysis') expect(opened, '펼친 details 수').toBeGreaterThan(0);
         expect(await violations(page.locator('main .legacy')), path).toEqual([]);
         expect(await overflow(page), `${path} 가로 넘침(px)`).toBeLessThanOrEqual(0);
       }
@@ -119,6 +127,8 @@ for (const { width, height } of touchWidths) {
       await openPage(page, '/routines');
       await page.getByRole('button', { name: '새 루틴 만들기' }).click();
       await page.getByLabel('운동 일정 방식').selectOption('weekday');
+      // #198: the automatic mode shows the 12 week preview inside the form; check it first.
+      expect(await violations(page.locator('main .legacy')), '자동 미리보기').toEqual([]);
       await page.getByLabel('주차 목표 방식').selectOption('manual');
       await expect(page.getByRole('checkbox', { name: '월' })).toBeVisible();
       await openDetails(page.locator('main .legacy'));

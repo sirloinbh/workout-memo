@@ -345,7 +345,6 @@ function convertDistance(text: string, from: CardioKind | '', to: CardioKind | '
   return String(distanceUnit(to) === 'm' ? kmToMetres(value) : metresToKm(value));
 }
 
-/** The draft as the API body: only the fields of the chosen goal type are filled. */
 // The typed distance in km: metres for swimming are divided by 1000; unreadable text stays NaN.
 const distanceKm = (d: Draft) => {
   const value = num(d.distance);
@@ -353,6 +352,7 @@ const distanceKm = (d: Draft) => {
     ? metresToKm(value)
     : value;
 };
+/** The draft as the API body: only the fields of the chosen goal type are filled. */
 function draftToGoal(d: Draft): CardioGoalInput {
   const record = isRecord(d.goal_type);
   const usesDistance = ['distance', 'record_time', 'longest_distance'].includes(d.goal_type);

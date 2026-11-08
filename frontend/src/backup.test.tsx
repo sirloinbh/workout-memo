@@ -162,7 +162,7 @@ test('unreadable, oversized or rejected files never reach restore', async () => 
 
   // A second, independent app whose server rejects the preview.
   cleanup();
-  const rejected = mount('지원하지 않는 백업 버전입니다 (v3). 지원 버전: v1, v2');
+  const rejected = mount('지원하지 않는 백업 버전입니다 (v4). 지원 버전: v1, v2, v3');
   await openBackup(rejected);
   await rejected.choose(rejected.file(JSON.stringify(backup)));
   await waitFor(() => expect(page()).toMatch(/지원하지 않는 백업 버전입니다/));

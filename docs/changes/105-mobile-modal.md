@@ -20,7 +20,7 @@
   - 공통 `components/ui/dialog.tsx`는 중앙 관리 파일이라 고치지 않고, `Modal`이 넘기는 클래스로만 바꿨습니다.
 - `frontend/src/components/keyboard-inset.ts`: 키보드 높이 계산 `keyboardInset(innerHeight, visualViewport)`. 보이는 영역 아래로 가려진 높이만 셉니다(보이는 영역이 위로 밀린 `offsetTop`은 빼고, 음수는 0).
 - `frontend/src/app.tsx`: 일지 편집 모달을 `layout="full"`로 열고, "기록 저장하기" 버튼을 `ModalFooter`에 넣었습니다.
-- 화면 차이: 640px 미만에서 일지 편집은 전체 화면, 목표·머신 폼은 하단 시트가 됩니다. 일지 편집의 저장 버튼은 폼을 스크롤하는 동안 화면 아래에 계속 보입니다. 768px 이상은 바뀌지 않습니다.
+- 화면 차이: 640px 미만에서 일지 편집은 전체 화면, 목표·머신 폼은 하단 시트가 됩니다. 일지 편집의 저장 버튼은 폼을 스크롤하는 동안 화면 아래에 계속 보입니다. 768px 이상은 모달 모양이 그대로이고, 일지 편집만 저장 버튼이 모달 아래에 붙습니다(1차 리뷰 보완 참고).
 
 ## 테스트
 
@@ -32,4 +32,15 @@
 - `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx src/set-completion.test.tsx src/forms.test.tsx`: 39 pass
 - `npm run typecheck -w frontend`, 바뀐 파일 eslint(`--max-warnings 0`)·prettier: 통과
 - 실행하지 않은 것: e2e와 로컬 `npm run check`는 메모리 부족으로 돌리지 않았습니다. 시각 기준선·axe·반응형·터치는 PR CI로 확인합니다. 실제 휴대폰 키보드로는 확인하지 못했습니다(Playwright는 화면 키보드를 띄우지 않습니다). 키보드 동작은 위 단위 테스트의 `visualViewport` 흉내로만 검증했습니다.
-- 예상 기준선 변화: 360·390px의 `workout-editor`·`goal-editor`·`machine-editor` 6장. 768·1280px은 바뀌지 않아야 합니다.
+- 예상 기준선 변화: 1차 리뷰 보완에서 고쳤습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+1차 리뷰는 필수 1건, 권장 3건이었고 모두 반영했습니다.
+
+- 필수 1: `ModalFooter`는 화면 폭과 관계없이 적용되는데, 기록에는 "768px 이상은 바뀌지 않는다", 예상 기준선은 6장이라고 적었습니다. 768·1280px에서도 일지 편집 폼이 모달보다 길어서 저장 버튼이 모달 아래에 붙습니다. 데스크톱에서도 끝까지 내려가지 않고 저장할 수 있어 의도한 동작으로 두고, 기록을 고쳤습니다. 예상 기준선 변화는 8장입니다: 360·390px의 `workout-editor`·`goal-editor`·`machine-editor` 6장과 768·1280px의 `workout-editor` 2장.
+- 권장 2: 핀치 확대도 보이는 영역을 줄이고, 확대한 채 화면을 옮기면 `offsetTop`이 바뀝니다. 그래서 확대만 해도 키보드로 오인해 모달 높이가 흔들리고 `scrollIntoView`가 되풀이됐습니다. `visualViewport.scale`이 1.01을 넘으면 키보드 높이를 0으로 봅니다.
+- 권장 3: 단위 테스트가 `scroll` 리스너 해제도 확인합니다.
+- 권장 4: e2e 좌표 비교를 모두 `toBeCloseTo(…, 0)`로 바꿔 소수 픽셀에 흔들리지 않게 했습니다.
+- 추가 테스트: `keyboardInset`에 확대(`scale: 2`) 1건
+- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck·eslint·prettier 통과

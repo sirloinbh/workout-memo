@@ -61,6 +61,8 @@ test('keyboardInset is the part of the screen below the visible area', () => {
   // iOS may also scroll the visible area up; only what is below it counts.
   expect(keyboardInset(844, { height: 508, offsetTop: 100 })).toBe(236);
   expect(keyboardInset(844, { height: 900, offsetTop: 0 })).toBe(0);
+  // Pinch zoom shrinks the visible area too, but is not a keyboard.
+  expect(keyboardInset(844, { height: 422, offsetTop: 200, scale: 2 })).toBe(0);
 });
 
 // #105: a mobile modal ends above the keyboard and brings the focused field back into view.
@@ -94,6 +96,7 @@ test('Modal follows the visual viewport so the keyboard does not cover the field
     expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
     unmount();
     expect(viewport.removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+    expect(viewport.removeEventListener).toHaveBeenCalledWith('scroll', expect.any(Function));
   } finally {
     vi.unstubAllGlobals();
     // jsdom has no scrollIntoView of its own.

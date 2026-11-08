@@ -80,7 +80,10 @@ test.describe('390px 모바일 모달', () => {
   }) => {
     const dialog = await openModal(page, modals[0]);
     const box = (await dialog.boundingBox())!;
-    expect(box).toMatchObject({ x: 0, y: 0, width: 390, height: 844 });
+    expect(box.x).toBeCloseTo(0, 0);
+    expect(box.y).toBeCloseTo(0, 0);
+    expect(box.width).toBeCloseTo(390, 0);
+    expect(box.height).toBeCloseTo(844, 0);
     const save = dialog.getByRole('button', { name: '기록 저장하기' });
     await expect(save).toBeInViewport();
     for (const position of ['middle', 'top'] as const) {
@@ -95,8 +98,8 @@ test.describe('390px 모바일 모달', () => {
   test('짧은 폼은 화면 아래 시트로 뜬다', async ({ page }) => {
     const dialog = await openModal(page, modals[1]);
     const box = (await dialog.boundingBox())!;
-    expect(box.x).toBe(0);
-    expect(box.width).toBe(390);
-    expect(Math.round(box.y + box.height)).toBe(844);
+    expect(box.x).toBeCloseTo(0, 0);
+    expect(box.width).toBeCloseTo(390, 0);
+    expect(box.y + box.height).toBeCloseTo(844, 0);
   });
 });

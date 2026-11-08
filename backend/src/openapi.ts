@@ -8,6 +8,7 @@ import { bodyPartMappingSchema } from './analysis.js';
 import { exportQuery, restoreRequest } from './backup.js';
 import {
   bodyMeasurementSchema,
+  cardioSessionSchema,
   date,
   dateRange,
   goalSchema,
@@ -18,6 +19,7 @@ import {
   workoutSchema,
 } from './domain.js';
 import { analysisQuery } from './routes/analysis.js';
+import { cardioQuery } from './routes/cardio.js';
 import { goalSuggestionQuery } from './routes/weight-steps.js';
 
 type Json = Record<string, unknown>;
@@ -187,6 +189,19 @@ export const operations: Record<string, Operation> = {
     status: [200, 400],
   },
   'GET /api/goal-suggestion': { query: goalSuggestionQuery, status: [200, 400] },
+  // #114: the server also rejects a date after today (Asia/Seoul); see docs/api.md.
+  'GET /api/cardio-sessions': { query: cardioQuery, status: [200, 400] },
+  'GET /api/cardio-sessions/:id': { status: [200, 400, 404] },
+  'POST /api/cardio-sessions': {
+    body: ['CardioSession', cardioSessionSchema],
+    status: [201, 400, 409],
+  },
+  'PUT /api/cardio-sessions/:id': {
+    body: ['CardioSession', cardioSessionSchema],
+    status: [200, 400, 404, 409],
+  },
+  'DELETE /api/cardio-sessions/:id': { status: [200, 400, 404] },
+  'GET /api/export/cardio.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
   'GET /api/export/workouts.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
   'GET /api/backup': { status: [200] },
   'POST /api/backup/preview': {

@@ -2,13 +2,23 @@ import express from 'express';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod/v4';
 
-import { date, feedbackLevels, limitLength, routineSchema } from './domain.js';
+import {
+  cardioSessionObject,
+  checkCardioSession,
+  date,
+  feedbackLevels,
+  limitLength,
+  routineSchema,
+} from './domain.js';
+import { cardioPaceSql, cardioSpeedSql } from './routes/cardio.js';
 
 // Two deliberately separate artifacts (#33):
 // - analysis CSV: one row per set for spreadsheets; lossy (formula guard) and never restorable.
 // - restore backup: versioned JSON that keeps every relationship and is validated before use.
 export const backupFormat = 'workout-memo-backup';
-export const backupVersion = 1;
+// v2 (#114) adds data.cardio_sessions. A v1 file is still restored, as a backup without cardio.
+export const backupVersion = 2;
+export const supportedBackupVersions = [1, 2] as const;
 export const backupMaxBytes = 10 * 1024 * 1024;
 export const replaceConfirmation = '전체 교체';
 
@@ -44,14 +54,41 @@ export const csvColumns = [
   'workout_feedback',
 ];
 
+// #114: cardio sessions get their own CSV; the workouts CSV above keeps its columns.
+export const cardioCsvColumns = [
+  'cardio_id',
+  'date',
+  'start_time',
+  'kind',
+  'duration_sec',
+  'distance_km',
+  'pace_sec_per_km',
+  'speed_kmh',
+  'avg_heart_rate',
+  'max_heart_rate',
+  'calories_kcal',
+  'elevation_gain_m',
+  'avg_cadence',
+  'effort',
+  'workout_id',
+  'source',
+  'external_id',
+  'memo',
+];
+
 const id = z.number().int().positive();
 const kg = z.number().min(0).max(99999);
 const name = limitLength(z.string().trim(), { min: 1, max: 120 });
 const notes = (max: number) => limitLength(z.string(), { max });
 const timestamp = z.iso.datetime({ offset: true });
+// The same field and cross-field rules as the cardio API, except "not after today": a backup
+// restores what was recorded, and the DB cannot check the date against today either.
+const cardioRow = cardioSessionObject
+  .extend({ id, created_at: timestamp })
+  .superRefine(checkCardioSession);
 const backupSchema = z.object({
   format: z.literal(backupFormat),
-  version: z.literal(backupVersion),
+  version: z.union([z.literal(1), z.literal(2)]),
   exported_at: timestamp,
   data: z
     .object({
@@ -108,12 +145,21 @@ const backupSchema = z.object({
         )
         .max(5000),
       routines: z.array(z.object({ id, created_at: timestamp, plan: routineSchema })).max(1000),
+      // #114: required in v2 (checked in parseBackup); a v1 file has none.
+      cardio_sessions: z.array(cardioRow).max(50000).optional(),
     })
     .superRefine((data, ctx) => {
       const issue = (message: string) => ctx.addIssue({ code: 'custom', message });
-      for (const table of ['brands', 'machines', 'workouts', 'goals', 'routines'] as const) {
+      for (const table of [
+        'brands',
+        'machines',
+        'workouts',
+        'goals',
+        'routines',
+        'cardio_sessions',
+      ] as const) {
         const seen = new Set<number>();
-        for (const row of data[table]) {
+        for (const row of data[table] ?? []) {
           if (seen.has(row.id)) issue(`${table}: 중복된 id ${row.id}`);
           seen.add(row.id);
         }
@@ -136,6 +182,19 @@ const backupSchema = z.object({
             issue(`workouts[${i}].sets[${j}]: 백업에 없는 머신 ${s.machine_id}를 참조합니다`);
         }),
       );
+      const workoutIds = new Set(data.workouts.map((w) => w.id));
+      const externalIds = new Set<string>();
+      (data.cardio_sessions ?? []).forEach((c, i) => {
+        if (c.workout_id !== null && !workoutIds.has(c.workout_id))
+          issue(`cardio_sessions[${i}]: 백업에 없는 일지 ${c.workout_id}를 참조합니다`);
+        if (c.external_id === null) return;
+        const key = c.source + '\u0000' + c.external_id;
+        if (externalIds.has(key))
+          issue(
+            `같은 출처와 외부 ID의 유산소 기록이 중복되었습니다: ${c.source} / ${c.external_id}`,
+          );
+        externalIds.add(key);
+      });
       data.routines.forEach((r, i) =>
         r.plan.splits.forEach((s) =>
           s.exercises.forEach((e) => {
@@ -146,7 +205,12 @@ const backupSchema = z.object({
       );
     }),
 });
-export type Backup = z.infer<typeof backupSchema>;
+type ParsedBackup = z.infer<typeof backupSchema>;
+type CardioBackupRow = NonNullable<ParsedBackup['data']['cardio_sessions']>[number];
+// After parseBackup every backup has cardio_sessions (empty for a v1 file).
+export type Backup = Omit<ParsedBackup, 'data'> & {
+  data: Omit<ParsedBackup['data'], 'cardio_sessions'> & { cardio_sessions: CardioBackupRow[] };
+};
 
 export function parseBackup(value: unknown): Backup {
   const head = value as { format?: unknown; version?: unknown } | null;
@@ -156,11 +220,15 @@ export function parseBackup(value: unknown): Backup {
     throw new BackupInvalid(
       '워크아웃 메모 백업 파일 형식이 아닙니다 (분석용 CSV는 복원할 수 없습니다)',
     );
-  if (head.version !== backupVersion)
+  if (!(supportedBackupVersions as readonly unknown[]).includes(head.version))
     throw new BackupInvalid(
-      `지원하지 않는 백업 버전입니다 (v${String(head.version)}). 지원 버전: v${backupVersion}`,
+      `지원하지 않는 백업 버전입니다 (v${String(head.version)}). 지원 버전: ${supportedBackupVersions.map((v) => 'v' + v).join(', ')}`,
     );
   const parsed = backupSchema.safeParse(value);
+  if (parsed.success && parsed.data.version === 2 && !parsed.data.data.cardio_sessions)
+    throw new BackupInvalid(
+      '백업 검증 실패 — data.cardio_sessions: v2 백업에는 유산소 기록 목록이 필요합니다',
+    );
   if (!parsed.success) {
     const issues = parsed.error.issues.slice(0, 5).map((x) => {
       const path = x.path.join('.');
@@ -168,10 +236,23 @@ export function parseBackup(value: unknown): Backup {
     });
     throw new BackupInvalid('백업 검증 실패 — ' + issues.join(' / '));
   }
-  return parsed.data;
+  const { data, version } = parsed.data;
+  // v1 predates cardio sessions (#114): it restores as a backup without any.
+  return {
+    ...parsed.data,
+    data: { ...data, cardio_sessions: version === 1 ? [] : (data.cardio_sessions ?? []) },
+  };
 }
 
-const tables = ['brands', 'machines', 'workouts', 'sets', 'goals', 'routines'] as const;
+const tables = [
+  'brands',
+  'machines',
+  'workouts',
+  'sets',
+  'goals',
+  'routines',
+  'cardio_sessions',
+] as const;
 type Counts = { added: number; skipped: number; conflicts: number; deleted: number };
 export type RestoreSummary = {
   mode: 'merge' | 'replace';
@@ -199,15 +280,16 @@ function canonical(value: unknown): string {
 }
 // Multiset of existing rows: each identical existing row absorbs one incoming row, so
 // repeated restores add nothing while two genuinely identical sessions both survive.
+// take() returns the absorbing row's id (0 when not tracked), or undefined when none is left.
 class Seen {
-  private counts = new Map<string, number>();
-  add(key: string) {
-    this.counts.set(key, (this.counts.get(key) ?? 0) + 1);
+  private ids = new Map<string, number[]>();
+  add(key: string, id = 0) {
+    const list = this.ids.get(key);
+    if (list) list.push(id);
+    else this.ids.set(key, [id]);
   }
   take(key: string) {
-    const n = this.counts.get(key) ?? 0;
-    if (n) this.counts.set(key, n - 1);
-    return n > 0;
+    return this.ids.get(key)?.shift();
   }
 }
 const workoutKey = (
@@ -240,7 +322,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   const t = summary.tables;
   // Readers continue; concurrent writers wait so the preview/restore sees a stable state.
   await client.query(
-    'LOCK TABLE brands, machines, workouts, sets, goals, routines IN EXCLUSIVE MODE',
+    'LOCK TABLE brands, machines, workouts, sets, goals, routines, cardio_sessions IN EXCLUSIVE MODE',
   );
   if (mode === 'replace') {
     for (const table of tables)
@@ -252,7 +334,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     // a retry after the replace is then stored as a new workout.
     summary.retry_keys_cleared = (await client.query('DELETE FROM workout_requests')).rowCount ?? 0;
     // Sets are removed by ON DELETE CASCADE.
-    for (const table of ['workouts', 'goals', 'routines', 'machines', 'brands'])
+    for (const table of ['cardio_sessions', 'workouts', 'goals', 'routines', 'machines', 'brands'])
       await client.query(`DELETE FROM ${table}`);
   }
 
@@ -316,15 +398,19 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
 
   const seenWorkouts = new Seen();
   const existingWorkouts = await client.query(
-    `SELECT w.date, w.title, w.notes, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id`,
+    `SELECT w.id, w.date, w.title, w.notes, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id`,
   );
-  for (const r of existingWorkouts.rows) seenWorkouts.add(workoutKey(r, r.sets));
+  for (const r of existingWorkouts.rows) seenWorkouts.add(workoutKey(r, r.sets), r.id);
+  // Backup workout id → the restored or matched existing workout, for cardio links (#114).
+  const workoutMap = new Map<number, number>();
   for (const w of backup.data.workouts) {
     const sets = w.sets.map((s) => ({
       ...s,
       machine_id: s.machine_id === null ? null : machineMap.get(s.machine_id)!,
     }));
-    if (seenWorkouts.take(workoutKey(w, sets))) {
+    const matched = seenWorkouts.take(workoutKey(w, sets));
+    if (matched !== undefined) {
+      workoutMap.set(w.id, matched);
       t.workouts.skipped++;
       t.sets.skipped += sets.length;
       continue;
@@ -336,6 +422,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
         [w.date, w.title, w.notes, w.feedback, w.created_at],
       )
     ).rows[0].id;
+    workoutMap.set(w.id, workoutId);
     for (const [i, s] of sets.entries())
       await client.query(
         'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes) VALUES($1,$2,$3,$4,$5,$6,$7)',
@@ -344,6 +431,8 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     t.workouts.added++;
     t.sets.added += sets.length;
   }
+
+  await restoreCardio(client, backup.data.cardio_sessions, workoutMap, summary);
 
   const goalKey = (g: {
     exercise: string;
@@ -356,7 +445,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   const seenGoals = new Seen();
   for (const r of (await client.query('SELECT * FROM goals')).rows) seenGoals.add(goalKey(r));
   for (const g of backup.data.goals) {
-    if (seenGoals.take(goalKey(g))) {
+    if (seenGoals.take(goalKey(g)) !== undefined) {
       t.goals.skipped++;
       continue;
     }
@@ -381,7 +470,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
         ),
       })),
     };
-    if (seenRoutines.take(canonical(plan))) {
+    if (seenRoutines.take(canonical(plan)) !== undefined) {
       t.routines.skipped++;
       continue;
     }
@@ -392,6 +481,93 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     t.routines.added++;
   }
   return summary;
+}
+
+// Cardio identity for merge (#114). The workout link is not part of it (like a workout's
+// feedback): a session that differs only in its link is the same session; the existing row stays.
+const cardioValues = `date, to_char(start_time, 'HH24:MI') start_time, kind, duration_sec,
+  distance_km::float8 distance_km, avg_heart_rate, max_heart_rate, calories_kcal, elevation_gain_m,
+  avg_cadence, effort, source, external_id, memo`;
+type CardioKeyed = Omit<CardioBackupRow, 'id' | 'created_at' | 'workout_id'>;
+const cardioKey = (c: CardioKeyed) =>
+  JSON.stringify([
+    c.date,
+    c.start_time,
+    c.kind,
+    c.duration_sec,
+    c.distance_km,
+    c.avg_heart_rate,
+    c.max_heart_rate,
+    c.calories_kcal,
+    c.elevation_gain_m,
+    c.avg_cadence,
+    c.effort,
+    c.source,
+    c.external_id,
+    c.memo,
+  ]);
+
+// Imported sessions are matched by (source, external_id): the same id with other values is a
+// conflict and the existing row is kept. Sessions without an external id are matched by
+// content like workouts. Links point to the restored (or matched existing) workout.
+async function restoreCardio(
+  client: PoolClient,
+  sessions: CardioBackupRow[],
+  workoutMap: Map<number, number>,
+  summary: RestoreSummary,
+) {
+  const t = summary.tables.cardio_sessions;
+  const seen = new Seen();
+  const byExternal = new Map<string, string>();
+  const external = (c: { source: string; external_id: string | null }) =>
+    c.external_id === null ? null : c.source + '\u0000' + c.external_id;
+  for (const r of (await client.query(`SELECT ${cardioValues} FROM cardio_sessions`)).rows) {
+    const ext = external(r);
+    if (ext === null) seen.add(cardioKey(r));
+    else byExternal.set(ext, cardioKey(r));
+  }
+  for (const c of sessions) {
+    const key = cardioKey(c);
+    const ext = external(c);
+    if (ext !== null && byExternal.has(ext)) {
+      if (byExternal.get(ext) === key) t.skipped++;
+      else {
+        t.conflicts++;
+        if (summary.conflicts.length < 20)
+          summary.conflicts.push(
+            `유산소 ${c.date} ${c.source} / ${c.external_id}: 기존 값 유지 (같은 외부 ID, 다른 내용)`,
+          );
+      }
+      continue;
+    }
+    if (ext === null && seen.take(key) !== undefined) {
+      t.skipped++;
+      continue;
+    }
+    await client.query(
+      'INSERT INTO cardio_sessions(date,start_time,kind,duration_sec,distance_km,avg_heart_rate,max_heart_rate,calories_kcal,elevation_gain_m,avg_cadence,effort,workout_id,source,external_id,memo,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)',
+      [
+        c.date,
+        c.start_time,
+        c.kind,
+        c.duration_sec,
+        c.distance_km,
+        c.avg_heart_rate,
+        c.max_heart_rate,
+        c.calories_kcal,
+        c.elevation_gain_m,
+        c.avg_cadence,
+        c.effort,
+        c.workout_id === null ? null : workoutMap.get(c.workout_id)!,
+        c.source,
+        c.external_id,
+        c.memo,
+        c.created_at,
+      ],
+    );
+    if (ext !== null) byExternal.set(ext, key);
+    t.added++;
+  }
 }
 
 async function snapshot<T>(pool: Pool, read: (client: PoolClient) => Promise<T>) {
@@ -470,6 +646,54 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
       .send(csv);
   });
 
+  app.get('/api/export/cardio.csv', async (req, res) => {
+    const q = exportQuery.parse(req.query);
+    const rows = await snapshot(
+      pool,
+      async (client) =>
+        (
+          await client.query(
+            `SELECT id, date, to_char(start_time, 'HH24:MI') start_time, kind, duration_sec,
+              distance_km::float8 distance_km, ${cardioPaceSql()} pace_sec_per_km, ${cardioSpeedSql()} speed_kmh,
+              avg_heart_rate, max_heart_rate, calories_kcal, elevation_gain_m, avg_cadence, effort,
+              workout_id, source, external_id, memo
+            FROM cardio_sessions
+            WHERE ($1::date IS NULL OR date >= $1::date) AND ($2::date IS NULL OR date <= $2::date)
+            ORDER BY date, start_time NULLS FIRST, id`,
+            [q.from ?? null, q.to ?? null],
+          )
+        ).rows,
+    );
+    // Same escaping and formula guard as the workouts CSV (memo and external id are free text).
+    const csv = toCsv([
+      cardioCsvColumns,
+      ...rows.map((r) => [
+        r.id,
+        r.date,
+        r.start_time,
+        r.kind,
+        r.duration_sec,
+        r.distance_km,
+        r.pace_sec_per_km,
+        r.speed_kmh,
+        r.avg_heart_rate,
+        r.max_heart_rate,
+        r.calories_kcal,
+        r.elevation_gain_m,
+        r.avg_cadence,
+        r.effort,
+        r.workout_id,
+        r.source,
+        r.external_id,
+        r.memo,
+      ]),
+    ]);
+    res
+      .attachment(`workout-memo-cardio-${seoulToday()}.csv`)
+      .type('text/csv; charset=utf-8')
+      .send(csv);
+  });
+
   app.get('/api/backup', async (_req, res) => {
     const backup = await snapshot(pool, async (client) => ({
       format: backupFormat,
@@ -494,6 +718,11 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         ).rows.map((g) => ({ ...g, target_weight: Number(g.target_weight) })),
         routines: (await client.query('SELECT id, created_at, plan FROM routines ORDER BY id'))
           .rows,
+        cardio_sessions: (
+          await client.query(
+            `SELECT id, ${cardioValues}, workout_id, created_at FROM cardio_sessions ORDER BY date, id`,
+          )
+        ).rows,
       },
     }));
     res.attachment(`workout-memo-backup-${seoulToday()}.json`).json(backup);

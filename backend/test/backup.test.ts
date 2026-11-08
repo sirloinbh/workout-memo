@@ -75,6 +75,27 @@ function validBackup() {
         },
       ],
       routines: [{ id: 2, created_at: '2024-02-28T00:00:00.000Z', plan: routineInput() }],
+      cardio_sessions: [
+        {
+          id: 4,
+          date: '2024-02-29',
+          start_time: '07:30',
+          kind: 'running',
+          duration_sec: 1800,
+          distance_km: 5.25,
+          avg_heart_rate: 150,
+          max_heart_rate: 170,
+          calories_kcal: null,
+          elevation_gain_m: null,
+          avg_cadence: null,
+          effort: 'medium',
+          workout_id: 9 as number | null,
+          source: 'garmin',
+          external_id: 'g-1' as string | null,
+          memo: '',
+          created_at: '2024-02-29T08:00:00.000Z',
+        },
+      ],
     },
   };
 }
@@ -88,7 +109,60 @@ function rejects(mutate: (b: ReturnType<typeof validBackup>) => unknown, pattern
   );
 }
 
-test('backup validation accepts a well-formed v1 backup', () => {
+test('a v2 backup carries cardio sessions; a v1 backup restores as one without any (#114)', () => {
+  assert.equal(backupVersion, 2);
+  const parsed = parseBackup(validBackup());
+  assert.equal(parsed.version, 2);
+  assert.equal(parsed.data.cardio_sessions.length, 1);
+  assert.equal(parsed.data.cardio_sessions[0].distance_km, 5.25);
+  // v1 predates cardio: no field is fine, and anything there is ignored.
+  const { cardio_sessions: _cardio, ...v1Data } = validBackup().data;
+  const v1 = parseBackup({ ...validBackup(), version: 1, data: v1Data });
+  assert.equal(v1.version, 1);
+  assert.deepEqual(v1.data.cardio_sessions, []);
+  assert.equal(v1.data.workouts.length, 1);
+  assert.deepEqual(parseBackup({ ...validBackup(), version: 1 }).data.cardio_sessions, []);
+  // v2 must list them, even when empty.
+  rejects((b) => {
+    delete (b.data as Partial<typeof b.data>).cardio_sessions;
+  }, /data\.cardio_sessions/);
+  assert.deepEqual(
+    parseBackup({ ...validBackup(), data: { ...validBackup().data, cardio_sessions: [] } }).data
+      .cardio_sessions,
+    [],
+  );
+});
+
+test('backup validation checks cardio values, links and external ids (#114)', () => {
+  rejects((b) => {
+    b.data.cardio_sessions[0].workout_id = 404;
+  }, /cardio_sessions\[0\].*일지 404/);
+  rejects((b) => {
+    b.data.cardio_sessions.push({ ...b.data.cardio_sessions[0], id: 5 });
+  }, /같은 출처와 외부 ID.*garmin \/ g-1/);
+  rejects((b) => {
+    b.data.cardio_sessions.push({ ...b.data.cardio_sessions[0] });
+  }, /cardio_sessions.*중복된 id 4/);
+  rejects((b) => {
+    b.data.cardio_sessions[0].duration_sec = 0;
+  }, /cardio_sessions\.0\.duration_sec/);
+  rejects((b) => {
+    b.data.cardio_sessions[0].max_heart_rate = 120;
+  }, /최대 심박은 평균 심박보다/);
+  rejects((b) => {
+    b.data.cardio_sessions[0].source = 'manual';
+  }, /manual.*외부 ID/);
+  rejects((b) => {
+    b.data.cardio_sessions[0].kind = 'skiing';
+  }, /cardio_sessions\.0\.kind/);
+  // Two manual sessions without external ids are not duplicates.
+  const backup = validBackup();
+  const manual = { ...backup.data.cardio_sessions[0], source: 'manual', external_id: null };
+  backup.data.cardio_sessions = [manual, { ...manual, id: 5, workout_id: null }];
+  assert.equal(parseBackup(backup).data.cardio_sessions.length, 2);
+});
+
+test('backup validation accepts a well-formed backup', () => {
   const parsed = parseBackup(validBackup());
   assert.equal(parsed.data.workouts[0].sets[0].weight, 100.25);
   assert.equal(parsed.data.machines[0].base_weight, null);
@@ -116,7 +190,7 @@ test('backup validation rejects other files and unsupported versions first', () 
   rejects(() => 'not an object', /백업 파일 형식이 아닙니다/);
   rejects(() => [], /백업 파일 형식이 아닙니다/);
   rejects((b) => ({ ...b, format: 'other-app' }), /백업 파일 형식이 아닙니다/);
-  rejects((b) => ({ ...b, version: 2 }), /지원하지 않는 백업 버전.*2/);
+  rejects((b) => ({ ...b, version: 3 }), /지원하지 않는 백업 버전.*v3.*지원 버전: v1, v2/);
   rejects((b) => ({ ...b, version: '1' }), /지원하지 않는 백업 버전/);
 });
 

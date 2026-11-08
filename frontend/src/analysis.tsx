@@ -260,7 +260,7 @@ export function Analysis() {
                           // a picked one is announced as current.
                           aria-current={x.key === selected ? 'true' : undefined}
                           data-shown={x.key === shown.key || undefined}
-                          className="flex w-full flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 data-shown:bg-accent pointer-coarse:min-h-11"
+                          className="flex w-full flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 md:data-shown:bg-accent pointer-coarse:min-h-11"
                           onClick={() => pick(x.key)}
                         >
                           <span className="text-body-sm font-medium [overflow-wrap:anywhere]">

@@ -12,7 +12,7 @@
 
 - 세 방식의 선행 조건(HTTPS, Digital Asset Links, 설치 조건), 웹 배포만으로 갱신되는지, 오프라인, 화면 꺼짐 알림·진동, Health Connect, iOS, 비용, 유지보수.
 - Play 요건: 등록비, 신규 개인 계정 비공개 테스트 요건, 내부 테스트, 개인정보처리방침, 데이터 보안 양식, 건강 앱 신고, Health Connect 권한 정책, 목표 API 수준, Play App Signing.
-- npm 메타데이터(`npm view`, 설치 없음): `@bubblewrap/cli`, `@bubblewrap/core`, `@capacitor/core`·`cli`·`android`·`ios`, `@capacitor/local-notifications`의 버전·게시일·의존성·install 스크립트.
+- npm 메타데이터(`npm view`, 설치 없음): `@bubblewrap/cli`, `@bubblewrap/core`, `@capacitor/core`·`cli`·`android`, `@capacitor/local-notifications`(`@capacitor/ios`는 iOS를 하지 않는 추천안이라 표에서 뺐다)의 버전·게시일·의존성·install 스크립트.
 - 이 앱의 현재 PWA 파일(`manifest.webmanifest`, `sw.js`, `offline.html`, `index.html`, `main.tsx`의 등록 코드)과 [배포·운영](../deployment.md).
 
 ## 결과 요약
@@ -23,6 +23,12 @@
 
 ## 검증
 
-- `node_modules/.bin/prettier --write docs/mobile-app.md docs/changes/108-mobile-app.md`
+- `node_modules/.bin/prettier --write` 뒤 `node_modules/.bin/prettier --check docs/mobile-app.md docs/changes/108-mobile-app.md`
 - `npm run test:docs`
 - 결과: prettier `--check` 통과, `test:docs` 3 pass
+
+## 변경 — 리뷰 보완
+
+- 리뷰는 공식 출처로 핵심 사실(등록비, 12명·14일, 내부 테스트, 개인정보처리방침, 데이터 보안 면제, 목표 API 36, Play App Signing, Health Connect, Chrome 타이머 제한, iOS Web Push, Capacitor `server.url`·도구 요건, npm 버전·게시일)을 다시 확인했습니다.
+- (필수) 추천 절에서 "내부 테스트는 건강 앱 신고가 필요 없다"고 확정해 적었으나 공식 문구에 명시된 면제가 없어 "대상 트랙에 없지만 명시 면제는 없음"으로 낮췄습니다. 명시 면제는 데이터 보안 양식뿐입니다.
+- (선택) `assetlinks.json`은 Play App Signing 키 지문을 업로드 키 지문과 함께 "더한다"로 통일, Chrome 타이머 제한의 조건(5분 숨김·연쇄 5단계 이상·소리·WebRTC 없음)을 보탬, 조사 목록에서 표에 없는 `@capacitor/ios`를 설명, 검증 명령에 `prettier --check`를 적음

@@ -62,3 +62,8 @@
 ## main 병합
 
 - 병합 직전 main에 #241(#125 종목 분석 모바일)이 들어와 `e2e/ui-touch.spec.ts`가 겹쳐 `origin/main`을 merge했습니다. 충돌은 없었고, 이 브랜치의 대상 선택자와 #241의 종목 분석 검사가 함께 남았습니다. 병합 뒤 `tsc -p e2e/tsconfig.json`, 관련 화면 테스트 통과
+
+## #237 병합
+
+- #237(#105 일지 편집 세트 카드)이 main에 들어와 `origin/main`을 merge했습니다. 코드 충돌은 없었습니다. 시각 기준선 5장(`goal-editor` 360·390, `workout-editor` 390·768·1280)이 양쪽에서 바뀌어 충돌했습니다. 두 변경이 모두 들어간 이미지는 어느 쪽에도 없어, 일단 main 쪽을 두고 이 merge 커밋의 CI 아티팩트로 다시 갱신합니다.
+- 병합 뒤 `npm run typecheck -w frontend`, `tsc -p e2e/tsconfig.json` 통과. `npm run test -w frontend -- src/components/page-header.test.tsx src/workout-draft.test.tsx src/body.test.tsx src/inbody-import.test.tsx src/period.test.tsx` 62 pass

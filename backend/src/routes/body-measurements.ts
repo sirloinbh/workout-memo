@@ -2,7 +2,7 @@ import type express from 'express';
 import type { Pool } from 'pg';
 
 import { bodyMeasurementSchema, dateRange } from '../domain.js';
-import { id } from './shared.js';
+import { parseId } from '../standard/http.js';
 
 // NUMERIC(5,2) is returned as a JSON number; NULL stays null (never estimated or 0).
 const bodyColumns =
@@ -33,7 +33,7 @@ export function registerBodyMeasurementRoutes(app: express.Express, pool: Pool) 
     else res.status(409).json({ error: bodyConflict });
   });
   app.put('/api/body-measurements/:id', async (req, res) => {
-    const target = id(req.params.id);
+    const target = parseId(req.params.id, '신체 기록');
     const b = bodyMeasurementSchema.parse(req.body);
     try {
       // A full replacement: omitted metrics become NULL.
@@ -49,7 +49,9 @@ export function registerBodyMeasurementRoutes(app: express.Express, pool: Pool) 
     }
   });
   app.delete('/api/body-measurements/:id', async (req, res) => {
-    const r = await pool.query('DELETE FROM body_measurements WHERE id=$1', [id(req.params.id)]);
+    const r = await pool.query('DELETE FROM body_measurements WHERE id=$1', [
+      parseId(req.params.id, '신체 기록'),
+    ]);
     res.status(r.rowCount ? 200 : 404).json(r.rowCount ? { ok: true } : { error: bodyMissing });
   });
 }

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
@@ -413,4 +413,17 @@ test('a routine exercise can name a machine that the plan keeps (#82)', async ()
   // A free exercise omits the field, keeping the plan shape of older routines.
   expect('machine_id' in exercises[1]).toBe(false);
   await waitFor(() => expect(ui.text()).toMatch(/벤치프레스 \(해머 · 레그프레스\)/));
+});
+
+test('the plan view is a named region with its weeks and deloads marked (#102)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('계획 보기');
+  const view = await screen.findByRole('region', { name: '계획 보기' });
+  expect(within(view).getByRole('heading', { level: 3 }).textContent).toBe('수동 12주 루틴');
+  const weeks = within(view).getByRole('heading', { level: 4, name: '주차별 목표' }).parentElement!;
+  const marked = [...weeks.querySelectorAll('li[data-deload]')].map((li) => li.textContent);
+  expect(marked).toHaveLength(3);
+  expect(marked.every((t) => /^(4|8|12)주차 · 디로딩/.test(t))).toBe(true);
+  expect(within(view).getByRole('heading', { level: 4, name: /운동 일정/ })).toBeInTheDocument();
 });

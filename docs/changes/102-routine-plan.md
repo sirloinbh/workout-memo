@@ -1,0 +1,28 @@
+# #102 루틴짜기의 12주 미리보기와 계획 보기를 공통 컴포넌트로 교체 (4단계)
+
+- 이슈: [#102](https://github.com/sirloinbh/workout-memo/issues/102)
+- 브랜치: `feat/102-routine-plan`
+- 앞 단계: 1단계 [#227](https://github.com/sirloinbh/workout-memo/pull/227), 2단계 [#228](https://github.com/sirloinbh/workout-memo/pull/228), 3단계 루틴 폼 [#233](https://github.com/sirloinbh/workout-memo/pull/233)
+
+## 목적
+
+루틴짜기 화면에 마지막으로 남은 12주 예상 목표(`Preview`)와 저장한 루틴의 계획 보기를 공통 컴포넌트와 유틸리티로 옮기고, 루틴짜기 화면이 쓰던 `style.css` 규칙을 모두 지웁니다. 3단계(#233) 위에서 시작했고, #233 병합 뒤 `origin/main`을 받아 PR을 올립니다.
+
+## 변경 — feat: 12주 미리보기와 계획 보기 교체
+
+- `frontend/src/routines.tsx`
+  - 12주 예상 목표: 테두리 상자(`data-slot="routine-preview"`) 안에 운동마다 기본 `details`·`summary`를 둡니다. `components/ui`에 펼침 부품이 없어 기본 요소를 유지하고 유틸리티를 붙였습니다. 터치 화면의 `summary` 44px는 기존 규칙이 맡습니다.
+  - 디로딩 주차: 이전 `.deload` 클래스(스타일 규칙은 없었음) 대신 `data-deload` 속성과 진한 글자색으로 구분합니다. 계획 보기의 수동 주차 목표와 운동 일정에도 같은 표시를 붙였습니다.
+  - 미리보기 제목: 루틴 폼 안에서는 h3(화면 h2 바로 아래), 계획 보기 안에서는 h4(루틴 이름 h3 아래)입니다. 이전에는 둘 다 h4라 폼 안에서 제목 단계가 건너뛰었습니다.
+  - 미리보기 안내 문구(시작일·일정 입력 전)는 `bg-muted` 안내 상자입니다.
+  - 계획 보기: 공통 `Card`(`role="region"`, 이름 "계획 보기") 안의 `article`입니다. 루틴 이름은 `CardTitle`(h3), 분할·주차별 목표·운동 일정은 구분선이 있는 묶음과 h4입니다. 수동 루틴의 주차 목표에 "주차별 목표" 제목을 새로 붙였습니다. 운동 일정은 768px 이상에서 2단입니다.
+  - 화면 루트는 `className="routine-page"` 대신 `data-slot="routine-page"`입니다.
+- `frontend/src/style.css`: `.routine-page li`를 지웠습니다. 이제 루틴짜기 화면만 쓰는 규칙은 남지 않았습니다.
+
+## 테스트
+
+- 추가: `frontend/src/routines.test.tsx`에 1개. 계획 보기가 이름 있는 region이고 루틴 이름이 h3인지, 수동 루틴의 주차별 목표에서 4·8·12주차만 디로딩으로 표시되는지, 운동 일정 제목이 있는지 확인합니다.
+- 기존 테스트(12주와 디로딩 표시, 자동 미리보기, 다시 열기)는 수정 없이 통과합니다.
+- `npm run test -w frontend -- src/routines.test.tsx`: 9 pass
+- `npm run typecheck -w frontend`, eslint·prettier(바꾼 파일): 통과
+- 시각 기준선과 e2e는 PR CI로 확인합니다. PC 메모리가 부족해 로컬 전체 `npm run check`와 e2e는 돌리지 않았습니다.

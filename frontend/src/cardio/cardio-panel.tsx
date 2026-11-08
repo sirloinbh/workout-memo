@@ -1,0 +1,160 @@
+import { Activity, Plus } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { AlertBanner } from '../components/alert-banner';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { EmptyState } from '../components/ui/empty-state';
+import { Notice } from '../components/ui/notice';
+import { seoulDate } from '../date';
+import { RequestError } from '../lib/api';
+import { type CardioSession, deleteCardioSession, listCardioSessions } from './api';
+import { CardioForm, type LinkableWorkout } from './cardio-form';
+import { CardioList } from './cardio-list';
+import { cardioKindLabels } from './format';
+
+// #115: the cardio records of a period, self-contained so the journal's cardio tab (PR ③) only
+// has to place it. It loads the period, lists it, and opens CardioForm to add or edit.
+export function CardioPanel({
+  from,
+  to,
+  today = seoulDate(),
+  workouts,
+}: {
+  from: string;
+  to: string;
+  // The service date (Asia/Seoul): a session may not be after it. Tests may pin it.
+  today?: string;
+  // Strength workouts the form may link to; it offers those on the session's date.
+  workouts: readonly LinkableWorkout[];
+}) {
+  const [sessions, setSessions] = useState<CardioSession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
+  const [busy, setBusy] = useState(false);
+  // undefined: closed, null: a new session, otherwise the session being edited.
+  const [editing, setEditing] = useState<CardioSession | null | undefined>();
+  const version = useRef(0);
+
+  const load = useCallback(async () => {
+    const current = ++version.current;
+    setLoading(true);
+    try {
+      const data = await listCardioSessions(from, to);
+      // Only the newest period request may replace the list.
+      if (current !== version.current) return;
+      setSessions(data);
+      setError('');
+    } catch (e) {
+      if (current === version.current) setError((e as Error).message);
+    } finally {
+      if (current === version.current) setLoading(false);
+    }
+  }, [from, to]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function remove(session: CardioSession) {
+    const label = `${session.date.slice(0, 10)} ${cardioKindLabels[session.kind]}`;
+    if (busy || !confirm(`${label} 유산소 기록을 삭제할까요?`)) return;
+    setBusy(true);
+    setStatus('');
+    try {
+      await deleteCardioSession(session.id);
+      setStatus('유산소 기록을 삭제했습니다');
+    } catch (e) {
+      // Already deleted elsewhere: the reload below shows the list without it.
+      if (e instanceof RequestError && e.status === 404) setStatus('이미 삭제된 기록입니다');
+      else setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+    await load();
+  }
+
+  // A new session starts today when today is in the period, otherwise on the period's last
+  // day that is not in the future.
+  const newDate = today >= from && today <= to ? today : to < today ? to : today;
+
+  return (
+    <section>
+      {error && (
+        <AlertBanner
+          action={
+            <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+              다시 연결
+            </Button>
+          }
+        >
+          {error}
+        </AlertBanner>
+      )}
+      <Notice className="mb-4" notice={status ? { kind: 'status', text: status } : undefined} />
+      <Card className="gap-0 py-0 shadow-none">
+        <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
+          <CardTitle asHeading="h2" className="flex items-center gap-2 text-body font-semibold">
+            유산소 기록{' '}
+            <Badge variant="secondary" className="text-xs">
+              {sessions.length}
+            </Badge>
+          </CardTitle>
+          <CardDescription className="text-caption">
+            {from} ~ {to}
+          </CardDescription>
+          <CardAction>
+            <Button
+              disabled={busy}
+              onClick={() => {
+                setStatus('');
+                setEditing(null);
+              }}
+            >
+              <Plus aria-hidden />
+              유산소 기록 추가
+            </Button>
+          </CardAction>
+        </CardHeader>
+        {loading ? (
+          <p className="px-6 py-14 text-center text-sm text-muted-foreground">
+            기록을 불러오는 중…
+          </p>
+        ) : sessions.length === 0 ? (
+          <EmptyState
+            className="m-4 md:m-6"
+            headingLevel="h3"
+            icon={<Activity />}
+            title="선택한 기간에 유산소 기록이 없습니다"
+            description="러닝·걷기·자전거처럼 한 번의 유산소 운동을 시간과 거리로 남겨 보세요."
+          />
+        ) : (
+          <CardioList
+            sessions={sessions}
+            busy={busy}
+            onEdit={(session) => {
+              setStatus('');
+              setEditing(session);
+            }}
+            onDelete={(session) => void remove(session)}
+          />
+        )}
+      </Card>
+      {editing !== undefined && (
+        <CardioForm
+          session={editing ?? undefined}
+          date={newDate}
+          today={today}
+          workouts={workouts}
+          close={() => setEditing(undefined)}
+          onSaved={() => {
+            setEditing(undefined);
+            setStatus('유산소 기록을 저장했습니다');
+            void load();
+          }}
+        />
+      )}
+    </section>
+  );
+}

@@ -32,6 +32,8 @@ const labels: [string, string][] = [
   ['sets', '세트'],
   ['goals', '목표'],
   ['routines', '루틴'],
+  // #114: backup v2. A server without cardio sessions sends no such table; the row is skipped.
+  ['cardio_sessions', '유산소'],
   ['machines', '머신'],
   ['brands', '브랜드'],
 ];
@@ -237,6 +239,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
               <ul aria-label="변경 요약" className="flex flex-col gap-1.5 text-body-sm">
                 {labels.map(([key, label]) => {
                   const c = shown.tables[key];
+                  if (!c) return null;
                   return (
                     <li key={key}>
                       <span className="font-medium">{label}</span>

@@ -1,4 +1,4 @@
-import { Activity, Plus } from 'lucide-react';
+import { Activity, FileUp, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlertBanner } from '../components/alert-banner';
@@ -11,6 +11,7 @@ import { seoulDate } from '../date';
 import { RequestError } from '../lib/api';
 import { type CardioSession, deleteCardioSession, listCardioSessions } from './api';
 import { CardioForm, type LinkableWorkout } from './cardio-form';
+import { CardioImport } from './cardio-import';
 import { CardioList } from './cardio-list';
 import { sessionLabel } from './format';
 
@@ -51,6 +52,8 @@ export function CardioPanel({
   const [busy, setBusy] = useState(false);
   // undefined: closed, null: a new session, otherwise the session being edited.
   const [editing, setEditing] = useState<CardioSession | null | undefined>();
+  // #119: the activity file import card under the list.
+  const [importing, setImporting] = useState(false);
   const version = useRef(0);
   // The latest callback, so a caller passing a new function on each render adds no calls.
   const report = useRef(onSessionsChange);
@@ -154,7 +157,20 @@ export function CardioPanel({
           <CardDescription className="text-caption">
             {from} ~ {to}
           </CardDescription>
-          <CardAction>
+          <CardAction className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              disabled={busy}
+              aria-expanded={importing}
+              onClick={() => {
+                setStatus('');
+                setActionError('');
+                setImporting(true);
+              }}
+            >
+              <FileUp aria-hidden />
+              파일 가져오기
+            </Button>
             <Button
               disabled={busy}
               onClick={() => {
@@ -193,6 +209,19 @@ export function CardioPanel({
           />
         )}
       </Card>
+      {importing && (
+        <CardioImport
+          today={today}
+          workouts={workouts}
+          close={() => setImporting(false)}
+          done={(count) => {
+            setImporting(false);
+            setStatus(`유산소 기록 ${count}건을 가져왔습니다`);
+            onChanged?.();
+            void load();
+          }}
+        />
+      )}
       {editing !== undefined && (
         <CardioForm
           session={editing ?? undefined}

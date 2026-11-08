@@ -49,6 +49,34 @@ const values = (c: Cardio) => [
   c.memo,
 ];
 
+// #115: all-time personal records (not limited to a period). Best 5 km and 10 km times count
+// only running sessions whose distance is within ±2% of the target (4.9–5.1 km, 9.8–10.2 km); a
+// longer run's time is never scaled down (2026-11-08 user decision 4). The window is computed in
+// NUMERIC, so 4.9 and 5.1 are exact bounds. Ties go to the earlier session.
+const recordColumns = 'id, date, distance_km::float8 AS distance_km, duration_sec';
+const bestTimeSql = `SELECT ${recordColumns} FROM cardio_sessions
+  WHERE kind='running' AND distance_km BETWEEN $1::numeric * 0.98 AND $1::numeric * 1.02
+  ORDER BY duration_sec, date, id LIMIT 1`;
+type CardioRecord = { id: number; date: string; distance_km: number; duration_sec: number };
+
+export async function cardioRecords(pool: Pool) {
+  const [longest, best5k, best10k] = await Promise.all([
+    pool.query<CardioRecord & { kind: (typeof cardioKinds)[number] }>(
+      `SELECT DISTINCT ON (kind) kind, ${recordColumns} FROM cardio_sessions
+        WHERE distance_km IS NOT NULL ORDER BY kind, distance_km DESC, date, id`,
+    ),
+    pool.query<CardioRecord>(bestTimeSql, [5]),
+    pool.query<CardioRecord>(bestTimeSql, [10]),
+  ]);
+  // One row per kind that has a distance, in the order of cardioKinds (running first).
+  const order = (kind: (typeof cardioKinds)[number]) => cardioKinds.indexOf(kind);
+  return {
+    longest: [...longest.rows].sort((a, b) => order(a.kind) - order(b.kind)),
+    best5k: best5k.rows[0] ?? null,
+    best10k: best10k.rows[0] ?? null,
+  };
+}
+
 // A duplicate (source, external_id) is a 409 and an unknown workout_id a 400; both are
 // answered by appErrors in routes/shared.ts so create and update share the messages.
 export function registerCardioRoutes(app: express.Express, pool: Pool, today: () => string) {
@@ -62,6 +90,10 @@ export function registerCardioRoutes(app: express.Express, pool: Pool, today: ()
         )
       ).rows,
     );
+  });
+  // Registered before /:id so "records" is never read as an id.
+  app.get('/api/cardio-sessions/records', async (_req, res) => {
+    res.json(await cardioRecords(pool));
   });
   app.get('/api/cardio-sessions/:id', async (req, res) => {
     const r = await pool.query(`SELECT ${cardioColumns} FROM cardio_sessions WHERE id=$1`, [

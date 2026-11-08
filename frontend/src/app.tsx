@@ -37,6 +37,7 @@ import { ToggleChips } from './components/toggle-chips';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Checkbox } from './components/ui/checkbox';
 import { EmptyState } from './components/ui/empty-state';
 import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -1328,89 +1329,105 @@ function Workspace() {
             ))}
           {page === 'machines' && (
             <>
-              <div className="brand-tabs">
-                <button className={!brand ? 'selected' : ''} onClick={() => setBrand(0)}>
-                  전체 브랜드
-                </button>
-                {brands.map((b) => (
-                  <button
-                    key={b.id}
-                    className={brand === b.id ? 'selected' : ''}
-                    onClick={() => setBrand(b.id)}
-                  >
-                    {b.name}
-                  </button>
-                ))}
-              </div>
-              <section className="card">
-                <div className="section-title">
-                  <div>
-                    <h2>머신 라이브러리</h2>
-                    <p>
-                      기본중량은 기종·설정에 따라 다릅니다. 머신 표기와 제조사 자료를 확인해
-                      입력하세요.
-                    </p>
-                  </div>
-                </div>
+              <SegmentedControl
+                label="브랜드"
+                className="mb-6"
+                options={[
+                  { value: '0', label: '전체 브랜드' },
+                  ...brands.map((b) => ({ value: String(b.id), label: b.name })),
+                ]}
+                value={String(brand)}
+                onValueChange={(value) => setBrand(Number(value))}
+              />
+              <Card className="gap-0 py-0 shadow-none">
+                <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
+                  <CardTitle asHeading="h2" className="text-body font-semibold">
+                    머신 라이브러리
+                  </CardTitle>
+                  <CardDescription className="text-caption">
+                    기본중량은 기종·설정에 따라 다릅니다. 머신 표기와 제조사 자료를 확인해
+                    입력하세요.
+                  </CardDescription>
+                </CardHeader>
                 {machines.filter((m) => !brand || m.brand_id === brand).length === 0 ? (
-                  <div className="empty">
-                    <Dumbbell size={32} />
-                    <h3>나만의 머신을 등록하세요</h3>
-                    <p>확인되지 않은 기본중량은 미입력으로 보관할 수 있어요.</p>
-                  </div>
+                  <EmptyState
+                    className="m-4 md:m-6"
+                    headingLevel="h3"
+                    icon={<Dumbbell />}
+                    title="나만의 머신을 등록하세요"
+                    description="확인되지 않은 기본중량은 미입력으로 보관할 수 있어요."
+                  />
                 ) : (
-                  machines
-                    .filter((m) => !brand || m.brand_id === brand)
-                    .map((m) => (
-                      <div className="workout-row" key={m.id}>
-                        <div className="machine-icon">
-                          <Dumbbell size={22} />
-                        </div>
-                        <div className="workout-info">
-                          <h3>{m.name}</h3>
-                          <p>
-                            {m.brand}
-                            {m.single_joint ? ' · 단관절' : ''} · {m.notes || '메모 없음'}
-                          </p>
-                          {m.official_status && (
-                            <p className="official-ref">
-                              공식 참고값({m.official_model_name}
-                              {m.official_setting ? ` · ${m.official_setting}` : ''}):{' '}
-                              {officialLabel({
-                                status: m.official_status,
-                                raw_value: m.official_raw_value,
-                                raw_unit: m.official_raw_unit,
-                                weight_kg: m.official_weight_kg,
-                                basis: m.official_basis,
-                              })}
-                              {m.official_source_url && (
-                                <>
-                                  {' · '}
-                                  <a href={m.official_source_url} target="_blank" rel="noreferrer">
-                                    출처
-                                  </a>
-                                  {` (${m.official_checked_date} 확인)`}
-                                </>
-                              )}
-                            </p>
-                          )}
-                        </div>
-                        <strong>{m.base_weight === null ? '미입력' : `${m.base_weight} kg`}</strong>
-                        <button
-                          className="text-button"
-                          onClick={() =>
-                            setMachineEditor({
-                              ...m,
-                              base_weight: m.base_weight === null ? null : Number(m.base_weight),
-                            })
-                          }
+                  <List aria-label="머신" className="px-4 py-1 md:px-6 md:py-2.5">
+                    {machines
+                      .filter((m) => !brand || m.brand_id === brand)
+                      .map((m) => (
+                        <ListItem
+                          data-slot="machine-row"
+                          className="flex-wrap gap-2.5 py-4 md:flex-nowrap md:gap-4"
+                          key={m.id}
                         >
-                          수정
-                        </button>
-                      </div>
-                    ))
+                          <div
+                            aria-hidden
+                            className="flex size-12 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
+                          >
+                            <Dumbbell size={22} />
+                          </div>
+                          <div className="min-w-0 flex-1 [overflow-wrap:anywhere] max-md:basis-[calc(100%-3.625rem)]">
+                            <h3 className="text-body-sm font-semibold">{m.name}</h3>
+                            <p className="mt-1 text-meta text-muted-foreground">
+                              {m.brand}
+                              {m.single_joint ? ' · 단관절' : ''} · {m.notes || '메모 없음'}
+                            </p>
+                            {m.official_status && (
+                              <p className="mt-1 text-meta text-muted-foreground">
+                                공식 참고값({m.official_model_name}
+                                {m.official_setting ? ` · ${m.official_setting}` : ''}):{' '}
+                                {officialLabel({
+                                  status: m.official_status,
+                                  raw_value: m.official_raw_value,
+                                  raw_unit: m.official_raw_unit,
+                                  weight_kg: m.official_weight_kg,
+                                  basis: m.official_basis,
+                                })}
+                                {m.official_source_url && (
+                                  <>
+                                    {' · '}
+                                    <a
+                                      className="text-foreground underline underline-offset-4"
+                                      href={m.official_source_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      출처
+                                    </a>
+                                    {` (${m.official_checked_date} 확인)`}
+                                  </>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                          <strong className="text-body-sm font-medium whitespace-nowrap max-md:ml-14.5">
+                            {m.base_weight === null ? '미입력' : `${m.base_weight} kg`}
+                          </strong>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="max-md:ml-auto"
+                            onClick={() =>
+                              setMachineEditor({
+                                ...m,
+                                base_weight: m.base_weight === null ? null : Number(m.base_weight),
+                              })
+                            }
+                          >
+                            수정
+                          </Button>
+                        </ListItem>
+                      ))}
+                  </List>
                 )}
-              </section>
+              </Card>
             </>
           )}
         </div>
@@ -1788,10 +1805,11 @@ function Workspace() {
               );
             }}
           >
-            <label>
+            <Label className={fieldLabel}>
               브랜드
               <select
                 required
+                className={selectField}
                 value={machineEditor.brand_id ?? ''}
                 {...invalid('brand_id')}
                 onChange={(e) => {
@@ -1818,21 +1836,22 @@ function Workspace() {
                   </option>
                 ))}
               </select>
-            </label>
+            </Label>
             {issue('brand_id')}
             {(() => {
               const brandName = brands.find((b) => b.id === machineEditor.brand_id)?.name;
               const refs = (officialWeights ?? []).filter((r) => r.brand === brandName);
               const selected = refs.find((r) => r.id === machineEditor.official_weight_id);
               if (officialWeights === null)
-                return <p className="form-hint">공식 참고값을 불러오지 못했습니다.</p>;
+                return <p className={formHint}>공식 참고값을 불러오지 못했습니다.</p>;
               if (!refs.length)
-                return <p className="form-hint">이 브랜드의 공식 참고값 자료가 없습니다.</p>;
+                return <p className={formHint}>이 브랜드의 공식 참고값 자료가 없습니다.</p>;
               return (
                 <>
-                  <label>
+                  <Label className={fieldLabel}>
                     공식 참고값 (선택)
                     <select
+                      className={selectField}
                       value={selected?.id ?? ''}
                       onChange={(e) =>
                         setMachineEditor({
@@ -1849,11 +1868,17 @@ function Workspace() {
                         </option>
                       ))}
                     </select>
-                  </label>
+                  </Label>
                   {selected && (
-                    <div className="official-ref" role="note" aria-label="공식 참고값">
-                      <strong>공식 참고값: {officialLabel(selected)}</strong>
-                      <p>
+                    <div
+                      role="note"
+                      aria-label="공식 참고값"
+                      className="mb-4 flex flex-col gap-1.5 rounded-md border bg-muted p-3 [overflow-wrap:anywhere]"
+                    >
+                      <strong className="text-body-sm font-medium">
+                        공식 참고값: {officialLabel(selected)}
+                      </strong>
+                      <p className={noteText}>
                         {selected.brand} {selected.lineup}
                         {selected.model_number ? ` ${selected.model_number}` : ''} ·{' '}
                         {selected.official_item_name}
@@ -1861,10 +1886,15 @@ function Workspace() {
                           ? ` · 제조사 kg 표기 ${selected.official_kg_text}`
                           : ''}
                       </p>
-                      {selected.notes && <p>{selected.notes}</p>}
-                      <p>
+                      {selected.notes && <p className={noteText}>{selected.notes}</p>}
+                      <p className={noteText}>
                         {selected.source_url ? (
-                          <a href={selected.source_url} target="_blank" rel="noreferrer">
+                          <a
+                            className="text-foreground underline underline-offset-4"
+                            href={selected.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             제조사 공식 출처
                           </a>
                         ) : (
@@ -1872,7 +1902,7 @@ function Workspace() {
                         )}{' '}
                         · {selected.checked_date} 확인
                       </p>
-                      <p>
+                      <p className={noteText}>
                         공식 참고값은 플레이트 없는 시작 저항이며 아래 기본중량에 자동 반영되지
                         않습니다. 편측 값은 양쪽 합계가 아닙니다.
                       </p>
@@ -1881,20 +1911,22 @@ function Workspace() {
                 </>
               );
             })()}
-            <label>
+            <Label className={fieldLabel}>
               머신 이름
-              <input
+              <CommonInput
                 required
+                className={touchText}
                 maxLength={120}
                 value={machineEditor.name}
                 onChange={(e) => setMachineEditor({ ...machineEditor, name: e.target.value })}
                 {...invalid('name')}
               />
-            </label>
+            </Label>
             {issue('name')}
-            <label>
+            <Label className={fieldLabel}>
               기본중량 (kg) · 모르면 비워두세요
-              <input
+              <CommonInput
+                className={touchText}
                 type="number"
                 min="0"
                 max="99999"
@@ -1908,30 +1940,40 @@ function Workspace() {
                 }
                 {...invalid('base_weight')}
               />
-            </label>
+            </Label>
             {issue('base_weight')}
-            <p className="form-hint">
+            <p className={formHint}>
               확인하지 못한 기본중량은 비워두세요. 확인된 0 kg과 구분하여 저장하며, 기본중량을
               수정해도 과거 세트의 총중량은 변경되지 않습니다.
             </p>
-            <label>
+            <Label className={fieldLabel}>
               확인 자료 / 설정 메모
               <textarea
+                className={textareaField}
                 maxLength={2000}
                 value={machineEditor.notes}
                 onChange={(e) => setMachineEditor({ ...machineEditor, notes: e.target.value })}
               />
-            </label>
-            <label className="rest-auto">
-              <input
-                type="checkbox"
+            </Label>
+            <div className="mb-4 flex items-center gap-2">
+              <Checkbox
+                id="machine-single-joint"
+                // The legacy touch rule makes every .legacy button 44px; the box stays 16px and its
+                // ::after area is the target. The common -inset-3.5 sits inside the 1px border, so
+                // it is 42px; 15px makes it 44px. Drop this once project-standards#415 fixes checkbox.tsx.
+                className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
                 checked={machineEditor.single_joint === true}
-                onChange={(e) =>
-                  setMachineEditor({ ...machineEditor, single_joint: e.target.checked })
+                onCheckedChange={(checked) =>
+                  setMachineEditor({ ...machineEditor, single_joint: checked === true })
                 }
               />
-              단관절 운동 머신 (세트 완료 시 단관절 기본 휴식 사용)
-            </label>
+              <Label
+                htmlFor="machine-single-joint"
+                className="mb-0 flex-row text-meta font-normal text-foreground"
+              >
+                단관절 운동 머신 (세트 완료 시 단관절 기본 휴식 사용)
+              </Label>
+            </div>
             <Button className="w-full" disabled={saving}>
               머신 저장하기
             </Button>
@@ -1947,6 +1989,16 @@ function Workspace() {
 const fieldLabel = 'mb-4 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
 // The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
 const touchText = 'md:pointer-coarse:text-base';
+// The browser's own select and textarea dressed like the common Input (#103). The common Select
+// (Radix) picks values differently, so every test that chooses an option would change (#101).
+const fieldBox =
+  'w-full min-w-0 rounded-md border border-input bg-transparent px-3 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-body-sm dark:bg-input/30 ' +
+  touchText;
+const selectField = cn(fieldBox, 'h-9 py-0 pointer-coarse:min-h-11');
+const textareaField = cn(fieldBox, 'min-h-20 resize-y py-2');
+// A short explanation under a field, as in the goal form.
+const formHint = 'mb-4 rounded-md bg-muted p-3 text-meta text-muted-foreground';
+const noteText = 'text-meta text-muted-foreground';
 // #64: React Hook Form with the shared goal schema. Messages come from the same
 // contract the server uses, and each one is linked to its field for screen readers.
 function GoalForm({

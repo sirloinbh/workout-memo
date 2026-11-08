@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
@@ -125,7 +125,7 @@ test('machine library shows the linked official reference with basis and source,
   const ui = mount();
   await ui.settle();
   await openPage('머신 라이브러리', ui.user);
-  const row = document.querySelector<HTMLElement>('.workout-row')!;
+  const row = document.querySelector<HTMLElement>('[data-slot="machine-row"]')!;
   expect(row).not.toBeNull();
   const rowText = row.textContent;
   expect(rowText).toMatch(/공식 참고값\(Iso-Lateral Bench Press\): 7 lb = 3\.18 kg · 편측/);
@@ -203,7 +203,9 @@ test('a reference load failure does not block machines and is reported in the fo
   await ui.settle();
   expect(screen.queryAllByRole('alert')).toHaveLength(0);
   await openPage('머신 라이브러리', ui.user);
-  expect(document.querySelectorAll('.workout-row')).toHaveLength(1);
+  expect(within(screen.getByRole('list', { name: '머신' })).getAllByRole('listitem')).toHaveLength(
+    1,
+  );
   await ui.user.click(ui.button('머신 등록'));
   expect(texts('공식 참고값을 불러오지 못했습니다.').length).toBeGreaterThan(0);
 });
@@ -212,7 +214,7 @@ test('Newtech is selectable on register and its references read 공식값 미확
   const ui = mount();
   await ui.settle();
   await openPage('머신 라이브러리', ui.user);
-  expect(screen.getAllByRole('button', { name: 'Newtech' }).length).toBeGreaterThan(0);
+  expect(screen.getByRole('radio', { name: 'Newtech' })).toBeInTheDocument();
   await ui.user.click(ui.button('머신 등록'));
   const brandSelect = ui.labelled('브랜드', 'select');
   expect(ui.options(brandSelect)).toContain('Newtech');
@@ -221,4 +223,64 @@ test('Newtech is selectable on register and its references read 공식값 미확
     '연결 안 함',
     '온힘 · 온힘 라인업 (모델 미확인) — 공식값 미확인',
   ]);
+});
+
+test('brand tabs pick one brand at a time and an empty brand shows the empty state', async () => {
+  const ui = mount();
+  await ui.settle();
+  await openPage('머신 라이브러리', ui.user);
+  const tabs = screen.getByRole('radiogroup', { name: '브랜드' });
+  expect(within(tabs).getByRole('radio', { name: '전체 브랜드' })).toBeChecked();
+  expect(within(screen.getByRole('list', { name: '머신' })).getAllByRole('listitem')).toHaveLength(
+    1,
+  );
+  await ui.user.click(within(tabs).getByRole('radio', { name: 'Arsenal Strength' }));
+  expect(within(tabs).getByRole('radio', { name: 'Arsenal Strength' })).toBeChecked();
+  expect(within(tabs).getByRole('radio', { name: '전체 브랜드' })).not.toBeChecked();
+  expect(screen.queryByRole('list', { name: '머신' })).toBeNull();
+  expect(
+    screen.getByRole('heading', { level: 3, name: '나만의 머신을 등록하세요' }),
+  ).toBeInTheDocument();
+  // Clicking the current tab again keeps it selected.
+  await ui.user.click(within(tabs).getByRole('radio', { name: 'Arsenal Strength' }));
+  expect(within(tabs).getByRole('radio', { name: 'Arsenal Strength' })).toBeChecked();
+  // A brand that has a machine keeps it (the tab value is a string, the brand id a number).
+  await ui.user.click(within(tabs).getByRole('radio', { name: 'Hammer Strength' }));
+  expect(
+    within(screen.getByRole('list', { name: '머신' })).getByRole('heading', { level: 3 }),
+  ).toHaveTextContent('내 체스트 프레스');
+  await ui.user.click(within(tabs).getByRole('radio', { name: '전체 브랜드' }));
+  expect(within(screen.getByRole('list', { name: '머신' })).getAllByRole('listitem')).toHaveLength(
+    1,
+  );
+  expect(screen.getByRole('heading', { level: 2, name: '머신 라이브러리' })).toBeInTheDocument();
+});
+
+test('the machine form names every field and saves notes and the single-joint checkbox', async () => {
+  const ui = mount();
+  await ui.settle();
+  await openPage('머신 라이브러리', ui.user);
+  await ui.user.click(ui.button('머신 등록'));
+  const dialog = screen.getByRole('dialog', { name: '머신 등록' });
+  const form = within(dialog);
+  await ui.user.selectOptions(form.getByRole('combobox', { name: '브랜드' }), '2');
+  expect(form.getByRole('combobox', { name: '공식 참고값 (선택)' })).toHaveValue('');
+  await ui.user.type(form.getByRole('textbox', { name: '머신 이름' }), '케이블 플라이');
+  expect(form.getByRole('spinbutton', { name: /기본중량 \(kg\)/ })).toHaveValue(null);
+  await ui.user.type(form.getByRole('textbox', { name: '확인 자료 / 설정 메모' }), '핀 3번');
+  const singleJoint = form.getByRole('checkbox', { name: /단관절 운동 머신/ });
+  expect(singleJoint).not.toBeChecked();
+  // The visible label toggles the checkbox too.
+  await ui.user.click(form.getByText(/단관절 운동 머신/));
+  expect(singleJoint).toBeChecked();
+  await ui.submit();
+  await waitFor(() => expect(ui.mutations()).toHaveLength(1));
+  expect(ui.mutations()[0].body).toMatchObject({
+    brand_id: 2,
+    name: '케이블 플라이',
+    notes: '핀 3번',
+    single_joint: true,
+    base_weight: null,
+    official_weight_id: null,
+  });
 });

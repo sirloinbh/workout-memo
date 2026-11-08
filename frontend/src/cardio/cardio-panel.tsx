@@ -14,6 +14,9 @@ import { CardioForm, type LinkableWorkout } from './cardio-form';
 import { CardioList } from './cardio-list';
 import { sessionLabel } from './format';
 
+// The state of the list a caller receives through onSessionsChange.
+export type CardioListStatus = 'loading' | 'error' | 'ready';
+
 // #115: the cardio records of a period, self-contained so the journal's cardio tab only has to
 // place it. It loads the period, lists it, and opens CardioForm to add or edit. The tab's
 // statistics reuse its list through `onSessionsChange`, and `onChanged` tells the caller after a
@@ -32,8 +35,9 @@ export function CardioPanel({
   today?: string;
   // Strength workouts the form may link to; it offers those on the session's date.
   workouts: readonly LinkableWorkout[];
-  // Called with the list on screen whenever it changes ([] while a new period loads).
-  onSessionsChange?: (sessions: CardioSession[]) => void;
+  // Called with the list on screen whenever it or its state changes ([] while a new period
+  // loads, with 'loading'; [] after a failed first load, with 'error').
+  onSessionsChange?: (sessions: CardioSession[], status: CardioListStatus) => void;
   // Called after a session is saved or deleted (or found already deleted).
   onChanged?: () => void;
 }) {
@@ -53,7 +57,14 @@ export function CardioPanel({
   useEffect(() => {
     report.current = onSessionsChange;
   });
-  useEffect(() => report.current?.(sessions), [sessions]);
+  // The list's state goes along, so a caller never reads a failed first load as "no sessions".
+  // A failed reload that kept its rows still counts as ready.
+  const listStatus: CardioListStatus = loading
+    ? 'loading'
+    : error && sessions.length === 0
+      ? 'error'
+      : 'ready';
+  useEffect(() => report.current?.(sessions, listStatus), [sessions, listStatus]);
 
   // `fresh`: a first load or a new period. It shows the loading line and drops the old rows so
   // they never sit under the new period. A reload after saving or deleting keeps the list (and

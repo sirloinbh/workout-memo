@@ -79,7 +79,7 @@
 
 ## 시각 기준선
 
-- 새 화면 `journal-cardio`(4개 폭)의 기준선이 없고, 대시보드(`dashboard`, 4개 폭)는 유산소 카드가 더해져 바뀝니다. 기준선은 로컬에서 만들지 않았습니다.
+- 새 화면 `journal-cardio`(4개 폭)의 기준선이 없고, 대시보드(`dashboard`, 4개 폭)는 유산소 카드가, 근력 일지(`journal`, 4개 폭)는 머리글 아래 "기록 종류" 탭이 더해져 바뀝니다. 모두 12장입니다(1차 리뷰에서 `journal`이 빠진 것을 바로잡음). 기준선은 로컬에서 만들지 않았습니다.
 - CI `e2e`가 화면 차이로 실패하면 [workout-testing](../../skills/workout-testing/SKILL.md)의 절차대로 `playwright-report`의 diff를 확인한 뒤 같은 실행의 `visual-baselines` 아티팩트로 `e2e/__screenshots__/`를 갱신하고, 바뀐 장수를 이 문서와 PR에 적습니다.
 
 ## 한계와 남은 일
@@ -89,3 +89,12 @@
 - 대시보드 카드의 거리는 수영도 km로 더합니다(유산소 탭의 기간 합계와 같음).
 
 - 이 PR은 구현을 하위 에이전트에 맡겼습니다. 주 에이전트가 `app.tsx`의 주소 처리 변경을 읽고 `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx src/workout-draft.test.tsx`(10 files, 108 pass), typecheck(frontend·e2e), eslint, prettier, `test:docs`를 다시 돌려 확인했습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+- (필수) 시각 기준선: 위 "시각 기준선" 절에 `journal` 4장을 더해 12장으로 바로잡았습니다. 실제 갱신은 이 커밋의 CI 아티팩트로 합니다.
+- (선택) 목록을 처음 불러오지 못하면 통계가 "기록 없음"처럼 보였습니다. `CardioPanel`이 `onSessionsChange(sessions, status)`로 `loading`·`error`·`ready`를 함께 알리고, `CardioTab`은 `ready`일 때만 통계를 보여 줍니다. 저장 뒤 다시 불러오기가 실패해 목록이 남은 경우는 `ready`입니다.
+- (선택) 대시보드 카드는 기간의 기록이 모두 거리 없음이면 "0 km" 대신 횟수(예: "1회")를 값으로, "45:00 · 거리 미입력"을 설명으로 보여 줍니다.
+- (선택) 테스트: 직접 고른 기간과 `tab=cardio`가 있는 주소에서 대시보드로 가면 `?from&to`만 남는지, 첫 불러오기 실패 때 통계가 숨는지, 거리 없는 기록만 있을 때의 카드를 더했습니다. 기간 프리셋 뒤 대시보드 이동 테스트의 주석도 실제 확인 내용에 맞췄습니다.
+- 한계(반영 안 함): 근력 일지 연결 후보는 일지 탭이 불러온 기간 안의 일지뿐입니다. 폼에서 날짜를 기간 밖으로 바꾸면 그날 일지가 있어도 후보에 없습니다. 화면 검사 고정 데이터의 속도는 서버의 NUMERIC 반올림과 달리 실수로 계산해 소수 둘째 자리 경계에서 다를 수 있지만 지금 데이터에서는 같습니다.
+- `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx`: 89 pass. typecheck, eslint, prettier 통과

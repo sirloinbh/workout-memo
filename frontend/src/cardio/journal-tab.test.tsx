@@ -33,7 +33,7 @@ const running = (id: number, date: string, duration_sec: number, distance_km: nu
   speed_kmh: distance_km / (duration_sec / 3600),
 });
 
-function mount(path: string, initial: CardioSession[] = []) {
+function mount(path: string, initial: CardioSession[] = [], options: { failList?: boolean } = {}) {
   fixClock();
   window.history.replaceState(null, '', path);
   let sessions = structuredClone(initial);
@@ -59,6 +59,8 @@ function mount(path: string, initial: CardioSession[] = []) {
       sessions = [created, ...sessions];
       return json(created, 201);
     }
+    if (url.pathname === '/api/cardio-sessions' && options.failList)
+      return json({ error: '유산소 기록을 불러오지 못했습니다' }, 500);
     if (url.pathname === '/api/cardio-sessions') {
       const from = url.searchParams.get('from')!;
       const to = url.searchParams.get('to')!;
@@ -130,7 +132,7 @@ test('the cardio tab uses the journal period, and changing it keeps the tab', as
   );
   expect(ui.gets('/api/cardio-sessions').at(-1)!.url.search).toBe('?from=2026-10-12&to=2026-10-18');
 
-  // Other pages keep the period but not the journal's tab.
+  // Other pages drop the journal's tab (the preset above already cleared the range).
   await openPage('대시보드', ui.user);
   expect(window.location.search).toBe('');
 });
@@ -177,4 +179,40 @@ test('the dashboard shows one cardio card only when the period has a session', a
   const before = ui.gets('/api/cardio-sessions').length;
   await openPage('운동 일지', ui.user);
   expect(ui.gets('/api/cardio-sessions')).toHaveLength(before);
+});
+
+test('a directly chosen range goes with the dashboard link, the journal tab does not', async () => {
+  const ui = mount('/journal?tab=cardio&from=2026-10-01&to=2026-10-10');
+  expect(await screen.findByRole('region', { name: '유산소 통계' })).toBeInTheDocument();
+  await openPage('대시보드', ui.user);
+  expect(window.location.search).toBe('?from=2026-10-01&to=2026-10-10');
+});
+
+test('a failed first load shows the panel alert, not a "no sessions" statistics screen', async () => {
+  mount('/journal?tab=cardio', [], { failList: true });
+  expect(await screen.findByText('유산소 기록을 불러오지 못했습니다')).toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: '유산소 통계' })).toBeNull();
+  expect(
+    screen.queryByRole('heading', { name: '선택한 기간에 통계를 낼 유산소 기록이 없습니다' }),
+  ).toBeNull();
+});
+
+test('the dashboard card leads with the count when no session has a distance', async () => {
+  mount('/', [
+    {
+      ...base,
+      id: 1,
+      date: '2026-10-14',
+      kind: 'indoor_cycling',
+      duration_sec: 2700,
+      distance_km: null,
+      pace_sec_per_km: null,
+      speed_kmh: null,
+    },
+  ]);
+  await waitFor(() => expect(statCard('유산소')).toBeDefined());
+  const card = statCard('유산소')!;
+  expect(card).toHaveTextContent('1회');
+  expect(card).toHaveTextContent('45:00 · 거리 미입력');
+  expect(card).not.toHaveTextContent('0 km');
 });

@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS cardio_goals (
   start_date date NOT NULL,
   deadline date NOT NULL,
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT cardio_goals_dates CHECK (deadline >= start_date),
+  -- At most five years (1826 days), as in the API: period goals list every week or month.
+  CONSTRAINT cardio_goals_dates CHECK (deadline >= start_date AND deadline - start_date <= 1826),
   -- Each goal type carries exactly its own targets; period totals have a period, records do not.
   CONSTRAINT cardio_goals_shape CHECK (
     CASE goal_type

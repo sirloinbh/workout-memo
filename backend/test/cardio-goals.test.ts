@@ -220,6 +220,24 @@ test('the goal schema accepts each type only with its own targets', () => {
       `${JSON.stringify(input)} → ${path}`,
     );
   }
+  // Five years at most: 2026-11-02 + 1826 days is 2031-11-02.
+  assert.ok(
+    cardioGoalSchema.safeParse({
+      ...base,
+      goal_type: 'count',
+      period: 'week',
+      target_count: 3,
+      deadline: '2031-11-02',
+    }).success,
+  );
+  const long = cardioGoalSchema.safeParse({
+    ...base,
+    goal_type: 'count',
+    period: 'week',
+    target_count: 3,
+    deadline: '2031-11-03',
+  });
+  assert.equal(long.error!.issues[0].message, '목표 기간은 5년(1826일) 이하로 정하세요');
   // Korean particles follow the last syllable.
   const missing = cardioGoalSchema.safeParse({ ...base, goal_type: 'duration', period: 'week' });
   assert.equal(missing.error!.issues[0].message, '목표 시간을 입력하세요');

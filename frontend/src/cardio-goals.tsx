@@ -393,8 +393,15 @@ function CardioGoalForm({
   async function submit(event: FormEvent) {
     event.preventDefault();
     const parsed = cardioGoalSchema.safeParse(draftToGoal(draft));
-    if (!parsed.success) {
-      setErrors(fieldErrors(parsed.error));
+    const found = parsed.success ? {} : fieldErrors(parsed.error);
+    // Minutes and seconds are two fields; check them before they become one number of seconds.
+    const usesTime = draft.goal_type === 'duration' || draft.goal_type === 'record_time';
+    const whole = (text: string, max: number) =>
+      text.trim() === '' || (/^\d+$/.test(text.trim()) && Number(text.trim()) <= max);
+    if (usesTime && !(whole(draft.minutes, 44640) && whole(draft.seconds, 59)))
+      found.target_duration_sec = '목표 시간은 분(0 이상 정수)과 초(0~59 정수)로 입력하세요';
+    if (!parsed.success || Object.keys(found).length) {
+      setErrors(found);
       return;
     }
     setErrors({});
@@ -415,7 +422,11 @@ function CardioGoalForm({
           <select
             className={selectField}
             value={draft.goal_type}
-            onChange={(e) => set({ goal_type: e.target.value as CardioGoalType })}
+            onChange={(e) => {
+              // Messages of fields the new type hides would linger until the next submit.
+              setErrors({});
+              set({ goal_type: e.target.value as CardioGoalType });
+            }}
           >
             {Object.entries(typeLabels).map(([value, label]) => (
               <option key={value} value={value}>
@@ -486,6 +497,7 @@ function CardioGoalForm({
                 inputMode="numeric"
                 value={draft.seconds}
                 onChange={(e) => set({ seconds: e.target.value })}
+                {...field('target_duration_sec')}
               />
             </Label>
           </>

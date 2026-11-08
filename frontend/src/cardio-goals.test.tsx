@@ -124,7 +124,18 @@ test('a new cardio goal sends only the targets of its type', async () => {
   expect(within(dialog).getByLabelText('운동 종류')).toHaveAttribute('aria-invalid', 'true');
   expect(ui.posted).toEqual([]);
 
+  // Seconds above 59 are stopped too; both time fields are marked.
   await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'running');
+  await ui.user.clear(within(dialog).getByLabelText('목표 시간 (초)'));
+  await ui.user.type(within(dialog).getByLabelText('목표 시간 (초)'), '90');
+  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  expect(
+    await within(dialog).findByText('목표 시간은 분(0 이상 정수)과 초(0~59 정수)로 입력하세요'),
+  ).toBeInTheDocument();
+  expect(within(dialog).getByLabelText('목표 시간 (초)')).toHaveAttribute('aria-invalid', 'true');
+  expect(ui.posted).toEqual([]);
+  await ui.user.clear(within(dialog).getByLabelText('목표 시간 (초)'));
+  await ui.user.type(within(dialog).getByLabelText('목표 시간 (초)'), '30');
   await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
   await waitFor(() => expect(ui.posted).toHaveLength(1));
   expect(ui.posted[0]).toEqual({

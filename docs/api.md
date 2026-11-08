@@ -179,7 +179,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 | `record_time`      | 한 기록이 거리 이상을 시간 이내에 | `null`              | `target_distance_km`, `target_duration_sec` | 필수                  |
 | `longest_distance` | 한 기록의 최장 거리               | `null`              | `target_distance_km`                        | 필수                  |
 
-- 그 종류에 쓰지 않는 목표값은 `null`이어야 합니다(400). 범위: 거리 0 초과 10000 km 이하·소수점 셋째 자리, 시간 1~2678400초(31일), 횟수 1~1000. 종료일은 시작일 이후입니다.
+- 그 종류에 쓰지 않는 목표값은 `null`이어야 합니다(400). 범위: 거리 0 초과 10000 km 이하·소수점 셋째 자리, 시간 1~2678400초(31일), 횟수 1~1000. 종료일은 시작일과 같거나 이후이고, 목표 기간은 5년(1826일) 이하입니다.
 - 판정(조회할 때마다 서버가 계산, 저장하지 않음):
   - 시작일~종료일과 오늘(서울) 사이의 유산소 기록만 셉니다. `kind`가 있으면 그 종류만 셉니다. 거리 없는 기록은 거리 목표에서만 빠집니다.
   - 기간 누적: 주(월~일)·달력 월마다 판정합니다. 시작·종료일에 걸친 주기도 목표 기간 안의 기록만 세고 목표값은 그대로입니다. `progress`는 `{ kind: "period", current, periods, periods_achieved }`이고, `periods`의 각 주기는 `{ start, end, value, achieved }`(`start`·`end`는 달력 주기, `value`는 km·초·횟수)입니다. `current`는 오늘이 든 주기이며 시작 전·종료 후에는 `null`입니다. `achieved`는 `current`의 달성 여부입니다.

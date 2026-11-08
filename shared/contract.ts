@@ -330,6 +330,7 @@ export type CardioGoalPeriod = (typeof cardioGoalPeriods)[number];
 const goalDistanceMessage = '목표 거리는 0 km보다 크고 10000 km 이하로 입력하세요';
 const goalDurationMessage = '목표 시간은 1초~744시간(31일) 사이의 정수 초로 입력하세요';
 const goalCountMessage = '목표 횟수는 1~1000회 정수로 입력하세요';
+const goalMaxDays = 1826;
 const goalTargets = {
   distance: ['target_distance_km'],
   duration: ['target_duration_sec'],
@@ -387,6 +388,13 @@ export const cardioGoalSchema = z
       ctx.addIssue({
         code: 'custom',
         message: '종료일은 시작일과 같거나 이후여야 합니다',
+        path: ['deadline'],
+      });
+    // Period goals list every week or month of the goal, so the span is capped at five years.
+    else if (Date.parse(v.deadline) - Date.parse(v.start_date) > goalMaxDays * 86400000)
+      ctx.addIssue({
+        code: 'custom',
+        message: '목표 기간은 5년(1826일) 이하로 정하세요',
         path: ['deadline'],
       });
     const record = v.goal_type === 'record_time' || v.goal_type === 'longest_distance';

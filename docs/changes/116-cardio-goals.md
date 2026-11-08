@@ -12,7 +12,7 @@
 ## 변경 — feat: 저장과 서버 판정
 
 - `database/migrations/016_cardio_goals.sql`(새 파일, 재실행 안전): `cardio_goals`(목표 종류·운동 종류·기간 단위·목표 거리/시간/횟수·시작일·종료일). 종류마다 필요한 목표값만 있도록 CHECK(`cardio_goals_shape`)로 막습니다. 근력 `goals`는 바꾸지 않았습니다.
-- `shared/contract.ts` → `npm run contract:sync`: `cardioGoalTypes`, `cardioGoalPeriods`, `cardioGoalSchema`. 범위: 거리 0 초과 10000 km 이하·소수점 셋째 자리, 시간 1~2678400초(31일), 횟수 1~1000. 종류에 쓰지 않는 목표값은 `null`이어야 합니다.
+- `shared/contract.ts` → `npm run contract:sync`: `cardioGoalTypes`, `cardioGoalPeriods`, `cardioGoalSchema`. 범위: 거리 0 초과 10000 km 이하·소수점 셋째 자리, 시간 1~2678400초(31일), 횟수 1~1000, 목표 기간 5년(1826일) 이하(DB CHECK도 같음). 종류에 쓰지 않는 목표값은 `null`이어야 합니다.
 - `backend/src/cardio-goals.ts`(새 파일): DB 없이 시험할 수 있는 판정 함수 `judgeCardioGoal`.
   - 기간 누적(D2·D3): 주(월~일)·달력 월마다 그 주기 안, 목표 기간 안, 오늘(서울) 이전의 기록만 셉니다. 걸친 주기도 목표값은 그대로입니다. `achieved`는 오늘이 든 주기의 달성 여부이고, 시작 전·종료 후에는 그 주기가 없어 `false`입니다.
   - 기록 목표(D5): `record_time`은 한 기록이 목표 거리 이상이고 그 기록의 전체 시간이 목표 시간 이하일 때, `longest_distance`는 가장 긴 한 기록이 목표 거리 이상일 때 달성입니다. 페이스로 추정하지 않습니다.
@@ -29,6 +29,16 @@
 - `frontend/src/app.tsx`: 나의 목표 화면에 `CardioGoals`를 붙이고 머리글 설명에 유산소를 넣었습니다(두 곳).
 - 운동 종류 이름과 시간 형식(`28:30`)은 #115의 `frontend/src/cardio/format.ts`(agent2, 아직 병합 전)와 같은 값을 이 파일 안에 따로 두었습니다. #115가 병합되면 그쪽으로 합칩니다. `frontend/src/cardio/*`와 운동 일지 화면은 건드리지 않았습니다.
 - 운동 종류·목표 종류 선택은 루틴 폼과 같은 이유로 브라우저 기본 `select`입니다.
+
+## 1차 리뷰
+
+- 필수 지적 없음. 판정(주·월 경계, 걸친 주기, 오늘·종료일), 스키마와 DB CHECK 일치, 응답 형태를 확인했습니다.
+- 반영(선택):
+  - 분·초가 음수·소수·60초 이상이어도 초로 합쳐져 저장됐습니다. 분은 0 이상 정수, 초는 0~59 정수인지 먼저 검사합니다. 오류 표시(`aria-invalid`)는 초 칸에도 붙입니다.
+  - 목표 종류를 바꾸면 숨겨진 칸의 이전 오류가 남았습니다. 종류를 바꿀 때 오류를 지웁니다.
+  - 종료일 상한이 없어 9999년 주간 목표면 조회마다 주기 약 41만 개를 만들었습니다. 목표 기간을 5년 이하로 막았습니다(스키마·DB).
+  - `docs/api.md`의 "종료일은 시작일 이후"를 "같거나 이후"로 고쳤습니다.
+- 테스트: 5년 경계(스키마), 초 90 입력 막기와 초 칸 `aria-invalid`(화면)를 더했습니다.
 
 ## 범위 밖
 

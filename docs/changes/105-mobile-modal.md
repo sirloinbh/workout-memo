@@ -60,3 +60,8 @@
 - 실제 이미지를 확인했습니다. 390px 일지 편집은 화면 전체를 채우고 저장 버튼이 아래에 붙어 있습니다. 목표 폼은 화면 아래에 붙은 전체 너비 시트입니다. 768·1280px 일지 편집은 모달 모양이 그대로이고, 저장 버튼만 모달 아래에 붙었습니다.
 - 같은 실행의 `visual-baselines` 아티팩트로 이 8장을 갱신했습니다.
 - 아티팩트에는 `routines-*` 4장도 다르게 들어 있었습니다. PR CI는 최신 main을 합친 상태로 돌기 때문에, 그사이 main에 들어온 #233(루틴 폼)의 화면이 찍힌 것입니다. 이 PR의 변경이 아니므로 넣지 않았고, 이어서 origin/main을 합쳐 main의 기준선을 받습니다.
+
+## main 병합
+
+- main에 #233(루틴 폼)·#236(인바디 미리보기)이 들어와 `style.css`·`e2e/**`가 바뀌어, 병합 규칙에 따라 origin/main을 합쳤습니다. 충돌은 없었습니다. 두 변경 모두 `Modal`을 쓰지 않습니다.
+- 병합 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx src/routines.test.tsx` 35 pass, typecheck 통과

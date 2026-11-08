@@ -51,6 +51,7 @@ import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { Toaster } from './components/ui/sonner';
+import { Spinner } from './components/ui/spinner';
 import {
   defaultWeightStep,
   type Feedback,
@@ -1985,6 +1986,7 @@ function Workspace() {
               </Label>
             </div>
             <Button className="w-full" disabled={saving}>
+              {saving && <Spinner size="sm" aria-hidden />}
               머신 저장하기
             </Button>
           </form>
@@ -2090,6 +2092,7 @@ function GoalForm({
         기간 안에 한 세트에서 목표 중량 이상, 목표 반복 수 이상을 수행하면 달성 처리됩니다.
       </p>
       <Button className="w-full" disabled={saving}>
+        {saving && <Spinner size="sm" aria-hidden />}
         목표 저장하기
       </Button>
     </form>

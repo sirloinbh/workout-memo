@@ -12,6 +12,8 @@ import { EmptyState } from './components/ui/empty-state';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { SkeletonList } from './components/ui/skeleton';
+import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { InbodyImport } from './inbody-import';
 import { cn } from './lib/utils';
@@ -262,7 +264,10 @@ export function BodyMeasurements({
                 소수점 둘째 자리까지 저장하며, 하나 이상 입력해야 합니다.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button disabled={saving}>{saving ? '저장 중…' : '신체 기록 저장'}</Button>
+                <Button disabled={saving}>
+                  {saving && <Spinner size="sm" aria-hidden />}
+                  {saving ? '저장 중…' : '신체 기록 저장'}
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -306,9 +311,13 @@ export function BodyMeasurements({
           </CardDescription>
         </CardHeader>
         {loading ? (
-          <p className="px-6 py-14 text-center text-sm text-muted-foreground">
-            기록을 불러오는 중…
-          </p>
+          // #173: row placeholders while the list loads; the hidden line keeps the status.
+          <div aria-busy="true" className="px-6 py-6">
+            <p role="status" className="sr-only">
+              기록을 불러오는 중…
+            </p>
+            <SkeletonList />
+          </div>
         ) : rows.length === 0 ? (
           <EmptyState
             className="m-4 md:m-6"

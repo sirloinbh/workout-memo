@@ -8,6 +8,8 @@ import { Checkbox } from './components/ui/checkbox';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { SkeletonList } from './components/ui/skeleton';
+import { Spinner } from './components/ui/spinner';
 import { defaultWeightStep } from './contract';
 import { cn } from './lib/utils';
 import { byWeek, kindLabel, previewTargets } from './progression';
@@ -319,10 +321,16 @@ export function Routines() {
       >
         <Plus aria-hidden />새 루틴 만들기
       </Button>
+      {/* #173: the status line stays for screen readers; row placeholders show the list loading. */}
       <Notice
-        className="mt-3"
+        className="sr-only"
         notice={loading ? { kind: 'status', text: '루틴 불러오는 중…' } : undefined}
       />
+      {loading && !plans.length && (
+        <div aria-busy="true" className="mt-3 rounded-lg border p-4">
+          <SkeletonList rows={2} />
+        </div>
+      )}
       {!loading && !plans.length && (
         <p className="mt-3 text-body-sm text-muted-foreground">저장된 루틴이 없습니다.</p>
       )}
@@ -765,7 +773,10 @@ export function Routines() {
                 </fieldset>
               ))}
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button disabled={saving}>{saving ? '저장 중…' : '루틴 저장하기'}</Button>
+              <Button disabled={saving}>
+                {saving && <Spinner size="sm" aria-hidden />}
+                {saving ? '저장 중…' : '루틴 저장하기'}
+              </Button>
               <Button
                 type="button"
                 variant="outline"

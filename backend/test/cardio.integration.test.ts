@@ -325,3 +325,62 @@ test(
     });
   },
 );
+
+test(
+  'PostgreSQL cardio records: longest per kind and 5/10 km bests only within ±2% of the distance',
+  { skip: !url },
+  async () => {
+    await isolated(async (api) => {
+      const records = async () => (await api('/cardio-sessions/records')).data;
+      assert.deepEqual(await records(), { longest: [], best5k: null, best10k: null });
+      const add = async (date: string, kind: string, distance_km: number | null, sec: number) => {
+        const r = await api('/cardio-sessions', 'POST', {
+          date,
+          kind,
+          duration_sec: sec,
+          distance_km,
+        });
+        assert.equal(r.status, 201, JSON.stringify(r.data));
+        return r.data.id;
+      };
+      // Just outside the window (faster, so they would win if counted) and other kinds.
+      await add('2026-10-01', 'running', 4.89, 1200);
+      await add('2026-10-01', 'running', 5.11, 1100);
+      await add('2026-10-01', 'running', 9.79, 2400);
+      const longRun = await add('2026-10-01', 'running', 10.21, 2300);
+      const walk = await add('2026-10-02', 'walking', 5, 1000);
+      const swim = await add('2026-10-02', 'swimming', 1.5, 2400);
+      await add('2026-10-02', 'indoor_cycling', null, 3600);
+      const record = (id: number, date: string, distance_km: number, duration_sec: number) => ({
+        id,
+        date,
+        distance_km,
+        duration_sec,
+      });
+      // A kind without any distance has no longest record; the order follows the kind list.
+      assert.deepEqual(await records(), {
+        longest: [
+          { kind: 'running', ...record(longRun, '2026-10-01', 10.21, 2300) },
+          { kind: 'walking', ...record(walk, '2026-10-02', 5, 1000) },
+          { kind: 'swimming', ...record(swim, '2026-10-02', 1.5, 2400) },
+        ],
+        best5k: null,
+        best10k: null,
+      });
+
+      // Both bounds count: 4.9 and 9.8 first, then the faster 5.1 and 10.2.
+      const low5 = await add('2026-10-03', 'running', 4.9, 1500);
+      const low10 = await add('2026-10-03', 'running', 9.8, 3000);
+      let r = await records();
+      assert.deepEqual(r.best5k, record(low5, '2026-10-03', 4.9, 1500));
+      assert.deepEqual(r.best10k, record(low10, '2026-10-03', 9.8, 3000));
+      const high5 = await add('2026-10-04', 'running', 5.1, 1450);
+      const high10 = await add('2026-10-04', 'running', 10.2, 2900);
+      // The same time on a later day does not replace the earlier record.
+      await add('2026-10-05', 'running', 5, 1450);
+      r = await records();
+      assert.deepEqual(r.best5k, record(high5, '2026-10-04', 5.1, 1450));
+      assert.deepEqual(r.best10k, record(high10, '2026-10-04', 10.2, 2900));
+    });
+  },
+);

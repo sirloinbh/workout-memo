@@ -17,7 +17,8 @@ import {
   withWeightSteps,
   type WorkoutRecord,
 } from '../progress.js';
-import { type Db, id } from './shared.js';
+import { parseId } from '../standard/http.js';
+import { type Db } from './shared.js';
 
 type ActiveRoutine = { id: number; plan: RoutinePlan };
 // The routine in progress: started on or before today (Asia/Seoul), latest start wins.
@@ -164,7 +165,7 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
   });
   app.get('/api/routines/:id', async (req, res) => {
     const result = await pool.query('SELECT id, plan FROM routines WHERE id=$1', [
-      id(req.params.id),
+      parseId(req.params.id, '루틴'),
     ]);
     const row = result.rows[0] as { id: number; plan: RoutinePlan } | undefined;
     res
@@ -187,7 +188,7 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
   // Rest today: one row per routine and date. The derived schedule shifts every
   // remaining target at once, so the transaction either applies all or nothing.
   app.post('/api/routines/:id/rests', async (req, res) => {
-    const routineId = id(req.params.id);
+    const routineId = parseId(req.params.id, '루틴');
     const body = z.object({ date }).parse(req.body ?? {});
     const day = today();
     if (body.date !== day) {
@@ -219,7 +220,7 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
     res.status(result.status).json(result.body);
   });
   app.delete('/api/routines/:id/rests/:date', async (req, res) => {
-    const routineId = id(req.params.id);
+    const routineId = parseId(req.params.id, '루틴');
     const restDate = date.parse(req.params.date);
     const day = today();
     if (restDate !== day) {

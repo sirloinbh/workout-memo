@@ -2,7 +2,8 @@ import type express from 'express';
 import type { Pool } from 'pg';
 
 import { exerciseKeySql, goalSchema } from '../domain.js';
-import { id, seoulTodaySql } from './shared.js';
+import { parseId, sendError } from '../standard/http.js';
+import { seoulTodaySql } from './shared.js';
 
 export function registerGoalRoutes(app: express.Express, pool: Pool) {
   app.get('/api/goals', async (_req, res) =>
@@ -28,7 +29,12 @@ export function registerGoalRoutes(app: express.Express, pool: Pool) {
       );
   });
   app.delete('/api/goals/:id', async (req, res) => {
-    const r = await pool.query('DELETE FROM goals WHERE id=$1', [id(req.params.id)]);
-    res.status(r.rowCount ? 200 : 404).json({ ok: !!r.rowCount });
+    const r = await pool.query('DELETE FROM goals WHERE id=$1', [parseId(req.params.id, '목표')]);
+    // #172: a missing goal answers in the shared `{ error }` shape like every other 404.
+    if (!r.rowCount) {
+      sendError(res, 404, '목표를 찾을 수 없습니다');
+      return;
+    }
+    res.json({ ok: true });
   });
 }

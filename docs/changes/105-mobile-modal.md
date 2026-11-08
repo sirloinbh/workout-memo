@@ -66,3 +66,4 @@
 - main에 #233(루틴 폼)·#236(인바디 미리보기)이 들어와 `style.css`·`e2e/**`가 바뀌어, 병합 규칙에 따라 origin/main을 합쳤습니다. 충돌은 없었습니다. 두 변경 모두 `Modal`을 쓰지 않습니다.
 - 병합 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx src/routines.test.tsx` 35 pass, typecheck 통과
 - 두 번째 병합: CI 통과 뒤 main에 #238(루틴 계획 보기)·#239(종목 분석 기간 줄)이 들어와 `style.css`·`e2e/**`가 바뀌어 다시 합쳤습니다. 충돌은 없었고 두 변경 모두 `Modal`을 쓰지 않습니다. 병합 후 `src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck 통과
+- 세 번째 병합: main에 #240(쓰지 않는 스타일 정리)·#241(종목 분석 목록·상세)이 들어왔습니다. `app.tsx`가 겹치고 `style.css`·`components/**`가 바뀌어 다시 합쳤습니다. 충돌은 없었습니다. 2차 리뷰 판단의 근거인 터치 화면 입력칸 16px 규칙(`@media (pointer: coarse)`)이 그대로 남아 있음을 확인했습니다. 병합 후 `src/components/modal.test.tsx src/workout-draft.test.tsx src/set-completion.test.tsx` 36 pass, typecheck·eslint 통과

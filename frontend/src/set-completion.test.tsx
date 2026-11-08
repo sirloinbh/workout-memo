@@ -320,3 +320,42 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
   expect(ui.sentFeedback()).toBe('hard');
   expect(ui.sentSets()[0].rpe, 'existing RPE data is preserved').toBe(8);
 });
+
+// #105: one short vibration when a rest ends while the app is open, never for a rest that
+// ended long ago (a reload or a long background stay), and never twice for the same end.
+test('a rest that ends while the app is open vibrates once, a long-past end stays silent', async () => {
+  const vibrate = vi.fn(() => true);
+  Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+  try {
+    const ui = mount();
+    await openNew(ui);
+    await ui.user.click(screen.getByRole('button', { name: '휴식 시작' }));
+    ui.returnToTab(89000);
+    expect(vibrate).not.toHaveBeenCalled();
+    ui.returnToTab(2000);
+    expect(timer()).toMatch(/휴식 종료/);
+    expect(vibrate).toHaveBeenCalledTimes(1);
+    expect(vibrate).toHaveBeenCalledWith([200, 100, 200]);
+    ui.returnToTab(1000);
+    expect(vibrate, 'the same end alerts once').toHaveBeenCalledTimes(1);
+    // A new rest that ends while the tab sat in the background for a minute after it.
+    await ui.user.click(screen.getByRole('button', { name: '휴식 시작' }));
+    ui.returnToTab(90000 + 60000);
+    expect(timer()).toMatch(/휴식 종료/);
+    expect(vibrate, 'an end found a minute late is silent').toHaveBeenCalledTimes(1);
+  } finally {
+    delete (navigator as Partial<Navigator>).vibrate;
+  }
+});
+
+// #105: the countdown bar is pinned at the top of the editor; its settings scroll away.
+test('the rest countdown is a pinned bar apart from the rest settings', async () => {
+  const ui = mount();
+  await openNew(ui);
+  const bar = document.querySelector<HTMLElement>('[data-slot=rest-timer]')!;
+  expect(bar.parentElement).toHaveClass('sticky', 'top-0');
+  expect(bar).toContainElement(screen.getByRole('timer'));
+  expect(bar).toContainElement(screen.getByRole('button', { name: '휴식 시작' }));
+  expect(bar).not.toContainElement(duration());
+  expect(document.querySelector('[data-slot=rest-settings]')).toContainElement(duration());
+});

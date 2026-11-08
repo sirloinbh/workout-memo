@@ -103,3 +103,25 @@ test.describe('390px 모바일 모달', () => {
     expect(box.y + box.height).toBeCloseTo(844, 0);
   });
 });
+
+// #105: the rest countdown stays at the top while the editor or the page scrolls.
+test.describe('390px 휴식 타이머', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+  test('편집 창과 일지 화면을 스크롤해도 휴식 타이머가 위에 보인다', async ({ page }) => {
+    const dialog = await openModal(page, modals[0]);
+    await dialog.getByRole('button', { name: '휴식 시작' }).click();
+    const bar = (scope: typeof page | typeof dialog) =>
+      scope.locator('[data-slot=rest-timer]').getByRole('timer');
+    await dialog.evaluate((el) => (el.scrollTop = el.scrollHeight));
+    const inEditor = (await bar(dialog).boundingBox())!;
+    expect(inEditor.y, '편집 창 위쪽').toBeGreaterThanOrEqual(0);
+    expect(inEditor.y, '편집 창 위쪽').toBeLessThan(80);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const onPage = (await bar(page).boundingBox())!;
+    // Below the 56px app header, near the top of the screen.
+    expect(onPage.y, '머리글 아래').toBeGreaterThanOrEqual(56);
+    expect(onPage.y, '머리글 아래').toBeLessThan(140);
+  });
+});

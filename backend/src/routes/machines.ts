@@ -2,7 +2,7 @@ import type express from 'express';
 import type { Pool } from 'pg';
 
 import { machineSchema, officialWeightQuery } from '../domain.js';
-import { id } from './shared.js';
+import { parseId } from '../standard/http.js';
 
 export function registerMachineRoutes(app: express.Express, pool: Pool) {
   app.get('/api/brands', async (_req, res) =>
@@ -63,7 +63,7 @@ export function registerMachineRoutes(app: express.Express, pool: Pool) {
         m.base_weight,
         m.notes,
         m.official_weight_id ?? null,
-        id(req.params.id),
+        parseId(req.params.id, '머신'),
         m.official_weight_id !== undefined,
         m.single_joint ?? null,
       ],

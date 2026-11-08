@@ -38,6 +38,11 @@ async function openImport(ui: ReturnType<typeof mount>) {
   render(<App />);
   await openPage('신체 기록', ui.user);
   await ui.user.click(screen.getByRole('button', { name: '인바디 가져오기' }));
+  // #222: the header button says whether the panel is open.
+  expect(screen.getByRole('button', { name: '인바디 가져오기' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
 }
 const file = (content: string, name: string, type: string) => new File([content], name, { type });
 

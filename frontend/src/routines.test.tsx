@@ -415,15 +415,37 @@ test('a routine exercise can name a machine that the plan keeps (#82)', async ()
   await waitFor(() => expect(ui.text()).toMatch(/벤치프레스 \(해머 · 레그프레스\)/));
 });
 
-test('the plan view is a named region with its weeks and deloads marked (#102)', async () => {
+test('the plan view is a region named by the routine with its deload weeks marked (#102)', async () => {
   const ui = mount();
   await openRoutines();
   await ui.click('계획 보기');
-  const view = await screen.findByRole('region', { name: '계획 보기' });
+  const view = await screen.findByRole('region', { name: '수동 12주 루틴' });
   expect(within(view).getByRole('heading', { level: 3 }).textContent).toBe('수동 12주 루틴');
-  const weeks = within(view).getByRole('heading', { level: 4, name: '주차별 목표' }).parentElement!;
-  const marked = [...weeks.querySelectorAll('li[data-deload]')].map((li) => li.textContent);
-  expect(marked).toHaveLength(3);
-  expect(marked.every((t) => /^(4|8|12)주차 · 디로딩/.test(t))).toBe(true);
+  const weeks = within(view)
+    .getByRole('heading', { level: 4, name: '주차별 목표' })
+    .closest('section')!;
+  expect(
+    [...weeks.querySelectorAll('li[data-deload]')].map((li) => li.textContent.split(' · ')[0]),
+  ).toEqual(['4주차', '8주차', '12주차']);
   expect(within(view).getByRole('heading', { level: 4, name: /운동 일정/ })).toBeInTheDocument();
+});
+
+test('the 12-week preview heading follows the page outline: h3 in the form, h4 in the plan view (#102)', async () => {
+  const ui = mount(false, false, autoRoutineInput() as unknown as Plan);
+  await openRoutines();
+  await ui.click('계획 보기');
+  const view = await screen.findByRole('region', { name: autoRoutineInput().name });
+  const inView = within(view).getByRole('heading', { name: /12주 예상 목표/ });
+  expect(inView.tagName).toBe('H4');
+  expect(view.querySelectorAll('li[data-deload]').length).toBeGreaterThan(0);
+
+  await ui.click('새 루틴 만들기');
+  await ui.change('시작일', '2026-10-12');
+  await ui.change('운동명', '스쿼트');
+  await ui.change('현재 총중량 (kg, 머신 기본중량 포함)', '100');
+  await ui.change('현재 반복 수', '8');
+  const inForm = await within(document.querySelector('form')!).findByRole('heading', {
+    name: /12주 예상 목표/,
+  });
+  expect(inForm.tagName).toBe('H3');
 });

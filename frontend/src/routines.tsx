@@ -194,7 +194,7 @@ function Preview({
           .filter((ex) => ex.exercise.trim())
           .map((ex, j) => (
             <details key={`${i}-${j}`} open className="border-t first-of-type:border-t-0">
-              <summary className="cursor-pointer py-2 text-body-sm font-medium [overflow-wrap:anywhere]">
+              <summary className="cursor-pointer py-2 text-body-sm font-medium [overflow-wrap:anywhere] pointer-coarse:py-3">
                 {plan.splits[i].name} · {ex.exercise}
               </summary>
               <ol className="mb-3 space-y-1.5 pl-1 text-meta text-muted-foreground">
@@ -202,7 +202,7 @@ function Preview({
                   <li
                     key={w.week}
                     data-deload={w.week % 4 === 0 || undefined}
-                    className="my-0 [overflow-wrap:anywhere] data-deload:font-medium data-deload:text-foreground"
+                    className="[overflow-wrap:anywhere] data-deload:font-medium data-deload:text-foreground"
                   >
                     {`${w.week}주차${w.week % 4 === 0 ? ' 디로딩' : ''}: `}
                     {w.rows
@@ -329,7 +329,7 @@ export function Routines() {
       {plans.length > 0 && (
         <ul data-slot="plan-list" className="mt-3 divide-y rounded-lg border">
           {plans.map((p) => (
-            <li key={p.id} className="my-0 flex items-center justify-between gap-3 px-4 py-2">
+            <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-2">
               <span className="min-w-0 text-body-sm [overflow-wrap:anywhere]">{p.name}</span>
               <Button
                 variant="outline"
@@ -559,7 +559,7 @@ export function Routines() {
                   {s.body_parts.map((p, j) => (
                     <li
                       key={j}
-                      className="my-0 flex items-center gap-1 rounded-full border pl-3 text-body-sm"
+                      className="flex items-center gap-1 rounded-full border pl-3 text-body-sm"
                     >
                       {p}{' '}
                       <Button
@@ -781,11 +781,15 @@ export function Routines() {
       {selected && (
         <Card
           role="region"
-          aria-label="계획 보기"
+          aria-labelledby="routine-plan-title"
           className="mt-5 gap-0 px-4 py-5 shadow-none md:px-6 md:py-6"
         >
           <article>
-            <CardTitle asHeading="h3" className="text-body font-semibold">
+            <CardTitle
+              id="routine-plan-title"
+              asHeading="h3"
+              className="text-body font-semibold [overflow-wrap:anywhere]"
+            >
               {selected.name}
             </CardTitle>
             <p className="mt-1.5 text-body-sm text-muted-foreground">
@@ -799,11 +803,11 @@ export function Routines() {
             </p>
             {selected.splits.map((s, i) => (
               <section key={i} className="mt-4 border-t pt-3">
-                <h4 className="text-body-sm font-semibold">{s.name}</h4>
+                <h4 className="text-body-sm font-semibold [overflow-wrap:anywhere]">{s.name}</h4>
                 <p className="mt-1 text-meta text-muted-foreground">{s.body_parts.join(' → ')}</p>
                 <ul className={list}>
                   {s.exercises.map((ex, j) => (
-                    <li key={j} className="my-0 [overflow-wrap:anywhere]">
+                    <li key={j} className="[overflow-wrap:anywhere]">
                       {ex.exercise}
                       {machineName(machines, ex.machine_id) &&
                         ` (${machineName(machines, ex.machine_id)})`}{' '}
@@ -828,7 +832,7 @@ export function Routines() {
                     <li
                       key={w.week}
                       data-deload={w.kind === 'deload' || undefined}
-                      className="my-0 data-deload:font-medium"
+                      className="text-muted-foreground data-deload:font-medium data-deload:text-foreground"
                     >
                       {w.week}주차 · {goalLabel(w)}
                     </li>
@@ -845,10 +849,10 @@ export function Routines() {
                   <li
                     key={day.date}
                     data-deload={day.is_deload || undefined}
-                    className="my-0 break-inside-avoid text-muted-foreground data-deload:text-foreground"
+                    className="break-inside-avoid [overflow-wrap:anywhere] text-muted-foreground data-deload:text-foreground"
                   >
-                    {day.date} · {day.week}주차 · {selected.splits[day.split_index].name}{' '}
-                    {day.is_deload ? '· 디로딩' : ''}
+                    {day.date} · {day.week}주차 · {selected.splits[day.split_index].name}
+                    {day.is_deload ? ' · 디로딩' : ''}
                   </li>
                 ))}
               </ul>

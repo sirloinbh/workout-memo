@@ -11,7 +11,7 @@
 ## 변경 — feat: 12주 미리보기와 계획 보기 교체
 
 - `frontend/src/routines.tsx`
-  - 12주 예상 목표: 테두리 상자(`data-slot="routine-preview"`) 안에 운동마다 기본 `details`·`summary`를 둡니다. `components/ui`에 펼침 부품이 없어 기본 요소를 유지하고 유틸리티를 붙였습니다. 터치 화면의 `summary` 44px는 기존 규칙이 맡습니다.
+  - 12주 예상 목표: 테두리 상자(`data-slot="routine-preview"`) 안에 운동마다 기본 `details`·`summary`를 둡니다. `components/ui`에 펼침 부품이 없어 기본 요소를 유지하고 유틸리티를 붙였습니다. 터치 화면에서는 기존 규칙이 `summary` 높이를 44px 이상으로 두고, 글자 위아래 여백은 `pointer-coarse:py-3`으로 맞춥니다.
   - 디로딩 주차: 이전 `.deload` 클래스(스타일 규칙은 없었음) 대신 `data-deload` 속성과 진한 글자색으로 구분합니다. 계획 보기의 수동 주차 목표와 운동 일정에도 같은 표시를 붙였습니다.
   - 미리보기 제목: 루틴 폼 안에서는 h3(화면 h2 바로 아래), 계획 보기 안에서는 h4(루틴 이름 h3 아래)입니다. 이전에는 둘 다 h4라 폼 안에서 제목 단계가 건너뛰었습니다.
   - 미리보기 안내 문구(시작일·일정 입력 전)는 `bg-muted` 안내 상자입니다.
@@ -26,3 +26,13 @@
 - `npm run test -w frontend -- src/routines.test.tsx`: 9 pass
 - `npm run typecheck -w frontend`, eslint·prettier(바꾼 파일): 통과
 - 시각 기준선과 e2e는 PR CI로 확인합니다. PC 메모리가 부족해 로컬 전체 `npm run check`와 e2e는 돌리지 않았습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+- 띄어쓰기 없는 긴 이름(루틴·분할 이름 최대 120자)이 360px나 2단 운동 일정에서 넘칠 수 있었습니다. 루틴 이름, 분할 이름, 운동 일정 줄에 `[overflow-wrap:anywhere]`를 붙였습니다.
+- 터치 화면에서 `summary`의 `py-2` 유틸리티가 legacy 규칙의 `padding-block: 12px`를 이겨 글자가 위에 붙었습니다. `pointer-coarse:py-3`을 붙였고 위 기록의 설명도 고쳤습니다.
+- 계획 보기 region의 이름을 고정 문구 "계획 보기" 대신 루틴 이름 제목(`aria-labelledby`)으로 바꿨습니다. 어느 루틴의 계획인지 함께 들립니다.
+- 수동 주차 목표의 디로딩 표시를 미리보기·운동 일정과 같이 진한 글자색으로 맞췄습니다. 운동 일정의 디로딩이 아닌 날 끝에 남던 공백을 없앴습니다.
+- `.routine-page li`를 지웠으므로 목록 항목의 `my-0`을 뺐습니다.
+- 테스트: 계획 보기 테스트가 디로딩 주차를 `['4주차', '8주차', '12주차']`로 순서까지 비교하고, region 이름이 루틴 이름인지 봅니다. 자동 루틴으로 미리보기 제목이 계획 보기 안에서 h4, 루틴 폼 안에서 h3인지 확인하는 테스트를 더했습니다.
+- 1차 보완 후: `npm run test -w frontend -- src/routines.test.tsx` 10 pass, eslint(바꾼 파일)·`npm run typecheck -w frontend` 통과.

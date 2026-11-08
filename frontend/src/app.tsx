@@ -72,6 +72,8 @@ import { RoutineProgress } from './progress';
 import { type Progress, routineDraft, setReference } from './progress-data';
 import {
   cancelTimer,
+  endAlertDue,
+  endVibration,
   finished,
   formatRemaining,
   maxRest,
@@ -450,6 +452,14 @@ function Workspace() {
       window.removeEventListener('focus', wake);
     };
   }, []);
+  // #105: one short vibration when a rest ends while the app is open. Each end (endsAt)
+  // alerts once; browsers without the Vibration API (iPhone Safari) only show 휴식 종료.
+  const alertedEnd = useRef<number | null>(null);
+  useEffect(() => {
+    if (!endAlertDue(timer, Date.now()) || alertedEnd.current === timer.endsAt) return;
+    alertedEnd.current = timer.endsAt;
+    if ('vibrate' in navigator) navigator.vibrate(endVibration);
+  }, [timer, tick]);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [progressError, setProgressError] = useState('');
   const [restConfirm, setRestConfirm] = useState(false);
@@ -817,11 +827,14 @@ function Workspace() {
       </RangeSummary>
     </>
   );
-  const timerPanel = (
+  // #105: the countdown and its buttons are one bar that stays pinned while the page or the
+  // workout editor scrolls; the settings below it scroll away. Sticky works only inside its
+  // parent, so the bar is not nested in the settings card.
+  const timerBar = (
     <section
       data-slot="rest-timer"
       aria-label="휴식 타이머"
-      className="mb-4 grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 md:grid-cols-[1fr_auto]"
+      className="grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 min-[480px]:grid-cols-[1fr_auto]"
     >
       <strong
         role="timer"
@@ -836,7 +849,7 @@ function Workspace() {
               ? `${formatRemaining(timerLeft)} 일시정지`
               : `휴식 ${formatRemaining(timerLeft)}`}
       </strong>
-      <div className="flex flex-wrap gap-2 md:justify-end">
+      <div className="flex flex-wrap gap-2 min-[480px]:justify-end">
         {(timer.state === 'idle' || timerEnded) && (
           <Button
             type="button"
@@ -870,6 +883,14 @@ function Workspace() {
           </Button>
         )}
       </div>
+    </section>
+  );
+  const timerSettings = (
+    <section
+      data-slot="rest-settings"
+      aria-label="휴식 설정"
+      className="mb-4 grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 md:grid-cols-[1fr_auto]"
+    >
       <label
         htmlFor="rest-duration"
         className="mb-0 flex flex-col gap-1 text-meta text-muted-foreground"
@@ -924,16 +945,28 @@ function Workspace() {
       </fieldset>
       <p className="col-span-full text-meta text-muted-foreground">
         종료 시각 기준으로 이 브라우저에만 보관합니다. 탭을 다시 열면 남은 시간이 맞춰지며,
-        브라우저를 닫은 동안에는 알림이 없습니다.
+        브라우저를 닫은 동안에는 알림이 없습니다. 이 화면을 보고 있고 화면을 한 번 이상 누른 뒤
+        휴식이 끝나면, 진동을 지원하는 기기(Android 등)는 짧게 진동합니다. iPhone은 진동을 지원하지
+        않습니다.
       </p>
       <p className="col-span-full text-meta text-muted-foreground">
         세트를 완료하면 단관절 머신 → 하체 → 상체 순서로 운동의 기본 휴식을 씁니다. 단관절은 머신
         라이브러리, 하체·상체는 종목 분석의 부위 지정을 따르며 운동명으로 추측하지 않습니다. 지정이
         없으면 위의 휴식 시간을 씁니다.
       </p>
-      {timerWarning && <AlertBanner className="col-span-full mb-0">{timerWarning}</AlertBanner>}
     </section>
   );
+  const timerAlert = timerWarning && <AlertBanner className="mb-4">{timerWarning}</AlertBanner>;
+  // Outside the editor a running or paused rest is pinned under the app header (h-14).
+  const pageTimer = !editor && timer.state !== 'idle' && (
+    <>
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-[var(--z-sticky)] mb-4 bg-background py-2">
+        {timerBar}
+      </div>
+      {timerAlert}
+    </>
+  );
+  const ownPage = ['routines', 'backup', 'body', 'analysis'].includes(page);
   return (
     <>
       <AppShell
@@ -942,13 +975,15 @@ function Workspace() {
         footer="오늘의 기록이 내일의 변화를 만듭니다."
       >
         <div className="legacy">
+          {/* Pages with their own component draw everything below, so the bar goes first. */}
+          {ownPage && pageTimer}
           {page === 'routines' && <Routines />}
           {page === 'backup' && <Backup onRestored={() => void refreshAll()} />}
           {page === 'body' && (
             <BodyMeasurements from={from} to={to} workouts={workouts} controls={periodControls} />
           )}
           {page === 'analysis' && <Analysis />}
-          {page !== 'routines' && page !== 'body' && page !== 'analysis' && page !== 'backup' && (
+          {!ownPage && (
             <PageHeader
               eyebrow="YOUR PROGRESS, IN FOCUS"
               title={
@@ -1045,7 +1080,7 @@ function Workspace() {
               </div>
             </Card>
           )}
-          {!editor && timer.state !== 'idle' && timerPanel}
+          {!ownPage && pageTimer}
           {(page === 'overview' || page === 'journal') && (
             <>
               {periodControls}
@@ -1483,7 +1518,11 @@ function Workspace() {
                 {saveError}
               </AlertBanner>
             )}
-            {timerPanel}
+            {/* Pinned to the top of the editor while the long form scrolls; it spans the
+                modal's 24px side padding so fields scroll behind it. */}
+            <div className="sticky top-0 z-10 -mx-6 mb-2 bg-background px-6 py-2">{timerBar}</div>
+            {timerAlert}
+            {timerSettings}
             <fieldset disabled={saving} className="workout-fields">
               <div className="form-grid">
                 <label>

@@ -217,9 +217,10 @@ export function Analysis() {
           {error}
         </AlertBanner>
       )}
-      {/* #173: placeholders in the shape of the two cards; the hidden line keeps the status. */}
+      {/* #173: placeholders in the shape of the two cards on the first load; a reload keeps the
+          cards and shows a short status line instead. */}
       {loading && !data && (
-        <div aria-busy="true" className="mt-4 flex flex-col gap-4">
+        <div aria-busy="true" aria-label="종목 분석" className="mt-4 flex flex-col gap-4">
           <p role="status" className="sr-only">
             분석 불러오는 중…
           </p>
@@ -228,7 +229,11 @@ export function Analysis() {
         </div>
       )}
       {loading && data && (
-        <p role="status" className="sr-only">
+        <p
+          role="status"
+          className="mt-2 flex items-center gap-2 text-body-sm text-muted-foreground"
+        >
+          <Spinner size="sm" aria-hidden />
           분석 불러오는 중…
         </p>
       )}

@@ -321,13 +321,11 @@ export function Routines() {
       >
         <Plus aria-hidden />새 루틴 만들기
       </Button>
-      {/* #173: the status line stays for screen readers; row placeholders show the list loading. */}
-      <Notice
-        className="sr-only"
-        notice={loading ? { kind: 'status', text: '루틴 불러오는 중…' } : undefined}
-      />
-      {loading && !plans.length && (
-        <div aria-busy="true" className="mt-3 rounded-lg border p-4">
+      {/* #173: row placeholders while the saved routines first load (reloads after a save do not
+          show a loading state); the status line is for screen readers. */}
+      {loading && (
+        <div aria-busy="true" aria-label="저장된 루틴" className="mt-3 rounded-lg border p-4">
+          <Notice className="sr-only" notice={{ kind: 'status', text: '루틴 불러오는 중…' }} />
           <SkeletonList rows={2} />
         </div>
       )}

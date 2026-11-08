@@ -39,10 +39,12 @@ test.each(cases)(
       expect(region).not.toBeNull();
       return region!;
     });
+    // The busy region is named (project-standards docs/ui-components.md "불러오는 중 화면").
+    expect(busy.getAttribute('aria-label')).toBeTruthy();
     expect(screen.getByText(text)).toHaveClass('sr-only');
     // The placeholders are decoration; assistive tech hears only the status line.
     for (const el of busy.querySelectorAll('[data-slot="skeleton"]'))
-      expect(el).toHaveAttribute('aria-hidden');
+      expect(el).toHaveAttribute('aria-hidden', 'true');
 
     pending.resolve();
     await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
@@ -70,7 +72,7 @@ test('the body record save button shows a spinner while it saves', async () => {
 
   const saving = await screen.findByRole('button', { name: '저장 중…' });
   expect(saving).toBeDisabled();
-  expect(saving.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden');
+  expect(saving.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
   saved.resolve();
   await waitFor(() => expect(screen.queryByRole('button', { name: '저장 중…' })).toBeNull());
 });

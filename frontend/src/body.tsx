@@ -310,9 +310,15 @@ export function BodyMeasurements({
             선택한 기간의 측정값과 같은 날 운동 볼륨
           </CardDescription>
         </CardHeader>
-        {loading ? (
-          // #173: row placeholders while the list loads; the hidden line keeps the status.
-          <div aria-busy="true" className="px-6 py-6">
+        {/* #173: a reload keeps the list on screen; the status line is for screen readers. */}
+        {loading && rows.length > 0 && (
+          <p role="status" className="sr-only">
+            기록을 불러오는 중…
+          </p>
+        )}
+        {loading && rows.length === 0 ? (
+          // #173: row placeholders while the list first loads; the hidden line keeps the status.
+          <div aria-busy="true" aria-label="신체 기록 목록" className="px-6 py-6">
             <p role="status" className="sr-only">
               기록을 불러오는 중…
             </p>

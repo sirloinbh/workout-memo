@@ -2197,6 +2197,7 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
           disabled={busy}
           onClick={() => void save(step === '' ? Number.NaN : Number(step))}
         >
+          {busy && <Spinner size="sm" aria-hidden />}
           증량 단위 저장
         </Button>
         {suggestion?.custom && (

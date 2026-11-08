@@ -2,6 +2,7 @@ import { Scale } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlertBanner } from './components/alert-banner';
+import { fieldLabel, formHint as hint, touchText } from './components/form-styles';
 import { List, ListItem } from './components/list';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
@@ -13,12 +14,6 @@ import { Notice } from './components/ui/notice';
 import { seoulDate } from './date';
 import { InbodyImport } from './inbody-import';
 import { cn } from './lib/utils';
-
-// Same field and hint look as the goal and machine forms in app.tsx (merged in the #103 cleanup).
-const fieldLabel = 'mb-4 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
-// The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
-const touchText = 'md:pointer-coarse:text-base';
-const hint = 'rounded-md bg-muted p-3 text-meta text-muted-foreground';
 
 export type BodyRecord = {
   id: number;

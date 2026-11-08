@@ -942,8 +942,9 @@ function Workspace() {
       </fieldset>
       <p className="col-span-full text-meta text-muted-foreground">
         종료 시각 기준으로 이 브라우저에만 보관합니다. 탭을 다시 열면 남은 시간이 맞춰지며,
-        브라우저를 닫은 동안에는 알림이 없습니다. 화면을 보고 있을 때 휴식이 끝나면 진동을 지원하는
-        기기(Android 등)는 짧게 진동합니다. iPhone은 진동을 지원하지 않습니다.
+        브라우저를 닫은 동안에는 알림이 없습니다. 이 화면을 보고 있고 화면을 한 번 이상 누른 뒤
+        휴식이 끝나면, 진동을 지원하는 기기(Android 등)는 짧게 진동합니다. iPhone은 진동을 지원하지
+        않습니다.
       </p>
       <p className="col-span-full text-meta text-muted-foreground">
         세트를 완료하면 단관절 머신 → 하체 → 상체 순서로 운동의 기본 휴식을 씁니다. 단관절은 머신
@@ -953,6 +954,16 @@ function Workspace() {
     </section>
   );
   const timerAlert = timerWarning && <AlertBanner className="mb-4">{timerWarning}</AlertBanner>;
+  // Outside the editor a running or paused rest is pinned under the app header (h-14).
+  const pageTimer = !editor && timer.state !== 'idle' && (
+    <>
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-[var(--z-sticky)] mb-4 bg-background py-2">
+        {timerBar}
+      </div>
+      {timerAlert}
+    </>
+  );
+  const ownPage = ['routines', 'backup', 'body', 'analysis'].includes(page);
   return (
     <>
       <AppShell
@@ -961,6 +972,8 @@ function Workspace() {
         footer="오늘의 기록이 내일의 변화를 만듭니다."
       >
         <div className="legacy">
+          {/* Pages with their own component draw everything below, so the bar goes first. */}
+          {ownPage && pageTimer}
           {page === 'routines' && <Routines />}
           {page === 'backup' && <Backup onRestored={() => void refreshAll()} />}
           {page === 'body' && (
@@ -1065,15 +1078,7 @@ function Workspace() {
               </div>
             </Card>
           )}
-          {!editor && timer.state !== 'idle' && (
-            <>
-              {/* Pinned under the app header (h-14) while the page scrolls. */}
-              <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-[var(--z-sticky)] mb-4 bg-background py-2">
-                {timerBar}
-              </div>
-              {timerAlert}
-            </>
-          )}
+          {!ownPage && pageTimer}
           {(page === 'overview' || page === 'journal') && (
             <>
               {periodControls}

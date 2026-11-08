@@ -359,3 +359,20 @@ test('the rest countdown is a pinned bar apart from the rest settings', async ()
   expect(bar).not.toContainElement(duration());
   expect(document.querySelector('[data-slot=rest-settings]')).toContainElement(duration());
 });
+
+// #105: pages with their own component (루틴짜기 etc.) show the running rest first, so it
+// can stick at the top instead of sitting under the whole page.
+test('a running rest comes first on a page drawn by its own component', async () => {
+  const ui = mount();
+  await openNew(ui);
+  await ui.user.click(screen.getByRole('button', { name: '휴식 시작' }));
+  await ui.user.keyboard('{Escape}');
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await ui.user.click(screen.getAllByRole('link', { name: '루틴짜기' })[0]);
+  const page = document.querySelector('.legacy')!;
+  await waitFor(() => expect(page.querySelector('[data-slot=rest-timer]')).not.toBeNull());
+  expect(page.firstElementChild).toContainElement(
+    page.querySelector<HTMLElement>('[data-slot=rest-timer]'),
+  );
+  expect(page.firstElementChild).toHaveClass('sticky');
+});

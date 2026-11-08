@@ -1,9 +1,10 @@
-import { Scale } from 'lucide-react';
+import { Plus, Scale } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlertBanner } from './components/alert-banner';
 import { fieldLabel, formHint as hint, touchText } from './components/form-styles';
 import { List, ListItem } from './components/list';
+import { PageHeader } from './components/page-header';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
@@ -173,26 +174,26 @@ export function BodyMeasurements({
   };
   return (
     <section>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">BODY CHANGES, SIDE BY SIDE</div>
-          <h1>
-            몸의 변화도 함께 기록해요<span className="heading-dot">.</span>
-          </h1>
-          <p>
-            체중·체지방률·골격근량을 날짜별로 기록합니다. 측정하지 않은 값은 비워두면 미입력으로
-            보관하며 추정하지 않습니다.
-          </p>
-        </div>
-        <div className="heading-actions">
-          <button className="subtle-button" onClick={() => setImporting(!importing)}>
-            인바디 가져오기
-          </button>
-          <button className="primary" disabled={saving} onClick={() => edit()}>
-            신체 기록 추가
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="BODY CHANGES, SIDE BY SIDE"
+        title="몸의 변화도 함께 기록해요"
+        description="체중·체지방률·골격근량을 날짜별로 기록합니다. 측정하지 않은 값은 비워두면 미입력으로 보관하며 추정하지 않습니다."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              aria-expanded={importing}
+              onClick={() => setImporting(!importing)}
+            >
+              인바디 가져오기
+            </Button>
+            <Button disabled={saving} onClick={() => edit()}>
+              <Plus aria-hidden />
+              신체 기록 추가
+            </Button>
+          </>
+        }
+      />
       {controls}
       {error && (
         <AlertBanner

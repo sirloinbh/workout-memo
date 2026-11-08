@@ -8,11 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 // for short forms; "full" fills the screen for long ones (the workout editor). Both end at
 // --keyboard-inset, the part of the screen an on-screen keyboard covers, so the last field
 // and a ModalFooter stay above the keyboard. scroll-padding keeps a focused field clear of
-// the footer when the browser scrolls it into view.
+// the footer when the browser scrolls it into view. "full" also keeps fields clear of a bar
+// pinned at its top (the workout editor's rest timer, two lines below 480px).
 const layouts = {
   sheet:
     'max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-[var(--keyboard-inset,0px)] max-sm:max-h-[calc(100dvh-var(--keyboard-inset,0px)-2rem)] max-sm:translate-x-0 max-sm:translate-y-0 max-sm:max-w-none max-sm:rounded-b-none',
-  full: 'max-sm:inset-x-0 max-sm:top-0 max-sm:bottom-[var(--keyboard-inset,0px)] max-sm:max-h-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:max-w-none max-sm:rounded-none max-sm:border-0',
+  full: 'scroll-pt-36 max-sm:inset-x-0 max-sm:top-0 max-sm:bottom-[var(--keyboard-inset,0px)] max-sm:max-h-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:max-w-none max-sm:rounded-none max-sm:border-0',
 } as const;
 
 function useKeyboardInset(content: HTMLElement | null) {

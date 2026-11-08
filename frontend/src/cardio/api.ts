@@ -27,3 +27,13 @@ export const saveCardioSession = (body: CardioBody, id?: number) =>
 
 export const deleteCardioSession = (id: number) =>
   requestJson<{ ok: true }>(`${base}/${id}`, { method: 'DELETE' });
+
+// #115: all-time personal records (GET /api/cardio-sessions/records). The 5 km and 10 km bests
+// count only running sessions within ±2% of the distance; null when there is none.
+export type CardioRecord = { id: number; date: string; distance_km: number; duration_sec: number };
+export type CardioRecords = {
+  longest: (CardioRecord & { kind: CardioSession['kind'] })[];
+  best5k: CardioRecord | null;
+  best10k: CardioRecord | null;
+};
+export const getCardioRecords = () => requestJson<CardioRecords>(`${base}/records`);

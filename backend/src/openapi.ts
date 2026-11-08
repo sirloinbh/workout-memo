@@ -192,6 +192,8 @@ export const operations: Record<string, Operation> = {
   'GET /api/goal-suggestion': { query: goalSuggestionQuery, status: [200, 400] },
   // #114: the server also rejects a date after today (Asia/Seoul); see docs/api.md.
   'GET /api/cardio-sessions': { query: cardioQuery, status: [200, 400] },
+  // #115: all-time personal records; see docs/api.md.
+  'GET /api/cardio-sessions/records': { status: [200] },
   'GET /api/cardio-sessions/:id': { status: [200, 400, 404] },
   'POST /api/cardio-sessions': {
     body: ['CardioSession', cardioSessionSchema],

@@ -775,6 +775,16 @@
         }
       }
     },
+    "/api/cardio-sessions/records": {
+      "get": {
+        "summary": "유산소 개인 기록(전체 기간): 종류별 최장 거리, 러닝 5km·10km 최고 기록",
+        "responses": {
+          "200": {
+            "description": "성공"
+          }
+        }
+      }
+    },
     "/api/exercise-body-parts": {
       "get": {
         "summary": "운동별 부위 매핑",

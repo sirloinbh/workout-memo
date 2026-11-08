@@ -367,3 +367,45 @@ test('update is a full replacement inside a transaction that rolls back on 404 a
     },
   );
 });
+
+test('records: registered before /:id, three queries, ±2% window in NUMERIC, longest in kind order', async () => {
+  await withApi(
+    (sql, params) => {
+      if (sql.includes('DISTINCT ON (kind)'))
+        return {
+          rows: [
+            { kind: 'swimming', id: 3, date: '2026-10-01', distance_km: 1.5, duration_sec: 2400 },
+            { kind: 'running', id: 1, date: '2026-11-02', distance_km: 21.1, duration_sec: 7380 },
+          ],
+        };
+      if (params?.[0] === 5)
+        return { rows: [{ id: 2, date: '2026-11-03', distance_km: 5.1, duration_sec: 1500 }] };
+      return { rows: [] };
+    },
+    async (base, calls) => {
+      assert.deepEqual(await call(base + '/records'), {
+        status: 200,
+        body: {
+          longest: [
+            { kind: 'running', id: 1, date: '2026-11-02', distance_km: 21.1, duration_sec: 7380 },
+            { kind: 'swimming', id: 3, date: '2026-10-01', distance_km: 1.5, duration_sec: 2400 },
+          ],
+          best5k: { id: 2, date: '2026-11-03', distance_km: 5.1, duration_sec: 1500 },
+          best10k: null,
+        },
+      });
+      assert.equal(calls.length, 3, '"records" is not parsed as an id');
+      const best = calls.filter((c) => c.params);
+      assert.deepEqual(
+        best.map((c) => c.params),
+        [[5], [10]],
+      );
+      for (const c of best) {
+        assert.match(c.sql, /kind='running'/);
+        assert.match(c.sql, /BETWEEN \$1::numeric \* 0\.98 AND \$1::numeric \* 1\.02/);
+        assert.match(c.sql, /ORDER BY duration_sec, date, id LIMIT 1/);
+      }
+      assert.match(calls[0].sql, /WHERE distance_km IS NOT NULL ORDER BY kind, distance_km DESC/);
+    },
+  );
+});

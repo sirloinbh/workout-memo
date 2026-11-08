@@ -3,7 +3,9 @@ import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod/v4';
 
 import {
+  cardioGoalObject,
   cardioSessionObject,
+  checkCardioGoal,
   checkCardioSession,
   date,
   feedbackLevels,
@@ -17,8 +19,10 @@ import { cardioPaceSql, cardioSpeedSql } from './routes/cardio.js';
 // - restore backup: versioned JSON that keeps every relationship and is validated before use.
 export const backupFormat = 'workout-memo-backup';
 // v2 (#114) adds data.cardio_sessions. A v1 file is still restored, as a backup without cardio.
-export const backupVersion = 2;
-export const supportedBackupVersions = [1, 2] as const;
+// v3 (#253) adds data.cardio_goals. v1 and v2 files restore as backups without cardio goals; an
+// app older than v3 cannot restore a v3 file (2026-11-08 user decision B1).
+export const backupVersion = 3;
+export const supportedBackupVersions = [1, 2, 3] as const;
 export const backupMaxBytes = 10 * 1024 * 1024;
 export const replaceConfirmation = '전체 교체';
 
@@ -86,9 +90,11 @@ const timestamp = z.iso.datetime({ offset: true });
 const cardioRow = cardioSessionObject
   .extend({ id, created_at: timestamp })
   .superRefine(checkCardioSession);
+// #253: the same rules as POST /api/cardio-goals, five-year span included.
+const cardioGoalRow = cardioGoalObject.extend({ id }).superRefine(checkCardioGoal);
 const backupSchema = z.object({
   format: z.literal(backupFormat),
-  version: z.union([z.literal(1), z.literal(2)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   exported_at: timestamp,
   data: z
     .object({
@@ -147,6 +153,8 @@ const backupSchema = z.object({
       routines: z.array(z.object({ id, created_at: timestamp, plan: routineSchema })).max(1000),
       // #114: required in v2 (checked in parseBackup); a v1 file has none.
       cardio_sessions: z.array(cardioRow).max(50000).optional(),
+      // #253: required in v3 (checked in parseBackup); v1 and v2 files have none.
+      cardio_goals: z.array(cardioGoalRow).max(5000).optional(),
     })
     .superRefine((data, ctx) => {
       const issue = (message: string) => ctx.addIssue({ code: 'custom', message });
@@ -157,6 +165,7 @@ const backupSchema = z.object({
         'goals',
         'routines',
         'cardio_sessions',
+        'cardio_goals',
       ] as const) {
         const seen = new Set<number>();
         for (const row of data[table] ?? []) {
@@ -207,9 +216,14 @@ const backupSchema = z.object({
 });
 type ParsedBackup = z.infer<typeof backupSchema>;
 type CardioBackupRow = NonNullable<ParsedBackup['data']['cardio_sessions']>[number];
-// After parseBackup every backup has cardio_sessions (empty for a v1 file).
+type CardioGoalBackupRow = NonNullable<ParsedBackup['data']['cardio_goals']>[number];
+// After parseBackup every backup has cardio_sessions (empty for a v1 file) and cardio_goals
+// (empty for v1 and v2 files).
 export type Backup = Omit<ParsedBackup, 'data'> & {
-  data: Omit<ParsedBackup['data'], 'cardio_sessions'> & { cardio_sessions: CardioBackupRow[] };
+  data: Omit<ParsedBackup['data'], 'cardio_sessions' | 'cardio_goals'> & {
+    cardio_sessions: CardioBackupRow[];
+    cardio_goals: CardioGoalBackupRow[];
+  };
 };
 
 export function parseBackup(value: unknown): Backup {
@@ -224,20 +238,30 @@ export function parseBackup(value: unknown): Backup {
     throw new BackupInvalid(
       `지원하지 않는 백업 버전입니다 (v${String(head.version)}). 지원 버전: ${supportedBackupVersions.map((v) => 'v' + v).join(', ')}`,
     );
-  // v1 predates cardio sessions (#114): a stray `cardio_sessions` key in a v1 file is ignored,
-  // not validated, so it can never make an otherwise valid v1 restore fail.
+  // v1 predates cardio sessions (#114) and v1·v2 predate cardio goals (#253): such stray keys in
+  // an older file are ignored, not validated, so they never make an otherwise valid restore fail.
   const input = (() => {
     const file = value as { version?: unknown; data?: unknown };
-    if (file.version !== 1 || typeof file.data !== 'object' || file.data === null) return value;
+    if (file.version === 3 || typeof file.data !== 'object' || file.data === null) return value;
     const rest = { ...(file.data as Record<string, unknown>) };
-    delete rest.cardio_sessions;
+    delete rest.cardio_goals;
+    if (file.version === 1) delete rest.cardio_sessions;
     return { ...file, data: rest };
   })();
   const parsed = backupSchema.safeParse(input);
-  if (parsed.success && parsed.data.version === 2 && !parsed.data.data.cardio_sessions)
-    throw new BackupInvalid(
-      '백업 검증 실패 — data.cardio_sessions: v2 백업에는 유산소 기록 목록이 필요합니다',
-    );
+  if (parsed.success) {
+    // Both missing lists are reported together so one fix is enough.
+    const { version, data } = parsed.data;
+    const missing = [
+      version >= 2 && !data.cardio_sessions
+        ? `data.cardio_sessions: v${version} 백업에는 유산소 기록 목록이 필요합니다`
+        : null,
+      version === 3 && !data.cardio_goals
+        ? 'data.cardio_goals: v3 백업에는 유산소 목표 목록이 필요합니다'
+        : null,
+    ].filter((m) => m !== null);
+    if (missing.length) throw new BackupInvalid('백업 검증 실패 — ' + missing.join(' / '));
+  }
   if (!parsed.success) {
     const issues = parsed.error.issues.slice(0, 5).map((x) => {
       const path = x.path.join('.');
@@ -249,7 +273,12 @@ export function parseBackup(value: unknown): Backup {
   // v1 predates cardio sessions (#114): it restores as a backup without any.
   return {
     ...parsed.data,
-    data: { ...data, cardio_sessions: version === 1 ? [] : (data.cardio_sessions ?? []) },
+    data: {
+      ...data,
+      cardio_sessions: version === 1 ? [] : (data.cardio_sessions ?? []),
+      // #253: v1 and v2 predate cardio goals.
+      cardio_goals: version === 3 ? (data.cardio_goals ?? []) : [],
+    },
   };
 }
 
@@ -261,6 +290,7 @@ const tables = [
   'goals',
   'routines',
   'cardio_sessions',
+  'cardio_goals',
 ] as const;
 type Counts = { added: number; skipped: number; conflicts: number; deleted: number };
 export type RestoreSummary = {
@@ -331,7 +361,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   const t = summary.tables;
   // Readers continue; concurrent writers wait so the preview/restore sees a stable state.
   await client.query(
-    'LOCK TABLE brands, machines, workouts, sets, goals, routines, cardio_sessions IN EXCLUSIVE MODE',
+    'LOCK TABLE brands, machines, workouts, sets, goals, routines, cardio_sessions, cardio_goals IN EXCLUSIVE MODE',
   );
   if (mode === 'replace') {
     for (const table of tables)
@@ -343,7 +373,16 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     // a retry after the replace is then stored as a new workout.
     summary.retry_keys_cleared = (await client.query('DELETE FROM workout_requests')).rowCount ?? 0;
     // Sets are removed by ON DELETE CASCADE.
-    for (const table of ['cardio_sessions', 'workouts', 'goals', 'routines', 'machines', 'brands'])
+    // #253 (B2): cardio goals are replaced too, so an older file without them leaves none.
+    for (const table of [
+      'cardio_goals',
+      'cardio_sessions',
+      'workouts',
+      'goals',
+      'routines',
+      'machines',
+      'brands',
+    ])
       await client.query(`DELETE FROM ${table}`);
   }
 
@@ -465,6 +504,31 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     t.goals.added++;
   }
 
+  // #253: like strength goals, a goal identical in every value is skipped, otherwise added.
+  const seenCardioGoals = new Seen();
+  for (const r of (await client.query(`SELECT ${cardioGoalValues} FROM cardio_goals`)).rows)
+    seenCardioGoals.add(cardioGoalKey(r));
+  for (const g of backup.data.cardio_goals) {
+    if (seenCardioGoals.take(cardioGoalKey(g)) !== undefined) {
+      t.cardio_goals.skipped++;
+      continue;
+    }
+    await client.query(
+      'INSERT INTO cardio_goals(goal_type,kind,period,target_distance_km,target_duration_sec,target_count,start_date,deadline) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+      [
+        g.goal_type,
+        g.kind,
+        g.period,
+        g.target_distance_km,
+        g.target_duration_sec,
+        g.target_count,
+        g.start_date,
+        g.deadline,
+      ],
+    );
+    t.cardio_goals.added++;
+  }
+
   const seenRoutines = new Seen();
   for (const r of (await client.query('SELECT plan FROM routines')).rows)
     seenRoutines.add(canonical(r.plan));
@@ -491,6 +555,21 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   }
   return summary;
 }
+
+// #253: cardio goal values as the backup stores them (distance as a JSON number).
+const cardioGoalValues = `goal_type, kind, period, target_distance_km::float8 target_distance_km,
+  target_duration_sec, target_count, start_date, deadline`;
+const cardioGoalKey = (g: Omit<CardioGoalBackupRow, 'id'>) =>
+  JSON.stringify([
+    g.goal_type,
+    g.kind,
+    g.period,
+    g.target_distance_km,
+    g.target_duration_sec,
+    g.target_count,
+    g.start_date,
+    g.deadline,
+  ]);
 
 // Cardio identity for merge (#114). The workout link is not part of it (like a workout's
 // feedback): a session that differs only in its link is the same session; the existing row stays.
@@ -731,6 +810,9 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
           await client.query(
             `SELECT id, ${cardioValues}, workout_id, created_at FROM cardio_sessions ORDER BY date, id`,
           )
+        ).rows,
+        cardio_goals: (
+          await client.query(`SELECT id, ${cardioGoalValues} FROM cardio_goals ORDER BY id`)
         ).rows,
       },
     }));

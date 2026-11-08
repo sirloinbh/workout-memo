@@ -34,6 +34,8 @@ const labels: [string, string][] = [
   ['routines', '루틴'],
   // #114: backup v2. A server without cardio sessions sends no such table; the row is skipped.
   ['cardio_sessions', '유산소'],
+  // #253: backup v3. An older server sends no such table; the row is skipped.
+  ['cardio_goals', '유산소 목표'],
   ['machines', '머신'],
   ['brands', '브랜드'],
 ];
@@ -143,9 +145,9 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>
-            운동 일지·세트·목표·루틴·브랜드·머신과 그 연결을 버전이 있는 JSON 한 파일로 보관합니다.
-            저장 재시도 키는 일시적인 중복 방지 기록이라 포함하지 않습니다. 백업 파일에는 개인
-            기록이 들어 있으니 안전한 곳에 보관하세요.
+            운동 일지·세트·목표·루틴·유산소 기록·유산소 목표·브랜드·머신과 그 연결을 버전이 있는
+            JSON 한 파일로 보관합니다. 저장 재시도 키는 일시적인 중복 방지 기록이라 포함하지
+            않습니다. 백업 파일에는 개인 기록이 들어 있으니 안전한 곳에 보관하세요.
           </p>
         </CardContent>
         <CardFooter>

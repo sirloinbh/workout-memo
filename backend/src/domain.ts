@@ -5,6 +5,11 @@ import { date, limitLength } from './contract.js';
 export {
   type BodyMeasurementInput,
   bodyMeasurementSchema,
+  type CardioGoal,
+  cardioGoalPeriods,
+  cardioGoalSchema,
+  cardioGoalTypes,
+  type CardioKind,
   cardioKinds,
   cardioSessionObject,
   cardioSessionSchema,

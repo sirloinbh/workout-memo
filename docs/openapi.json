@@ -111,6 +111,47 @@
         }
       }
     },
+    "/api/cardio-goals/{id}": {
+      "delete": {
+        "summary": "유산소 목표 삭제 → { ok: true }",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cardio-sessions/{id}": {
       "delete": {
         "summary": "유산소 기록 삭제 → { ok: true }",
@@ -595,6 +636,44 @@
         "responses": {
           "200": {
             "description": "성공"
+          }
+        }
+      }
+    },
+    "/api/cardio-goals": {
+      "get": {
+        "summary": "유산소 목표 목록과 서버 판정 achieved·progress",
+        "responses": {
+          "200": {
+            "description": "성공"
+          }
+        }
+      },
+      "post": {
+        "summary": "유산소 목표 등록 → 201",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardioGoal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "생성됨"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1503,6 +1582,90 @@
         },
         "required": [
           "date"
+        ]
+      },
+      "CardioGoal": {
+        "type": "object",
+        "properties": {
+          "goal_type": {
+            "type": "string",
+            "enum": [
+              "distance",
+              "duration",
+              "count",
+              "record_time",
+              "longest_distance"
+            ]
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "running",
+              "walking",
+              "outdoor_cycling",
+              "indoor_cycling",
+              "rowing",
+              "stairs",
+              "elliptical",
+              "swimming",
+              "other"
+            ],
+            "default": null
+          },
+          "period": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "week",
+              "month"
+            ],
+            "default": null
+          },
+          "target_distance_km": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "maximum": 10000,
+            "default": null
+          },
+          "target_duration_sec": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 2678400,
+            "default": null
+          },
+          "target_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 1000,
+            "default": null
+          },
+          "start_date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "deadline": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "required": [
+          "goal_type",
+          "start_date",
+          "deadline"
         ]
       },
       "CardioSession": {

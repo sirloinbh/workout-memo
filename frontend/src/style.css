@@ -80,36 +80,6 @@
 .primary:hover {
   background: color-mix(in oklch, var(--primary) 90%, transparent);
 }
-/* .period-bar, .date-control and .range-label remain for the analysis page only (#102);
-   the dashboard and journal use DateStepper and RangeSummary (#224). */
-.period-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-.date-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.date-control input {
-  border: 0;
-  background: transparent;
-  color: var(--foreground);
-  font-size: 11px;
-  padding: 4px;
-  width: 116px;
-}
-.range-label {
-  font-size: 10px;
-  color: var(--foreground);
-  margin: 15px 0 20px;
-}
-.range-label span {
-  color: var(--muted-foreground);
-  margin-left: 10px;
-}
 :where(.legacy) h2 {
   font-size: 15px;
   font-weight: 600;
@@ -123,21 +93,6 @@
   border-radius: calc(var(--radius) - 4px);
   font-size: 11px;
   padding: 9px 13px;
-}
-.error {
-  background: color-mix(in oklch, var(--destructive) 10%, transparent);
-  border: 1px solid color-mix(in oklch, var(--destructive) 30%, transparent);
-  border-radius: calc(var(--radius) - 2px);
-  color: var(--destructive);
-  font-size: 12px;
-  padding: 14px;
-  margin-bottom: 20px;
-}
-.error button {
-  border: 0;
-  background: none;
-  text-decoration: underline;
-  color: inherit;
 }
 .modal label {
   display: flex;
@@ -201,20 +156,6 @@
   .primary {
     padding: 10px 14px;
     font-size: 11px;
-  }
-  /* #71: on narrow phones (e.g. 320px) the date control moves under the period tabs. */
-  .period-bar {
-    flex-wrap: wrap;
-  }
-  .date-control {
-    gap: 0;
-  }
-  .date-control input {
-    font-size: 10px;
-    width: 110px;
-  }
-  .range-label {
-    font-size: 9px;
   }
   .form-grid {
     gap: 0 12px;

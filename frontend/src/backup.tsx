@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './componen
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { Spinner } from './components/ui/spinner';
 import { cn } from './lib/utils';
 
 // Analysis CSV and restore backup are separate artifacts (#33). The server validates and
@@ -284,6 +285,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                 disabled={busy || (mode === 'replace' && typed !== confirmation)}
                 onClick={() => void run()}
               >
+                {busy && <Spinner size="sm" aria-hidden />}
                 복원 실행
               </Button>
             </div>

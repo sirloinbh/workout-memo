@@ -58,3 +58,7 @@
   - 바뀐 것: 머리글이 있는 `dashboard`·`journal`·`goals`·`machines`·`body` 4폭씩과, 뒤에 머리글이 보이는 `workout-editor`(390·768·1280)·`goal-editor`(4폭)·`machine-editor`(768·1280)입니다.
   - 확인: `dashboard-1280`을 이전 기준선과 나란히 보고, `body-360`도 직접 봤습니다. 주요 버튼 글자가 12px에서 14px로 커지고 머리글 간격이 바뀐 것 외에는 차이가 없었습니다.
   - 갱신: `visual-baselines` 아티팩트로 29장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
+
+## main 병합
+
+- 병합 직전 main에 #241(#125 종목 분석 모바일)이 들어와 `e2e/ui-touch.spec.ts`가 겹쳐 `origin/main`을 merge했습니다. 충돌은 없었고, 이 브랜치의 대상 선택자와 #241의 종목 분석 검사가 함께 남았습니다. 병합 뒤 `tsc -p e2e/tsconfig.json`, 관련 화면 테스트 통과

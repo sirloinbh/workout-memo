@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 
 import { type AnalysisSet, analyze } from '../../backend/src/analysis';
 import { App } from './app';
-import { fixClock, mockApi } from './test/api';
+import { fixClock, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/analysis-ui.test.ts (vm hook harness) to a real DOM. The
@@ -219,4 +219,38 @@ test('cancelling the mapping editor sends nothing and the PR count badge matches
   expect(screen.queryByRole('group', { name: 'Curl 부위' })).toBeNull();
   expect(ui.requests.some((r) => r.method === 'PUT')).toBe(false);
   expect(exercise('Curl').textContent).toMatch(/부위: 미분류/);
+});
+
+test('a failed load shows an alert whose 다시 연결 button reloads the analysis (#102)', async () => {
+  fixClock();
+  let fail = true;
+  const api = mockApi(({ url }) => {
+    if (url.pathname === '/api/analysis') {
+      if (fail) return json({ error: '분석 서버에 연결할 수 없습니다' }, 503);
+      return {
+        ...analyze([], [], url.searchParams.get('from')!, url.searchParams.get('to')!),
+        today: '2026-10-15',
+      };
+    }
+    return [];
+  });
+  const user = userEvent.setup();
+  render(<App />);
+  await openPage('종목 분석', user);
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('분석 서버에 연결할 수 없습니다');
+  expect(alert).toHaveAttribute('data-slot', 'alert-banner');
+  // The period controls are the shared DateStepper and RangeSummary.
+  expect(
+    screen.getByLabelText('분석 기준 날짜').closest('[data-slot="date-stepper"]'),
+  ).not.toBeNull();
+  expect(document.querySelector('[data-slot="range-summary"]')!.textContent).toMatch(
+    /2026-10-12 — 2026-10-18.*월요일 시작 주/,
+  );
+
+  fail = false;
+  await user.click(within(alert).getByRole('button', { name: '다시 연결' }));
+  await loaded();
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(api.requests.filter((r) => r.path.startsWith('/api/analysis'))).toHaveLength(2);
 });

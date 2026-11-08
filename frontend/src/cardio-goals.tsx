@@ -453,7 +453,8 @@ function CardioGoalForm({
         )}
         {draft.goal_type !== 'duration' && draft.goal_type !== 'count' && (
           <Label className={fieldLabel}>
-            목표 거리 (km)
+            {/* Swimming is shown in metres but entered in km like every other kind. */}
+            {draft.kind === 'swimming' ? '목표 거리 (km, 1,500 m는 1.5)' : '목표 거리 (km)'}
             <Input
               className={touchText}
               inputMode="decimal"

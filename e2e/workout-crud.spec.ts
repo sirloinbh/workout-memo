@@ -35,8 +35,8 @@ test('운동 일지를 브라우저에서 생성·조회·수정·삭제하고 D
   while ((await sets.count()) > 1)
     await sets.last().getByRole('button', { name: '세트 삭제' }).click();
   await editor.getByLabel('운동명').fill('E2E 스쿼트');
-  await editor.getByLabel('총중량 kg').fill('100.25');
-  await editor.getByLabel('횟수').fill('5');
+  await editor.getByLabel('총중량 kg', { exact: true }).fill('100.25');
+  await editor.getByLabel('횟수', { exact: true }).fill('5');
   const completed = editor.getByRole('button', { name: '1세트 완료' });
   if ((await completed.getAttribute('aria-pressed')) !== 'true') await completed.click();
   await editor.getByRole('button', { name: '기록 저장하기' }).click();
@@ -53,7 +53,7 @@ test('운동 일지를 브라우저에서 생성·조회·수정·삭제하고 D
   // Update
   await row(page).getByRole('button', { name: '수정' }).click();
   const edit = page.getByRole('dialog', { name: '운동 일지 수정' });
-  await edit.getByLabel('총중량 kg').fill('120');
+  await edit.getByLabel('총중량 kg', { exact: true }).fill('120');
   await edit.getByRole('button', { name: '기록 저장하기' }).click();
   await expect(edit).toBeHidden();
   await expect(stat(page, '누적 볼륨')).toHaveText('600kg');

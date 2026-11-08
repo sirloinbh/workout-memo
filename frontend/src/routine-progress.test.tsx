@@ -78,7 +78,9 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: 
       text(e).trim().startsWith(label),
     )[0];
     expect(item, `set field ${label}`).toBeTruthy();
-    return item.querySelector<HTMLInputElement | HTMLSelectElement>('input, select')!;
+    // #105: weight and reps sit beside their label (with − / + buttons), linked by htmlFor.
+    return (item.querySelector<HTMLInputElement | HTMLSelectElement>('input, select') ??
+      document.getElementById(item.htmlFor)) as HTMLInputElement;
   }
   function change(row: Element, label: string, value: string) {
     fireEvent.change(field(row, label), { target: { value } });

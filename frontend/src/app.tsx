@@ -37,6 +37,7 @@ import { AppShell, type NavItem } from './components/layout/app-shell';
 import { List, ListItem } from './components/list';
 import { Modal } from './components/modal';
 import { NumberValueInput } from './components/number-input';
+import { PageHeader } from './components/page-header';
 import { SegmentedControl } from './components/segmented-control';
 import { StatCard } from './components/stat-card';
 import { Switch } from './components/switch';
@@ -946,55 +947,54 @@ function Workspace() {
           )}
           {page === 'analysis' && <Analysis />}
           {page !== 'routines' && page !== 'body' && page !== 'analysis' && page !== 'backup' && (
-            <div className="page-heading">
-              <div>
-                <div className="eyebrow">YOUR PROGRESS, IN FOCUS</div>
-                <h1>
-                  {page === 'overview'
-                    ? '꾸준함을 기록하는 공간'
-                    : page === 'journal'
-                      ? '오늘도 한 걸음 더'
-                      : page === 'goals'
-                        ? '다음 단계의 나를 향해'
-                        : '머신을 알면, 기록이 정확해져요'}
-                  <span className="heading-dot">.</span>
-                </h1>
-                <p>
-                  {page === 'overview'
-                    ? '운동의 흐름을 살펴보고, 다음 성장을 준비하세요.'
-                    : page === 'journal'
-                      ? '모든 세트에는 어제보다 나아진 내가 담겨 있어요.'
-                      : page === 'goals'
-                        ? '중량과 반복 수로 구체적인 성장 목표를 세워보세요.'
-                        : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'}
-                </p>
-              </div>
-              <button
-                className="primary"
-                disabled={!!recovery && (page === 'overview' || page === 'journal')}
-                onClick={
-                  page === 'goals'
-                    ? () => setGoalEditor(true)
+            <PageHeader
+              eyebrow="YOUR PROGRESS, IN FOCUS"
+              title={
+                page === 'overview'
+                  ? '꾸준함을 기록하는 공간'
+                  : page === 'journal'
+                    ? '오늘도 한 걸음 더'
+                    : page === 'goals'
+                      ? '다음 단계의 나를 향해'
+                      : '머신을 알면, 기록이 정확해져요'
+              }
+              description={
+                page === 'overview'
+                  ? '운동의 흐름을 살펴보고, 다음 성장을 준비하세요.'
+                  : page === 'journal'
+                    ? '모든 세트에는 어제보다 나아진 내가 담겨 있어요.'
+                    : page === 'goals'
+                      ? '중량과 반복 수로 구체적인 성장 목표를 세워보세요.'
+                      : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'
+              }
+              actions={
+                <Button
+                  // A recoverable local draft must be restored or discarded first (#101).
+                  disabled={!!recovery && (page === 'overview' || page === 'journal')}
+                  onClick={
+                    page === 'goals'
+                      ? () => setGoalEditor(true)
+                      : page === 'machines'
+                        ? () =>
+                            setMachineEditor({
+                              brand_id: brand || brands[0]?.id,
+                              name: '',
+                              base_weight: null,
+                              notes: '',
+                              official_weight_id: null,
+                            })
+                        : newWorkout
+                  }
+                >
+                  <Plus aria-hidden />
+                  {page === 'goals'
+                    ? '목표 추가'
                     : page === 'machines'
-                      ? () =>
-                          setMachineEditor({
-                            brand_id: brand || brands[0]?.id,
-                            name: '',
-                            base_weight: null,
-                            notes: '',
-                            official_weight_id: null,
-                          })
-                      : newWorkout
-                }
-              >
-                <Plus size={18} />
-                {page === 'goals'
-                  ? '목표 추가'
-                  : page === 'machines'
-                    ? '머신 등록'
-                    : '운동 기록하기'}
-              </button>
-            </div>
+                      ? '머신 등록'
+                      : '운동 기록하기'}
+                </Button>
+              }
+            />
           )}
           {error && (
             <AlertBanner

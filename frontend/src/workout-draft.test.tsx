@@ -181,6 +181,11 @@ test('refresh offers recovery and restores input without affecting server statis
   expect(stat('완료한 세트')).toBe('0세트');
   const second = mount();
   await loaded();
+  // #222: the page header's main button waits until the draft is restored or discarded.
+  const headers = document.querySelectorAll<HTMLElement>('[data-slot="page-header"]');
+  expect(
+    within(headers[headers.length - 1]).getByRole('button', { name: '운동 기록하기' }),
+  ).toBeDisabled();
   await second.user.click(matchingButton(/복구/));
   expect(titleInput()).toHaveValue('Recovery workout');
   expect(exerciseInputs()[0]).toHaveValue('Squat');

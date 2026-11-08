@@ -35,3 +35,4 @@
 - 1차 리뷰는 필수 보완점이 없었습니다. 선택 2건은 6단계(`style.css` 정리)로 넘깁니다. 열 선택 `select`의 비활성 모양은 select 상수를 합칠 때, 일부 행 저장 실패 문구를 `AlertBanner`로 보이게 하는 일은 백업 화면 `AlertBanner` 교체와 함께 합니다. 코드 보완이 없어 2차 리뷰는 하지 않습니다.
 - `9e7836a`의 CI는 모두 통과했고 시각 기준선 변화도 없었습니다.
 - 병합 직전 main에 #232(#105 세트 카드)가 들어왔습니다. 겹치는 파일은 없지만 공용 부품(`components/number-input.tsx`)과 e2e 변경이 있어 바로 병합 조건에 맞지 않아 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx` 13 pass, `npm run typecheck -w frontend` 통과
+- 이어서 #233(#102 루틴짜기)이 main에 들어와 `style.css`가 겹쳐 `origin/main`을 다시 merge했습니다. 충돌은 없었습니다(main은 루틴짜기 규칙을, 이 브랜치는 인바디 규칙을 지움). 병합 뒤 `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx src/routines.test.tsx` 21 pass, `npm run typecheck -w frontend`, prettier 통과

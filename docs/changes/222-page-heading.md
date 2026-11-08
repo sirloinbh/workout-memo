@@ -67,3 +67,4 @@
 
 - #237(#105 일지 편집 세트 카드)이 main에 들어와 `origin/main`을 merge했습니다. 코드 충돌은 없었습니다. 시각 기준선 5장(`goal-editor` 360·390, `workout-editor` 390·768·1280)이 양쪽에서 바뀌어 충돌했습니다. 두 변경이 모두 들어간 이미지는 어느 쪽에도 없어, 일단 main 쪽을 두고 이 merge 커밋의 CI 아티팩트로 다시 갱신합니다.
 - 병합 뒤 `npm run typecheck -w frontend`, `tsc -p e2e/tsconfig.json` 통과. `npm run test -w frontend -- src/components/page-header.test.tsx src/workout-draft.test.tsx src/body.test.tsx src/inbody-import.test.tsx src/period.test.tsx` 62 pass
+- `d807b68`의 CI `e2e-visual`에서 모달 기준선 6건만 실패했고, axe·반응형·터치 포함 81건은 통과했습니다. 실패한 기준선은 `goal-editor` 360·390, `machine-editor` 360·390, `workout-editor` 768·1280입니다. `machine-editor-390`·`workout-editor-1280`을 직접 보고, #237의 모달 배치와 이 PR의 머리글이 함께 보이는 것 외에 차이가 없음을 확인했습니다. 그 뒤 `visual-baselines` 아티팩트로 6장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.

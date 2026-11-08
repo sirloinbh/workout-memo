@@ -28,51 +28,52 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 
 ## 엔드포인트
 
-| 메서드 | 경로                            | 설명                                                                      |
-| ------ | ------------------------------- | ------------------------------------------------------------------------- |
-| GET    | `/api/health`                   | DB 연결 확인. `{ "status": "ok" }`                                        |
-| GET    | `/api/brands`                   | 브랜드 목록(id 순)                                                        |
-| GET    | `/api/official-machine-weights` | 제조사 공식 시작 저항 참고값. `?brand=` 선택                              |
-| GET    | `/api/machines`                 | 머신 목록과 연결된 공식 참고값(최근 등록 순)                              |
-| POST   | `/api/machines`                 | 머신 등록 → 201                                                           |
-| PUT    | `/api/machines/:id`             | 머신 수정                                                                 |
-| GET    | `/api/workouts`                 | `?from&to` 기간의 일지와 세트(최근 날짜 순)                               |
-| POST   | `/api/workouts`                 | 일지 저장 → 201 `{ id, version }`. `Idempotency-Key` 선택                 |
-| PUT    | `/api/workouts/:id`             | 일지 전체 교체 → `{ id, version }`. `version` 필수                        |
-| DELETE | `/api/workouts/:id`             | 일지와 세트 삭제 → `{ ok: true }`                                         |
-| GET    | `/api/goals`                    | 목표 목록과 서버 판정 `achieved`                                          |
-| POST   | `/api/goals`                    | 목표 등록 → 201                                                           |
-| DELETE | `/api/goals/:id`                | 목표 삭제 → `{ ok }`                                                      |
-| GET    | `/api/routines`                 | 저장된 루틴과 84일 일정(`schedule`)                                       |
-| POST   | `/api/routines`                 | 루틴 저장 → 201 `{ id }`                                                  |
-| GET    | `/api/routines/:id`             | 루틴 1개와 일정                                                           |
-| GET    | `/api/routine-progress`         | 진행 중 루틴의 오늘 목표·주간/12주 진행·이전 기록. 없으면 `routine: null` |
-| POST   | `/api/routines/:id/rests`       | 오늘 휴식 선택 `{ date }` → 201(적용) 또는 200(이미 적용)                 |
-| DELETE | `/api/routines/:id/rests/:date` | 당일 휴식 취소                                                            |
-| GET    | `/api/body-measurements`        | `?from&to` 기간의 신체 기록(날짜 순)                                      |
-| POST   | `/api/body-measurements`        | 신체 기록 등록 → 201. 같은 날짜는 409                                     |
-| PUT    | `/api/body-measurements/:id`    | 신체 기록 전체 교체. 생략한 값은 `null`                                   |
-| DELETE | `/api/body-measurements/:id`    | 신체 기록 삭제 → `{ ok: true }`                                           |
-| GET    | `/api/analysis`                 | `?from&to`(최대 371일) 종목별 PR·추정 1RM·부위별 주간 운동량              |
-| GET    | `/api/exercise-body-parts`      | 운동별 부위 매핑                                                          |
-| PUT    | `/api/exercise-body-parts`      | 운동 1개의 부위 매핑 교체. 빈 배열은 매핑 삭제                            |
-| GET    | `/api/exercise-weight-steps`    | 운동별 증량 단위(#86). 지정한 운동만                                      |
-| PUT    | `/api/exercise-weight-steps`    | 운동 1개의 증량 단위 저장. `null`은 기본 5 kg으로 되돌림                  |
-| GET    | `/api/goal-suggestion`          | `?exercise=`의 다음 목표 제안(저장하지 않음)                              |
-| GET    | `/api/cardio-sessions`          | `?from&to` 기간의 유산소 기록(최근 순). `kind` 선택                       |
-| GET    | `/api/cardio-sessions/records`  | 유산소 개인 기록(전체 기간): 종류별 최장 거리, 러닝 5km·10km 최고 기록    |
-| GET    | `/api/cardio-sessions/:id`      | 유산소 기록 1개                                                           |
-| POST   | `/api/cardio-sessions`          | 유산소 기록 등록 → 201. 같은 출처·외부 ID는 409                           |
-| PUT    | `/api/cardio-sessions/:id`      | 유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 `null`                  |
-| DELETE | `/api/cardio-sessions/:id`      | 유산소 기록 삭제 → `{ ok: true }`                                         |
-| GET    | `/api/export/cardio.csv`        | 유산소 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                 |
-| GET    | `/api/cardio-goals`             | 유산소 목표 목록과 서버 판정 `achieved`·`progress`                        |
-| POST   | `/api/cardio-goals`             | 유산소 목표 등록 → 201                                                    |
-| DELETE | `/api/cardio-goals/:id`         | 유산소 목표 삭제 → `{ ok: true }`                                         |
-| GET    | `/api/export/workouts.csv`      | 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                        |
-| GET    | `/api/backup`                   | 복원용 JSON 백업 파일                                                     |
-| POST   | `/api/backup/preview`           | 복원 미리보기(같은 절차 후 ROLLBACK)                                      |
-| POST   | `/api/backup/restore`           | 복원 실행. `mode: "replace"`는 `confirm: "전체 교체"` 필수                |
+| 메서드 | 경로                               | 설명                                                                      |
+| ------ | ---------------------------------- | ------------------------------------------------------------------------- |
+| GET    | `/api/health`                      | DB 연결 확인. `{ "status": "ok" }`                                        |
+| GET    | `/api/brands`                      | 브랜드 목록(id 순)                                                        |
+| GET    | `/api/official-machine-weights`    | 제조사 공식 시작 저항 참고값. `?brand=` 선택                              |
+| GET    | `/api/machines`                    | 머신 목록과 연결된 공식 참고값(최근 등록 순)                              |
+| POST   | `/api/machines`                    | 머신 등록 → 201                                                           |
+| PUT    | `/api/machines/:id`                | 머신 수정                                                                 |
+| GET    | `/api/workouts`                    | `?from&to` 기간의 일지와 세트(최근 날짜 순)                               |
+| POST   | `/api/workouts`                    | 일지 저장 → 201 `{ id, version }`. `Idempotency-Key` 선택                 |
+| PUT    | `/api/workouts/:id`                | 일지 전체 교체 → `{ id, version }`. `version` 필수                        |
+| DELETE | `/api/workouts/:id`                | 일지와 세트 삭제 → `{ ok: true }`                                         |
+| GET    | `/api/goals`                       | 목표 목록과 서버 판정 `achieved`                                          |
+| POST   | `/api/goals`                       | 목표 등록 → 201                                                           |
+| DELETE | `/api/goals/:id`                   | 목표 삭제 → `{ ok }`                                                      |
+| GET    | `/api/routines`                    | 저장된 루틴과 84일 일정(`schedule`)                                       |
+| POST   | `/api/routines`                    | 루틴 저장 → 201 `{ id }`                                                  |
+| GET    | `/api/routines/:id`                | 루틴 1개와 일정                                                           |
+| GET    | `/api/routine-progress`            | 진행 중 루틴의 오늘 목표·주간/12주 진행·이전 기록. 없으면 `routine: null` |
+| POST   | `/api/routines/:id/rests`          | 오늘 휴식 선택 `{ date }` → 201(적용) 또는 200(이미 적용)                 |
+| DELETE | `/api/routines/:id/rests/:date`    | 당일 휴식 취소                                                            |
+| GET    | `/api/body-measurements`           | `?from&to` 기간의 신체 기록(날짜 순)                                      |
+| POST   | `/api/body-measurements`           | 신체 기록 등록 → 201. 같은 날짜는 409                                     |
+| PUT    | `/api/body-measurements/:id`       | 신체 기록 전체 교체. 생략한 값은 `null`                                   |
+| DELETE | `/api/body-measurements/:id`       | 신체 기록 삭제 → `{ ok: true }`                                           |
+| GET    | `/api/analysis`                    | `?from&to`(최대 371일) 종목별 PR·추정 1RM·부위별 주간 운동량              |
+| GET    | `/api/exercise-body-parts`         | 운동별 부위 매핑                                                          |
+| PUT    | `/api/exercise-body-parts`         | 운동 1개의 부위 매핑 교체. 빈 배열은 매핑 삭제                            |
+| GET    | `/api/exercise-weight-steps`       | 운동별 증량 단위(#86). 지정한 운동만                                      |
+| PUT    | `/api/exercise-weight-steps`       | 운동 1개의 증량 단위 저장. `null`은 기본 5 kg으로 되돌림                  |
+| GET    | `/api/goal-suggestion`             | `?exercise=`의 다음 목표 제안(저장하지 않음)                              |
+| GET    | `/api/cardio-sessions`             | `?from&to` 기간의 유산소 기록(최근 순). `kind` 선택                       |
+| GET    | `/api/cardio-sessions/records`     | 유산소 개인 기록(전체 기간): 종류별 최장 거리, 러닝 5km·10km 최고 기록    |
+| GET    | `/api/cardio-sessions/:id`         | 유산소 기록 1개                                                           |
+| POST   | `/api/cardio-sessions`             | 유산소 기록 등록 → 201. 같은 출처·외부 ID는 409                           |
+| PUT    | `/api/cardio-sessions/:id`         | 유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 `null`                  |
+| DELETE | `/api/cardio-sessions/:id`         | 유산소 기록 삭제 → `{ ok: true }`                                         |
+| GET    | `/api/export/cardio.csv`           | 유산소 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                 |
+| GET    | `/api/cardio-goals`                | 유산소 목표 목록과 서버 판정 `achieved`·`progress`                        |
+| POST   | `/api/cardio-goals`                | 유산소 목표 등록 → 201                                                    |
+| DELETE | `/api/cardio-goals/:id`            | 유산소 목표 삭제 → `{ ok: true }`                                         |
+| GET    | `/api/cardio-goals/:id/suggestion` | 그 목표의 다음 목표 제안(저장하지 않음). 범위를 넘으면 `suggestion: null` |
+| GET    | `/api/export/workouts.csv`         | 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                        |
+| GET    | `/api/backup`                      | 복원용 JSON 백업 파일                                                     |
+| POST   | `/api/backup/preview`              | 복원 미리보기(같은 절차 후 ROLLBACK)                                      |
+| POST   | `/api/backup/restore`              | 복원 실행. `mode: "replace"`는 `confirm: "전체 교체"` 필수                |
 
 ## 주요 요청 본문
 
@@ -203,6 +204,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
   - 기간 누적: 주(월~일)·달력 월마다 판정합니다. 시작·종료일에 걸친 주기도 목표 기간 안의 기록만 세고 목표값은 그대로입니다. `progress`는 `{ kind: "period", current, periods, periods_achieved }`이고, `periods`의 각 주기는 `{ start, end, value, achieved }`(`start`·`end`는 달력 주기, `value`는 km·초·횟수)입니다. `current`는 오늘이 든 주기이며 시작 전·종료 후에는 `null`입니다. `achieved`는 `current`의 달성 여부입니다.
   - 기록 목표: `record_time`은 거리 ≥ 목표 거리인 한 기록의 전체 시간이 목표 시간 이하일 때 달성입니다(페이스로 추정하지 않음). `longest_distance`는 가장 긴 한 기록이 목표 거리 이상일 때 달성입니다. `progress`는 `{ kind: "record", best }`(가장 빠른 시간 초 또는 가장 긴 거리 km, 없으면 `null`)입니다.
 - 없는 목표는 404 "유산소 목표를 찾을 수 없습니다", 잘못된 경로 ID는 400입니다.
+- 다음 목표 제안(#251) `GET /api/cardio-goals/:id/suggestion` → `{ goal_id, suggestion }`. `suggestion`은 `POST /api/cardio-goals` 본문과 같은 모양이며 저장하지 않습니다. 2026-11-08 사용자 결정에 따라 그 목표의 목표값에서 올립니다(실제 기록 기준 아님): 누적 거리·최장 거리 +10%(0.1 km, 수영 0.05 km 단위), 누적 시간 +10%(1분 단위), 횟수 +1회, 기록 시간 -3%(5초 단위). 반올림해도 최소 한 단위는 바뀝니다. 종류·운동 종류·기간 단위·기록 거리는 같고, 시작일은 오늘(서울), 종료일은 원래 목표와 같은 길이입니다. 결과가 허용 범위를 넘으면 `null`입니다. 달성 여부와 관계없이 계산하며, 화면은 달성한 목표에만 보여 줍니다.
 
 ### 루틴, 백업
 

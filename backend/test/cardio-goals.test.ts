@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { type CardioGoalSession, goalPeriods, judgeCardioGoal } from '../src/cardio-goals.js';
+import {
+  type CardioGoalSession,
+  goalPeriods,
+  judgeCardioGoal,
+  suggestCardioGoal,
+} from '../src/cardio-goals.js';
 import { type CardioGoal, cardioGoalSchema } from '../src/domain.js';
 
 // #116: cardio goal judgment without a database. 2026-11-02 is a Monday, 2026-11-08 a Sunday.
@@ -241,4 +246,89 @@ test('the goal schema accepts each type only with its own targets', () => {
   // Korean particles follow the last syllable.
   const missing = cardioGoalSchema.safeParse({ ...base, goal_type: 'duration', period: 'week' });
   assert.equal(missing.error!.issues[0].message, '목표 시간을 입력하세요');
+});
+
+// #251: next goals (2026-11-08 decisions N1, N2, N4) from the goal's own targets.
+test('the next goal raises each target by its rule and keeps the goal length from today', () => {
+  const today = '2026-11-20';
+  const weekly = goal({
+    goal_type: 'distance',
+    period: 'week',
+    kind: 'running',
+    target_distance_km: 15,
+  });
+  // 4 weeks (11-02 ~ 11-29, 27 days) again from today.
+  assert.deepEqual(suggestCardioGoal(weekly, today), {
+    ...weekly,
+    target_distance_km: 16.5,
+    start_date: '2026-11-20',
+    deadline: '2026-12-17',
+  });
+  // Rounding: 0.1 km steps, but at least one step up (1 km × 1.1 = 1.1; 0.3 × 1.1 = 0.33 → 0.4).
+  const small = goal({ goal_type: 'distance', period: 'week', target_distance_km: 0.3 });
+  assert.equal(suggestCardioGoal(small, today)!.target_distance_km, 0.4);
+  // Swimming moves in 50 m: 1500 m × 1.1 = 1650 m.
+  const swim = goal({ goal_type: 'longest_distance', kind: 'swimming', target_distance_km: 1.5 });
+  assert.equal(suggestCardioGoal(swim, today)!.target_distance_km, 1.65);
+  const swim2 = goal({ goal_type: 'longest_distance', kind: 'swimming', target_distance_km: 1.2 });
+  assert.equal(suggestCardioGoal(swim2, today)!.target_distance_km, 1.3);
+  // Time totals: +10% in whole minutes (150 min → 165 min; 61 s → 120 s).
+  const time = goal({ goal_type: 'duration', period: 'week', target_duration_sec: 9000 });
+  assert.equal(suggestCardioGoal(time, today)!.target_duration_sec, 9900);
+  const tiny = goal({ goal_type: 'duration', period: 'week', target_duration_sec: 61 });
+  assert.equal(suggestCardioGoal(tiny, today)!.target_duration_sec, 120);
+  // Counts: +1.
+  const count = goal({ goal_type: 'count', period: 'week', target_count: 3 });
+  assert.equal(suggestCardioGoal(count, today)!.target_count, 4);
+  // Time records: 3% faster in 5 s steps, at least 5 s; the distance stays.
+  const fiveK = goal({
+    goal_type: 'record_time',
+    kind: 'running',
+    target_distance_km: 5,
+    target_duration_sec: 1800,
+  });
+  assert.deepEqual(
+    [
+      suggestCardioGoal(fiveK, today)!.target_duration_sec,
+      suggestCardioGoal(fiveK, today)!.target_distance_km,
+    ],
+    [1745, 5],
+  );
+  const short = goal({
+    goal_type: 'record_time',
+    kind: 'rowing',
+    target_distance_km: 0.5,
+    target_duration_sec: 100,
+  });
+  assert.equal(suggestCardioGoal(short, today)!.target_duration_sec, 95);
+  // Every suggestion is a valid goal for the API.
+  for (const g of [weekly, small, swim, swim2, time, tiny, count, fiveK, short])
+    assert.ok(cardioGoalSchema.safeParse(suggestCardioGoal(g, today)).success, g.goal_type);
+});
+
+test('no next goal past the allowed range', () => {
+  const today = '2026-11-20';
+  assert.equal(
+    suggestCardioGoal(goal({ goal_type: 'count', period: 'week', target_count: 1000 }), today),
+    null,
+  );
+  assert.equal(
+    suggestCardioGoal(
+      goal({ goal_type: 'distance', period: 'month', target_distance_km: 9500 }),
+      today,
+    ),
+    null,
+  );
+  assert.equal(
+    suggestCardioGoal(
+      goal({
+        goal_type: 'record_time',
+        kind: 'running',
+        target_distance_km: 0.1,
+        target_duration_sec: 5,
+      }),
+      today,
+    ),
+    null,
+  );
 });

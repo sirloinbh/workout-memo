@@ -132,3 +132,53 @@ export function judgeCardioGoal(
     },
   };
 }
+
+// #251: the next goal after an achieved one (2026-11-08 user decisions N1, N2, N4). It is
+// computed from the goal's own targets, never stored, and keeps the type, kind and period.
+const days = (from: string, to: string) =>
+  Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
+// Rounds to `step` and moves to at least the next step boundary past `from` in the direction.
+function stepPast(value: number, step: number, from: number, direction: 1 | -1) {
+  let next = Math.round(value / step) * step;
+  // Not a whole step past: take the next step boundary beyond `from` (61 s → 120 s, not 121 s).
+  if (direction * (next - from) < step / 2)
+    next =
+      direction === 1
+        ? (Math.floor(from / step + 1e-9) + 1) * step
+        : (Math.ceil(from / step - 1e-9) - 1) * step;
+  // Keep decimal steps exact (0.1 km, 0.05 km) for the 3-decimal distance rule.
+  return Math.round(next * 1000) / 1000;
+}
+
+/** The suggested next goal, or null when it would leave the allowed range. */
+export function suggestCardioGoal(goal: CardioGoal, today: string): CardioGoal | null {
+  const next: CardioGoal = {
+    ...goal,
+    start_date: today,
+    deadline: addDays(today, days(goal.start_date, goal.deadline)),
+  };
+  // Swimming moves by 50 m like it is shown in metres; every other kind by 0.1 km.
+  const kmStep = goal.kind === 'swimming' ? 0.05 : 0.1;
+  switch (goal.goal_type) {
+    case 'distance':
+    case 'longest_distance': {
+      const target = goal.target_distance_km!;
+      next.target_distance_km = stepPast(target * 1.1, kmStep, target, 1);
+      return next.target_distance_km <= 10000 ? next : null;
+    }
+    case 'duration': {
+      const target = goal.target_duration_sec!;
+      next.target_duration_sec = stepPast(target * 1.1, 60, target, 1);
+      return next.target_duration_sec <= 2678400 ? next : null;
+    }
+    case 'count':
+      next.target_count = goal.target_count! + 1;
+      return next.target_count <= 1000 ? next : null;
+    case 'record_time': {
+      // 3% faster, in 5-second steps and at least 5 seconds; the distance stays.
+      const target = goal.target_duration_sec!;
+      next.target_duration_sec = stepPast(target * 0.97, 5, target, -1);
+      return next.target_duration_sec >= 1 ? next : null;
+    }
+  }
+}

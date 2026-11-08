@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { AlertBanner } from './components/alert-banner';
+import { DateStepper, RangeSummary } from './components/date-stepper';
 import { SegmentedControl } from './components/segmented-control';
 import { ToggleChips } from './components/toggle-chips';
 import { Badge } from './components/ui/badge';
@@ -9,8 +11,8 @@ import { EmptyState } from './components/ui/empty-state';
 import { seoulDate } from './date';
 import { cn } from './lib/utils';
 
-// #102: the cards and PR rows use the common components; the period bar above them keeps
-// the shared legacy styles until #224's date controls are reused here.
+// #102: the whole analysis page is on the common components: period controls from #224
+// (DateStepper, RangeSummary), the load error from #223 (AlertBanner), cards and PR rows.
 const card = 'mt-5 gap-0 py-0 shadow-none';
 const cardHeader = 'px-4 pt-5 md:px-6 md:pt-6';
 const cardContent = 'px-4 pt-2 pb-3 md:px-6 md:pb-4';
@@ -139,29 +141,29 @@ export function Analysis() {
         그 중량입니다. 0kg(맨몸·보조 등 중량 미입력) 세트와 기본중량 미확인 머신 세트는 제외합니다.
         추정값은 실제로 들어 올린 기록이 아니며, 실측 1RM은 1회를 수행한 세트의 최고 총중량입니다.
       </p>
-      <div className="period-bar">
+      {/* #224's period controls; like the dashboard, the date wraps under the tabs on phones. */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <SegmentedControl
           label="분석 기간"
           options={[1, 4, 12].map((n) => ({ value: String(n), label: `${n}주` }))}
           value={String(weeks)}
           onValueChange={(value) => setWeeks(Number(value))}
         />
-        <div className="date-control">
-          <input
-            aria-label="분석 기준 날짜"
-            type="date"
-            value={anchor}
-            onChange={(e) => e.target.value && setAnchor(e.target.value)}
-          />
-        </div>
+        <DateStepper label="분석 기준 날짜" value={anchor} onValueChange={setAnchor} />
       </div>
-      <div className="range-label">
-        {from} — {to} <span>월요일 시작 주 · 기간 추이와 부위별 통계</span>
-      </div>
+      <RangeSummary from={from} to={to}>
+        월요일 시작 주 · 기간 추이와 부위별 통계
+      </RangeSummary>
       {error && (
-        <div role="alert" className="error">
-          {error} <button onClick={() => void load()}>다시 연결</button>
-        </div>
+        <AlertBanner
+          action={
+            <Button variant="outline" size="sm" onClick={() => void load()}>
+              다시 연결
+            </Button>
+          }
+        >
+          {error}
+        </AlertBanner>
       )}
       {loading && (
         <p role="status" className="text-body-sm text-muted-foreground">

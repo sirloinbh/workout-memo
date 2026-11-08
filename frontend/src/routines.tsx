@@ -483,6 +483,7 @@ export function Routines() {
                   {days.map((day, i) => (
                     <Label key={day} className="min-h-9 gap-2 text-body-sm pointer-coarse:min-h-11">
                       <Checkbox
+                        id={`rest-day-${i}`}
                         // Same as the machine form (#231): the box stays 16px against the legacy 44px button
                         // rule and its ::after area is 44px. Drop once project-standards#415 lands.
                         className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
@@ -561,7 +562,7 @@ export function Routines() {
                 {s.exercises.map((ex, j) => (
                   <div
                     data-slot="routine-exercise"
-                    className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 md:grid-cols-3"
+                    className="mt-3 grid grid-cols-2 items-end gap-3 border-t pt-3 md:grid-cols-3"
                     key={j}
                   >
                     <Label className={cn(fieldLabel, 'col-span-2 md:col-span-1')}>
@@ -597,10 +598,7 @@ export function Routines() {
                       ? (['sets', 'weight', 'reps', 'rep_min', 'rep_max'] as const)
                       : (['sets', 'weight', 'reps'] as const)
                     ).map((key) => (
-                      <Label
-                        key={key}
-                        className={cn(fieldLabel, key === 'weight' && 'col-span-2 md:col-span-1')}
-                      >
+                      <Label key={key} className={fieldLabel}>
                         {draft.progression === 'auto'
                           ? {
                               sets: '세트 수',

@@ -30,11 +30,11 @@ export function PageHeader({
         <p className="text-[9px] leading-normal font-semibold tracking-[2px] text-muted-foreground max-md:text-[8px]">
           {eyebrow}
         </p>
-        <h1 className="my-3 text-2xl leading-tight font-semibold tracking-tight xl:text-[28px]">
+        <h1 className="my-3 text-2xl leading-tight font-semibold tracking-[-1.2px] xl:text-[28px]">
           {title}
           <span className="text-muted-foreground">.</span>
         </h1>
-        <p className="text-meta text-muted-foreground">{description}</p>
+        <p className="text-meta leading-[1.7] text-muted-foreground">{description}</p>
       </div>
       {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
     </div>

@@ -194,6 +194,13 @@ test('refresh offers recovery and restores input without affecting server statis
     '2026-10-15',
   );
   expect(second.mutations(), 'recovery never auto-syncs').toHaveLength(0);
+  // The draft is no longer waiting, so the header button is enabled again (behind the dialog).
+  expect(
+    within(headers[headers.length - 1]).getByRole('button', {
+      name: '운동 기록하기',
+      hidden: true,
+    }),
+  ).toBeEnabled();
 });
 
 test('discard prevents another refresh from offering the same draft', async () => {

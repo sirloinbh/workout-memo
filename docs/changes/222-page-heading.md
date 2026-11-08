@@ -40,3 +40,13 @@
 - `npm run test -w frontend -- src/components/page-header.test.tsx src/workout-draft.test.tsx src/period.test.tsx src/body.test.tsx src/goal-list.test.tsx src/official-weights.test.tsx src/routing.test.tsx src/inbody-import.test.tsx`: 79 pass
 - `npm run typecheck -w frontend`, eslint(바뀐 파일), prettier: 통과
 - 로컬 전체 `npm run check`와 e2e는 메모리 부족 이력이 있어 실행하지 않았습니다. e2e(반응형·axe·터치·시각 기준선)는 PR CI로 확인합니다. 머리글이 있는 dashboard·journal·goals·machines·body 화면과 그 위에 뜨는 모달 이미지의 기준선이 바뀔 것으로 봅니다.
+
+## 변경 — 1차 리뷰 보완
+
+- 1차 리뷰는 필수 보완점이 없었고 선택 4건을 반영했습니다.
+  - 설명 문단: `text-meta`가 줄 간격을 16px로 줄여 두 줄 이상인 설명(신체 기록)의 줄 사이가 좁아졌습니다. 예전 `1.7`을 `leading-[1.7]`로 유지합니다.
+  - 제목 글자 간격: `tracking-tight`가 예전 -1.2px보다 넓어 `tracking-[-1.2px]`로 맞췄습니다.
+  - `e2e/ui-touch.spec.ts`: 터치 크기 검사 대상에서 더는 아무것도 고르지 않는 `a.primary`를 뺐습니다.
+  - `frontend/src/workout-draft.test.tsx`: 복구한 뒤에는 머리글 버튼이 다시 활성인지도 확인합니다.
+- `docs/design-system.md`의 앱 고유 컴포넌트 설명에 `PageHeader`를 적었습니다.
+- `npm run test -w frontend -- src/workout-draft.test.tsx src/components/page-header.test.tsx`: 24 pass. prettier 통과

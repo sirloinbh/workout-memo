@@ -216,3 +216,23 @@ test('the dashboard card leads with the count when no session has a distance', a
   expect(card).toHaveTextContent('45:00 · 거리 미입력');
   expect(card).not.toHaveTextContent('0 km');
 });
+
+test('a period change keeps the statistics mounted: the chosen metric stays and records are not reloaded', async () => {
+  const ui = mount('/journal?tab=cardio&from=2026-10-01&to=2026-10-10', [
+    running(1, '2026-10-05', 1800, 5),
+    running(2, '2026-10-14', 1200, 3),
+  ]);
+  const metric = async () =>
+    within(await screen.findByRole('radiogroup', { name: '지표' })).getByRole('radio', {
+      name: '시간',
+    });
+  await ui.user.click(await metric());
+  await waitFor(() => expect(ui.gets('/api/cardio-sessions/records')).toHaveLength(1));
+  // Switch to the 1주 preset: the list reloads for 10/12..10/18.
+  await ui.user.click(screen.getByRole('radio', { name: '1주' }));
+  await waitFor(() =>
+    expect(within(screen.getByLabelText('기간 합계')).getByText('3 km')).toBeInTheDocument(),
+  );
+  expect(await metric()).toHaveAttribute('aria-checked', 'true');
+  expect(ui.gets('/api/cardio-sessions/records')).toHaveLength(1);
+});

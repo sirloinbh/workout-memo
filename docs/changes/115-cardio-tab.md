@@ -98,3 +98,10 @@
 - (선택) 테스트: 직접 고른 기간과 `tab=cardio`가 있는 주소에서 대시보드로 가면 `?from&to`만 남는지, 첫 불러오기 실패 때 통계가 숨는지, 거리 없는 기록만 있을 때의 카드를 더했습니다. 기간 프리셋 뒤 대시보드 이동 테스트의 주석도 실제 확인 내용에 맞췄습니다.
 - 한계(반영 안 함): 근력 일지 연결 후보는 일지 탭이 불러온 기간 안의 일지뿐입니다. 폼에서 날짜를 기간 밖으로 바꾸면 그날 일지가 있어도 후보에 없습니다. 화면 검사 고정 데이터의 속도는 서버의 NUMERIC 반올림과 달리 실수로 계산해 소수 둘째 자리 경계에서 다를 수 있지만 지금 데이터에서는 같습니다.
 - `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx`: 89 pass. typecheck, eslint, prettier 통과
+
+## 변경 — fix: 2차 리뷰 보완
+
+- (선택, 1차 보완이 만든 회귀) 통계를 `ready`일 때만 그리게 하자 기간을 바꿀 때마다 `CardioStats`가 사라졌다 다시 붙었습니다. 그 결과 고른 지표가 '거리'로 돌아가고, 기간과 상관없는 개인 기록을 매번 다시 요청하고, 화면이 출렁였습니다. 이제 `error`일 때만 숨기고, 불러오는 동안에는 붙인 채로 `pending`을 넘겨 "통계를 불러오는 중…"을 보여 줍니다.
+- 추가 테스트: 기간 프리셋을 바꿔도 고른 지표('시간')가 남고 `/api/cardio-sessions/records`를 다시 요청하지 않음
+- (선택, 반영 안 함) 기간이 바뀐 직후 한 번의 렌더에서 새 기간과 옛 목록이 섞일 수 있습니다. 기간 필터를 거쳐 대개 빈 상태가 잠깐 보이는 정도이고, 이제 불러오는 동안은 "불러오는 중"이 보여 한계로 남깁니다.
+- `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx`: 90 pass. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.

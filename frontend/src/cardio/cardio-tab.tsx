@@ -44,10 +44,17 @@ export function CardioTab({
           onChanged?.();
         }}
       />
-      {/* A failed load is reported by the panel above; the statistics must not claim "no
-          sessions" for it, so they wait for a list that actually loaded. */}
-      {list.status === 'ready' && (
-        <CardioStats from={from} to={to} sessions={list.sessions} refreshKey={refreshKey} />
+      {/* A failed load is reported by the panel above, so the statistics must not claim "no
+          sessions" for it. While a period loads they stay mounted (keeping the chosen metric and
+          the loaded personal records) and say they are loading. */}
+      {list.status !== 'error' && (
+        <CardioStats
+          from={from}
+          to={to}
+          sessions={list.sessions}
+          refreshKey={refreshKey}
+          pending={list.status === 'loading'}
+        />
       )}
     </div>
   );

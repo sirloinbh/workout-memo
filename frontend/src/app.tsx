@@ -22,6 +22,8 @@ import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-
 import { Analysis } from './analysis';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
+import { listCardioSessions } from './cardio/api';
+import { CardioSummaryCard, CardioTab } from './cardio/cardio-tab';
 import { CardioGoals } from './cardio-goals';
 import { AlertBanner } from './components/alert-banner';
 import { DateStepper, RangeSummary } from './components/date-stepper';
@@ -325,6 +327,12 @@ const pages = {
   backup: '/backup',
 } as const;
 type Page = keyof typeof pages;
+// #115: the journal's record kinds; 근력 is the default and has no address parameter.
+type JournalTab = 'strength' | 'cardio';
+const journalTabs = [
+  { value: 'strength', label: '근력' },
+  { value: 'cardio', label: '유산소' },
+] as const satisfies readonly { value: JournalTab; label: string }[];
 const periodOptions = [
   { value: 'day', label: '1일' },
   { value: 'week', label: '1주' },
@@ -372,6 +380,28 @@ function Workspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const customRange = parseRange(searchParams.get('from'), searchParams.get('to'));
   const badRangeAddress = !customRange && (searchParams.has('from') || searchParams.has('to'));
+  // #115: the journal's 근력/유산소 tab lives in the address too (?tab=cardio), next to the
+  // range, so reloads and back/forward keep it. Each one changes only its own parameters.
+  const journalTab: JournalTab = searchParams.get('tab') === 'cardio' ? 'cardio' : 'strength';
+  const cardioTab = page === 'journal' && journalTab === 'cardio';
+  const setJournalTab = (next: JournalTab) =>
+    setSearchParams((current) => {
+      const params = new URLSearchParams(current);
+      if (next === 'cardio') params.set('tab', 'cardio');
+      else params.delete('tab');
+      return params;
+    });
+  const setRangeAddress = (range: { from: string; to: string } | null) =>
+    setSearchParams((current) => {
+      const params = new URLSearchParams(current);
+      params.delete('from');
+      params.delete('to');
+      if (range) {
+        params.set('from', range.from);
+        params.set('to', range.to);
+      }
+      return params;
+    });
   const [customOpen, setCustomOpen] = useState(false);
   const [customDraft, setCustomDraft] = useState({ from: '', to: '' });
   const [customErrors, setCustomErrors] = useState<{ from?: string; to?: string }>({});
@@ -606,6 +636,13 @@ function Workspace() {
     queryFn: () => api<Workout[]>(`/workouts?from=${from}&to=${to}`),
   });
   const goalsQuery = useQuery({ queryKey: ['goals'], queryFn: () => api<Goal[]>('/goals') });
+  // #115: the dashboard's cardio summary. Only the dashboard asks (the journal tab loads its
+  // own list), and a failure only hides the card.
+  const cardioQuery = useQuery({
+    queryKey: ['cardio-sessions', from, to],
+    queryFn: () => listCardioSessions(from, to).catch(() => []),
+    enabled: page === 'overview',
+  });
   const machinesQuery = useQuery({
     queryKey: ['machines'],
     queryFn: () => api<Machine[]>('/machines'),
@@ -633,6 +670,8 @@ function Workspace() {
     const kind = restKind(machine?.single_joint === true, parts);
     return kind ? restDurations[kind] : timer.duration;
   };
+  // The summary belongs to the dashboard only; the journal shows its own tab.
+  const cardioSessions = (page === 'overview' && cardioQuery.data) || [];
   const workouts = workoutsQuery.data ?? [],
     goals = goalsQuery.data ?? [],
     machines = machinesQuery.data ?? [],
@@ -707,9 +746,18 @@ function Workspace() {
     ['machines', '머신 라이브러리', Dumbbell],
     ['backup', '백업·내보내기', DatabaseBackup],
   ] as const;
-  // #85: pages sharing the period keep a directly chosen range in the address.
+  // #85: pages sharing the period keep a directly chosen range in the address. The journal's
+  // tab (#115) belongs to the journal only.
+  const rangeSearch = (() => {
+    const params = new URLSearchParams(location.search);
+    params.delete('tab');
+    const text = params.toString();
+    return text ? '?' + text : '';
+  })();
   const navItems: NavItem[] = nav.map(([key, label, icon]) => ({
-    to: pages[key] + (['overview', 'journal', 'body'].includes(key) ? location.search : ''),
+    to:
+      pages[key] +
+      (key === 'journal' ? location.search : ['overview', 'body'].includes(key) ? rangeSearch : ''),
     label,
     icon,
     end: true,
@@ -744,11 +792,11 @@ function Workspace() {
             setPeriod(key);
             setCustomOpen(false);
             setCustomErrors({});
-            if (customRange || badRangeAddress) setSearchParams({});
+            if (customRange || badRangeAddress) setRangeAddress(null);
           }}
           // The current preset also clears an invalid range left in the address.
           onReselect={() => {
-            if (badRangeAddress) setSearchParams({});
+            if (badRangeAddress) setRangeAddress(null);
           }}
         />
         {!customRange && !customOpen && (
@@ -766,7 +814,7 @@ function Workspace() {
             const errors = checkRange(customDraft.from, customDraft.to);
             setCustomErrors(errors);
             if (Object.keys(errors).length) return;
-            setSearchParams({ from: customDraft.from, to: customDraft.to });
+            setRangeAddress({ from: customDraft.from, to: customDraft.to });
             setCustomOpen(false);
           }}
         >
@@ -1005,31 +1053,34 @@ function Workspace() {
                       : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'
               }
               actions={
-                <Button
-                  // A recoverable local draft must be restored or discarded first (#101).
-                  disabled={!!recovery && (page === 'overview' || page === 'journal')}
-                  onClick={
-                    page === 'goals'
-                      ? () => setGoalEditor(true)
+                // #115: on the 유산소 tab the panel's own "유산소 기록 추가" is the main action.
+                !cardioTab && (
+                  <Button
+                    // A recoverable local draft must be restored or discarded first (#101).
+                    disabled={!!recovery && (page === 'overview' || page === 'journal')}
+                    onClick={
+                      page === 'goals'
+                        ? () => setGoalEditor(true)
+                        : page === 'machines'
+                          ? () =>
+                              setMachineEditor({
+                                brand_id: brand || brands[0]?.id,
+                                name: '',
+                                base_weight: null,
+                                notes: '',
+                                official_weight_id: null,
+                              })
+                          : newWorkout
+                    }
+                  >
+                    <Plus aria-hidden />
+                    {page === 'goals'
+                      ? '목표 추가'
                       : page === 'machines'
-                        ? () =>
-                            setMachineEditor({
-                              brand_id: brand || brands[0]?.id,
-                              name: '',
-                              base_weight: null,
-                              notes: '',
-                              official_weight_id: null,
-                            })
-                        : newWorkout
-                  }
-                >
-                  <Plus aria-hidden />
-                  {page === 'goals'
-                    ? '목표 추가'
-                    : page === 'machines'
-                      ? '머신 등록'
-                      : '운동 기록하기'}
-                </Button>
+                        ? '머신 등록'
+                        : '운동 기록하기'}
+                  </Button>
+                )
               }
             />
           )}
@@ -1081,10 +1132,39 @@ function Workspace() {
             </Card>
           )}
           {!ownPage && pageTimer}
-          {(page === 'overview' || page === 'journal') && (
+          {page === 'journal' && (
+            <SegmentedControl
+              label="기록 종류"
+              className="mb-4"
+              options={journalTabs}
+              value={journalTab}
+              onValueChange={setJournalTab}
+            />
+          )}
+          {cardioTab && (
             <>
               {periodControls}
-              <div className="mb-6 grid grid-cols-2 gap-2.5 lg:grid-cols-4 xl:gap-4">
+              <CardioTab
+                from={from}
+                to={to}
+                today={today()}
+                workouts={workouts.map((w) => ({
+                  id: w.id,
+                  date: cleanDate(w.date),
+                  title: w.title,
+                }))}
+                onChanged={() =>
+                  void queryClient.invalidateQueries({ queryKey: ['cardio-sessions'] })
+                }
+              />
+            </>
+          )}
+          {(page === 'overview' || (page === 'journal' && !cardioTab)) && (
+            <>
+              {periodControls}
+              <div
+                className={`mb-6 grid grid-cols-2 gap-2.5 xl:gap-4 ${cardioSessions.length ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
+              >
                 <StatCard
                   label="운동한 날"
                   value={String(days)}
@@ -1113,6 +1193,12 @@ function Workspace() {
                   icon={<Target size={19} />}
                   foot="목표 기간 내 기록 기준"
                 />
+                {/* #115: the fifth card fills a row of its own on phones. */}
+                {cardioSessions.length > 0 && (
+                  <div className="max-lg:col-span-2 [&>*]:h-full">
+                    <CardioSummaryCard sessions={cardioSessions} />
+                  </div>
+                )}
               </div>
               {page === 'journal' && (
                 <RoutineProgress

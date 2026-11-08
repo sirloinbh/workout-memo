@@ -14,13 +14,20 @@ import { CardioForm, type LinkableWorkout } from './cardio-form';
 import { CardioList } from './cardio-list';
 import { sessionLabel } from './format';
 
-// #115: the cardio records of a period, self-contained so the journal's cardio tab (PR ③) only
-// has to place it. It loads the period, lists it, and opens CardioForm to add or edit.
+// The state of the list a caller receives through onSessionsChange.
+export type CardioListStatus = 'loading' | 'error' | 'ready';
+
+// #115: the cardio records of a period, self-contained so the journal's cardio tab only has to
+// place it. It loads the period, lists it, and opens CardioForm to add or edit. The tab's
+// statistics reuse its list through `onSessionsChange`, and `onChanged` tells the caller after a
+// save or delete so the personal records and the dashboard summary can reload.
 export function CardioPanel({
   from,
   to,
   today = seoulDate(),
   workouts,
+  onSessionsChange,
+  onChanged,
 }: {
   from: string;
   to: string;
@@ -28,6 +35,11 @@ export function CardioPanel({
   today?: string;
   // Strength workouts the form may link to; it offers those on the session's date.
   workouts: readonly LinkableWorkout[];
+  // Called with the list on screen whenever it or its state changes ([] while a new period
+  // loads, with 'loading'; [] after a failed first load, with 'error').
+  onSessionsChange?: (sessions: CardioSession[], status: CardioListStatus) => void;
+  // Called after a session is saved or deleted (or found already deleted).
+  onChanged?: () => void;
 }) {
   const [sessions, setSessions] = useState<CardioSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +52,19 @@ export function CardioPanel({
   // undefined: closed, null: a new session, otherwise the session being edited.
   const [editing, setEditing] = useState<CardioSession | null | undefined>();
   const version = useRef(0);
+  // The latest callback, so a caller passing a new function on each render adds no calls.
+  const report = useRef(onSessionsChange);
+  useEffect(() => {
+    report.current = onSessionsChange;
+  });
+  // The list's state goes along, so a caller never reads a failed first load as "no sessions".
+  // A failed reload that kept its rows still counts as ready.
+  const listStatus: CardioListStatus = loading
+    ? 'loading'
+    : error && sessions.length === 0
+      ? 'error'
+      : 'ready';
+  useEffect(() => report.current?.(sessions, listStatus), [sessions, listStatus]);
 
   // `fresh`: a first load or a new period. It shows the loading line and drops the old rows so
   // they never sit under the new period. A reload after saving or deleting keeps the list (and
@@ -82,11 +107,14 @@ export function CardioPanel({
     try {
       await deleteCardioSession(session.id);
       setStatus('유산소 기록을 삭제했습니다');
+      onChanged?.();
     } catch (e) {
       // Already deleted elsewhere: the reload below shows the list without it. Any other
       // failure leaves the row in place (it may still exist) and needs no reload.
-      if (e instanceof RequestError && e.status === 404) setStatus('이미 삭제된 기록입니다');
-      else {
+      if (e instanceof RequestError && e.status === 404) {
+        setStatus('이미 삭제된 기록입니다');
+        onChanged?.();
+      } else {
         setActionError((e as Error).message);
         reload = false;
       }
@@ -175,6 +203,7 @@ export function CardioPanel({
           onSaved={() => {
             setEditing(undefined);
             setStatus('유산소 기록을 저장했습니다');
+            onChanged?.();
             void load();
           }}
         />

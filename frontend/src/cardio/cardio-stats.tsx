@@ -52,6 +52,7 @@ export function CardioStats({
   to,
   sessions: given,
   refreshKey,
+  pending = false,
 }: {
   from: string;
   to: string;
@@ -59,6 +60,9 @@ export function CardioStats({
   sessions: readonly CardioSession[];
   // Passed to CardioRecords: change it after a save or delete to reload the records.
   refreshKey?: number;
+  // The period's list is still loading: show that instead of "no sessions". The component
+  // stays mounted meanwhile, so the chosen metric and the loaded records are kept.
+  pending?: boolean;
 }) {
   // Every figure below uses only the sessions of from..to, so totals, buckets and the per-kind
   // views always agree even if a caller passes a wider list.
@@ -87,7 +91,11 @@ export function CardioStats({
             {from} ~ {to}
           </CardDescription>
         </CardHeader>
-        {sessions.length === 0 ? (
+        {pending && sessions.length === 0 ? (
+          <p className="px-6 py-14 text-center text-body-sm text-muted-foreground">
+            통계를 불러오는 중…
+          </p>
+        ) : sessions.length === 0 ? (
           <EmptyState
             className="m-4 md:m-6"
             headingLevel="h3"

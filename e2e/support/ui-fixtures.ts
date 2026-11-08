@@ -1,7 +1,11 @@
 import { expect, type Page } from '@playwright/test';
 
 import { type AnalysisSet, analyze } from '../../backend/src/analysis.js';
-import { type CardioGoalSession, judgeCardioGoal } from '../../backend/src/cardio-goals.js';
+import {
+  type CardioGoalSession,
+  judgeCardioGoal,
+  suggestCardioGoal,
+} from '../../backend/src/cardio-goals.js';
 import {
   cardioGoalSchema,
   cardioKinds,
@@ -366,6 +370,15 @@ function respond(url: URL): unknown {
   if (path === '/workouts') return inRange(workouts, url);
   if (path === '/goals') return goals;
   if (path === '/cardio-goals') return cardioGoals;
+  // #251: the next goal with the real server rule.
+  const suggestion = /^\/cardio-goals\/(\d+)\/suggestion$/.exec(path);
+  if (suggestion) {
+    const goal = cardioGoals.find((g) => g.id === Number(suggestion[1]));
+    if (goal) {
+      const { id, achieved: _a, progress: _p, ...input } = goal;
+      return { goal_id: id, suggestion: suggestCardioGoal(input, today) };
+    }
+  }
   if (path === '/cardio-sessions/records') return cardioRecords;
   if (path === '/cardio-sessions') return inRange(cardioRows, url);
   if (path === '/machines') return machines;

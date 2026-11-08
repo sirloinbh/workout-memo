@@ -134,6 +134,25 @@ test(
       assert.equal(goals[1].achieved, true);
       assert.deepEqual(goals[1].progress, { kind: 'record', best: 1800 });
 
+      // #251: the next goal from the stored targets, starting today (11-08) for the same length.
+      const next = await api(`/cardio-goals/${id}/suggestion`);
+      assert.equal(next.status, 200);
+      assert.deepEqual(next.data, {
+        goal_id: id,
+        suggestion: {
+          goal_type: 'distance',
+          kind: null,
+          period: 'week',
+          target_distance_km: 11,
+          target_duration_sec: null,
+          target_count: null,
+          start_date: '2026-11-08',
+          deadline: '2026-11-21',
+        },
+      });
+      assert.equal((await api('/cardio-goals/99999/suggestion')).status, 404);
+      assert.equal((await api('/cardio-goals/abc/suggestion')).status, 400);
+
       assert.deepEqual((await api(`/cardio-goals/${id}`, 'DELETE')).data, { ok: true });
       const gone = await api(`/cardio-goals/${id}`, 'DELETE');
       assert.equal(gone.status, 404);

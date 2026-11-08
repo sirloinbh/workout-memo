@@ -1,7 +1,7 @@
 import type express from 'express';
 import type { Pool } from 'pg';
 
-import { type CardioGoalSession, judgeCardioGoal } from '../cardio-goals.js';
+import { type CardioGoalSession, judgeCardioGoal, suggestCardioGoal } from '../cardio-goals.js';
 import { type CardioGoal, cardioGoalSchema } from '../domain.js';
 import { parseId, sendError } from '../standard/http.js';
 
@@ -54,6 +54,21 @@ export function registerCardioGoalRoutes(app: express.Express, pool: Pool, today
           )
         ).rows[0],
       );
+  });
+  // #251: the next goal after this one, computed and never stored (like GET /api/goal-suggestion).
+  // The screen offers it only on an achieved goal; `suggestion` is null past the allowed range.
+  app.get('/api/cardio-goals/:id/suggestion', async (req, res) => {
+    const goal = (
+      await pool.query<StoredGoal>(`SELECT ${goalColumns} FROM cardio_goals WHERE id=$1`, [
+        parseId(req.params.id, '유산소 목표'),
+      ])
+    ).rows[0];
+    if (!goal) {
+      sendError(res, 404, '유산소 목표를 찾을 수 없습니다');
+      return;
+    }
+    const { id: _id, created_at: _created, ...input } = goal;
+    res.json({ goal_id: goal.id, suggestion: suggestCardioGoal(input, today()) });
   });
   app.delete('/api/cardio-goals/:id', async (req, res) => {
     const r = await pool.query('DELETE FROM cardio_goals WHERE id=$1', [

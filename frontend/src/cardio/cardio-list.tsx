@@ -9,10 +9,14 @@ import {
   formatDuration,
   formatPace,
   formatSpeed,
+  paceOf,
+  sessionLabel,
+  speedOf,
 } from './format';
 
 // #115: one row per session, newest first as the API sends them. A session without distance
-// shows only its time: pace and speed are never guessed.
+// shows only its time: pace and speed are never guessed. Button names carry the start time or
+// duration (sessionLabel) so two sessions of one kind on one day stay distinguishable.
 export function CardioList({
   sessions,
   busy,
@@ -29,11 +33,12 @@ export function CardioList({
       {sessions.map((s) => {
         const date = s.date.slice(0, 10);
         const kind = cardioKindLabels[s.kind];
+        const label = sessionLabel(s);
         const figures = [
           formatDuration(s.duration_sec),
           formatDistance(s.kind, s.distance_km) ?? '거리 미입력',
-          formatPace(s.pace_sec_per_km),
-          formatSpeed(s.speed_kmh),
+          formatPace(paceOf(s.duration_sec, s.distance_km, s.pace_sec_per_km)),
+          formatSpeed(speedOf(s.duration_sec, s.distance_km, s.speed_kmh)),
         ].filter(Boolean);
         return (
           <ListItem key={s.id} className="flex-wrap gap-2.5 py-4 md:flex-nowrap md:gap-4">
@@ -52,7 +57,7 @@ export function CardioList({
                 variant="ghost"
                 size="sm"
                 disabled={busy}
-                aria-label={`${date} ${kind} 유산소 기록 수정`}
+                aria-label={`${label} 유산소 기록 수정`}
                 onClick={() => onEdit(s)}
               >
                 수정
@@ -61,7 +66,7 @@ export function CardioList({
                 variant="ghost"
                 size="sm"
                 disabled={busy}
-                aria-label={`${date} ${kind} 유산소 기록 삭제`}
+                aria-label={`${label} 유산소 기록 삭제`}
                 onClick={() => onDelete(s)}
               >
                 삭제

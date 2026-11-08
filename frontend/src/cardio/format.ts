@@ -1,7 +1,8 @@
 import type { CardioKind, Feedback } from '../contract';
 
-// #115: labels and display formats for cardio sessions. The API answers pace in seconds per
-// km and speed in km/h (both null without a distance); this file only turns them into text.
+// #115: labels and display formats for cardio sessions. Pace and speed are computed here from
+// the stored duration and distance, so the shown value is rounded once (the API's rounded
+// pace_sec_per_km and speed_kmh are only a fallback); both stay null without a distance.
 
 export const cardioKindLabels: Record<CardioKind, string> = {
   running: '러닝',
@@ -20,6 +21,18 @@ export const effortLabels: Record<Feedback, string> = {
   hard: '힘듦',
   medium: '중간',
   easy: '쉬움',
+};
+
+// A plain decimal: digits with at most one point or comma (a phone keypad's decimal comma),
+// optionally negative so the schema's range message answers "-1". Number() alone would also
+// read "0x10", "1e3" or "Infinity" and send a value nobody typed.
+const plainNumber = /^-?(\d+([.,]\d*)?|[.,]\d+)$/;
+// Empty stays null (not recorded, never 0); anything that is not a plain decimal becomes NaN
+// so the schema reports "숫자로 입력하세요" on that field.
+export const optionalNumber = (value: string) => {
+  const text = value.trim();
+  if (text === '') return null;
+  return plainNumber.test(text) ? Number(text.replace(',', '.')) : Number.NaN;
 };
 
 type DurationParts = { hours: string; minutes: string; seconds: string };
@@ -59,6 +72,16 @@ export function formatDuration(total: number): string {
   return hours ? `${hours}:${two(minutes)}:${two(seconds)}` : `${minutes}:${two(seconds)}`;
 }
 
+// Seconds per km from the stored values; the API value only when there is no distance to use.
+export function paceOf(durationSec: number, km: number | null, fallback: number | null = null) {
+  return km ? durationSec / km : fallback;
+}
+
+// km/h from the stored values, with the same fallback.
+export function speedOf(durationSec: number, km: number | null, fallback: number | null = null) {
+  return km && durationSec ? km / (durationSec / 3600) : fallback;
+}
+
 // Seconds per km → "5:30/km", rounded to whole seconds (329.6 → 5:30). Null without distance.
 export function formatPace(secPerKm: number | null): string | null {
   if (secPerKm === null) return null;
@@ -74,10 +97,32 @@ export function formatSpeed(kmh: number | null): string | null {
   return kmh === null ? null : `${number(1).format(kmh)} km/h`;
 }
 
-// Distance in km, except swimming in whole metres ("1,500 m"): pools and lap counts are in
-// metres. Pace and speed stay per km for every kind (#115 decision 3).
+// Distance in km with up to three decimals (42.195 km, 1 m precision like the schema), except
+// swimming in whole metres ("1,500 m"): pools and lap counts are in metres. Pace and speed
+// stay per km for every kind (#115 decision 3).
 export function formatDistance(kind: CardioKind, km: number | null): string | null {
   if (km === null) return null;
   if (kind === 'swimming') return `${number(0).format(Math.round(km * 1000))} m`;
-  return `${number(2).format(km)} km`;
+  return `${number(3).format(km)} km`;
+}
+
+// km ↔ m without float noise (5.02 × 1000 → 5020, not 5019.999…).
+const clean = (n: number) => Number(n.toPrecision(12));
+export const kmToMetres = (km: number) => clean(km * 1000);
+export const metresToKm = (m: number) => clean(m / 1000);
+
+// Names a session for its buttons and the delete confirmation. Date and kind alone can repeat
+// within a day, so the start time is added when known, otherwise the duration:
+// "2026-11-07 07:30 러닝" or "2026-11-07 러닝 30:30".
+export function sessionLabel(s: {
+  date: string;
+  kind: CardioKind;
+  start_time: string | null;
+  duration_sec: number;
+}): string {
+  const date = s.date.slice(0, 10);
+  const kind = cardioKindLabels[s.kind];
+  return s.start_time
+    ? `${date} ${s.start_time} ${kind}`
+    : `${date} ${kind} ${formatDuration(s.duration_sec)}`;
 }

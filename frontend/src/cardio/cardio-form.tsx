@@ -27,7 +27,15 @@ import {
 } from '../contract';
 import { cn } from '../lib/utils';
 import { type CardioSession, saveCardioSession } from './api';
-import { cardioKindLabels, effortLabels, parseDuration, splitDuration } from './format';
+import {
+  cardioKindLabels,
+  effortLabels,
+  kmToMetres,
+  metresToKm,
+  optionalNumber,
+  parseDuration,
+  splitDuration,
+} from './format';
 
 // A strength workout the session can be linked to.
 export type LinkableWorkout = { id: number; date: string; title: string };
@@ -56,10 +64,15 @@ type Draft = {
 } & Record<ExtraKey, string>;
 
 const text = (value: number | null) => (value === null ? '' : String(value));
-// Empty stays null (not recorded, never 0). A decimal comma from a phone keypad counts as a
-// point; anything unreadable becomes NaN so the schema reports "숫자로 입력하세요".
-const optionalNumber = (value: string) =>
-  value.trim() === '' ? null : Number(value.trim().replace(',', '.'));
+// Swimming distance is typed in metres, every other kind in km (2026-11-08 decision); the
+// stored value is always km. Converts the typed text between the two, leaving unreadable text.
+const distanceUnit = (kind: CardioKind) => (kind === 'swimming' ? 'm' : 'km');
+function convertDistance(text: string, from: CardioKind, to: CardioKind) {
+  if (distanceUnit(from) === distanceUnit(to)) return text;
+  const value = optionalNumber(text);
+  if (value === null || Number.isNaN(value)) return text;
+  return String(distanceUnit(to) === 'm' ? kmToMetres(value) : metresToKm(value));
+}
 
 function initialDraft(session: CardioSession | undefined, date: string): Draft {
   if (!session)
@@ -84,7 +97,10 @@ function initialDraft(session: CardioSession | undefined, date: string): Draft {
     kind: session.kind,
     date: session.date.slice(0, 10),
     ...splitDuration(session.duration_sec),
-    distance: text(session.distance_km),
+    distance:
+      session.distance_km !== null && session.kind === 'swimming'
+        ? String(kmToMetres(session.distance_km))
+        : text(session.distance_km),
     effort: session.effort,
     memo: session.memo,
     start_time: session.start_time ?? '',
@@ -126,6 +142,11 @@ export function CardioForm({
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
+  // Switching between swimming (m) and another kind (km) keeps the same physical distance:
+  // running "5" becomes swimming "5000", swimming "1500" becomes running "1.5".
+  const setKind = (kind: CardioKind) =>
+    setDraft((d) => ({ ...d, kind, distance: convertDistance(d.distance, d.kind, kind) }));
+  const unit = distanceUnit(draft.kind);
   const invalid = (key: string) => invalidProps(key, issues[key]);
   const issue = (key: string) => <FieldError name={key}>{issues[key]}</FieldError>;
 
@@ -142,14 +163,19 @@ export function CardioForm({
     event.preventDefault();
     if (saving) return;
     const duration = parseDuration(draft);
+    const typedDistance = optionalNumber(draft.distance);
+    const swimMetres = unit === 'm' && typedDistance !== null && !Number.isNaN(typedDistance);
+    const extraValues = Object.fromEntries(
+      extras.map((e) => [e.key, optionalNumber(draft[e.key])]),
+    ) as Record<ExtraKey, number | null>;
     const body = {
       date: draft.date,
       kind: draft.kind,
       // zod skips the schema's refinements (future date, max ≥ avg heart rate) while any field
       // fails, so an unreadable duration is stood in by 1 second and reported on its own below.
       duration_sec: 'seconds' in duration ? duration.seconds : 1,
-      distance_km: optionalNumber(draft.distance),
-      ...Object.fromEntries(extras.map((e) => [e.key, optionalNumber(draft[e.key])])),
+      distance_km: swimMetres ? metresToKm(typedDistance) : typedDistance,
+      ...extraValues,
       effort: draft.effort,
       start_time: draft.start_time || null,
       workout_id: draft.workout_id ? Number(draft.workout_id) : null,
@@ -161,9 +187,19 @@ export function CardioForm({
     const checked = cardioSessionSchemaFor(today).safeParse(body);
     const found = checked.success ? {} : fieldErrors(checked.error);
     if ('error' in duration) found.duration_sec = duration.error;
-    // For the same reason the future-date rule is checked here too, with the schema's message.
+    // For the same reason the cross-field rules are checked here too, with the schema's
+    // messages, so they show even while another field fails.
     if (!found.date && draft.date > today)
       found.date = '유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다';
+    const { avg_heart_rate: avg, max_heart_rate: max } = extraValues;
+    if (!found.max_heart_rate && !found.avg_heart_rate && avg !== null && max !== null && max < avg)
+      found.max_heart_rate = '최대 심박은 평균 심박보다 낮을 수 없습니다';
+    // Metres must be whole (the schema keeps 1 m precision) and the messages speak in metres.
+    if (
+      swimMetres &&
+      (!Number.isInteger(typedDistance) || typedDistance <= 0 || typedDistance > 1_000_000)
+    )
+      found.distance_km = '수영 거리는 1~1,000,000 m의 정수로 입력하세요';
     setIssues(found);
     if (Object.keys(found).length) {
       if (moreKeys.some((key) => found[key])) setMore(true);
@@ -198,7 +234,7 @@ export function CardioForm({
                 <select
                   className={selectField}
                   value={draft.kind}
-                  onChange={(e) => set('kind', e.target.value as CardioKind)}
+                  onChange={(e) => setKind(e.target.value as CardioKind)}
                   {...invalid('kind')}
                 >
                   {cardioKinds.map((kind) => (
@@ -230,7 +266,7 @@ export function CardioForm({
             <div className="grid gap-2 sm:grid-cols-3">
               {durationFields.map((f) => (
                 <div key={f.key} className="flex items-center gap-2">
-                  <label htmlFor={`cardio-${f.key}`} className="w-4 shrink-0 text-meta">
+                  <label htmlFor={`cardio-${f.key}`} className="mb-0 w-4 shrink-0 text-meta">
                     {f.short}
                   </label>
                   <NumberInput
@@ -251,26 +287,24 @@ export function CardioForm({
           </fieldset>
           <div className="mb-4 flex flex-col gap-2">
             <label htmlFor="cardio-distance" className="mb-0 text-meta text-muted-foreground">
-              거리 km (선택)
+              거리 {unit} (선택)
             </label>
             <NumberInput
               id="cardio-distance"
-              label="거리 km"
+              label={`거리 ${unit}`}
               className="md:pointer-coarse:[&_input]:text-base"
-              step={0.5}
+              step={unit === 'm' ? 25 : 0.5}
               min={0}
-              max={1000}
-              inputMode="decimal"
+              max={unit === 'm' ? 1_000_000 : 1000}
+              inputMode={unit === 'm' ? 'numeric' : 'decimal'}
               placeholder="미입력"
               value={draft.distance}
               onValueChange={(value) => set('distance', value)}
               {...invalid('distance_km')}
             />
             {issue('distance_km')}
-            {draft.kind === 'swimming' && (
-              <p className={formHint}>
-                수영 거리도 km로 입력하세요. 1,500 m는 1.5입니다. 목록에는 m로 보여 줍니다.
-              </p>
+            {unit === 'm' && (
+              <p className={formHint}>수영 거리는 m로 입력합니다. 저장할 때 km로 바꿉니다.</p>
             )}
           </div>
           <div className="mb-4 flex flex-col items-start gap-2 text-meta text-muted-foreground">
@@ -371,9 +405,13 @@ export function CardioForm({
                 </Label>
                 {issue('workout_id')}
                 <p className={cn(formHint, 'mb-4')}>
-                  {linkable.length
-                    ? '같은 날짜의 근력 일지 중에서 고릅니다.'
-                    : '이 날짜에는 연결할 근력 일지가 없습니다.'}
+                  {linkedElsewhere
+                    ? linkedElsewhere.date
+                      ? `다른 날짜(${linkedElsewhere.date.slice(0, 10)})의 근력 일지에 연결돼 있습니다.`
+                      : '다른 날짜의 근력 일지에 연결돼 있습니다.'
+                    : linkable.length
+                      ? '같은 날짜의 근력 일지 중에서 고릅니다.'
+                      : '이 날짜에는 연결할 근력 일지가 없습니다.'}
                 </p>
               </div>
             </div>

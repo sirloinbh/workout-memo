@@ -12,7 +12,7 @@ import { RequestError } from '../lib/api';
 import { type CardioSession, deleteCardioSession, listCardioSessions } from './api';
 import { CardioForm, type LinkableWorkout } from './cardio-form';
 import { CardioList } from './cardio-list';
-import { cardioKindLabels } from './format';
+import { sessionLabel } from './format';
 
 // #115: the cardio records of a period, self-contained so the journal's cardio tab (PR ③) only
 // has to place it. It loads the period, lists it, and opens CardioForm to add or edit.
@@ -31,48 +31,67 @@ export function CardioPanel({
 }) {
   const [sessions, setSessions] = useState<CardioSession[]>([]);
   const [loading, setLoading] = useState(true);
+  // A failed load (with "다시 연결") and a failed delete are shown apart: a reload clears only
+  // the first, so a delete failure stays until the next action.
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   // undefined: closed, null: a new session, otherwise the session being edited.
   const [editing, setEditing] = useState<CardioSession | null | undefined>();
   const version = useRef(0);
 
-  const load = useCallback(async () => {
-    const current = ++version.current;
-    setLoading(true);
-    try {
-      const data = await listCardioSessions(from, to);
-      // Only the newest period request may replace the list.
-      if (current !== version.current) return;
-      setSessions(data);
-      setError('');
-    } catch (e) {
-      if (current === version.current) setError((e as Error).message);
-    } finally {
-      if (current === version.current) setLoading(false);
-    }
-  }, [from, to]);
+  // `fresh`: a first load or a new period. It shows the loading line and drops the old rows so
+  // they never sit under the new period. A reload after saving or deleting keeps the list (and
+  // the focused row) on screen until the answer replaces it.
+  const load = useCallback(
+    async (fresh = false) => {
+      const current = ++version.current;
+      if (fresh) {
+        setLoading(true);
+        setSessions([]);
+      }
+      try {
+        const data = await listCardioSessions(from, to);
+        // Only the newest request may replace the list.
+        if (current !== version.current) return;
+        setSessions(data);
+        setError('');
+      } catch (e) {
+        if (current !== version.current) return;
+        setSessions([]);
+        setError((e as Error).message);
+      } finally {
+        if (current === version.current) setLoading(false);
+      }
+    },
+    [from, to],
+  );
   useEffect(() => {
-    void load();
+    void load(true);
   }, [load]);
 
   async function remove(session: CardioSession) {
-    const label = `${session.date.slice(0, 10)} ${cardioKindLabels[session.kind]}`;
-    if (busy || !confirm(`${label} 유산소 기록을 삭제할까요?`)) return;
+    if (busy || !confirm(`${sessionLabel(session)} 유산소 기록을 삭제할까요?`)) return;
     setBusy(true);
     setStatus('');
+    setActionError('');
+    let reload = true;
     try {
       await deleteCardioSession(session.id);
       setStatus('유산소 기록을 삭제했습니다');
     } catch (e) {
-      // Already deleted elsewhere: the reload below shows the list without it.
+      // Already deleted elsewhere: the reload below shows the list without it. Any other
+      // failure leaves the row in place (it may still exist) and needs no reload.
       if (e instanceof RequestError && e.status === 404) setStatus('이미 삭제된 기록입니다');
-      else setError((e as Error).message);
+      else {
+        setActionError((e as Error).message);
+        reload = false;
+      }
     } finally {
       setBusy(false);
     }
-    await load();
+    if (reload) await load();
   }
 
   // A new session starts today when today is in the period, otherwise on the period's last
@@ -84,7 +103,7 @@ export function CardioPanel({
       {error && (
         <AlertBanner
           action={
-            <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+            <Button type="button" variant="outline" size="sm" onClick={() => void load(true)}>
               다시 연결
             </Button>
           }
@@ -92,6 +111,7 @@ export function CardioPanel({
           {error}
         </AlertBanner>
       )}
+      {actionError && <AlertBanner>{actionError}</AlertBanner>}
       <Notice className="mb-4" notice={status ? { kind: 'status', text: status } : undefined} />
       <Card className="gap-0 py-0 shadow-none">
         <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
@@ -109,6 +129,7 @@ export function CardioPanel({
               disabled={busy}
               onClick={() => {
                 setStatus('');
+                setActionError('');
                 setEditing(null);
               }}
             >
@@ -135,6 +156,7 @@ export function CardioPanel({
             busy={busy}
             onEdit={(session) => {
               setStatus('');
+              setActionError('');
               setEditing(session);
             }}
             onDelete={(session) => void remove(session)}

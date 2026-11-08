@@ -5,7 +5,13 @@ import {
   formatDuration,
   formatPace,
   formatSpeed,
+  kmToMetres,
+  metresToKm,
+  optionalNumber,
+  paceOf,
   parseDuration,
+  sessionLabel,
+  speedOf,
   splitDuration,
 } from './format';
 
@@ -55,9 +61,46 @@ test('pace is m:ss/km rounded to whole seconds, speed km/h with one decimal', ()
   expect(formatSpeed(null)).toBeNull();
 });
 
+test('pace and speed come from duration and distance, rounded once', () => {
+  // 6589 s over 20 km is 329.45 s/km → 5:29. A pace already rounded to 329.5 would show 5:30.
+  expect(formatPace(paceOf(6589, 20, 329.5))).toBe('5:29/km');
+  expect(formatPace(paceOf(1830, 5.02))).toBe('6:05/km');
+  expect(formatSpeed(speedOf(2400, 1.5))).toBe('2.3 km/h');
+  // Without a distance the API value (null) is used: nothing is guessed.
+  expect(paceOf(3725, null, null)).toBeNull();
+  expect(speedOf(3725, null, null)).toBeNull();
+});
+
+test('only plain decimals are read as numbers', () => {
+  expect(optionalNumber('')).toBeNull();
+  expect(optionalNumber('  ')).toBeNull();
+  expect(optionalNumber('5')).toBe(5);
+  expect(optionalNumber(' 5.02 ')).toBe(5.02);
+  expect(optionalNumber('1,5')).toBe(1.5);
+  expect(optionalNumber('.5')).toBe(0.5);
+  expect(optionalNumber('-1')).toBe(-1);
+  for (const text of ['0x10', '1e3', '1,500.5', 'Infinity', 'abc', '1 5', '--1'])
+    expect(optionalNumber(text)).toBeNaN();
+});
+
+test('km and m convert without float noise', () => {
+  expect(kmToMetres(5)).toBe(5000);
+  expect(kmToMetres(5.02)).toBe(5020);
+  expect(kmToMetres(1.005)).toBe(1005);
+  expect(metresToKm(1500)).toBe(1.5);
+  expect(metresToKm(1234)).toBe(1.234);
+});
+
+test('a session label adds the start time, or the duration without one', () => {
+  const run = { date: '2026-11-07', kind: 'running', duration_sec: 1830 } as const;
+  expect(sessionLabel({ ...run, start_time: '07:30' })).toBe('2026-11-07 07:30 러닝');
+  expect(sessionLabel({ ...run, start_time: null })).toBe('2026-11-07 러닝 30:30');
+});
+
 test('distance is km for every kind except swimming, which shows metres', () => {
   expect(formatDistance('running', 5.02)).toBe('5.02 km');
-  expect(formatDistance('outdoor_cycling', 42.195)).toBe('42.2 km');
+  expect(formatDistance('outdoor_cycling', 42.195)).toBe('42.195 km');
+  expect(formatDistance('running', 10)).toBe('10 km');
   expect(formatDistance('swimming', 1.5)).toBe('1,500 m');
   expect(formatDistance('swimming', 0.025)).toBe('25 m');
   expect(formatDistance('swimming', null)).toBeNull();

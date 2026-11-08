@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
-import { type ApiRequest, fixClock, json, mockApi } from '../test/api';
+import { type ApiRequest, deferred, fixClock, json, mockApi } from '../test/api';
 import type { CardioSession } from './api';
 import { CardioPanel } from './cardio-panel';
 
@@ -46,6 +46,8 @@ const fixture = (): CardioSession[] => [
     kind: 'swimming',
     duration_sec: 2400,
     distance_km: 1.5,
+    // Linked to the strength workout of the day before.
+    workout_id: 8,
     pace_sec_per_km: 1600,
     speed_kmh: 2.25,
   },
@@ -143,8 +145,11 @@ test('creating sends the core fields as POST and reloads the list', async () => 
   await user.selectOptions(within(dialog()).getByLabelText('종류'), '수영');
   await user.type(field('운동 시간 분'), '40');
   await user.type(field('운동 시간 초'), '5');
-  await user.type(field('거리 km'), '1,5');
-  expect(within(dialog()).getByText(/1,500 m는 1.5입니다/)).toBeInTheDocument();
+  // Swimming distance is typed in metres and saved in km.
+  expect(within(dialog()).queryByRole('textbox', { name: '거리 km' })).toBeNull();
+  await user.type(field('거리 m'), '1500');
+  expect(dialog()).toHaveTextContent('수영 거리는 m로 입력합니다. 저장할 때 km로 바꿉니다.');
+  expect(dialog()).not.toHaveTextContent('1,500 m는 1.5입니다');
   await user.click(within(dialog()).getByRole('button', { name: '힘듦' }));
   await user.type(within(dialog()).getByLabelText('메모 (선택)'), '자유형');
   await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
@@ -248,14 +253,104 @@ test('nothing is sent for a future date, zero time or an invalid heart rate', as
   expect(field('최대 심박 bpm (선택)')).toHaveAccessibleDescription(
     '최대 심박은 평균 심박보다 낮을 수 없습니다',
   );
+
+  // Text that Number() would read but nobody types as a number ("1e3", "0x10") is a field
+  // error, and the heart-rate cross check still shows while another field fails.
+  await user.type(field('거리 km'), '1e3');
+  await user.type(field('칼로리 kcal (선택)'), '0x10');
+  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  expect(field('거리 km')).toHaveAccessibleDescription('거리를 숫자로 입력하세요');
+  expect(field('칼로리 kcal (선택)')).toHaveAccessibleDescription(/숫자로 입력하세요/);
+  expect(field('최대 심박 bpm (선택)')).toHaveAccessibleDescription(
+    '최대 심박은 평균 심박보다 낮을 수 없습니다',
+  );
   expect(requests.some((r) => r.method === 'POST')).toBe(false);
+});
+
+test('switching to and from swimming keeps the typed distance in m or km', async () => {
+  const user = userEvent.setup();
+  mount();
+  await list();
+  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
+  const kind = within(dialog()).getByLabelText('종류');
+  await user.type(field('거리 km'), '5');
+  await user.selectOptions(kind, '수영');
+  expect(field('거리 m')).toHaveValue('5000');
+  expect(within(dialog()).getByText('거리 m (선택)')).toBeInTheDocument();
+  await user.clear(field('거리 m'));
+  await user.type(field('거리 m'), '1500');
+  await user.selectOptions(kind, '러닝');
+  expect(field('거리 km')).toHaveValue('1.5');
+  // Between two km kinds nothing changes.
+  await user.selectOptions(kind, '걷기');
+  expect(field('거리 km')).toHaveValue('1.5');
+});
+
+test('a swimming distance must be whole metres', async () => {
+  const user = userEvent.setup();
+  const { requests } = mount();
+  await list();
+  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
+  await user.selectOptions(within(dialog()).getByLabelText('종류'), '수영');
+  await user.type(field('운동 시간 분'), '30');
+  await user.type(field('거리 m'), '1500.5');
+  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  expect(field('거리 m')).toHaveAccessibleDescription(
+    '수영 거리는 1~1,000,000 m의 정수로 입력하세요',
+  );
+  expect(requests.some((r) => r.method === 'POST')).toBe(false);
+});
+
+test('editing a swim session shows metres and keeps its link to another day', async () => {
+  const user = userEvent.setup();
+  const { requests } = mount();
+  await list();
+  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 수정' }));
+  expect(field('거리 m')).toHaveValue('1500');
+  const link = within(dialog()).getByLabelText('연결할 근력 일지');
+  expect(link).toHaveValue('8');
+  expect(dialog()).toHaveTextContent('다른 날짜(2026-11-07)의 근력 일지에 연결돼 있습니다.');
+  expect(dialog()).not.toHaveTextContent('이 날짜에는 연결할 근력 일지가 없습니다.');
+  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  const put = requests.find((r) => r.method === 'PUT')!;
+  expect(put.path).toBe('/api/cardio-sessions/2');
+  expect(put.body).toMatchObject({ kind: 'swimming', distance_km: 1.5, workout_id: 8 });
+});
+
+test('two sessions of one kind on one day get distinct button names', async () => {
+  const twin = (id: number, extra: Partial<CardioSession>): CardioSession => ({
+    ...base,
+    id,
+    date: '2026-11-07',
+    kind: 'running',
+    duration_sec: 1830,
+    distance_km: null,
+    pace_sec_per_km: null,
+    speed_kmh: null,
+    ...extra,
+  });
+  mount((request) =>
+    request.method === 'GET'
+      ? [twin(1, { start_time: '07:30' }), twin(2, { start_time: '19:00' }), twin(3, {})]
+      : undefined,
+  );
+  await list();
+  for (const name of [
+    '2026-11-07 07:30 러닝 유산소 기록 수정',
+    '2026-11-07 19:00 러닝 유산소 기록 수정',
+    '2026-11-07 러닝 30:30 유산소 기록 수정',
+    '2026-11-07 러닝 30:30 유산소 기록 삭제',
+  ])
+    expect(screen.getByRole('button', { name })).toBeInTheDocument();
 });
 
 test('editing an imported session PUTs the whole record with its source and external id', async () => {
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '2026-11-07 러닝 유산소 기록 수정' }));
+  await user.click(screen.getByRole('button', { name: '2026-11-07 07:30 러닝 유산소 기록 수정' }));
   expect(screen.getByRole('heading', { name: '유산소 기록 수정' })).toBeInTheDocument();
   // The stored values are filled in; extra values open the more section.
   expect(field('운동 시간 시')).toHaveValue('');
@@ -306,7 +401,7 @@ test('a server refusal such as a 409 duplicate stays in the open form', async ()
       : undefined,
   );
   await list();
-  await user.click(screen.getByRole('button', { name: '2026-11-07 러닝 유산소 기록 수정' }));
+  await user.click(screen.getByRole('button', { name: '2026-11-07 07:30 러닝 유산소 기록 수정' }));
   await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
   expect(await within(dialog()).findByRole('alert')).toHaveTextContent(
     '같은 출처와 외부 ID의 유산소 기록이 이미 있습니다',
@@ -322,15 +417,107 @@ test('deleting asks first, then removes and reloads; cancelling sends nothing', 
   await list();
   const confirm = vi.mocked(window.confirm);
   confirm.mockReturnValueOnce(false);
-  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 유산소 기록 삭제' }));
-  expect(confirm).toHaveBeenLastCalledWith('2026-11-06 수영 유산소 기록을 삭제할까요?');
+  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }));
+  expect(confirm).toHaveBeenLastCalledWith('2026-11-06 수영 40:00 유산소 기록을 삭제할까요?');
   expect(requests.some((r) => r.method === 'DELETE')).toBe(false);
 
-  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 유산소 기록 삭제' }));
+  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }));
   expect(await screen.findByRole('status')).toHaveTextContent('유산소 기록을 삭제했습니다');
   const removed = requests.find((r) => r.method === 'DELETE')!;
   expect(removed.path).toBe('/api/cardio-sessions/2');
   expect(requests.filter((r) => r.method === 'GET')).toHaveLength(2);
+});
+
+test('a failed delete shows its own error, keeps the row and does not reload', async () => {
+  const user = userEvent.setup();
+  const { requests } = mount((request) =>
+    request.method === 'DELETE' ? json({ error: '삭제하지 못했습니다' }, 500) : undefined,
+  );
+  await list();
+  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }));
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('삭제하지 못했습니다');
+  // Not the load failure banner: there is nothing to reconnect.
+  expect(within(alert).queryByRole('button', { name: '다시 연결' })).toBeNull();
+  expect(screen.queryByRole('status')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }),
+  ).toBeInTheDocument();
+  expect(requests.filter((r) => r.method === 'GET')).toHaveLength(1);
+});
+
+test('deleting a session already removed elsewhere (404) says so and reloads', async () => {
+  const user = userEvent.setup();
+  let gone = false;
+  const { requests } = mount((request) => {
+    if (request.method === 'DELETE') {
+      gone = true;
+      return json({ error: '유산소 기록을 찾을 수 없습니다' }, 404);
+    }
+    if (request.method === 'GET' && gone) return fixture().filter((s) => s.id !== 2);
+    return undefined;
+  });
+  await list();
+  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }));
+  expect(await screen.findByRole('status')).toHaveTextContent('이미 삭제된 기록입니다');
+  await waitFor(() =>
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(2),
+  );
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(requests.filter((r) => r.method === 'GET')).toHaveLength(2);
+});
+
+test('a reload after saving keeps the list on screen until the answer arrives', async () => {
+  const user = userEvent.setup();
+  const reload = deferred<CardioSession[]>();
+  let gets = 0;
+  mount((request) => {
+    if (request.method !== 'GET') return undefined;
+    gets += 1;
+    return gets === 1 ? fixture() : reload.promise;
+  });
+  await list();
+  await user.click(screen.getByRole('button', { name: '2026-11-07 07:30 러닝 유산소 기록 수정' }));
+  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  await waitFor(() => expect(gets).toBe(2));
+  expect(screen.queryByText('기록을 불러오는 중…')).toBeNull();
+  expect(screen.getByRole('list', { name: '유산소 기록' })).toBeInTheDocument();
+  reload.resolve(fixture());
+});
+
+test('a new period clears the old rows and ignores a late answer for the old period', async () => {
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
+  const old = deferred<CardioSession[]>();
+  const fresh = deferred<CardioSession[]>();
+  const { requests } = mockApi((request) =>
+    request.url.searchParams.get('from') === '2026-10-26' ? old.promise : fresh.promise,
+  );
+  const { rerender } = render(
+    <CardioPanel from="2026-10-26" to="2026-11-01" today={today} workouts={workouts} />,
+  );
+  expect(screen.getByText('기록을 불러오는 중…')).toBeInTheDocument();
+  rerender(<CardioPanel from="2026-11-02" to={today} today={today} workouts={workouts} />);
+  await waitFor(() => expect(requests).toHaveLength(2));
+  fresh.resolve(fixture().slice(0, 1));
+  expect(await list()).toBeInTheDocument();
+  // The old period answers last: it must not replace the new period's list.
+  old.resolve(fixture());
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(1);
+
+  // Switching again shows the loading line, not the previous period's rows.
+  const next = deferred<CardioSession[]>();
+  mockApi(() => next.promise);
+  rerender(<CardioPanel from="2026-11-09" to="2026-11-15" today={today} workouts={workouts} />);
+  expect(screen.getByText('기록을 불러오는 중…')).toBeInTheDocument();
+  expect(screen.queryByRole('list', { name: '유산소 기록' })).toBeNull();
+  next.resolve([]);
+  expect(
+    await screen.findByRole('heading', { name: '선택한 기간에 유산소 기록이 없습니다' }),
+  ).toBeInTheDocument();
 });
 
 test('without a pinned today the form uses the Seoul date, not the device date', async () => {

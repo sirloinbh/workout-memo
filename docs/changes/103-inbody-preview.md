@@ -29,3 +29,9 @@
 - `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx`: 교체 직후 11 pass, 테스트 추가 뒤 `inbody-import.test.tsx` 5 pass
 - `npm run typecheck -w frontend`, eslint(바뀐 파일), prettier: 통과
 - 한계: e2e 고정 화면은 인바디 패널을 열지 않아, 이 패널은 시각 기준선·터치·axe 검사 대상이 아닙니다. 화면 테스트로만 확인합니다. 로컬 전체 `npm run check`와 e2e는 메모리 부족 이력이 있어 실행하지 않았습니다.
+
+## 변경 — 1차 리뷰와 main 병합
+
+- 1차 리뷰는 필수 보완점이 없었습니다. 선택 2건은 6단계(`style.css` 정리)로 넘깁니다. 열 선택 `select`의 비활성 모양은 select 상수를 합칠 때, 일부 행 저장 실패 문구를 `AlertBanner`로 보이게 하는 일은 백업 화면 `AlertBanner` 교체와 함께 합니다. 코드 보완이 없어 2차 리뷰는 하지 않습니다.
+- `9e7836a`의 CI는 모두 통과했고 시각 기준선 변화도 없었습니다.
+- 병합 직전 main에 #232(#105 세트 카드)가 들어왔습니다. 겹치는 파일은 없지만 공용 부품(`components/number-input.tsx`)과 e2e 변경이 있어 바로 병합 조건에 맞지 않아 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx` 13 pass, `npm run typecheck -w frontend` 통과

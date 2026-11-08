@@ -82,7 +82,7 @@ http://localhost:5201 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세�
 
 운영 배포는 개인 AWS 계정의 Lightsail 서버 한 대(월 약 $7~8, $10 예산 알림)에서 허용한 IP만 접속하도록 구성합니다. 준비·적용·배포·롤백·백업·복원 절차는 [배포·운영 문서](docs/deployment.md)를 따릅니다. 로컬 실행 시 포트는 계속 localhost에만 바인딩됩니다.
 
-개인용 앱 8개의 공유 서버·DB 운영 대안과 가정별 월 예산은 [공유 호스팅 비용 문서](docs/shared-hosting-costs.md)를 참고하세요.
+개인용 앱 8개의 공유 서버·DB 운영 대안과 가정별 월 예산은 중앙 리포의 [공유 호스팅 비용 문서](https://github.com/sirloinbh/project-standards/blob/main/docs/costs.md)를 참고하세요.
 
 ## 프로젝트 전용 GitHub 계정
 

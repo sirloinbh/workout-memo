@@ -285,24 +285,43 @@ test('the list shows one summary line per exercise and one exercise in detail at
     'Row최고 80kg · 추정 1RM 101.33kg · 2026-10-13',
     'Bench Press최고 100kg · 추정 1RM 116.67kg · 2026-10-12',
   ]);
-  // The first exercise is shown until one is picked; only one detail exists.
+  // Before a pick the first exercise is shown (wide screens) but not announced as current.
   expect(document.querySelectorAll('[data-slot="exercise-pr"]')).toHaveLength(1);
-  expect(items[0]).toHaveAttribute('aria-current', 'true');
+  expect(items[0]).toHaveAttribute('data-shown');
+  expect(items[0]).not.toHaveAttribute('aria-current');
   expect(screen.getByRole('heading', { level: 3, name: 'Dip' })).toBeInTheDocument();
 
+  // Wide screen (the test default): picking keeps focus on the list.
   await ui.user.click(items[1]);
-  const heading = screen.getByRole('heading', { level: 3, name: 'Row' });
-  expect(heading).toHaveFocus();
+  expect(items[1]).toHaveFocus();
   expect(items[1]).toHaveAttribute('aria-current', 'true');
-  expect(items[0]).not.toHaveAttribute('aria-current');
+  expect(items[0]).not.toHaveAttribute('data-shown');
   expect(document.querySelectorAll('[data-slot="exercise-pr"]')).toHaveLength(1);
   expect(screen.getByRole('button', { name: 'Row 부위 지정' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Dip 부위 지정' })).toBeNull();
-
-  // "운동 목록" goes back to the list; the first exercise is shown again on wide screens.
-  await ui.user.click(screen.getByRole('button', { name: '운동 목록' }));
-  expect(items[0]).toHaveAttribute('aria-current', 'true');
   expect(ui.requests.filter((r) => r.method !== 'GET')).toHaveLength(0);
+});
+
+test('on a phone a pick focuses the detail and 운동 목록 returns focus to that exercise (#125)', async () => {
+  const media = window.matchMedia;
+  window.matchMedia = (query: string) => ({
+    ...media(query),
+    matches: query === '(max-width: 767px)',
+  });
+  try {
+    const ui = mount([row('2026-10-12', 'Bench Press', 100, 5), row('2026-10-13', 'Row', 80, 8)]);
+    await openPage('종목 분석', ui.user);
+    await loaded();
+    const list = screen.getByRole('list', { name: '운동 목록' });
+    const bench = within(list).getByRole('button', { name: /^Bench Press/ });
+    await ui.user.click(bench);
+    expect(screen.getByRole('heading', { level: 3, name: 'Bench Press' })).toHaveFocus();
+    await ui.user.click(screen.getByRole('button', { name: '운동 목록' }));
+    expect(bench).toHaveFocus();
+    expect(bench).not.toHaveAttribute('aria-current');
+  } finally {
+    window.matchMedia = media;
+  }
 });
 
 test('parts without sets fold into a closed details under the week (#125)', async () => {

@@ -105,13 +105,17 @@ export function Analysis() {
   // #125: the exercise picked from the list; null shows the list on phones.
   const [selected, setSelected] = useState<string | null>(null);
   const detailHeading = useRef<HTMLHeadingElement>(null);
-  const focusDetail = useRef(false);
+  const listButtons = useRef(new Map<string, HTMLButtonElement>());
+  const focusAfter = useRef<{ to: 'detail' } | { to: 'list'; key: string } | null>(null);
   useEffect(() => {
-    // Picking or leaving an exercise moves focus to the shown detail, so a phone user lands on it.
-    if (!focusDetail.current) return;
-    focusDetail.current = false;
-    detailHeading.current?.focus();
-    detailHeading.current?.scrollIntoView?.({ block: 'start' });
+    // On phones the list and the detail replace each other, so focus follows the one shown:
+    // the detail heading after a pick, the picked exercise's button after going back.
+    const target = focusAfter.current;
+    focusAfter.current = null;
+    if (target?.to === 'detail') {
+      detailHeading.current?.focus();
+      detailHeading.current?.scrollIntoView?.({ block: 'start' });
+    } else if (target) listButtons.current.get(target.key)?.focus();
   }, [selected]);
   const { from, to } = analysisRange(anchor, weeks);
   const version = useRef(0);
@@ -153,9 +157,19 @@ export function Analysis() {
   // tap; from 768px both sit side by side and the first exercise is shown until one is picked.
   const shown = data?.exercises.find((x) => x.key === selected) ?? data?.exercises[0];
   function pick(key: string | null) {
+    if (key === selected) return;
+    const previous = selected;
     setSelected(key);
     setEditing(null);
-    focusDetail.current = key !== null;
+    // From 768px the list and the detail stay side by side, so focus stays on the list.
+    const narrow = window.matchMedia('(max-width: 767px)').matches;
+    focusAfter.current = !narrow
+      ? null
+      : key !== null
+        ? { to: 'detail' }
+        : previous !== null
+          ? { to: 'list', key: previous }
+          : null;
   }
   return (
     <section data-slot="analysis-page">
@@ -238,8 +252,15 @@ export function Analysis() {
                       <li key={x.key}>
                         <button
                           type="button"
-                          aria-current={x.key === shown.key ? 'true' : undefined}
-                          className="flex w-full flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=true]:bg-accent pointer-coarse:min-h-11"
+                          ref={(el) => {
+                            if (el) listButtons.current.set(x.key, el);
+                            else listButtons.current.delete(x.key);
+                          }}
+                          // The first exercise is shown on wide screens before any pick; only
+                          // a picked one is announced as current.
+                          aria-current={x.key === selected ? 'true' : undefined}
+                          data-shown={x.key === shown.key || undefined}
+                          className="flex w-full flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 data-shown:bg-accent pointer-coarse:min-h-11"
                           onClick={() => pick(x.key)}
                         >
                           <span className="text-body-sm font-medium [overflow-wrap:anywhere]">

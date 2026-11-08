@@ -65,3 +65,8 @@
 - 사용자 결정 반영이라 3차 리뷰는 하지 않습니다.
 - `NumberInput`은 단위가 정수면 숫자 키패드(`numeric`)를 고릅니다. 5 kg로 바꾸면 중량 칸에서 소수점을 칠 수 없게 되어, 중량 칸에 `inputMode="decimal"`을 직접 줬습니다. 기존 테스트의 `inputmode="decimal"` 확인이 이를 잡았습니다.
 - 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/workout-draft.test.tsx src/components/number-input.test.tsx src/set-completion.test.tsx` 44 pass, typecheck·eslint·prettier 통과
+
+## 시각 기준선
+
+- origin/main을 합친 head `afc9c74`의 CI(run 42428096115)에서 `e2e-visual`이 `768px › workout-editor 모달` 1장만 실패했습니다(80 pass). diff 이미지에서 차이는 세트 영역(한 줄 → "1세트" 카드, 증감 버튼)뿐이었습니다.
+- 같은 실행의 `visual-baselines` 아티팩트로 `e2e/__screenshots__/ui-visual.spec.ts/workout-editor-768.png` 1장을 갱신했습니다. 다른 화면은 바뀌지 않았습니다(360·390px 편집 창은 세트 영역이 화면 밖이라 차이가 없습니다).

@@ -53,3 +53,10 @@
 - 권장 1: 키보드가 열린 동안 `visualViewport`의 `scroll`마다 입력 중인 칸으로 되돌리던 것을, 키보드 높이가 늘었을 때만 하도록 바꿨습니다. 사용자의 스크롤을 끌어당기지 않습니다. 단위 테스트에 키보드가 열린 뒤 `scroll` 이벤트에 다시 스크롤하지 않는지 확인을 더했습니다.
 - 권장 2: 기준선 갱신은 CI 결과를 보고 합니다(아래 시각 기준선).
 - 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck·eslint·prettier 통과
+
+## 시각 기준선
+
+- head `2c7a2ef`의 CI(run 42432279662)에서 `e2e-visual`이 예상한 8장만 실패했습니다: 360·390px의 `workout-editor`·`goal-editor`·`machine-editor`, 768·1280px의 `workout-editor`. 새 e2e "390px 모바일 모달" 2개와 반응형·가로 넘침 검사는 통과했습니다.
+- 실제 이미지를 확인했습니다. 390px 일지 편집은 화면 전체를 채우고 저장 버튼이 아래에 붙어 있습니다. 목표 폼은 화면 아래에 붙은 전체 너비 시트입니다. 768·1280px 일지 편집은 모달 모양이 그대로이고, 저장 버튼만 모달 아래에 붙었습니다.
+- 같은 실행의 `visual-baselines` 아티팩트로 이 8장을 갱신했습니다.
+- 아티팩트에는 `routines-*` 4장도 다르게 들어 있었습니다. PR CI는 최신 main을 합친 상태로 돌기 때문에, 그사이 main에 들어온 #233(루틴 폼)의 화면이 찍힌 것입니다. 이 PR의 변경이 아니므로 넣지 않았고, 이어서 origin/main을 합쳐 main의 기준선을 받습니다.

@@ -8,6 +8,7 @@ import { bodyPartMappingSchema } from './analysis.js';
 import { exportQuery, restoreRequest } from './backup.js';
 import {
   bodyMeasurementSchema,
+  cardioGoalSchema,
   cardioSessionSchema,
   date,
   dateRange,
@@ -202,6 +203,9 @@ export const operations: Record<string, Operation> = {
   },
   'DELETE /api/cardio-sessions/:id': { status: [200, 400, 404] },
   'GET /api/export/cardio.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
+  'GET /api/cardio-goals': { status: [200] },
+  'POST /api/cardio-goals': { body: ['CardioGoal', cardioGoalSchema], status: [201, 400] },
+  'DELETE /api/cardio-goals/:id': { status: [200, 400, 404] },
   'GET /api/export/workouts.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
   'GET /api/backup': { status: [200] },
   'POST /api/backup/preview': {

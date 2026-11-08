@@ -65,6 +65,9 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 | PUT    | `/api/cardio-sessions/:id`      | 유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 `null`                  |
 | DELETE | `/api/cardio-sessions/:id`      | 유산소 기록 삭제 → `{ ok: true }`                                         |
 | GET    | `/api/export/cardio.csv`        | 유산소 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                 |
+| GET    | `/api/cardio-goals`             | 유산소 목표 목록과 서버 판정 `achieved`·`progress`                        |
+| POST   | `/api/cardio-goals`             | 유산소 목표 등록 → 201                                                    |
+| DELETE | `/api/cardio-goals/:id`         | 유산소 목표 삭제 → `{ ok: true }`                                         |
 | GET    | `/api/export/workouts.csv`      | 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                        |
 | GET    | `/api/backup`                   | 복원용 JSON 백업 파일                                                     |
 | POST   | `/api/backup/preview`           | 복원 미리보기(같은 절차 후 ROLLBACK)                                      |
@@ -162,6 +165,26 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 - 응답은 저장한 필드와 `id`, `created_at`, `updated_at`, 계산값 `pace_sec_per_km`(초/km, 소수 1자리)·`speed_kmh`(km/h, 소수 2자리)입니다. 계산값은 저장하지 않고 조회할 때 SQL로 계산하며 거리가 없으면 둘 다 `null`입니다.
 - 목록 `GET /api/cardio-sessions?from&to[&kind]`는 날짜·시작 시각 최근 순입니다. 없는 기록은 404 "유산소 기록을 찾을 수 없습니다", 잘못된 경로 ID는 400 "유산소 기록 ID가 올바르지 않습니다"입니다.
 - 구간(랩·인터벌)과 GPS 경로는 저장하지 않습니다(요약값만).
+
+### 유산소 목표 `GET`·`POST /api/cardio-goals`, `DELETE /api/cardio-goals/:id` (#116)
+
+- 근력 목표(`/api/goals`)와 따로 저장합니다. 판정 기준은 2026-11-08 사용자 결정입니다(#116 댓글).
+- `goal_type`과 필요한 목표값:
+
+| `goal_type`        | 뜻                                | `period`            | 목표값                                      | `kind`                |
+| ------------------ | --------------------------------- | ------------------- | ------------------------------------------- | --------------------- |
+| `distance`         | 기간마다 거리 합계                | `week`·`month` 필수 | `target_distance_km`                        | 선택(`null`이면 전체) |
+| `duration`         | 기간마다 시간 합계                | 필수                | `target_duration_sec`                       | 선택                  |
+| `count`            | 기간마다 기록 횟수                | 필수                | `target_count`                              | 선택                  |
+| `record_time`      | 한 기록이 거리 이상을 시간 이내에 | `null`              | `target_distance_km`, `target_duration_sec` | 필수                  |
+| `longest_distance` | 한 기록의 최장 거리               | `null`              | `target_distance_km`                        | 필수                  |
+
+- 그 종류에 쓰지 않는 목표값은 `null`이어야 합니다(400). 범위: 거리 0 초과 10000 km 이하·소수점 셋째 자리, 시간 1~2678400초(31일), 횟수 1~1000. 종료일은 시작일과 같거나 이후이고, 목표 기간은 5년(1826일) 이하입니다.
+- 판정(조회할 때마다 서버가 계산, 저장하지 않음):
+  - 시작일~종료일과 오늘(서울) 사이의 유산소 기록만 셉니다. `kind`가 있으면 그 종류만 셉니다. 거리 없는 기록은 거리 목표에서만 빠집니다.
+  - 기간 누적: 주(월~일)·달력 월마다 판정합니다. 시작·종료일에 걸친 주기도 목표 기간 안의 기록만 세고 목표값은 그대로입니다. `progress`는 `{ kind: "period", current, periods, periods_achieved }`이고, `periods`의 각 주기는 `{ start, end, value, achieved }`(`start`·`end`는 달력 주기, `value`는 km·초·횟수)입니다. `current`는 오늘이 든 주기이며 시작 전·종료 후에는 `null`입니다. `achieved`는 `current`의 달성 여부입니다.
+  - 기록 목표: `record_time`은 거리 ≥ 목표 거리인 한 기록의 전체 시간이 목표 시간 이하일 때 달성입니다(페이스로 추정하지 않음). `longest_distance`는 가장 긴 한 기록이 목표 거리 이상일 때 달성입니다. `progress`는 `{ kind: "record", best }`(가장 빠른 시간 초 또는 가장 긴 거리 km, 없으면 `null`)입니다.
+- 없는 목표는 404 "유산소 목표를 찾을 수 없습니다", 잘못된 경로 ID는 400입니다.
 
 ### 루틴, 백업
 

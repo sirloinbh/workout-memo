@@ -1,7 +1,9 @@
 import { expect, type Page } from '@playwright/test';
 
 import { type AnalysisSet, analyze } from '../../backend/src/analysis.js';
+import { type CardioGoalSession, judgeCardioGoal } from '../../backend/src/cardio-goals.js';
 import {
+  cardioGoalSchema,
   defaultWeightStep,
   type RoutinePlan,
   routineSchedule,
@@ -152,6 +154,46 @@ const workouts = [
     sets: [set('벤치프레스', 92.5, 10), set('레그프레스', 160, 12, { machine_id: 2 })],
   },
 ];
+// #116: cardio goals judged with the real server function on fixed sessions: a weekly running
+// distance in progress, a time record already met and a weekly count that has ended.
+const cardioSessions: CardioGoalSession[] = [
+  { date: '2026-10-06', kind: 'running', duration_sec: 2400, distance_km: 7 },
+  { date: '2026-10-09', kind: 'running', duration_sec: 3000, distance_km: 9 },
+  { date: '2026-10-13', kind: 'running', duration_sec: 1750, distance_km: 5.2 },
+  { date: '2026-10-14', kind: 'indoor_cycling', duration_sec: 2700, distance_km: null },
+];
+const cardioGoals = [
+  {
+    id: 3,
+    goal_type: 'distance',
+    kind: 'running',
+    period: 'week',
+    target_distance_km: 15,
+    start_date: '2026-10-05',
+    deadline: '2026-10-25',
+  },
+  {
+    id: 2,
+    goal_type: 'record_time',
+    kind: 'running',
+    target_distance_km: 5,
+    target_duration_sec: 1800,
+    start_date: '2026-10-01',
+    deadline: '2026-12-31',
+  },
+  {
+    id: 1,
+    goal_type: 'count',
+    period: 'week',
+    target_count: 3,
+    start_date: '2026-09-28',
+    deadline: '2026-10-11',
+  },
+].map(({ id, ...input }) => {
+  const goal = cardioGoalSchema.parse(input);
+  return { id, ...goal, ...judgeCardioGoal(goal, cardioSessions, today) };
+});
+
 const goals = [
   {
     id: 2,
@@ -266,6 +308,7 @@ function respond(url: URL): unknown {
   const path = url.pathname.replace(/^\/api/, '');
   if (path === '/workouts') return inRange(workouts, url);
   if (path === '/goals') return goals;
+  if (path === '/cardio-goals') return cardioGoals;
   if (path === '/machines') return machines;
   if (path === '/brands') return brands;
   if (path === '/official-machine-weights') return [];

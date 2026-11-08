@@ -74,3 +74,4 @@
 - 기준선 2장은 이 브랜치 것을 임시로 두고, 병합 후 CI 결과로 다시 받습니다.
 - 병합 후: typecheck·eslint·prettier 통과, `npm run test -w frontend -- --maxWorkers=1`로 set-completion·rest-by-exercise·routines·modal·workout-draft·page-header·loading-placeholders 7개 파일 62 pass
 - 병합 후 CI(e30a418)에서 e2e-visual은 `workout-editor` 768·1280px 2장만 실패했습니다. diff 이미지에서 모달 안쪽은 같고, 뒤 배경의 페이지 머리글과 "운동 기록하기" 버튼만 #242의 `PageHeader`로 바뀌었습니다. push 실행(run 42471364741)의 `visual-baselines` 산출물에서 이 2장을 옮겼습니다. 나머지 42장은 저장소와 같았습니다.
+- 두 번째 병합: 기준선 갱신 후 CI(9929d69)는 모두 통과했지만, 병합 직전 확인에서 main에 #252·#254(유산소 기록·목표)가 들어와 `app.tsx`가 겹치고 e2e·shared 변경이 있어 origin/main을 다시 병합했습니다. 충돌은 없었습니다. typecheck·eslint 통과, set-completion·rest-by-exercise·routines·cardio-goals·workout-draft 5개 파일 54 pass

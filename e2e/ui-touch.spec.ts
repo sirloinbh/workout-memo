@@ -60,6 +60,21 @@ function violations(root: Locator) {
 const overflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 
+// #198: what sits inside a closed details is not rendered, so the checks above would skip it.
+// Open them all first; only these touch checks see the opened state.
+const openDetails = (root: Locator) =>
+  root.evaluateAll((roots) => {
+    for (const scope of roots) for (const el of scope.querySelectorAll('details')) el.open = true;
+  });
+
+// #198: an InBody CSV export with the four columns found automatically, as in the unit test.
+const inbodyCsv = [
+  '측정일시,체중(kg),체지방률(%),골격근량(kg),기타',
+  '2026.10.01 07:30,72.4,18.3,33.1,x',
+  '2026.10.08 07:30,72.0,18.1,33.2,x',
+  '잘못된 날짜,71.5,,,x',
+].join('\n');
+
 for (const { width, height } of touchWidths) {
   test.describe(`터치 ${width}px`, () => {
     test.use({ viewport: { width, height }, hasTouch: true, isMobile: true });
@@ -67,6 +82,7 @@ for (const { width, height } of touchWidths) {
     test('모든 화면의 입력·누름 영역이 기준을 지키고 가로로 넘치지 않는다', async ({ page }) => {
       for (const { path } of pages) {
         await openPage(page, path);
+        await openDetails(page.locator('main .legacy'));
         expect(await violations(page.locator('main .legacy')), path).toEqual([]);
         expect(await overflow(page), `${path} 가로 넘침(px)`).toBeLessThanOrEqual(0);
       }
@@ -105,8 +121,31 @@ for (const { width, height } of touchWidths) {
       await page.getByLabel('운동 일정 방식').selectOption('weekday');
       await page.getByLabel('주차 목표 방식').selectOption('manual');
       await expect(page.getByRole('checkbox', { name: '월' })).toBeVisible();
+      await openDetails(page.locator('main .legacy'));
       expect(await violations(page.locator('main .legacy'))).toEqual([]);
       expect(await overflow(page), '가로 넘침(px)').toBeLessThanOrEqual(0);
+    });
+
+    // #198: the body record form and the InBody import open only on demand; the preview table
+    // with its row Checkboxes appears only after a file is read.
+    test('신체 기록의 기록 폼과 인바디 미리보기가 기준을 지킨다', async ({ page }) => {
+      await openPage(page, '/body');
+      await page.getByRole('button', { name: '신체 기록 추가' }).click();
+      await expect(page.getByRole('button', { name: '신체 기록 저장' })).toBeVisible();
+      expect(await violations(page.locator('main .legacy')), '기록 폼').toEqual([]);
+      expect(await overflow(page), '기록 폼 가로 넘침(px)').toBeLessThanOrEqual(0);
+
+      await page.getByRole('button', { name: '인바디 가져오기' }).click();
+      const panel = page.getByRole('region', { name: '인바디 가져오기' });
+      await panel.getByLabel('인바디 파일 또는 결과지 사진').setInputFiles({
+        name: 'inbody.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(inbodyCsv),
+      });
+      await expect(panel.getByRole('region', { name: '인바디 미리보기' })).toBeVisible();
+      await expect(panel.getByRole('checkbox', { name: '1행 저장' })).toBeVisible();
+      expect(await violations(page.locator('main .legacy')), '인바디 미리보기').toEqual([]);
+      expect(await overflow(page), '인바디 미리보기 가로 넘침(px)').toBeLessThanOrEqual(0);
     });
   });
 }

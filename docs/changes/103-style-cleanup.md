@@ -15,7 +15,7 @@
 
 - `frontend/src/style.css`: 클래스 이름을 소스(`frontend/src`, `e2e`) 전체에서 낱말 단위로 찾아, `className`으로 쓰는 곳이 없는 규칙을 지웠습니다.
   - 지운 규칙: `.card`, `.section-title`(+`p`, 760px 규칙), `.count`(+대비 규칙 목록), `.text-button`, `.empty`(+`h3`, `p`), `.workout-row`(+`:last-child`, 760px 규칙), `.workout-info`(+`h3`, `p`, 760px 규칙), `.icon-button`, `.full`. `workout-row`는 이제 `data-slot` 이름으로만 남아 있습니다.
-  - 남긴 규칙: `.error`(종목 분석 #102가 아직 씀), `:where(.legacy) h2`(종목 분석·루틴짜기·백업의 페이지 제목), `.form-grid`·`.modal …`·`.workout-fields`·`.subtle-button`(일지 편집 #105), `.form-hint`(일지 편집), `.page-heading`·`.eyebrow`·`.heading-dot`·`.primary`·`.heading-actions`(페이지 머리글 #222), `.period-bar`·`.date-control`·`.range-label`(종목 분석), `.routine-page`(루틴짜기), `.field-error`(`FieldError`), 터치 규칙의 `label:has(> input[type='checkbox'])`(루틴짜기 휴식 요일)
+  - 남긴 규칙: `.error`(종목 분석 #102가 아직 씀), `:where(.legacy) h2`(종목 분석·루틴짜기·백업의 페이지 제목), `.form-grid`·`.modal …`·`.workout-fields`·`.subtle-button`(일지 편집 #105), `.form-hint`(일지 편집), `.page-heading`·`.eyebrow`·`.heading-dot`·`.primary`·`.heading-actions`(페이지 머리글 #222), `.period-bar`·`.date-control`·`.range-label`(종목 분석), `.routine-page`(루틴짜기), `.field-error`(`FieldError`)
 - `frontend/src/components/form-styles.ts`(새 파일): 폼 공통 클래스 `fieldLabel`, `touchText`, `selectField`, `textareaField`, `formHint`를 한 곳에 뒀습니다. 그동안 `app.tsx`(나의 목표·머신 폼), `body.tsx`, `inbody-import.tsx`, `backup.tsx`가 같은 문자열을 따로 들고 있었습니다.
   - `selectField`·`textareaField`에 `disabled:cursor-not-allowed disabled:opacity-50`을 넣었습니다(#236 리뷰 선택 1). 인바디 열 선택은 저장 중 `fieldset`이 비활성이 될 때 흐려지고, 머신 폼은 원래 비활성이 되는 일이 없어 모양이 같습니다.
   - 백업 화면의 `nativeSelect`는 `selectField`가 되며 `text-foreground`, `aria-invalid:border-destructive`가 더해집니다. 화면에서 보이는 차이는 없습니다.
@@ -36,3 +36,11 @@
 - `npm run test -w frontend -- src/backup.test.tsx src/inbody-import.test.tsx src/body.test.tsx src/official-weights.test.tsx src/rest-by-exercise.test.tsx src/forms.test.tsx src/goal-suggestion.test.tsx src/goal-list.test.tsx`: 43 pass (확인 추가 뒤 `backup`·`inbody-import` 11 pass)
 - `npm run typecheck -w frontend`, eslint(바뀐 파일), prettier: 통과. `npm run knip`은 main과 같은 기존 항목만 보고하고 `form-styles.ts`는 나오지 않습니다.
 - 로컬 전체 `npm run check`와 e2e는 메모리 부족 이력이 있어 실행하지 않았습니다. e2e(반응형·axe·터치·시각 기준선)는 PR CI로 확인합니다.
+
+## 변경 — 1차 리뷰와 main 병합
+
+- 1차 리뷰는 필수 보완점이 없었습니다. 지운 클래스 9개가 실제 클래스로 쓰이는 곳이 없음을 확인했습니다. 선택 1건으로, 백업 select에 `min-w-0`이, 인바디 select에 `aria-invalid:border-destructive`가 더해진 것도 적어 둡니다(화면 차이 없음). 코드 보완이 없어 2차 리뷰는 하지 않습니다.
+- `5ecbbbc`의 CI는 모두 통과했고 시각 기준선 변화도 없었습니다.
+- 병합 직전 main에 #238(#102 루틴짜기 계획)이 들어와 `style.css`가 겹쳐 `origin/main`을 merge했습니다. 충돌은 없었습니다.
+- #238이 루틴짜기의 기본 체크박스를 공통 `Checkbox`로 바꿔, 터치 규칙 `.legacy label:has(> input[type='checkbox'])`를 쓰는 곳이 없어졌습니다. 이 규칙도 지웠습니다. `type="checkbox"`인 입력은 이제 앱 소스에 없습니다.
+- 병합 뒤 `npm run test -w frontend -- src/backup.test.tsx src/inbody-import.test.tsx src/routines.test.tsx src/rest-by-exercise.test.tsx` 28 pass, `npm run typecheck -w frontend`, prettier 통과

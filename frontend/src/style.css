@@ -275,11 +275,6 @@
     display: inline-flex;
     align-items: center;
   }
-  .legacy label:has(> input[type='checkbox']) {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-  }
 }
 /* Two 16px date fields do not fit side by side on a phone. */
 @media (pointer: coarse) and (max-width: 480px) {

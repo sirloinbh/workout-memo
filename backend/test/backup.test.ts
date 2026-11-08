@@ -96,6 +96,19 @@ function validBackup() {
           created_at: '2024-02-29T08:00:00.000Z',
         },
       ],
+      cardio_goals: [
+        {
+          id: 6,
+          goal_type: 'distance',
+          kind: 'running' as string | null,
+          period: 'week' as string | null,
+          target_distance_km: 15.5 as number | null,
+          target_duration_sec: null as number | null,
+          target_count: null as number | null,
+          start_date: '2024-02-05',
+          deadline: '2024-03-31',
+        },
+      ],
     },
   };
 }
@@ -110,8 +123,7 @@ function rejects(mutate: (b: ReturnType<typeof validBackup>) => unknown, pattern
 }
 
 test('a v2 backup carries cardio sessions; a v1 backup restores as one without any (#114)', () => {
-  assert.equal(backupVersion, 2);
-  const parsed = parseBackup(validBackup());
+  const parsed = parseBackup({ ...validBackup(), version: 2 });
   assert.equal(parsed.version, 2);
   assert.equal(parsed.data.cardio_sessions.length, 1);
   assert.equal(parsed.data.cardio_sessions[0].distance_km, 5.25);
@@ -131,10 +143,14 @@ test('a v2 backup carries cardio sessions; a v1 backup restores as one without a
     parseBackup({ ...validBackup(), version: 1, data: brokenCardio }).data.cardio_sessions,
     [],
   );
-  // v2 must list them, even when empty.
+  // v2 and v3 must list them, even when empty.
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).cardio_sessions;
-  }, /data\.cardio_sessions/);
+  }, /data\.cardio_sessions: v3/);
+  rejects((b) => {
+    delete (b.data as Partial<typeof b.data>).cardio_sessions;
+    return { ...b, version: 2 };
+  }, /data\.cardio_sessions: v2/);
   assert.deepEqual(
     parseBackup({ ...validBackup(), data: { ...validBackup().data, cardio_sessions: [] } }).data
       .cardio_sessions,
@@ -199,7 +215,7 @@ test('backup validation rejects other files and unsupported versions first', () 
   rejects(() => 'not an object', /백업 파일 형식이 아닙니다/);
   rejects(() => [], /백업 파일 형식이 아닙니다/);
   rejects((b) => ({ ...b, format: 'other-app' }), /백업 파일 형식이 아닙니다/);
-  rejects((b) => ({ ...b, version: 3 }), /지원하지 않는 백업 버전.*v3.*지원 버전: v1, v2/);
+  rejects((b) => ({ ...b, version: 4 }), /지원하지 않는 백업 버전.*v4.*지원 버전: v1, v2, v3/);
   rejects((b) => ({ ...b, version: '1' }), /지원하지 않는 백업 버전/);
 });
 
@@ -244,4 +260,61 @@ test('backup validation accepts a routine that names a machine in the backup (#8
   const backup = validBackup();
   (backup.data.routines[0].plan.splits[0].exercises[0] as { machine_id?: number }).machine_id = 5;
   assert.equal(parseBackup(backup).data.routines[0].plan.splits[0].exercises[0].machine_id, 5);
+});
+
+test('a v3 backup carries cardio goals; v1 and v2 backups restore as ones without any (#253)', () => {
+  assert.equal(backupVersion, 3);
+  const parsed = parseBackup(validBackup());
+  assert.equal(parsed.version, 3);
+  assert.deepEqual(parsed.data.cardio_goals, validBackup().data.cardio_goals);
+  // v3 must list them, even when empty.
+  rejects((b) => {
+    delete (b.data as Partial<typeof b.data>).cardio_goals;
+  }, /data\.cardio_goals: v3 백업에는 유산소 목표 목록이 필요합니다/);
+  // Both missing lists are reported at once.
+  rejects((b) => {
+    delete (b.data as Partial<typeof b.data>).cardio_goals;
+    delete (b.data as Partial<typeof b.data>).cardio_sessions;
+  }, /data\.cardio_sessions: v3 .* \/ data\.cardio_goals: v3/);
+  assert.deepEqual(
+    parseBackup({ ...validBackup(), data: { ...validBackup().data, cardio_goals: [] } }).data
+      .cardio_goals,
+    [],
+  );
+  // Older files predate cardio goals: none restored, and a stray (even broken) list is ignored.
+  for (const version of [1, 2]) {
+    const { cardio_goals: _goals, ...older } = validBackup().data;
+    assert.deepEqual(parseBackup({ ...validBackup(), version, data: older }).data.cardio_goals, []);
+    const broken = { ...validBackup().data, cardio_goals: [{ goal_type: 'marathon' }] };
+    assert.deepEqual(
+      parseBackup({ ...validBackup(), version, data: broken }).data.cardio_goals,
+      [],
+    );
+  }
+});
+
+test('backup validation checks cardio goals with the API rules and unique ids (#253)', () => {
+  // A record goal needs a kind; a period total needs a period; targets of other types are null.
+  rejects((b) => {
+    b.data.cardio_goals[0] = {
+      ...b.data.cardio_goals[0],
+      goal_type: 'record_time',
+      kind: null,
+      period: null,
+      target_duration_sec: 1800,
+    };
+  }, /cardio_goals\.0\.kind: 기록 목표는 운동 종류를 하나 선택하세요/);
+  rejects((b) => {
+    b.data.cardio_goals[0].period = null;
+  }, /cardio_goals\.0\.period/);
+  rejects((b) => {
+    b.data.cardio_goals[0].target_count = 3;
+  }, /cardio_goals\.0\.target_count/);
+  // The five-year span of the API also holds in a backup.
+  rejects((b) => {
+    b.data.cardio_goals[0].deadline = '2029-02-06';
+  }, /cardio_goals\.0\.deadline: 목표 기간은 5년/);
+  rejects((b) => {
+    b.data.cardio_goals.push({ ...b.data.cardio_goals[0] });
+  }, /cardio_goals: 중복된 id 6/);
 });

@@ -205,3 +205,42 @@ test('a swimming goal reads its distance in metres', async () => {
   );
   expect(swim.textContent).toMatch(/가장 긴 거리 1,200 m/);
 });
+
+// Swimming distance is typed in metres and stored in km, like the session form (#252).
+test('a swimming goal takes metres and switching kinds keeps the same distance', async () => {
+  const ui = mount([]);
+  render(<App />);
+  await openPage('나의 목표', ui.user);
+  await within(section()).findByText('유산소 목표가 없습니다');
+  await ui.user.click(screen.getByRole('button', { name: '유산소 목표 추가' }));
+  const dialog = screen.getByRole('dialog', { name: '유산소 목표' });
+  await ui.user.selectOptions(within(dialog).getByLabelText('목표 종류'), 'longest_distance');
+  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'running');
+  await ui.user.type(within(dialog).getByLabelText('목표 거리 (km)'), '1.5');
+  // Running 1.5 km becomes swimming 1500 m, and back.
+  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'swimming');
+  expect(within(dialog).getByLabelText('목표 거리 (m)')).toHaveValue('1500');
+  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'rowing');
+  expect(within(dialog).getByLabelText('목표 거리 (km)')).toHaveValue('1.5');
+  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'swimming');
+
+  // Metres must be whole.
+  const metres = within(dialog).getByLabelText('목표 거리 (m)');
+  await ui.user.clear(metres);
+  await ui.user.type(metres, '1500.5');
+  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  expect(
+    await within(dialog).findByText('수영 목표 거리는 1~10,000,000 m의 정수로 입력하세요'),
+  ).toBeInTheDocument();
+  expect(ui.posted).toEqual([]);
+
+  await ui.user.clear(metres);
+  await ui.user.type(metres, '1500');
+  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await waitFor(() => expect(ui.posted).toHaveLength(1));
+  expect(ui.posted[0]).toMatchObject({
+    goal_type: 'longest_distance',
+    kind: 'swimming',
+    target_distance_km: 1.5,
+  });
+});

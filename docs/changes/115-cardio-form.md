@@ -114,3 +114,8 @@
 - (선택, 반영 안 함) 같은 날 같은 종류에 시작 시각이나 운동 시간까지 같으면 버튼 이름이 겹칠 수 있습니다. 드문 경우라 한계로 남깁니다.
 - 추가 테스트: `cardio-panel.test.tsx`의 "a thousands comma is never read as a decimal point"(수영 m "1,000"과 칼로리 "1,000"이 오류이고 POST가 없음), `format.test.ts`의 `1,5`·`1,000` → `NaN`
 - `npm run test -w frontend -- src/cardio`: 28 pass. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+
+## main 병합
+
+- 병합 직전 main에 #248(LHCI 0.16, `package*.json`)과 #250(로딩 자리 표시)이 들어와 바로 병합 조건(`package*.json` 변경 없음)에 맞지 않아 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/cardio` 28 pass, `npm run typecheck -w frontend` 통과
+- 직전 CI의 CodeQL `Analyze (actions)` 실패는 CodeQL 번들을 내려받다 504가 난 일시 오류였습니다(코드와 무관).

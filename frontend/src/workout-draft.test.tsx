@@ -484,7 +484,7 @@ test('a new journal starts with three empty set rows and keeps the draft flow', 
 });
 
 // #105: each set is a card with − / + for weight and reps and a number keypad.
-test('a set card steps weight by 2.5 kg and reps by one, with number keypads', async () => {
+test('a set card steps weight by 5 kg and reps by one, with number keypads', async () => {
   const ui = mount();
   await fill(ui);
   const card = dialog().querySelector<HTMLElement>('[data-slot=set-row]')!;
@@ -493,7 +493,7 @@ test('a set card steps weight by 2.5 kg and reps by one, with number keypads', a
   expect(weight).toHaveAttribute('inputmode', 'decimal');
   expect(reps).toHaveAttribute('inputmode', 'numeric');
   await ui.user.click(within(card).getByRole('button', { name: '총중량 kg 늘리기' }));
-  expect(weight).toHaveValue('102.75');
+  expect(weight).toHaveValue('105.25');
   const before = Number((reps as HTMLInputElement).value);
   await ui.user.click(within(card).getByRole('button', { name: '횟수 줄이기' }));
   expect(reps).toHaveValue(String(before - 1));
@@ -504,7 +504,7 @@ test('a set card steps weight by 2.5 kg and reps by one, with number keypads', a
       storageKeys()
         .map((k) => localStorage.getItem(k))
         .join(),
-    ).toMatch(/"weight":102\.75/),
+    ).toMatch(/"weight":105\.25/),
   );
 });
 

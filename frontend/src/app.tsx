@@ -278,8 +278,8 @@ const dateLabel = (v: string) =>
   });
 const vol = (w: Workout) => w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * s.reps, 0);
 const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
-// #105: weight − / + moves by the smallest common plate pair; typing still allows 0.25 kg.
-const weightStep = 2.5;
+// #105: weight − / + moves by 5 kg (user decision); typing still allows 0.25 kg.
+const weightStep = 5;
 // #223: the save progress line ("저장 중…", "서버 저장 완료") as a polite Notice.
 const statusNotice = (text: string): NoticeValue | undefined =>
   text ? { kind: 'status', text } : undefined;
@@ -1611,6 +1611,8 @@ function Workspace() {
                         label="총중량 kg"
                         className="md:pointer-coarse:[&_input]:text-base"
                         step={weightStep}
+                        // A whole-number step would pick the digits-only keypad; 0.25 kg still needs a point.
+                        inputMode="decimal"
                         min={0}
                         max={99999}
                         required

@@ -122,6 +122,15 @@ test('a v2 backup carries cardio sessions; a v1 backup restores as one without a
   assert.deepEqual(v1.data.cardio_sessions, []);
   assert.equal(v1.data.workouts.length, 1);
   assert.deepEqual(parseBackup({ ...validBackup(), version: 1 }).data.cardio_sessions, []);
+  // Even an invalid cardio list in a v1 file is ignored instead of failing the restore.
+  const brokenCardio = {
+    ...validBackup().data,
+    cardio_sessions: [{ kind: 'flying', duration_sec: -1 }],
+  };
+  assert.deepEqual(
+    parseBackup({ ...validBackup(), version: 1, data: brokenCardio }).data.cardio_sessions,
+    [],
+  );
   // v2 must list them, even when empty.
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).cardio_sessions;

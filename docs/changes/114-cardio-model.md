@@ -74,3 +74,10 @@
 - 수정(`PUT`)은 전체 교체라 빠진 선택 항목은 기본값이 됩니다. `source`가 빠지면 `manual`로, `external_id`가 빠지면 `null`로 바뀝니다. 가져온 기록을 화면(#115)에서 고칠 때는 `source`·`external_id`를 그대로 다시 보내야 중복 판정 키가 남습니다.
 - 마이그레이션 번호 015는 이 브랜치를 만든 시점의 다음 번호입니다. 병합 전에 다른 PR이 015를 먼저 쓰면 번호를 바꿔야 합니다(`readMigrations`가 번호 중복을 막습니다).
 - 이 PR은 구현을 하위 에이전트에 맡기고, 주 에이전트가 diff를 읽은 뒤 대상 테스트(`cardio`·`api-contract`·`openapi`·`backup`·`http-errors`·`contract`·`migrations`: 44 pass), `contract:check`, prettier, eslint, `test:docs`를 다시 돌려 확인했습니다.
+
+## 변경 — fix: 1차 리뷰 보완
+
+- (필수) `backend/test/cardio.integration.test.ts`의 `isolated()`가 서버를 먼저 띄운 뒤 마이그레이션 15개를 기다리고 나서야 `listening` 이벤트를 기다렸습니다. 그 이벤트는 이미 지나가 Promise가 끝나지 않아, CI `verify`가 시간 제한까지 멈출 상태였습니다(이 PC는 DB가 꺼져 있어 첫 쿼리에서 실패하므로 드러나지 않았습니다). 마이그레이션 뒤에 서버를 띄우고 곧바로 `listening`·`error`를 기다리게 바꿨습니다. 다른 통합 테스트와 같은 방식입니다.
+- (선택) v1 백업 파일에 `cardio_sessions` 키가 있으면 버리는 값인데도 검증해서, 잘못된 값이 있으면 v1 복원이 400으로 실패했습니다. v1이면 검증 전에 이 키를 지웁니다. `backup.test.ts`에 잘못된 유산소 목록이 든 v1 파일도 복원되는지 확인을 넣었습니다.
+- (선택) `database/README.md`의 전체 교체 설명에 "유산소가 없는 v1 백업으로 전체 교체하면 지금 있는 유산소 기록도 지워진다"를 적었습니다.
+- `tsx --test test/backup.test.ts test/cardio.test.ts`: 23 pass. `npm run typecheck -w backend`, eslint, prettier 통과. DB 통합 테스트는 여전히 CI에서 처음 실행됩니다.

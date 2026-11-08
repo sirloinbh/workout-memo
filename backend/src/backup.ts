@@ -224,7 +224,16 @@ export function parseBackup(value: unknown): Backup {
     throw new BackupInvalid(
       `지원하지 않는 백업 버전입니다 (v${String(head.version)}). 지원 버전: ${supportedBackupVersions.map((v) => 'v' + v).join(', ')}`,
     );
-  const parsed = backupSchema.safeParse(value);
+  // v1 predates cardio sessions (#114): a stray `cardio_sessions` key in a v1 file is ignored,
+  // not validated, so it can never make an otherwise valid v1 restore fail.
+  const input = (() => {
+    const file = value as { version?: unknown; data?: unknown };
+    if (file.version !== 1 || typeof file.data !== 'object' || file.data === null) return value;
+    const rest = { ...(file.data as Record<string, unknown>) };
+    delete rest.cardio_sessions;
+    return { ...file, data: rest };
+  })();
+  const parsed = backupSchema.safeParse(input);
   if (parsed.success && parsed.data.version === 2 && !parsed.data.data.cardio_sessions)
     throw new BackupInvalid(
       '백업 검증 실패 — data.cardio_sessions: v2 백업에는 유산소 기록 목록이 필요합니다',

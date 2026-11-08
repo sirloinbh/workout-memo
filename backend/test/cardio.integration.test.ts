@@ -26,14 +26,21 @@ async function isolated(run: (api: Api, pool: Pool) => Promise<void>) {
   const schema = 'cardio114_' + randomUUID().replaceAll('-', '');
   await admin.query(`CREATE SCHEMA ${schema}`);
   const pool = new Pool({ connectionString: url, options: `-c search_path=${schema}` });
-  const server = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
+  let server: ReturnType<ReturnType<typeof createApp>['listen']> | undefined;
   try {
     for (const file of readdirSync(migrations)
       .filter((f) => f.endsWith('.sql'))
       .sort())
       await pool.query(readFileSync(new URL(file, migrations), 'utf8'));
-    await new Promise<void>((resolve) => server.once('listening', resolve));
-    const address = server.address();
+    // Listen only after the migrations and wait right away: 'listening' fires once, so a
+    // listener attached after other awaits would never run and the test would hang.
+    const listening = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
+    server = listening;
+    await new Promise<void>((resolve, reject) => {
+      listening.once('listening', resolve);
+      listening.once('error', reject);
+    });
+    const address = listening.address();
     assert.ok(address && typeof address !== 'string');
     const api: Api = async (path, method = 'GET', body) => {
       const response = await fetch(`http://127.0.0.1:${address.port}/api${path}`, {
@@ -45,7 +52,10 @@ async function isolated(run: (api: Api, pool: Pool) => Promise<void>) {
     };
     await run(api, pool);
   } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (server) {
+      const open = server;
+      await new Promise<void>((resolve) => open.close(() => resolve()));
+    }
     await pool.end();
     await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
     await admin.end();

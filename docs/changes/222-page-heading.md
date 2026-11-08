@@ -50,3 +50,11 @@
   - `frontend/src/workout-draft.test.tsx`: 복구한 뒤에는 머리글 버튼이 다시 활성인지도 확인합니다.
 - `docs/design-system.md`의 앱 고유 컴포넌트 설명에 `PageHeader`를 적었습니다.
 - `npm run test -w frontend -- src/workout-draft.test.tsx src/components/page-header.test.tsx`: 24 pass. prettier 통과
+
+## 변경 — 2차 리뷰와 시각 기준선 갱신
+
+- 2차 리뷰는 필수 보완점이 없었습니다. 선택 1건을 반영했습니다. 터치 크기 검사가 고르던 `a.primary`는 #103에서 백업 화면의 내려받기 링크가 `Button asChild`로 바뀐 뒤로 아무것도 고르지 않았습니다. 그래서 `e2e/ui-touch.spec.ts`의 대상에 `a[data-slot="button"]`을 넣어, 버튼 모양 링크도 44px 높이를 검사합니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- `deb9d57`의 CI `e2e-visual`에서 시각 비교 29건만 실패했습니다. axe·반응형·터치 검사는 통과했습니다.
+  - 바뀐 것: 머리글이 있는 `dashboard`·`journal`·`goals`·`machines`·`body` 4폭씩과, 뒤에 머리글이 보이는 `workout-editor`(390·768·1280)·`goal-editor`(4폭)·`machine-editor`(768·1280)입니다.
+  - 확인: `dashboard-1280`을 이전 기준선과 나란히 보고, `body-360`도 직접 봤습니다. 주요 버튼 글자가 12px에서 14px로 커지고 머리글 간격이 바뀐 것 외에는 차이가 없었습니다.
+  - 갱신: `visual-baselines` 아티팩트로 29장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.

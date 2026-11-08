@@ -16,7 +16,7 @@ function violations(root: Locator) {
       `${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 20)}"`;
     const fields =
       'input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea';
-    const targets = `button:not([role="switch"], [role="checkbox"]), summary, ${fields}`;
+    const targets = `button:not([role="switch"], [role="checkbox"]), a[data-slot="button"], summary, ${fields}`;
     for (const scope of roots) {
       for (const el of scope.querySelectorAll(fields)) {
         if (!visible(el)) continue;

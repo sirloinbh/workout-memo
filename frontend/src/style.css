@@ -357,33 +357,11 @@
 [aria-invalid='true'] {
   border-color: var(--destructive);
 }
-/* #89: InBody import entry, column mapping and the editable preview table. */
+/* #89: the body page heading's two buttons (InBody import, new record). */
 .heading-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-.inbody-import {
-  margin: 0 0 18px;
-}
-.inbody-import label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--muted-foreground);
-  margin-bottom: 12px;
-}
-.inbody-import pre {
-  white-space: pre-wrap;
-  font-size: 11px;
-}
-.table-scroll {
-  max-width: 100%;
-  overflow-x: auto;
-}
-.inbody-preview input[type='number'] {
-  max-width: 90px;
 }
 /* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA
    4.5:1. Text on these surfaces mixes in more of the foreground colour instead. */
@@ -420,11 +398,6 @@
     min-height: 44px;
     display: inline-flex;
     align-items: center;
-  }
-  /* A bare checkbox in a table row; the common Checkbox replaces it in #103. */
-  .inbody-preview input[type='checkbox'] {
-    width: 24px;
-    height: 24px;
   }
 }
 /* Two 16px date fields do not fit side by side on a phone. */

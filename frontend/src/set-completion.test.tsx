@@ -73,7 +73,9 @@ async function openNew(ui: UI) {
   // the whole journal before anything is sent, exactly as the server would.
   for (const name of document.querySelectorAll('input[list="exercise-names"]'))
     fireEvent.change(name, { target: { value: 'Squat' } });
-  fireEvent.change(document.querySelector('input[step="0.25"]')!, { target: { value: '100' } });
+  fireEvent.change(screen.getAllByRole('textbox', { name: '총중량 kg' })[0], {
+    target: { value: '100' },
+  });
   await loaded();
 }
 const completion = (i = 0) => screen.getAllByRole('button', { name: /세트 완료/ })[i];

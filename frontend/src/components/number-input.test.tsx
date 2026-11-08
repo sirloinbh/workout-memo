@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { expect, test, vi } from 'vitest';
 
-import { NumberInput } from './number-input';
+import { NumberInput, NumberValueInput } from './number-input';
 import { stepValue } from './number-step';
 
 function Weight({
@@ -107,4 +107,67 @@ test('stepValue rounds to the step, clamps, and treats an empty field as the min
   expect(stepValue('10', 5, undefined, 12)).toBe('12');
   expect(stepValue('', 2.5, 0)).toBe('2.5');
   expect(stepValue('abc', 1)).toBe('1');
+});
+
+// #105: a set's weight is a number in the editor state.
+function NumericWeight({ initial = 100 }: { initial?: number }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <>
+      <NumberValueInput label="중량" value={value} onValueChange={setValue} step={2.5} min={0} />
+      <output>{String(value)}</output>
+      <button type="button" onClick={() => setValue(60)}>
+        초안 복구
+      </button>
+    </>
+  );
+}
+const stored = () => screen.getByRole('status').textContent;
+
+test('a number field keeps typed text while it reads as the stored number', () => {
+  render(<NumericWeight />);
+  fireEvent.change(field(), { target: { value: '12.' } });
+  expect(field()).toHaveValue('12.');
+  expect(stored()).toBe('12');
+  fireEvent.change(field(), { target: { value: '' } });
+  expect(field()).toHaveValue('');
+  expect(stored()).toBe('0');
+});
+
+test('a number field shows a value set from outside and steps from it', () => {
+  render(<NumericWeight />);
+  fireEvent.click(up());
+  expect(field()).toHaveValue('102.5');
+  expect(stored()).toBe('102.5');
+  fireEvent.click(screen.getByRole('button', { name: '초안 복구' }));
+  expect(field()).toHaveValue('60');
+  fireEvent.click(down());
+  expect(stored()).toBe('57.5');
+});
+
+test('the field name is on the input only, so a label lookup finds one element', () => {
+  render(<Weight />);
+  expect(screen.getAllByLabelText('중량')).toEqual([field()]);
+});
+
+test('a decimal comma reads as a point and unreadable text is not taken', () => {
+  render(<NumericWeight />);
+  fireEvent.change(field(), { target: { value: '12,5' } });
+  expect(field()).toHaveValue('12.5');
+  expect(stored()).toBe('12.5');
+  for (const typed of ['12.5a', '-', '1..', 'Infinity', '0x10', '1e3', ' 5']) {
+    fireEvent.change(field(), { target: { value: typed } });
+    expect(field()).toHaveValue('12.5');
+    expect(stored()).toBe('12.5');
+  }
+});
+
+test('a value can start with the decimal point', () => {
+  render(<NumericWeight />);
+  fireEvent.change(field(), { target: { value: '.' } });
+  expect(field()).toHaveValue('.');
+  expect(stored()).toBe('0');
+  fireEvent.change(field(), { target: { value: '.5' } });
+  expect(field()).toHaveValue('.5');
+  expect(stored()).toBe('0.5');
 });

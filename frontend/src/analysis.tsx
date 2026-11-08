@@ -157,7 +157,7 @@ export function Analysis() {
       {error && (
         <AlertBanner
           action={
-            <Button variant="outline" size="sm" onClick={() => void load()}>
+            <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
               다시 연결
             </Button>
           }

@@ -1,7 +1,24 @@
+import { Scale } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { AlertBanner } from './components/alert-banner';
+import { List, ListItem } from './components/list';
+import { Badge } from './components/ui/badge';
+import { Button } from './components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { EmptyState } from './components/ui/empty-state';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Notice } from './components/ui/notice';
 import { seoulDate } from './date';
 import { InbodyImport } from './inbody-import';
+import { cn } from './lib/utils';
+
+// Same field and hint look as the goal and machine forms in app.tsx (merged in the #103 cleanup).
+const fieldLabel = 'mb-4 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
+// The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
+const touchText = 'md:pointer-coarse:text-base';
+const hint = 'rounded-md bg-muted p-3 text-meta text-muted-foreground';
 
 export type BodyRecord = {
   id: number;
@@ -160,7 +177,7 @@ export function BodyMeasurements({
     );
   };
   return (
-    <section className="body-page">
+    <section>
       <div className="page-heading">
         <div>
           <div className="eyebrow">BODY CHANGES, SIDE BY SIDE</div>
@@ -183,73 +200,88 @@ export function BodyMeasurements({
       </div>
       {controls}
       {error && (
-        <div role="alert" className="error">
-          {error} <button onClick={() => void load()}>다시 연결</button>
-        </div>
+        <AlertBanner
+          className="mt-4"
+          action={
+            <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+              다시 연결
+            </Button>
+          }
+        >
+          {error}
+        </AlertBanner>
       )}
-      {status && <p role="status">{status}</p>}
+      <Notice className="mt-4" notice={status ? { kind: 'status', text: status } : undefined} />
       {importing && (
         <InbodyImport save={(body) => request('', 'POST', body)} done={() => void load()} />
       )}
       {draft && (
-        <form
-          className="card body-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save();
-          }}
-        >
-          <h2>{draft.id ? '신체 기록 수정' : '새 신체 기록'}</h2>
-          {formError && (
-            <p role="alert" className="error">
-              {formError}
-            </p>
-          )}
-          <fieldset disabled={saving} className="form-grid">
-            <label>
-              측정 날짜
-              <input
-                type="date"
-                required
-                value={draft.date}
-                onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-              />
-            </label>
-            {metrics.map((m) => (
-              <label key={m.key}>
-                {m.label} {m.unit}
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min={m.min}
-                  max={m.max}
-                  step="0.01"
-                  placeholder="미입력"
-                  value={draft[m.key]}
-                  onChange={(e) => setDraft({ ...draft, [m.key]: e.target.value })}
-                />
-              </label>
-            ))}
-          </fieldset>
-          <p className="form-hint">
-            날짜마다 한 개의 기록만 저장합니다. 이미 기록한 날짜는 목록에서 수정하세요. 값은 소수점
-            둘째 자리까지 저장하며, 하나 이상 입력해야 합니다.
-          </p>
-          <button className="primary" disabled={saving}>
-            {saving ? '저장 중…' : '신체 기록 저장'}
-          </button>
-          <button
-            type="button"
-            className="text-button"
-            disabled={saving}
-            onClick={() => setDraft(null)}
-          >
-            취소
-          </button>
-        </form>
+        <Card className="mt-4 gap-4 shadow-none">
+          <CardHeader>
+            <CardTitle asHeading="h2" className="text-body font-semibold">
+              {draft.id ? '신체 기록 수정' : '새 신체 기록'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void save();
+              }}
+            >
+              {formError && <AlertBanner>{formError}</AlertBanner>}
+              <fieldset
+                disabled={saving}
+                className="m-0 grid min-w-0 grid-cols-2 gap-x-3 border-0 p-0 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1"
+              >
+                <Label className={fieldLabel}>
+                  측정 날짜
+                  <Input
+                    className={touchText}
+                    type="date"
+                    required
+                    value={draft.date}
+                    onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+                  />
+                </Label>
+                {metrics.map((m) => (
+                  <Label key={m.key} className={fieldLabel}>
+                    {m.label} {m.unit}
+                    <Input
+                      className={touchText}
+                      type="number"
+                      inputMode="decimal"
+                      min={m.min}
+                      max={m.max}
+                      step="0.01"
+                      placeholder="미입력"
+                      value={draft[m.key]}
+                      onChange={(e) => setDraft({ ...draft, [m.key]: e.target.value })}
+                    />
+                  </Label>
+                ))}
+              </fieldset>
+              <p className={hint}>
+                날짜마다 한 개의 기록만 저장합니다. 이미 기록한 날짜는 목록에서 수정하세요. 값은
+                소수점 둘째 자리까지 저장하며, 하나 이상 입력해야 합니다.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button disabled={saving}>{saving ? '저장 중…' : '신체 기록 저장'}</Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={saving}
+                  onClick={() => setDraft(null)}
+                >
+                  취소
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
       {charted.length > 0 && (
-        <div className="body-trends">
+        <div className="mt-4 grid gap-3.5 md:grid-cols-3">
           {charted.map((m) => (
             <Trend key={m.key} metric={m} rows={rows} from={from} to={to} />
           ))}
@@ -257,40 +289,48 @@ export function BodyMeasurements({
       )}
       {/* A failed load has no rows to judge, so it must not claim the values are missing. */}
       {!loading && !error && missing.length > 0 && (
-        <p className="form-hint body-trend-missing">
+        <p className={cn(hint, 'mt-4')}>
           이 기간에 입력한 값이 없는 지표: {missing.map((m) => m.label).join(' · ')}
         </p>
       )}
-      <p className="form-hint">
+      <p className={cn(hint, 'mt-2 mb-4')}>
         같은 날의 운동 볼륨을 나란히 보여줄 뿐이며, 운동과 신체 변화 사이의 인과 관계를 뜻하지
         않습니다. 의학적 판정이나 권장 범위는 제공하지 않습니다.
       </p>
-      <section className="card">
-        <div className="section-title">
-          <div>
-            <h2>
-              신체 기록 <span className="count">{rows.length}</span>
-            </h2>
-            <p>선택한 기간의 측정값과 같은 날 운동 볼륨</p>
-          </div>
-        </div>
+      <Card className="gap-0 py-0 shadow-none">
+        <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
+          <CardTitle asHeading="h2" className="flex items-center gap-2 text-body font-semibold">
+            신체 기록{' '}
+            <Badge variant="secondary" className="text-xs">
+              {rows.length}
+            </Badge>
+          </CardTitle>
+          <CardDescription className="text-caption">
+            선택한 기간의 측정값과 같은 날 운동 볼륨
+          </CardDescription>
+        </CardHeader>
         {loading ? (
-          <div className="empty">기록을 불러오는 중…</div>
+          <p className="px-6 py-14 text-center text-sm text-muted-foreground">
+            기록을 불러오는 중…
+          </p>
         ) : rows.length === 0 ? (
-          <div className="empty">
-            <h3>선택한 기간에 신체 기록이 없습니다</h3>
-            <p>측정한 날의 값만 입력하세요. 그래프는 기록한 값만 표시합니다.</p>
-          </div>
+          <EmptyState
+            className="m-4 md:m-6"
+            headingLevel="h3"
+            icon={<Scale />}
+            title="선택한 기간에 신체 기록이 없습니다"
+            description="측정한 날의 값만 입력하세요. 그래프는 기록한 값만 표시합니다."
+          />
         ) : (
-          <ul className="body-list">
+          <List aria-label="신체 기록" className="px-4 py-1 md:px-6 md:py-2.5">
             {[...rows].reverse().map((row) => {
               const date = row.date.slice(0, 10);
               const volume = volumeByDate.get(date);
               return (
-                <li key={row.id} className="workout-row">
-                  <div className="workout-info">
-                    <h3>{date}</h3>
-                    <p>
+                <ListItem key={row.id} className="flex-wrap gap-2.5 py-4 md:flex-nowrap md:gap-4">
+                  <div className="min-w-0 flex-1 basis-full [overflow-wrap:anywhere] md:basis-auto">
+                    <h3 className="text-body-sm font-semibold">{date}</h3>
+                    <p className="mt-1 text-meta text-muted-foreground">
                       {metrics
                         .map(
                           (m) =>
@@ -298,34 +338,38 @@ export function BodyMeasurements({
                         )
                         .join(' · ')}
                     </p>
-                    <p>
+                    <p className="mt-1 text-meta text-muted-foreground">
                       {volume === undefined
                         ? '같은 날 운동 기록 없음'
                         : `같은 날 운동 볼륨 ${fmt(volume)} kg`}
                     </p>
                   </div>
-                  <button
-                    className="text-button"
-                    disabled={saving}
-                    aria-label={`${date} 신체 기록 수정`}
-                    onClick={() => edit(row)}
-                  >
-                    수정
-                  </button>
-                  <button
-                    className="text-button"
-                    disabled={saving}
-                    aria-label={`${date} 신체 기록 삭제`}
-                    onClick={() => void remove(row)}
-                  >
-                    삭제
-                  </button>
-                </li>
+                  <div className="flex gap-1 max-md:ml-auto">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={saving}
+                      aria-label={`${date} 신체 기록 수정`}
+                      onClick={() => edit(row)}
+                    >
+                      수정
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={saving}
+                      aria-label={`${date} 신체 기록 삭제`}
+                      onClick={() => void remove(row)}
+                    >
+                      삭제
+                    </Button>
+                  </div>
+                </ListItem>
               );
             })}
-          </ul>
+          </List>
         )}
-      </section>
+      </Card>
     </section>
   );
 }
@@ -364,14 +408,15 @@ function Trend({
   const change = points.length > 1 ? points.at(-1)!.value - points[0].value : null;
   return (
     <figure
-      className="card body-trend"
+      data-slot="body-trend"
+      className="m-0 rounded-xl border bg-card p-4 text-card-foreground"
       role="img"
       aria-label={`${metric.label} 추이 (${metric.unit}): ${points
         .map((p) => `${p.date} ${fmt(p.value)}`)
         .join(', ')}`}
     >
-      <figcaption>
-        <strong>
+      <figcaption className="mb-2 flex justify-between gap-2 text-meta text-muted-foreground">
+        <strong className="font-semibold text-foreground">
           {metric.label} ({metric.unit})
         </strong>
         <span>
@@ -380,23 +425,29 @@ function Trend({
             : `첫 기록 대비 ${change > 0 ? '+' : ''}${fmt(change)} ${metric.unit}`}
         </span>
       </figcaption>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
+      <svg
+        className="block h-30 w-full border-y border-dashed"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
         {segments
           .filter((s) => s.length > 1)
           .map((s, i) => (
             <polyline
               key={i}
+              className="stroke-primary stroke-2 [vector-effect:non-scaling-stroke]"
               fill="none"
               points={s.map((p) => `${x(p.date)},${y(p.value)}`).join(' ')}
             />
           ))}
         {points.map((p) => (
-          <circle key={p.date} cx={x(p.date)} cy={y(p.value)} r="3.5">
+          <circle key={p.date} className="fill-primary" cx={x(p.date)} cy={y(p.value)} r="3.5">
             <title>{`${p.date} ${fmt(p.value)} ${metric.unit}`}</title>
           </circle>
         ))}
       </svg>
-      <div className="body-trend-axis">
+      <div className="mt-1.5 flex justify-between gap-1.5 text-meta text-muted-foreground">
         <span>{from}</span>
         <span>
           {fmt(low)}–{fmt(high)} {metric.unit}

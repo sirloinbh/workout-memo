@@ -301,6 +301,14 @@ test('the next goal raises each target by its rule and keeps the goal length fro
     target_duration_sec: 100,
   });
   assert.equal(suggestCardioGoal(short, today)!.target_duration_sec, 95);
+  // At least 5 s faster even when 3% rounds to less: 102 s → 95 s (not 100 s).
+  const odd = goal({
+    goal_type: 'record_time',
+    kind: 'rowing',
+    target_distance_km: 0.5,
+    target_duration_sec: 102,
+  });
+  assert.equal(suggestCardioGoal(odd, today)!.target_duration_sec, 95);
   // Every suggestion is a valid goal for the API.
   for (const g of [weekly, small, swim, swim2, time, tiny, count, fiveK, short])
     assert.ok(cardioGoalSchema.safeParse(suggestCardioGoal(g, today)).success, g.goal_type);

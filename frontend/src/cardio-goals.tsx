@@ -265,7 +265,8 @@ function GoalCard({
     return () => {
       active = false;
     };
-  }, [goal.id, goal.achieved]);
+    // `today` too: a page left open past midnight asks again, so the start date is today's.
+  }, [goal.id, goal.achieved, today]);
   const upcoming = today < goal.start_date;
   const ended = today > goal.deadline;
   const p = goal.progress;

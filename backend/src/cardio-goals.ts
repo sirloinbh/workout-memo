@@ -137,15 +137,17 @@ export function judgeCardioGoal(
 // computed from the goal's own targets, never stored, and keeps the type, kind and period.
 const days = (from: string, to: string) =>
   Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
-// Rounds to `step` and moves to at least the next step boundary past `from` in the direction.
+// Rounds to `step`; upwards it reaches at least the next step boundary above `from`, downwards
+// it goes at least one whole step below `from`.
 function stepPast(value: number, step: number, from: number, direction: 1 | -1) {
   let next = Math.round(value / step) * step;
-  // Not a whole step past: take the next step boundary beyond `from` (61 s → 120 s, not 121 s).
-  if (direction * (next - from) < step / 2)
-    next =
-      direction === 1
-        ? (Math.floor(from / step + 1e-9) + 1) * step
-        : (Math.ceil(from / step - 1e-9) - 1) * step;
+  if (direction === 1) {
+    // Not past `from`: take the next step boundary above it (61 s → 120 s, not 121 s).
+    if (next - from < step / 2) next = (Math.floor(from / step + 1e-9) + 1) * step;
+  } else if (from - next < step - 1e-9) {
+    // Records get at least one whole step faster (N1: at least 5 s): 102 s → 95 s, not 100 s.
+    next = Math.floor((from - step) / step + 1e-9) * step;
+  }
   // Keep decimal steps exact (0.1 km, 0.05 km) for the 3-decimal distance rule.
   return Math.round(next * 1000) / 1000;
 }

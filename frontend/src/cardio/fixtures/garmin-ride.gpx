@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- #119 fixture in the shape of a Garmin Connect GPX export. Hand-made: no real place or person. -->
+<gpx creator="Garmin Connect" version="1.1" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/11.xsd" xmlns:ns3="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata><time>2026-11-03T21:30:00.000Z</time></metadata>
+  <trk>
+    <name>출근 라이딩</name>
+    <type>cycling</type>
+    <trkseg>
+      <trkpt lat="37.5000" lon="127.0000"><ele>20.0</ele><time>2026-11-03T21:30:00.000Z</time><extensions><ns3:TrackPointExtension><ns3:hr>120</ns3:hr><ns3:cad>80</ns3:cad></ns3:TrackPointExtension></extensions></trkpt>
+      <trkpt lat="37.5010" lon="127.0000"><ele>22.0</ele><time>2026-11-03T21:30:30.000Z</time><extensions><ns3:TrackPointExtension><ns3:hr>130</ns3:hr></ns3:TrackPointExtension></extensions></trkpt>
+      <trkpt lat="37.5020" lon="127.0000"><ele>21.0</ele><time>2026-11-03T21:31:00.000Z</time><extensions><ns3:TrackPointExtension><ns3:hr>140</ns3:hr></ns3:TrackPointExtension></extensions></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="37.6000" lon="127.0000"><time>2026-11-03T21:32:00.000Z</time></trkpt>
+      <trkpt lat="37.6010" lon="127.0000"><time>2026-11-03T21:32:30.000Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

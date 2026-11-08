@@ -47,6 +47,13 @@ function mount(failPost = false, failReadAfterPost = false, initialPlan: Plan = 
   async function change(label: string, value: string, index = 0, checked?: boolean) {
     const item = labels(label)[index];
     expect(item, `Input label ${label} #${index} exists`).toBeTruthy();
+    // #102: rest days use the common Checkbox, a button with role="checkbox".
+    const box = item.querySelector<HTMLElement>('[role="checkbox"]');
+    if (box) {
+      if ((box.getAttribute('aria-checked') === 'true') !== checked) await user.click(box);
+      expect(box).toHaveAttribute('aria-checked', String(checked));
+      return;
+    }
     const input = item.querySelector<HTMLInputElement | HTMLSelectElement>('input, select')!;
     expect(input).toBeTruthy();
     if (input instanceof HTMLInputElement && input.type === 'checkbox') {
@@ -173,6 +180,9 @@ for (const failRead of [false, true]) {
     expect(ui.form(), 'Successful save closes the draft').toHaveLength(0);
     expect(ui.nonGet()).toHaveLength(1);
     expect(ui.text()).toMatch(/루틴 #27을 저장했습니다/);
+    expect(
+      screen.getAllByRole('status').some((el) => /루틴 #27을 저장했습니다/.test(el.textContent)),
+    ).toBe(true);
     if (failRead) expect(ui.text()).toMatch(/저장 후 조회 실패/);
     else {
       // Use the actual posted plan, not the default fixture, in a new component session.
@@ -208,6 +218,8 @@ test('routine editor exposes all five splits and keeps a failed save available f
   await ui.click('가슴 추가');
   ui.submit();
   await waitFor(() => expect(ui.text()).toMatch(/휴식 요일과 주당 운동 횟수를 확인하세요/));
+  // #102: the failure is an AlertBanner, announced at once.
+  expect(screen.getByRole('alert')).toHaveTextContent('휴식 요일과 주당 운동 횟수를 확인하세요');
   await saveSettled();
   expect(ui.form()).toHaveLength(1);
   expect(

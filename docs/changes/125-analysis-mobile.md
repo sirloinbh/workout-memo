@@ -51,3 +51,7 @@
 - 반영: 첫 운동 강조(`data-shown`)가 휴대폰에도 적용돼, 고르기 전 목록이나 "운동 목록"으로 돌아온 뒤 강조와 포커스가 서로 다른 항목에 있었습니다. 강조를 `md:` 이상에만 둡니다.
 - 반영: 위 테스트 설명이 1차 보완 전 동작으로 적혀 있던 것을 고쳤습니다.
 - 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다. 시각 기준선은 이 커밋의 CI 이미지로 갱신합니다.
+
+## main 병합
+
+- 2차 리뷰 뒤 main에 #240(style.css 정리, #103)이 병합됐습니다. 겹치는 파일은 없지만 `style.css`와 `components/form-styles.ts`가 바뀌어 병합 규칙대로 `origin/main`을 병합했습니다. 충돌은 없었습니다. 병합 뒤 `npm run typecheck -w frontend` 통과, `npm run test -w frontend -- src/analysis.test.tsx` 9 pass. 시각 기준선은 병합한 커밋의 CI 이미지로 갱신합니다.

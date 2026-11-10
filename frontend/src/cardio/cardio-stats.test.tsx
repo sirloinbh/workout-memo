@@ -99,6 +99,11 @@ test('running pace trend skips sessions without distance', () => {
     '러닝 페이스 추이(위가 빠름): 2026-11-03 6:05/km, 2026-11-09 5:00/km',
   );
   expect(screen.getByText('가장 빠름 5:00/km')).toBeInTheDocument();
+  // The SVG stretches with the width; the dots use a non-scaling stroke so they stay round (#263).
+  const dots = chart(/^러닝 페이스/).querySelectorAll('[data-slot="chart-dot"]');
+  expect(dots).toHaveLength(2);
+  expect(chart(/^러닝 페이스/).querySelector('circle')).toBeNull();
+  for (const dot of dots) expect(dot).toHaveClass('[vector-effect:non-scaling-stroke]');
 });
 
 test('one kind only: no per-kind charts; no running distance: a pace note instead of a chart', () => {

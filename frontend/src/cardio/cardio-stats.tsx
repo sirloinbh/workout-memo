@@ -5,6 +5,7 @@ import { ChartDot } from '../chart-dot';
 import { SegmentedControl, type SegmentOption } from '../components/segmented-control';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
+import { SkeletonCard } from '../components/ui/skeleton';
 import type { CardioKind } from '../contract';
 import { rangeDays } from '../date-range';
 import type { CardioSession } from './api';
@@ -93,9 +94,13 @@ export function CardioStats({
           </CardDescription>
         </CardHeader>
         {pending && sessions.length === 0 ? (
-          <p className="px-6 py-14 text-center text-body-sm text-muted-foreground">
-            통계를 불러오는 중…
-          </p>
+          // #173: a card-shaped placeholder while the first stats load.
+          <div aria-busy="true" aria-label="유산소 통계" className="px-4 pb-5 md:px-6 md:pb-6">
+            <p role="status" className="sr-only">
+              통계를 불러오는 중…
+            </p>
+            <SkeletonCard />
+          </div>
         ) : sessions.length === 0 ? (
           <EmptyState
             className="m-4 md:m-6"

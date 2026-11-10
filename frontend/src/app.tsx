@@ -26,6 +26,7 @@ import { listCardioSessions } from './cardio/api';
 import { CardioSummaryCard, CardioTab } from './cardio/cardio-tab';
 import { CardioGoals } from './cardio-goals';
 import { AlertBanner } from './components/alert-banner';
+import { Combobox } from './components/combobox';
 import { DateStepper, RangeSummary } from './components/date-stepper';
 import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
@@ -53,6 +54,7 @@ import { EmptyState } from './components/ui/empty-state';
 import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { SkeletonList } from './components/ui/skeleton';
 import { Toaster } from './components/ui/sonner';
 import { Spinner } from './components/ui/spinner';
 import {
@@ -68,6 +70,8 @@ import {
 } from './contract';
 import { dateTitle, seoulDate } from './date';
 import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
+import { candidateNames, type ExerciseName } from './exercise-name-match';
+import { SimilarNameHint } from './exercise-names';
 import type { NoticeValue } from './lib/use-notice';
 import { cn } from './lib/utils';
 import { RoutineProgress } from './progress';
@@ -553,6 +557,11 @@ function Workspace() {
       setSaveState('로컬 초안 · 서버 저장 전');
     } else setRecovery(draft.current);
   }
+  // #124: typing, picking a suggestion or accepting a similar name all rename one set.
+  function renameSet(i: number, exercise: string) {
+    if (!editor?.sets) return;
+    setEditor({ ...editor, sets: editor.sets.map((s, j) => (j === i ? { ...s, exercise } : s)) });
+  }
   // Taps on one set within this window after completing it are treated as a double tap.
   const completedAt = useRef(new Map<number, number>());
   function markSet(i: number, completed: boolean) {
@@ -663,6 +672,12 @@ function Workspace() {
     queryFn: () =>
       api<{ exercise: string; body_parts: string[] }[]>('/exercise-body-parts').catch(() => []),
   });
+  // #124: exercise name candidates for the journal and goal fields. Optional: a failed load
+  // keeps the names this screen already has.
+  const exerciseNamesQuery = useQuery({
+    queryKey: ['exercise-names'],
+    queryFn: () => api<ExerciseName[]>('/exercise-names').catch(() => []),
+  });
   const restSeconds = (s: SetRow) => {
     const machine = machines.find((m) => m.id === s.machine_id);
     const key = s.exercise.trim().toLowerCase();
@@ -677,6 +692,11 @@ function Workspace() {
     machines = machinesQuery.data ?? [],
     brands = brandsQuery.data ?? [],
     officialWeights = officialQuery.data === undefined ? [] : officialQuery.data;
+  const exerciseNames = candidateNames(exerciseNamesQuery.data ?? [], [
+    ...(progress?.today_plan?.target?.exercises.map((e) => e.exercise) ?? []),
+    ...goals.map((g) => g.exercise),
+    ...machines.map((m) => m.name),
+  ]);
   const journalQueries = [workoutsQuery, goalsQuery, machinesQuery, brandsQuery];
   const loading = [...journalQueries, officialQuery].some((q) => q.isFetching);
   const loadError = journalQueries.find((q) => q.error)?.error?.message ?? '';
@@ -1286,9 +1306,13 @@ function Workspace() {
                   )}
                 </CardHeader>
                 {loading ? (
-                  <p className="px-6 py-14 text-center text-sm text-muted-foreground">
-                    기록을 불러오는 중…
-                  </p>
+                  // #173: row placeholders while the list loads; the hidden line keeps the status.
+                  <div aria-busy="true" aria-label="운동 기록 목록" className="px-6 py-6">
+                    <p role="status" className="sr-only">
+                      기록을 불러오는 중…
+                    </p>
+                    <SkeletonList />
+                  </div>
                 ) : workouts.length === 0 ? (
                   <EmptyState
                     className="m-4 md:m-6"
@@ -1579,7 +1603,13 @@ function Workspace() {
               void saveWorkout();
             }}
           >
-            <Notice className="mb-3" notice={statusNotice(saveState)} />
+            {/* #173: a spinner beside the status line while the save request is in flight. The
+                wrapper stays mounted so the role="status" line is not replaced and still announces
+                each change. */}
+            <div className={cn('flex items-center gap-2', (saving || saveState) && 'mb-3')}>
+              {saving && <Spinner size="sm" aria-hidden className="text-muted-foreground" />}
+              <Notice notice={statusNotice(saveState)} />
+            </div>
             {storageWarning && <AlertBanner className="mb-3">{storageWarning}</AlertBanner>}
             <p className="form-hint">
               초안은 이 기기·브라우저의 localStorage에 마지막 입력부터 7일 보관합니다. 다른 기기와
@@ -1704,22 +1734,28 @@ function Workspace() {
                       <X size={15} />
                     </Button>
                   </div>
-                  <label htmlFor={`set-${i}-exercise`} className="mb-0 text-meta">
-                    운동명
-                    <CommonInput
-                      id={`set-${i}-exercise`}
-                      className="md:pointer-coarse:text-base"
-                      required
-                      list="exercise-names"
+                  {/* The hint stays in the name's grid cell so 머신 keeps its place beside it. */}
+                  <div>
+                    <label htmlFor={`set-${i}-exercise`} className="mb-0 text-meta">
+                      운동명
+                      {/* #124: suggestions from earlier journals, goals, routines and machines. */}
+                      <Combobox
+                        id={`set-${i}-exercise`}
+                        className="md:pointer-coarse:text-base"
+                        required
+                        value={s.exercise}
+                        options={exerciseNames}
+                        listLabel="이전에 쓴 이름"
+                        onValueChange={(exercise) => renameSet(i, exercise)}
+                        {...invalid(`sets.${i}.exercise`)}
+                      />
+                    </label>
+                    <SimilarNameHint
                       value={s.exercise}
-                      onChange={(e) => {
-                        const sets = [...editor.sets!];
-                        sets[i] = { ...s, exercise: e.target.value };
-                        setEditor({ ...editor, sets });
-                      }}
-                      {...invalid(`sets.${i}.exercise`)}
+                      names={exerciseNames}
+                      onReplace={(exercise) => renameSet(i, exercise)}
                     />
-                  </label>
+                  </div>
                   <label className="mb-0 text-meta">
                     머신
                     <select
@@ -1834,17 +1870,6 @@ function Workspace() {
                   </Button>
                 </div>
               ))}
-              <datalist id="exercise-names">
-                {Array.from(
-                  new Set([
-                    ...(progress?.today_plan?.target?.exercises.map((e) => e.exercise) ?? []),
-                    ...goals.map((g) => g.exercise),
-                    ...machines.map((m) => m.name),
-                  ]),
-                ).map((n) => (
-                  <option key={n}>{n}</option>
-                ))}
-              </datalist>
               <button
                 type="button"
                 className="subtle-button"
@@ -1898,6 +1923,7 @@ function Workspace() {
               </label>
               <ModalFooter>
                 <Button className="w-full" disabled={saving}>
+                  {saving && <Spinner size="sm" aria-hidden />}
                   {saving ? '저장 중…' : '기록 저장하기'}
                 </Button>
               </ModalFooter>
@@ -1910,6 +1936,7 @@ function Workspace() {
           <GoalForm
             deadline={to}
             saving={saving}
+            names={exerciseNames}
             onSave={(goal) =>
               void action(
                 () => api('/goals', 'POST', goal),
@@ -2097,10 +2124,9 @@ function Workspace() {
             <div className="mb-4 flex items-center gap-2">
               <Checkbox
                 id="machine-single-joint"
-                // The legacy touch rule makes every .legacy button 44px; the box stays 16px and its
-                // ::after area is the target. The common -inset-3.5 sits inside the 1px border, so
-                // it is 42px; 15px makes it 44px. Drop this once project-standards#415 fixes checkbox.tsx.
-                className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
+                // The legacy touch rule makes every .legacy button 44px; the box stays 16px and the
+                // common Checkbox's 44px ::after area is the target (project-standards#415).
+                className="pointer-coarse:min-h-4 pointer-coarse:min-w-4"
                 checked={machineEditor.single_joint === true}
                 onCheckedChange={(checked) =>
                   setMachineEditor({ ...machineEditor, single_joint: checked === true })
@@ -2132,10 +2158,12 @@ const noteText = 'text-meta text-muted-foreground';
 function GoalForm({
   deadline,
   saving,
+  names,
   onSave,
 }: {
   deadline: string;
   saving: boolean;
+  names: readonly string[];
   onSave: (goal: GoalInput) => void;
 }) {
   const {
@@ -2143,11 +2171,15 @@ function GoalForm({
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<GoalInput>({
     resolver: zodResolver(goalSchema),
     defaultValues: { exercise: '', target_reps: 10, start_date: today(), deadline },
   });
+  const exercise = watch('exercise') ?? '';
+  // A picked suggestion or an accepted similar name, validated like typing once submitted.
+  const rename = (value: string) =>
+    setValue('exercise', value, { shouldDirty: true, shouldValidate: isSubmitted });
   const field = (name: keyof GoalInput) => invalidProps(name, errors[name]?.message);
   const message = (name: keyof GoalInput) => (
     <FieldError name={name}>{errors[name]?.message}</FieldError>
@@ -2156,17 +2188,23 @@ function GoalForm({
     <form noValidate onSubmit={(event) => void handleSubmit(onSave)(event)}>
       <Label className={fieldLabel}>
         운동명
-        <CommonInput
+        {/* #124: the same suggestions as the journal; a pick sets the form value. */}
+        <Combobox
           className={touchText}
           maxLength={120}
           placeholder="일지와 같은 운동명을 입력하세요"
           {...register('exercise')}
           {...field('exercise')}
+          value={exercise}
+          options={names}
+          listLabel="이전에 쓴 이름"
+          onValueChange={rename}
         />
       </Label>
       {message('exercise')}
+      <SimilarNameHint value={exercise} names={names} onReplace={rename} />
       <GoalSuggestion
-        exercise={watch('exercise') ?? ''}
+        exercise={exercise}
         apply={(weight) => setValue('target_weight', weight, { shouldValidate: true })}
       />
       <div className="grid grid-cols-2 gap-x-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">

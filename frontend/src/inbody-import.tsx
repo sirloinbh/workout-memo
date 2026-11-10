@@ -249,9 +249,8 @@ export function InbodyImport({
                           <Checkbox
                             aria-label={`${i + 1}행 저장`}
                             // The legacy touch rule makes every .legacy button 44px; the box
-                            // stays 16px with a 44px ::after area, as in the machine form.
-                            // Drop once project-standards#415 fixes checkbox.tsx.
-                            className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
+                            // stays 16px with the common 44px ::after area, as in the machine form.
+                            className="pointer-coarse:min-h-4 pointer-coarse:min-w-4"
                             checked={row.selected && !problem}
                             disabled={busy || !!problem}
                             onCheckedChange={(checked) => update(i, { selected: checked === true })}

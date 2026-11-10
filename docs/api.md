@@ -56,6 +56,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 | GET    | `/api/analysis`                    | `?from&to`(최대 371일) 종목별 PR·추정 1RM·부위별 주간 운동량              |
 | GET    | `/api/exercise-body-parts`         | 운동별 부위 매핑                                                          |
 | PUT    | `/api/exercise-body-parts`         | 운동 1개의 부위 매핑 교체. 빈 배열은 매핑 삭제                            |
+| GET    | `/api/exercise-names`              | 운동명 자동완성 후보(#124). 최근 → 자주 사용 순 최대 50개                 |
 | GET    | `/api/exercise-weight-steps`       | 운동별 증량 단위(#86). 지정한 운동만                                      |
 | PUT    | `/api/exercise-weight-steps`       | 운동 1개의 증량 단위 저장. `null`은 기본 5 kg으로 되돌림                  |
 | GET    | `/api/goal-suggestion`             | `?exercise=`의 다음 목표 제안(저장하지 않음)                              |
@@ -118,6 +119,15 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 `{ "exercise": "벤치프레스", "target_weight": 80, "target_reps": 5, "start_date": "2026-10-01", "deadline": "2026-12-31" }`
 
 - `deadline`은 `start_date`보다 앞설 수 없습니다. `achieved`는 기간 안에(오늘 이후 날짜 제외) 같은 운동의 완료 세트 1개가 중량과 반복 수를 모두 충족하면 `true`입니다.
+
+### 운동명 후보 `GET /api/exercise-names` (#124)
+
+`[{ "name": "스쿼트", "uses": 12, "last_used": "2026-11-09" }, { "name": "레그 프레스 머신", "uses": 0, "last_used": null }]`
+
+- 운동 일지 세트, 목표, 루틴 계획의 운동명과 머신 이름을 모읍니다. 목표 판정과 같은 정규화 이름(대소문자·앞뒤 공백 무시)으로 묶고, 가장 최근에 쓴 표기를 `name`으로 돌려줍니다.
+- `uses`는 그 이름을 쓴 일지·목표·루틴 수입니다. 한 일지에 세트가 여러 개여도 1번으로 셉니다. 머신 이름만 있으면 0입니다.
+- `last_used`는 일지 날짜, 목표 시작일, 루틴 만든 날(Asia/Seoul) 중 가장 늦은 날이고, 머신 이름만 있으면 `null`입니다.
+- `last_used`가 늦은 순, 같으면 `uses`가 많은 순으로 최대 50개를 돌려줍니다. 비슷한 이름(중간 공백까지 무시) 안내는 화면이 이 목록으로 계산합니다.
 
 ### 증량 단위 `PUT /api/exercise-weight-steps`, 목표 제안 `GET /api/goal-suggestion` (#86)
 

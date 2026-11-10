@@ -6,6 +6,7 @@ import { List, ListItem } from '../components/list';
 import { Button } from '../components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
+import { SkeletonList } from '../components/ui/skeleton';
 import { type CardioRecord, type CardioRecords as Records, getCardioRecords } from './api';
 import {
   cardioKindLabels,
@@ -86,7 +87,13 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
         )}
         {!records ? (
           !error && (
-            <p className="py-8 text-center text-sm text-muted-foreground">기록을 불러오는 중…</p>
+            // #173: row placeholders while the records load; the hidden line keeps the status.
+            <div aria-busy="true" aria-label="개인 기록" className="px-4 pb-5 md:px-6 md:pb-6">
+              <p role="status" className="sr-only">
+                기록을 불러오는 중…
+              </p>
+              <SkeletonList rows={3} />
+            </div>
           )
         ) : nothing ? (
           <EmptyState

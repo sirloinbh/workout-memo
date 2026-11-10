@@ -16,4 +16,6 @@
   - 페이스 그래프에 `circle`이 없고 점 2개가 non-scaling stroke를 쓰는지 확인하는 검사를 더했습니다.
   - 신체 기록 추이 점 수 검사는 `[data-slot="chart-dot"]`을 셉니다.
 - 타입 검사, ESLint, Prettier: 통과
-- 시각 기준선(`journal-cardio`, `body` 4폭)은 CI 결과 이미지를 확인한 뒤 갱신합니다.
+- 시각 기준선: CI에서 기준과 달라진 `journal-cardio-1280`과 `body-768`을 결과 이미지로 갱신했습니다. 두 이미지에서 점이 원으로 보이는 것을 확인했습니다. 나머지 폭은 허용 범위 안이라 그대로 둡니다.
+
+

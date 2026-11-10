@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
@@ -17,6 +17,13 @@ const cases = [
     text: '기록을 불러오는 중…',
   },
   { page: '루틴짜기', api: '/api/routines', slot: 'skeleton-list', text: '루틴 불러오는 중…' },
+  { page: '운동 일지', api: '/api/workouts', slot: 'skeleton-list', text: '기록을 불러오는 중…' },
+  {
+    page: '운동 일지',
+    api: '/api/routine-progress',
+    slot: 'skeleton-text',
+    text: '루틴 목표를 불러오는 중…',
+  },
 ];
 
 test.each(cases)(
@@ -75,4 +82,40 @@ test('the body record save button shows a spinner while it saves', async () => {
   expect(saving.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
   saved.resolve();
   await waitFor(() => expect(screen.queryByRole('button', { name: '저장 중…' })).toBeNull());
+});
+
+// #173: the journal editor's save button and its status line show a spinner while saving.
+test('the journal save button and status line show a spinner while it saves', async () => {
+  fixClock();
+  const saved = deferred();
+  mockApi(async ({ method, url }) => {
+    if (url.pathname === '/api/workouts' && method === 'POST') {
+      await saved.promise;
+      return { id: 42, version: 1 };
+    }
+    return [];
+  });
+  const user = userEvent.setup();
+  render(<App />);
+  await waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
+  await user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
+  fireEvent.change(document.querySelector('input[maxlength="120"]')!, {
+    target: { value: '하체' },
+  });
+  for (const name of document.querySelectorAll('input[list="exercise-names"]'))
+    fireEvent.change(name, { target: { value: 'Squat' } });
+  fireEvent.submit(document.querySelector('form')!);
+
+  const saving = await screen.findByRole('button', { name: '저장 중…' });
+  expect(saving).toBeDisabled();
+  expect(saving.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
+  const line = screen.getAllByText('저장 중…').find((el) => el.dataset.slot === 'notice')!;
+  expect(line).toHaveAttribute('role', 'status');
+  expect(line.parentElement!.querySelector('[data-slot="spinner"]')).toHaveAttribute(
+    'aria-hidden',
+    'true',
+  );
+  saved.resolve();
+  await waitFor(() => expect(screen.queryByText('저장 중…')).toBeNull());
+  expect(document.querySelector('[data-slot="spinner"]')).toBeNull();
 });

@@ -273,6 +273,10 @@ test('rest shows the preview first, applies once on rapid clicks and can be canc
     confirm.click();
     confirm.click(); // A second click from the same render before the response.
   });
+  // #173: the waiting button is disabled and shows a small spinner.
+  const busy = await screen.findByRole('button', { name: '처리 중…' });
+  expect(busy).toBeDisabled();
+  expect(busy.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
   pending.resolve();
   await waitFor(() => expect(ui.text()).toMatch(/오늘은 휴식일로 지정했습니다/));
   expect(posts(ui, '/api/routines/7/rests')).toHaveLength(1);

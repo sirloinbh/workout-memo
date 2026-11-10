@@ -1,5 +1,7 @@
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { SkeletonText } from './components/ui/skeleton';
+import { Spinner } from './components/ui/spinner';
 import {
   changeLabel,
   exerciseKey,
@@ -75,9 +77,13 @@ export function RoutineProgress({
           </p>
         )}
         {!progress ? (
-          <p role="status" className={text}>
-            루틴 목표를 불러오는 중…
-          </p>
+          // #173: text-line placeholders while the goals load; the hidden line keeps the status.
+          <div aria-busy="true" aria-label="루틴 목표 내용">
+            <p role="status" className="sr-only">
+              루틴 목표를 불러오는 중…
+            </p>
+            <SkeletonText />
+          </div>
         ) : !progress.routine ? (
           <p className={text}>
             진행 중인 루틴이 없습니다. 루틴짜기에서 시작일이 오늘이거나 그 이전인 12주 루틴을 만들면
@@ -176,6 +182,7 @@ export function RoutineProgress({
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button type="button" disabled={busy} onClick={onRestConfirm}>
+                    {busy && <Spinner size="sm" aria-hidden />}
                     {busy ? '처리 중…' : '휴식 확정'}
                   </Button>
                   <Button type="button" variant="outline" disabled={busy} onClick={onRestBack}>

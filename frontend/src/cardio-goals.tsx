@@ -1,7 +1,14 @@
 import { Plus, Timer } from 'lucide-react';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 
-import { cardioKindLabels, formatDistance, formatDuration } from './cardio/format';
+import {
+  cardioKindLabels,
+  formatDistance,
+  formatDuration,
+  kmToMetres,
+  metresToKm,
+  optionalNumber,
+} from './cardio/format';
 import { AlertBanner } from './components/alert-banner';
 import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
@@ -55,6 +62,9 @@ type StoredGoal = {
     | { kind: 'record'; best: number | null };
 };
 
+/** A goal's own fields: a stored goal or a suggested next one (#251). */
+type GoalShape = Omit<StoredGoal, 'id' | 'achieved' | 'progress'>;
+
 const km = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 3 }).format(n);
 /** Seconds as 2시간 30분 (totals are shown in minutes). */
 const minutes = (seconds: number) => {
@@ -63,16 +73,16 @@ const minutes = (seconds: number) => {
   const m = total % 60;
   return h ? `${h}시간${m ? ` ${m}분` : ''}` : `${m}분`;
 };
-const amount = (goal: StoredGoal, value: number) =>
+const amount = (goal: GoalShape, value: number) =>
   goal.goal_type === 'count'
     ? `${value}회`
     : goal.goal_type === 'duration'
       ? minutes(value)
       : distanceOf(goal, value);
 // Swimming goals read in metres like the session screen; every kind together stays in km.
-const distanceOf = (goal: StoredGoal, value: number) =>
+const distanceOf = (goal: GoalShape, value: number) =>
   goal.kind ? formatDistance(goal.kind, value)! : `${km(value)} km`;
-const targetOf = (goal: StoredGoal) =>
+const targetOf = (goal: GoalShape) =>
   goal.goal_type === 'count'
     ? goal.target_count!
     : goal.goal_type === 'duration'
@@ -80,7 +90,7 @@ const targetOf = (goal: StoredGoal) =>
       : goal.target_distance_km!;
 
 /** The goal in one line, e.g. "주간 러닝 15 km" or "러닝 5 km 30:00 이내". */
-function goalTitle(goal: StoredGoal) {
+function goalTitle(goal: GoalShape) {
   const kind = goal.kind ? cardioKindLabels[goal.kind] : '유산소';
   if (goal.goal_type === 'record_time')
     return `${kind} ${distanceOf(goal, goal.target_distance_km!)} ${formatDuration(goal.target_duration_sec!)} 이내`;
@@ -112,7 +122,8 @@ export function CardioGoals({ deadline }: { deadline: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
-  const [editor, setEditor] = useState(false);
+  // The add form, empty or filled with a suggested next goal (#251).
+  const [editor, setEditor] = useState<{ initial: GoalShape | null } | null>(null);
   const [saving, setSaving] = useState(false);
   const today = seoulDate();
 
@@ -133,7 +144,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
     setSaving(true);
     try {
       await request('', 'POST', goal);
-      setEditor(false);
+      setEditor(null);
       setStatus('유산소 목표를 저장했습니다.');
       await load();
     } finally {
@@ -166,7 +177,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
             주간·월간 거리·시간·횟수와 기록 목표를 유산소 기록으로 판정합니다.
           </p>
         </div>
-        <Button variant="outline" onClick={() => setEditor(true)}>
+        <Button variant="outline" onClick={() => setEditor({ initial: null })}>
           <Plus aria-hidden />
           유산소 목표 추가
         </Button>
@@ -207,13 +218,19 @@ export function CardioGoals({ deadline }: { deadline: string }) {
               today={today}
               saving={saving}
               remove={(goal) => void remove(goal)}
+              suggest={(next) => setEditor({ initial: next })}
             />
           ))}
         </div>
       )}
       {editor && (
-        <Modal title="유산소 목표" close={() => setEditor(false)}>
-          <CardioGoalForm deadline={deadline} saving={saving} onSave={save} />
+        <Modal title="유산소 목표" close={() => setEditor(null)}>
+          <CardioGoalForm
+            deadline={deadline}
+            initial={editor.initial}
+            saving={saving}
+            onSave={save}
+          />
         </Modal>
       )}
     </section>
@@ -225,13 +242,31 @@ function GoalCard({
   today,
   saving,
   remove,
+  suggest,
 }: {
   goal: StoredGoal;
   today: string;
   saving: boolean;
   remove: (goal: StoredGoal) => void;
+  suggest: (next: GoalShape) => void;
 }) {
   const title = goalTitle(goal);
+  // #251 (N3): only an achieved goal offers the next one; the server computes it.
+  const [next, setNext] = useState<GoalShape | null>(null);
+  useEffect(() => {
+    if (!goal.achieved) return;
+    let active = true;
+    request<{ suggestion: GoalShape | null }>(`/${goal.id}/suggestion`)
+      .then((data) => {
+        if (active) setNext(data.suggestion);
+      })
+      // Without a suggestion the card simply shows none.
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+    // `today` too: a page left open past midnight asks again, so the start date is today's.
+  }, [goal.id, goal.achieved, today]);
   const upcoming = today < goal.start_date;
   const ended = today > goal.deadline;
   const p = goal.progress;
@@ -300,6 +335,16 @@ function GoalCard({
       <p className="mt-3 text-body-sm text-muted-foreground">
         {goal.start_date} — {goal.deadline}
       </p>
+      {goal.achieved && next && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-4 h-auto min-h-8 text-left [overflow-wrap:anywhere] whitespace-normal"
+          onClick={() => suggest(next)}
+        >
+          다음 목표: {goalTitle(next)}
+        </Button>
+      )}
       <Button
         variant="link"
         size="sm"
@@ -326,8 +371,41 @@ type Draft = {
   deadline: string;
 };
 // Empty stays null so the schema says which target is missing; other text becomes NaN.
-const num = (text: string) => (text.trim() === '' ? null : Number(text.trim().replace(',', '.')));
+const num = optionalNumber;
+// Swimming distance is typed in metres, every other kind (and every kind together) in km, as in
+// the cardio session form (#252, 2026-11-08 decision); the goal always stores km.
+const distanceUnit = (kind: CardioKind | '') => (kind === 'swimming' ? 'm' : 'km');
+// Switching between swimming and another kind keeps the same distance: "5" km ↔ "5000" m.
+function convertDistance(text: string, from: CardioKind | '', to: CardioKind | '') {
+  if (distanceUnit(from) === distanceUnit(to)) return text;
+  const value = optionalNumber(text);
+  if (value === null || Number.isNaN(value)) return text;
+  return String(distanceUnit(to) === 'm' ? kmToMetres(value) : metresToKm(value));
+}
 
+// The typed distance in km: metres for swimming are divided by 1000; unreadable text stays NaN.
+const distanceKm = (d: Draft) => {
+  const value = num(d.distance);
+  return value !== null && !Number.isNaN(value) && distanceUnit(d.kind) === 'm'
+    ? metresToKm(value)
+    : value;
+};
+// A suggested goal (#251) as the form's text fields; swimming distance in metres.
+function draftFrom(goal: GoalShape): Draft {
+  const sec = goal.target_duration_sec;
+  const km = goal.target_distance_km;
+  return {
+    goal_type: goal.goal_type,
+    kind: goal.kind ?? '',
+    period: goal.period ?? 'week',
+    distance: km === null ? '' : String(goal.kind === 'swimming' ? kmToMetres(km) : km),
+    minutes: sec === null ? '' : String(Math.floor(sec / 60)),
+    seconds: sec === null ? '' : String(sec % 60),
+    count: goal.target_count === null ? '' : String(goal.target_count),
+    start_date: goal.start_date,
+    deadline: goal.deadline,
+  };
+}
 /** The draft as the API body: only the fields of the chosen goal type are filled. */
 function draftToGoal(d: Draft): CardioGoalInput {
   const record = isRecord(d.goal_type);
@@ -340,7 +418,7 @@ function draftToGoal(d: Draft): CardioGoalInput {
     goal_type: d.goal_type,
     kind: d.kind === '' ? null : d.kind,
     period: record ? null : d.period,
-    target_distance_km: usesDistance ? num(d.distance) : null,
+    target_distance_km: usesDistance ? distanceKm(d) : null,
     target_duration_sec: usesTime ? duration : null,
     target_count: d.goal_type === 'count' ? num(d.count) : null,
     start_date: d.start_date,
@@ -350,24 +428,30 @@ function draftToGoal(d: Draft): CardioGoalInput {
 
 function CardioGoalForm({
   deadline,
+  initial,
   saving,
   onSave,
 }: {
   deadline: string;
+  initial: GoalShape | null;
   saving: boolean;
   onSave: (goal: CardioGoalInput) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState<Draft>({
-    goal_type: 'distance',
-    kind: '',
-    period: 'week',
-    distance: '',
-    minutes: '',
-    seconds: '',
-    count: '',
-    start_date: seoulDate(),
-    deadline,
-  });
+  const [draft, setDraft] = useState<Draft>(() =>
+    initial
+      ? draftFrom(initial)
+      : {
+          goal_type: 'distance',
+          kind: '',
+          period: 'week',
+          distance: '',
+          minutes: '',
+          seconds: '',
+          count: '',
+          start_date: seoulDate(),
+          deadline,
+        },
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState('');
   const set = (change: Partial<Draft>) => setDraft((d) => ({ ...d, ...change }));
@@ -385,6 +469,17 @@ function CardioGoalForm({
       text.trim() === '' || (/^\d+$/.test(text.trim()) && Number(text.trim()) <= max);
     if (usesTime && !(whole(draft.minutes, 44640) && whole(draft.seconds, 59)))
       found.target_duration_sec = '목표 시간은 분(0 이상 정수)과 초(0~59 정수)로 입력하세요';
+    // Metres must be whole (the schema keeps 1 m precision) and the message speaks in metres.
+    const metres = num(draft.distance);
+    const usesDistance = draft.goal_type !== 'duration' && draft.goal_type !== 'count';
+    if (
+      usesDistance &&
+      distanceUnit(draft.kind) === 'm' &&
+      metres !== null &&
+      !Number.isNaN(metres) &&
+      (!Number.isInteger(metres) || metres <= 0 || metres > 10_000_000)
+    )
+      found.target_distance_km = '수영 목표 거리는 1~10,000,000 m의 정수로 입력하세요';
     if (!parsed.success || Object.keys(found).length) {
       setErrors(found);
       return;
@@ -425,7 +520,10 @@ function CardioGoalForm({
           <select
             className={selectField}
             value={draft.kind}
-            onChange={(e) => set({ kind: e.target.value as CardioKind | '' })}
+            onChange={(e) => {
+              const kind = e.target.value as CardioKind | '';
+              set({ kind, distance: convertDistance(draft.distance, draft.kind, kind) });
+            }}
             {...field('kind')}
           >
             {!record && <option value="">전체 유산소</option>}
@@ -453,8 +551,7 @@ function CardioGoalForm({
         )}
         {draft.goal_type !== 'duration' && draft.goal_type !== 'count' && (
           <Label className={fieldLabel}>
-            {/* Swimming is shown in metres but entered in km like every other kind. */}
-            {draft.kind === 'swimming' ? '목표 거리 (km, 1,500 m는 1.5)' : '목표 거리 (km)'}
+            목표 거리 ({distanceUnit(draft.kind)})
             <Input
               className={touchText}
               inputMode="decimal"

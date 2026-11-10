@@ -205,3 +205,90 @@ test('a swimming goal reads its distance in metres', async () => {
   );
   expect(swim.textContent).toMatch(/가장 긴 거리 1,200 m/);
 });
+
+// Swimming distance is typed in metres and stored in km, like the session form (#252).
+test('a swimming goal takes metres and switching kinds keeps the same distance', async () => {
+  const ui = mount([]);
+  render(<App />);
+  await openPage('나의 목표', ui.user);
+  await within(section()).findByText('유산소 목표가 없습니다');
+  await ui.user.click(screen.getByRole('button', { name: '유산소 목표 추가' }));
+  const dialog = screen.getByRole('dialog', { name: '유산소 목표' });
+  await ui.user.selectOptions(within(dialog).getByLabelText('목표 종류'), 'longest_distance');
+  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'running');
+  await ui.user.type(within(dialog).getByLabelText('목표 거리 (km)'), '1.5');
+  // Running 1.5 km becomes swimming 1500 m, and back.
+  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'swimming');
+  expect(within(dialog).getByLabelText('목표 거리 (m)')).toHaveValue('1500');
+  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'rowing');
+  expect(within(dialog).getByLabelText('목표 거리 (km)')).toHaveValue('1.5');
+  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'swimming');
+
+  // Metres must be whole.
+  const metres = within(dialog).getByLabelText('목표 거리 (m)');
+  await ui.user.clear(metres);
+  await ui.user.type(metres, '1500.5');
+  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  expect(
+    await within(dialog).findByText('수영 목표 거리는 1~10,000,000 m의 정수로 입력하세요'),
+  ).toBeInTheDocument();
+  expect(ui.posted).toEqual([]);
+
+  await ui.user.clear(metres);
+  await ui.user.type(metres, '1500');
+  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await waitFor(() => expect(ui.posted).toHaveLength(1));
+  expect(ui.posted[0]).toMatchObject({
+    goal_type: 'longest_distance',
+    kind: 'swimming',
+    target_distance_km: 1.5,
+  });
+});
+
+// #251: an achieved goal offers the server's next goal; it fills the add form, nothing is saved
+// until the user confirms. Goals not achieved never ask for one.
+test('an achieved goal offers its next goal and fills the add form with it', async () => {
+  const next = {
+    goal_type: 'record_time',
+    kind: 'running',
+    period: null,
+    target_distance_km: 5,
+    target_duration_sec: 1745,
+    target_count: null,
+    start_date: '2026-10-15',
+    deadline: '2027-01-14',
+  };
+  fixClock();
+  vi.stubGlobal('confirm', () => true);
+  const posted: unknown[] = [];
+  const api = mockApi(({ method, url, body }) => {
+    if (url.pathname === '/api/cardio-goals/2/suggestion') return { goal_id: 2, suggestion: next };
+    if (url.pathname === '/api/cardio-goals' && method === 'POST') {
+      posted.push(body);
+      return { id: 9, ...(body as object) };
+    }
+    if (url.pathname === '/api/cardio-goals') return [weekly, fiveK];
+    return [];
+  });
+  const user = userEvent.setup();
+  render(<App />);
+  await openPage('나의 목표', user);
+  const offer = await within(card('러닝 5 km 30:00 이내')).findByRole('button', {
+    name: '다음 목표: 러닝 5 km 29:05 이내',
+  });
+  // The weekly goal is not achieved: no suggestion request, no button.
+  expect(within(card('주간 러닝 15 km')).queryByRole('button', { name: /^다음 목표/ })).toBeNull();
+  expect(api.requests.some((r) => r.path === '/api/cardio-goals/1/suggestion')).toBe(false);
+
+  await user.click(offer);
+  const dialog = screen.getByRole('dialog', { name: '유산소 목표' });
+  expect(within(dialog).getByLabelText('목표 종류')).toHaveValue('record_time');
+  expect(within(dialog).getByLabelText('운동 종류')).toHaveValue('running');
+  expect(within(dialog).getByLabelText('목표 거리 (km)')).toHaveValue('5');
+  expect(within(dialog).getByLabelText('목표 시간 (분)')).toHaveValue('29');
+  expect(within(dialog).getByLabelText('목표 시간 (초)')).toHaveValue('5');
+  expect(within(dialog).getByLabelText('종료일')).toHaveValue('2027-01-14');
+  expect(posted).toEqual([]);
+  await user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await waitFor(() => expect(posted).toEqual([next]));
+});

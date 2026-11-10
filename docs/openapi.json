@@ -678,6 +678,47 @@
         }
       }
     },
+    "/api/cardio-goals/{id}/suggestion": {
+      "get": {
+        "summary": "그 목표의 다음 목표 제안(저장하지 않음). 범위를 넘으면 suggestion: null",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공"
+          },
+          "400": {
+            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cardio-sessions": {
       "get": {
         "summary": "?from&to 기간의 유산소 기록(최근 순). kind 선택",

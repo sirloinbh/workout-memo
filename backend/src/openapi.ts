@@ -212,6 +212,7 @@ export const operations: Record<string, Operation> = {
   'GET /api/export/cardio.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
   'GET /api/cardio-goals': { status: [200] },
   'POST /api/cardio-goals': { body: ['CardioGoal', cardioGoalSchema], status: [201, 400] },
+  'GET /api/cardio-goals/:id/suggestion': { status: [200, 400, 404] },
   'DELETE /api/cardio-goals/:id': { status: [200, 400, 404] },
   'GET /api/export/workouts.csv': { query: exportQuery, status: [200, 400], produces: 'text/csv' },
   'GET /api/backup': { status: [200] },

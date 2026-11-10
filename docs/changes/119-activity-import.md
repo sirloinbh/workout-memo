@@ -2,7 +2,7 @@
 
 - 이슈: [#119](https://github.com/sirloinbh/workout-memo/issues/119)
 - 브랜치: `feat/119-activity-import`
-- 근거 조사: #118 `docs/activity-import.md`(PR #265에서 추가)
+- 근거 조사: #118 [`docs/activity-import.md`](../activity-import.md)(PR #265)
 - 선행: #114(유산소 모델), #115(유산소 화면) 병합됨
 
 ## 목적

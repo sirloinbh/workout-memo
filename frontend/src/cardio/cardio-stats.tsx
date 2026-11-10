@@ -1,6 +1,7 @@
 import { BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 
+import { ChartDot } from '../chart-dot';
 import { SegmentedControl, type SegmentOption } from '../components/segmented-control';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
@@ -346,9 +347,9 @@ function PaceTrend({ sessions }: { sessions: readonly CardioSession[] }) {
           />
         )}
         {points.map((p, i) => (
-          <circle key={p.id} className="fill-primary" cx={x(i)} cy={y(p.pace)} r="3.5">
+          <ChartDot key={p.id} x={x(i)} y={y(p.pace)}>
             <title>{`${p.date} ${formatPace(p.pace)}`}</title>
-          </circle>
+          </ChartDot>
         ))}
       </svg>
       <div

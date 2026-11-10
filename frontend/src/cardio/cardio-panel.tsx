@@ -163,7 +163,10 @@ export function CardioPanel({
           <CardDescription className="text-caption">
             {from} ~ {to}
           </CardDescription>
-          <CardAction className="flex flex-wrap justify-end gap-2">
+          {/* Two buttons beside the title squeeze it to one character per line on a phone (and
+              wrap the period at 768px). Under 36rem of header width they move to their own row
+              below the title and period. */}
+          <CardAction className="flex flex-wrap justify-end gap-2 @max-xl/card-header:col-span-2 @max-xl/card-header:col-start-1 @max-xl/card-header:row-span-1 @max-xl/card-header:row-start-3 @max-xl/card-header:mt-2 @max-xl/card-header:justify-start @max-xl/card-header:justify-self-start">
             <Button
               ref={importButton}
               variant="outline"

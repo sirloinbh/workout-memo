@@ -33,6 +33,9 @@ test(
       await workout('2099-01-01', [`${p} squat`, `${p} squat`, `${p} squat`]);
       await workout('2099-01-03', [` ${p} Squat `, `${p} bench`]);
       await workout('2099-01-02', [`${p} bench`]);
+      // An older journal: squat is used in more records, so it sorts before bench below even
+      // though the names would sort the other way.
+      await workout('2098-12-30', [`${p} squat`]);
       await db.query(
         `INSERT INTO goals(exercise, target_weight, target_reps, start_date, deadline)
          VALUES($1, 60, 5, '2099-01-04', '2099-02-01')`,
@@ -58,8 +61,8 @@ test(
           { name: `${p} row`, uses: 1, last_used: '2099-01-06' },
           { name: `${p} deadlift`, uses: 1, last_used: '2099-01-04' },
           // Same latest day: the one used in more records comes first.
+          { name: `${p} Squat`, uses: 3, last_used: '2099-01-03' },
           { name: `${p} bench`, uses: 2, last_used: '2099-01-03' },
-          { name: `${p} Squat`, uses: 2, last_used: '2099-01-03' },
         ],
       );
       // A machine name has no date and is listed after every dated name (when it fits).

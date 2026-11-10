@@ -1734,25 +1734,28 @@ function Workspace() {
                       <X size={15} />
                     </Button>
                   </div>
-                  <label htmlFor={`set-${i}-exercise`} className="mb-0 text-meta">
-                    운동명
-                    {/* #124: suggestions from earlier journals, goals, routines and machines. */}
-                    <Combobox
-                      id={`set-${i}-exercise`}
-                      className="md:pointer-coarse:text-base"
-                      required
+                  {/* The hint stays in the name's grid cell so 머신 keeps its place beside it. */}
+                  <div>
+                    <label htmlFor={`set-${i}-exercise`} className="mb-0 text-meta">
+                      운동명
+                      {/* #124: suggestions from earlier journals, goals, routines and machines. */}
+                      <Combobox
+                        id={`set-${i}-exercise`}
+                        className="md:pointer-coarse:text-base"
+                        required
+                        value={s.exercise}
+                        options={exerciseNames}
+                        listLabel="이전에 쓴 이름"
+                        onValueChange={(exercise) => renameSet(i, exercise)}
+                        {...invalid(`sets.${i}.exercise`)}
+                      />
+                    </label>
+                    <SimilarNameHint
                       value={s.exercise}
-                      options={exerciseNames}
-                      listLabel="운동명 후보"
-                      onValueChange={(exercise) => renameSet(i, exercise)}
-                      {...invalid(`sets.${i}.exercise`)}
+                      names={exerciseNames}
+                      onReplace={(exercise) => renameSet(i, exercise)}
                     />
-                  </label>
-                  <SimilarNameHint
-                    value={s.exercise}
-                    names={exerciseNames}
-                    onReplace={(exercise) => renameSet(i, exercise)}
-                  />
+                  </div>
                   <label className="mb-0 text-meta">
                     머신
                     <select
@@ -2194,7 +2197,7 @@ function GoalForm({
           {...field('exercise')}
           value={exercise}
           options={names}
-          listLabel="운동명 후보"
+          listLabel="이전에 쓴 이름"
           onValueChange={rename}
         />
       </Label>

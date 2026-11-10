@@ -15,7 +15,8 @@ type Props = Omit<React.ComponentProps<'input'>, 'value' | 'list' | 'role'> & {
   value: string;
   onValueChange: (value: string) => void;
   options: readonly string[];
-  /** Accessible name of the suggestion list, e.g. "운동명 후보". */
+  /** Accessible name of the suggestion list. It must not contain the field's own label:
+   *  label lookups that match substrings would find the list too. */
   listLabel: string;
 };
 
@@ -103,7 +104,7 @@ export function Combobox({
         onClick={() => setOpen(true)}
         onKeyDown={(event) => {
           onKeyDown?.(event);
-          if (event.defaultPrevented) return;
+          if (event.defaultPrevented || event.nativeEvent.isComposing) return;
           if (event.key === 'ArrowDown') {
             event.preventDefault();
             move(1);
@@ -125,6 +126,7 @@ export function Combobox({
       {/* The list stays in the DOM so aria-controls always points at an element. */}
       <ul
         id={listId}
+        onMouseDown={(event) => event.preventDefault()}
         role="listbox"
         aria-label={listLabel}
         hidden={!expanded}
@@ -142,10 +144,12 @@ export function Combobox({
               'flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm pointer-coarse:min-h-11',
               i === active && 'bg-accent text-accent-foreground',
             )}
-            // A press must not blur the field before the option is picked.
-            onMouseDown={(event) => event.preventDefault()}
             onMouseEnter={() => setActive(i)}
-            onClick={() => pick(option)}
+            onClick={(event) => {
+              // Inside a <label> the click would be passed on to the field and reopen the list.
+              event.preventDefault();
+              pick(option);
+            }}
           >
             {option}
           </li>

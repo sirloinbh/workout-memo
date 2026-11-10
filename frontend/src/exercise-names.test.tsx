@@ -62,7 +62,7 @@ function Field({ onSubmit }: { onSubmit: () => void }) {
         value={value}
         onValueChange={setValue}
         options={['벤치프레스', '인클라인 벤치프레스', '스쿼트']}
-        listLabel="운동명 후보"
+        listLabel="이전에 쓴 이름"
       />
     </form>
   );
@@ -76,7 +76,7 @@ test('the field is a combobox: arrows move, Enter picks without submitting, Esc 
   expect(input).toHaveAttribute('aria-expanded', 'false');
 
   await user.type(input, '벤치');
-  const list = screen.getByRole('listbox', { name: '운동명 후보' });
+  const list = screen.getByRole('listbox', { name: '이전에 쓴 이름' });
   expect(input).toHaveAttribute('aria-expanded', 'true');
   expect(input).toHaveAttribute('aria-controls', list.id);
   expect(
@@ -173,4 +173,47 @@ test('the goal form picks a suggestion and saves the existing spelling', async (
       expect.objectContaining({ exercise: '벤치프레스', target_weight: 80 }),
     ),
   );
+});
+
+function Wrapped() {
+  const [value, setValue] = useState('');
+  return (
+    // The journal and goal forms wrap the field in its <label>, like this.
+    // eslint-disable-next-line jsx-a11y-x/label-has-associated-control
+    <label>
+      운동명
+      <Combobox
+        value={value}
+        onValueChange={setValue}
+        options={['스쿼트', '프론트 스쿼트']}
+        listLabel="이전에 쓴 이름"
+      />
+    </label>
+  );
+}
+
+test('a tapped option closes the list even inside a label and when other options still match', async () => {
+  const user = userEvent.setup();
+  render(<Wrapped />);
+  const input = screen.getByRole('combobox', { name: '운동명' });
+  await user.type(input, '스');
+  await user.click(screen.getByRole('option', { name: '스쿼트' }));
+  expect(input).toHaveValue('스쿼트');
+  // "프론트 스쿼트" still contains the value, yet the list stays closed after the pick.
+  expect(input).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('the similar-name live region exists before its message so the message is announced', async () => {
+  const ui = mount();
+  render(<App />);
+  await waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
+  await ui.user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
+  const dialog = screen.getByRole('dialog');
+  const first = within(dialog).getAllByRole('combobox', { name: '운동명' })[0];
+  const region = first.closest('div:not([data-slot])')!.querySelector('[aria-live="polite"]')!;
+  expect(region).toHaveClass('sr-only');
+  expect(region).toBeEmptyDOMElement();
+  await ui.user.type(first, '벤치 프레스');
+  await waitFor(() => expect(region.textContent).toMatch(/기존 이름 ‘벤치프레스’로 바꿀까요/));
+  expect(region).not.toHaveClass('sr-only');
 });

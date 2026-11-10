@@ -53,6 +53,7 @@ import { EmptyState } from './components/ui/empty-state';
 import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { SkeletonList } from './components/ui/skeleton';
 import { Toaster } from './components/ui/sonner';
 import { Spinner } from './components/ui/spinner';
 import {
@@ -1286,9 +1287,13 @@ function Workspace() {
                   )}
                 </CardHeader>
                 {loading ? (
-                  <p className="px-6 py-14 text-center text-sm text-muted-foreground">
-                    기록을 불러오는 중…
-                  </p>
+                  // #173: row placeholders while the list loads; the hidden line keeps the status.
+                  <div aria-busy="true" aria-label="운동 기록 목록" className="px-6 py-6">
+                    <p role="status" className="sr-only">
+                      기록을 불러오는 중…
+                    </p>
+                    <SkeletonList />
+                  </div>
                 ) : workouts.length === 0 ? (
                   <EmptyState
                     className="m-4 md:m-6"
@@ -1579,7 +1584,13 @@ function Workspace() {
               void saveWorkout();
             }}
           >
-            <Notice className="mb-3" notice={statusNotice(saveState)} />
+            {/* #173: a spinner beside the status line while the save request is in flight. The
+                wrapper stays mounted so the role="status" line is not replaced and still announces
+                each change. */}
+            <div className={cn('flex items-center gap-2', (saving || saveState) && 'mb-3')}>
+              {saving && <Spinner size="sm" aria-hidden className="text-muted-foreground" />}
+              <Notice notice={statusNotice(saveState)} />
+            </div>
             {storageWarning && <AlertBanner className="mb-3">{storageWarning}</AlertBanner>}
             <p className="form-hint">
               초안은 이 기기·브라우저의 localStorage에 마지막 입력부터 7일 보관합니다. 다른 기기와
@@ -1898,6 +1909,7 @@ function Workspace() {
               </label>
               <ModalFooter>
                 <Button className="w-full" disabled={saving}>
+                  {saving && <Spinner size="sm" aria-hidden />}
                   {saving ? '저장 중…' : '기록 저장하기'}
                 </Button>
               </ModalFooter>

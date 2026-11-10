@@ -1584,15 +1584,13 @@ function Workspace() {
               void saveWorkout();
             }}
           >
-            {/* #173: a spinner beside the status line while the save request is in flight. */}
-            {saving ? (
-              <div className="mb-3 flex items-center gap-2">
-                <Spinner size="sm" aria-hidden className="text-muted-foreground" />
-                <Notice notice={statusNotice(saveState)} />
-              </div>
-            ) : (
-              <Notice className="mb-3" notice={statusNotice(saveState)} />
-            )}
+            {/* #173: a spinner beside the status line while the save request is in flight. The
+                wrapper stays mounted so the role="status" line is not replaced and still announces
+                each change. */}
+            <div className={cn('flex items-center gap-2', (saving || saveState) && 'mb-3')}>
+              {saving && <Spinner size="sm" aria-hidden className="text-muted-foreground" />}
+              <Notice notice={statusNotice(saveState)} />
+            </div>
             {storageWarning && <AlertBanner className="mb-3">{storageWarning}</AlertBanner>}
             <p className="form-hint">
               초안은 이 기기·브라우저의 localStorage에 마지막 입력부터 7일 보관합니다. 다른 기기와

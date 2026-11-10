@@ -78,12 +78,15 @@ export function RoutineProgress({
         )}
         {!progress ? (
           // #173: text-line placeholders while the goals load; the hidden line keeps the status.
-          <div aria-busy="true" aria-label="루틴 목표 내용">
-            <p role="status" className="sr-only">
-              루틴 목표를 불러오는 중…
-            </p>
-            <SkeletonText />
-          </div>
+          // A failed load shows only the error banner above, not a placeholder that never ends.
+          !error && (
+            <div aria-busy="true" aria-label="루틴 목표 내용">
+              <p role="status" className="sr-only">
+                루틴 목표를 불러오는 중…
+              </p>
+              <SkeletonText />
+            </div>
+          )
         ) : !progress.routine ? (
           <p className={text}>
             진행 중인 루틴이 없습니다. 루틴짜기에서 시작일이 오늘이거나 그 이전인 12주 루틴을 만들면

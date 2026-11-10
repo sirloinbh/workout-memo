@@ -321,6 +321,8 @@ test('a failed load shows the error with a reload button that recovers the card'
   const alert = await screen.findByRole('alert');
   expect(card()!.contains(alert), 'error is inside the routine card').toBe(true);
   expect(ui.text(alert)).toMatch(/루틴 목표를 불러오지 못했습니다/);
+  // #173: a failed load leaves no endless placeholder beside the error.
+  expect(card()!.querySelector('[aria-busy="true"]')).toBeNull();
   const loads = progressLoads(ui);
   ui.recoverProgress();
   await ui.click('루틴 목표 다시 불러오기');

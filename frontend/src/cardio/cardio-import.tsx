@@ -394,9 +394,9 @@ export function CardioImport({
                         <td className={cell}>
                           <Checkbox
                             aria-label={`${n}행 저장`}
-                            // As in the InBody import: a 16px box with a 44px touch area until
-                            // project-standards#415 fixes checkbox.tsx.
-                            className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
+                            // As in the InBody import: the box stays 16px with the common 44px
+                            // ::after touch area (#271).
+                            className="pointer-coarse:min-h-4 pointer-coarse:min-w-4"
                             checked={row.selected && savable(i)}
                             disabled={busy || !savable(i)}
                             onCheckedChange={(checked) => choose(row.key, checked === true)}

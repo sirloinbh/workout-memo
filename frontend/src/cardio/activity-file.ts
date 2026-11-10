@@ -63,8 +63,11 @@ function numberOf(element: Element | undefined) {
   const value = Number(text);
   return Number.isFinite(value) ? value : null;
 }
+// Both formats write UTC with a "Z". A time without any zone (seen in some exporters) is read
+// as UTC too, never as the browser's local time, so the date does not depend on the device.
 function instantOf(text: string) {
-  const time = Date.parse(text);
+  const zoned = /T[d:.]+$/.test(text) ? `${text}Z` : text;
+  const time = Date.parse(zoned);
   return Number.isNaN(time) ? null : new Date(time);
 }
 // The schema's ranges: a value outside them is a device glitch, so it is left empty (the
@@ -90,13 +93,16 @@ function finish(
     'file' | 'format' | 'external_id' | 'started_at' | 'date' | 'start_time'
   >,
 ): ImportedActivity {
-  const startedAt = start.toISOString().replace('.000Z', 'Z');
+  // Whole seconds: an exporter writing milliseconds gets the same id as one that does not.
+  const startedAt = start.toISOString().slice(0, 19) + 'Z';
   const max = values.max_heart_rate;
   return {
     file,
     format,
-    // The start instant in one spelling, so the same activity exported as TCX and as GPX gets
-    // the same id and the second file is recognised as already imported.
+    // The start instant in one spelling. The same file imported again gets the same id and is
+    // refused. A TCX and a GPX of one activity usually share it too, but a GPX may start a few
+    // seconds later (points without a position are left out); then the start ±2 minutes
+    // look-alike rule asks about it instead.
     external_id: startedAt,
     started_at: startedAt,
     ...seoulDateTime(start),
@@ -246,7 +252,11 @@ export function parseGpx(file: string, text: string): ImportedActivity[] {
         30,
         250,
       ),
-      max_heart_rate: within(hearts.length ? Math.max(...hearts) : null, 30, 250),
+      max_heart_rate: within(
+        hearts.length ? hearts.reduce((top, h) => Math.max(top, h), 0) : null,
+        30,
+        250,
+      ),
       calories_kcal: null,
       elevation_gain_m: null,
       avg_cadence: null,

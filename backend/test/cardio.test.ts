@@ -519,3 +519,20 @@ test('an import saves every row in one transaction and answers them in order', a
     },
   );
 });
+
+test('an import of 200 rows with full memos fits its own body limit, beyond the app-wide 256kb', async () => {
+  let id = 0;
+  await withApi(
+    (sql) =>
+      sql.startsWith('INSERT') ? { rows: [{ id: ++id }], rowCount: 1 } : { rows: [], rowCount: 0 },
+    async (base) => {
+      const memo = '가'.repeat(2000);
+      const sessions = Array.from({ length: 200 }, (_, i) => imported(`m${i}`, { memo }));
+      // About 1.2 MB of UTF-8, over the app-wide 256kb limit.
+      assert.ok(Buffer.byteLength(JSON.stringify({ sessions })) > 1024 * 1024);
+      const answer = await call(`${base}/import`, 'POST', { sessions });
+      assert.equal(answer.status, 201);
+      assert.equal((answer.body as { sessions: unknown[] }).sessions.length, 200);
+    },
+  );
+});

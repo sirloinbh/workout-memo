@@ -54,6 +54,12 @@ export function CardioPanel({
   const [editing, setEditing] = useState<CardioSession | null | undefined>();
   // #119: the activity file import card under the list.
   const [importing, setImporting] = useState(false);
+  const importButton = useRef<HTMLButtonElement>(null);
+  // Closing the card returns focus to the button that opened it.
+  const closeImport = () => {
+    setImporting(false);
+    importButton.current?.focus();
+  };
   const version = useRef(0);
   // The latest callback, so a caller passing a new function on each render adds no calls.
   const report = useRef(onSessionsChange);
@@ -159,6 +165,7 @@ export function CardioPanel({
           </CardDescription>
           <CardAction className="flex flex-wrap justify-end gap-2">
             <Button
+              ref={importButton}
               variant="outline"
               disabled={busy}
               aria-expanded={importing}
@@ -213,9 +220,9 @@ export function CardioPanel({
         <CardioImport
           today={today}
           workouts={workouts}
-          close={() => setImporting(false)}
+          close={closeImport}
           done={(count) => {
-            setImporting(false);
+            closeImport();
             setStatus(`유산소 기록 ${count}건을 가져왔습니다`);
             onChanged?.();
             void load();

@@ -202,7 +202,7 @@ export const operations: Record<string, Operation> = {
   // #119: all rows or none; a refused row comes back by its index (see docs/api.md).
   'POST /api/cardio-sessions/import': {
     body: ['CardioImport', cardioImportDocument],
-    status: [201, 400, 409],
+    status: [201, 400, 409, 413],
   },
   'PUT /api/cardio-sessions/:id': {
     body: ['CardioSession', cardioSessionSchema],

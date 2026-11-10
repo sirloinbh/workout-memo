@@ -1,4 +1,4 @@
-import type express from 'express';
+import express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
@@ -80,7 +80,6 @@ export async function cardioRecords(pool: Pool) {
 // A duplicate (source, external_id) is a 409 and an unknown workout_id a 400; both are
 // answered by appErrors in routes/shared.ts so create and update share the messages.
 export function registerCardioRoutes(app: express.Express, pool: Pool, today: () => string) {
-  registerCardioImportRoute(app, pool, today);
   app.get('/api/cardio-sessions', async (req, res) => {
     const q = cardioQuery.parse(req.query);
     res.json(
@@ -217,8 +216,17 @@ function sendImportProblems(
   });
 }
 
-function registerCardioImportRoute(app: express.Express, pool: Pool, today: () => string) {
-  app.post('/api/cardio-sessions/import', async (req, res) => {
+// A row may carry a 2000-character memo (about 6 KB of Korean in JSON), so 200 rows do not fit
+// the app-wide 256kb body limit. This route parses its own body and is registered before that
+// parser (app.ts), like the backup routes.
+export const cardioImportMaxBytes = 2 * 1024 * 1024;
+export function registerCardioImportRoute(
+  app: express.Express,
+  pool: Pool,
+  today: () => string,
+  json = express.json({ limit: cardioImportMaxBytes }),
+) {
+  app.post('/api/cardio-sessions/import', json, async (req, res) => {
     const { rows, problems } = importRows(req.body, today());
     if (problems.length) {
       sendImportProblems(res, 400, problems);

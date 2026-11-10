@@ -140,4 +140,19 @@ describe('activity files (#119)', () => {
     expect(parseActivityFile('download', run)[0].format).toBe('tcx');
     expect(parseActivityFile('download.xml', ride)[0].format).toBe('gpx');
   });
+
+  it('keeps the id to whole seconds and reads a time without a zone as UTC', () => {
+    const gpx = (time: string) =>
+      parseGpx(
+        'a.gpx',
+        `<gpx><trk><trkseg><trkpt lat="1" lon="1"><time>${time}</time></trkpt></trkseg></trk></gpx>`,
+      )[0];
+    expect(gpx('2026-11-01T22:10:05.123Z').external_id).toBe('2026-11-01T22:10:05Z');
+    // Never the browser's local time: the same Seoul date and time on every device.
+    expect(gpx('2026-11-01T22:10:05')).toMatchObject({
+      external_id: '2026-11-01T22:10:05Z',
+      date: '2026-11-02',
+      start_time: '07:10',
+    });
+  });
 });

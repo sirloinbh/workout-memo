@@ -6,7 +6,7 @@ import { registerBackupRoutes } from './backup.js';
 import { seoulToday } from './progress.js';
 import { registerAnalysisRoutes } from './routes/analysis.js';
 import { registerBodyMeasurementRoutes } from './routes/body-measurements.js';
-import { registerCardioRoutes } from './routes/cardio.js';
+import { registerCardioImportRoute, registerCardioRoutes } from './routes/cardio.js';
 import { registerCardioGoalRoutes } from './routes/cardio-goals.js';
 import { registerGoalRoutes } from './routes/goals.js';
 import { registerMachineRoutes } from './routes/machines.js';
@@ -25,6 +25,8 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
   app.disable('x-powered-by');
   // Backup routes parse their own 10MB body, so they register before the 256kb parser.
   registerBackupRoutes(app, pool);
+  // #119: up to 200 imported cardio sessions; its own 2MB body limit.
+  registerCardioImportRoute(app, pool, today);
   app.use(express.json({ limit: '256kb' }));
   registerRoutineRoutes(app, pool, today);
   app.get('/api/health', async (_req, res) => {

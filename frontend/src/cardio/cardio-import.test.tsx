@@ -139,6 +139,70 @@ test('edits a row in the form without saving it, then saves the edited values', 
   expect(await screen.findByText('유산소 기록 2건을 가져왔습니다')).toBeInTheDocument();
 });
 
+test('of two files with the same id, either can be chosen, but not both', async () => {
+  const user = userEvent.setup();
+  mockApi(() => []);
+  render(<CardioPanel from="2026-11-01" to="2026-11-08" today={today} workouts={[]} />);
+  await user.click(await screen.findByRole('button', { name: '파일 가져오기' }));
+  const card = screen.getByRole('region', { name: '활동 파일 가져오기' });
+  // The card opens on its file chooser.
+  expect(within(card).getByLabelText('활동 파일 (TCX·GPX)')).toHaveFocus();
+  // The same run as GPX, starting at the same second.
+  const gpx = `<gpx><trk><type>running</type><trkseg>
+    <trkpt lat="37.5" lon="127"><time>2026-11-01T22:10:05Z</time></trkpt>
+    <trkpt lat="37.53" lon="127"><time>2026-11-01T22:31:05Z</time></trkpt></trkseg></trk></gpx>`;
+  await user.upload(within(card).getByLabelText('활동 파일 (TCX·GPX)'), [
+    new File([gpx], 'run.gpx'),
+    new File([run], 'run.tcx'),
+  ]);
+  await within(card).findByRole('region', { name: '가져올 활동 미리보기' });
+  const first = within(card).getByRole('checkbox', { name: '1행 저장' });
+  const second = within(card).getByRole('checkbox', { name: '2행 저장' });
+  expect(first).toBeChecked();
+  expect(second).toBeDisabled();
+  expect(within(card).getByText(/1행과 같은 활동입니다/)).toBeInTheDocument();
+
+  // Clearing the GPX row lets the TCX row (timer time, pauses left out) be chosen instead.
+  await user.click(first);
+  expect(second).toBeEnabled();
+  expect(second).not.toBeChecked();
+  await user.click(second);
+  expect(second).toBeChecked();
+  expect(within(card).getByRole('button', { name: '선택한 1건 저장' })).toBeEnabled();
+
+  // Closing returns focus to the button that opened the card.
+  await user.click(within(card).getByRole('button', { name: '닫기' }));
+  expect(screen.getByRole('button', { name: '파일 가져오기' })).toHaveFocus();
+});
+
+test('a 409 reads the stored sessions again, so the row turns into "already imported"', async () => {
+  const user = userEvent.setup();
+  // Imported meanwhile in another tab: the range answers it only after the refused save.
+  let savedElsewhere = false;
+  mockApi((request) => {
+    if (request.method === 'POST')
+      return json(
+        {
+          error: '1건에 문제가 있어 아무것도 저장하지 않았습니다',
+          rows: [{ index: 0, message: '이미 가져온 활동입니다' }],
+        },
+        409,
+      );
+    if (request.url.searchParams.get('to') === '2026-11-08' || !savedElsewhere) return [];
+    return [stored({ source: 'file', external_id: '2026-11-01T22:10:05Z', start_time: '07:10' })];
+  });
+  render(<CardioPanel from="2026-11-01" to="2026-11-08" today={today} workouts={[]} />);
+  const card = await choose(user);
+  savedElsewhere = true;
+  await user.click(within(card).getByRole('button', { name: '선택한 2건 저장' }));
+  // The row keeps the server's reason and can no longer be chosen; the other row still can.
+  await waitFor(() =>
+    expect(within(card).getByRole('checkbox', { name: '1행 저장' })).toBeDisabled(),
+  );
+  expect(within(card).getByText('이미 가져온 활동입니다')).toBeInTheDocument();
+  expect(within(card).getByRole('button', { name: '선택한 1건 저장' })).toBeEnabled();
+});
+
 test('a refused import keeps every row and shows the reason on the refused one', async () => {
   const user = userEvent.setup();
   const api = setup([], () =>

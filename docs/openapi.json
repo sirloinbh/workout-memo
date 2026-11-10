@@ -864,6 +864,16 @@
         }
       }
     },
+    "/api/exercise-names": {
+      "get": {
+        "summary": "운동명 자동완성 후보(#124). 최근 → 자주 사용 순 최대 50개",
+        "responses": {
+          "200": {
+            "description": "성공"
+          }
+        }
+      }
+    },
     "/api/exercise-weight-steps": {
       "get": {
         "summary": "운동별 증량 단위(#86). 지정한 운동만",

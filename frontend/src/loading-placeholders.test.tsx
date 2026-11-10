@@ -102,7 +102,7 @@ test('the journal save button and status line show a spinner while it saves', as
   fireEvent.change(document.querySelector('input[maxlength="120"]')!, {
     target: { value: '하체' },
   });
-  for (const name of document.querySelectorAll('input[list="exercise-names"]'))
+  for (const name of document.querySelectorAll('input[role="combobox"][id$="-exercise"]'))
     fireEvent.change(name, { target: { value: 'Squat' } });
   fireEvent.submit(document.querySelector('form')!);
 

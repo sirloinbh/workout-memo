@@ -26,6 +26,7 @@ import { listCardioSessions } from './cardio/api';
 import { CardioSummaryCard, CardioTab } from './cardio/cardio-tab';
 import { CardioGoals } from './cardio-goals';
 import { AlertBanner } from './components/alert-banner';
+import { Combobox } from './components/combobox';
 import { DateStepper, RangeSummary } from './components/date-stepper';
 import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
@@ -69,6 +70,8 @@ import {
 } from './contract';
 import { dateTitle, seoulDate } from './date';
 import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
+import { candidateNames, type ExerciseName } from './exercise-name-match';
+import { SimilarNameHint } from './exercise-names';
 import type { NoticeValue } from './lib/use-notice';
 import { cn } from './lib/utils';
 import { RoutineProgress } from './progress';
@@ -554,6 +557,11 @@ function Workspace() {
       setSaveState('로컬 초안 · 서버 저장 전');
     } else setRecovery(draft.current);
   }
+  // #124: typing, picking a suggestion or accepting a similar name all rename one set.
+  function renameSet(i: number, exercise: string) {
+    if (!editor?.sets) return;
+    setEditor({ ...editor, sets: editor.sets.map((s, j) => (j === i ? { ...s, exercise } : s)) });
+  }
   // Taps on one set within this window after completing it are treated as a double tap.
   const completedAt = useRef(new Map<number, number>());
   function markSet(i: number, completed: boolean) {
@@ -664,6 +672,12 @@ function Workspace() {
     queryFn: () =>
       api<{ exercise: string; body_parts: string[] }[]>('/exercise-body-parts').catch(() => []),
   });
+  // #124: exercise name candidates for the journal and goal fields. Optional: a failed load
+  // keeps the names this screen already has.
+  const exerciseNamesQuery = useQuery({
+    queryKey: ['exercise-names'],
+    queryFn: () => api<ExerciseName[]>('/exercise-names').catch(() => []),
+  });
   const restSeconds = (s: SetRow) => {
     const machine = machines.find((m) => m.id === s.machine_id);
     const key = s.exercise.trim().toLowerCase();
@@ -678,6 +692,11 @@ function Workspace() {
     machines = machinesQuery.data ?? [],
     brands = brandsQuery.data ?? [],
     officialWeights = officialQuery.data === undefined ? [] : officialQuery.data;
+  const exerciseNames = candidateNames(exerciseNamesQuery.data ?? [], [
+    ...(progress?.today_plan?.target?.exercises.map((e) => e.exercise) ?? []),
+    ...goals.map((g) => g.exercise),
+    ...machines.map((m) => m.name),
+  ]);
   const journalQueries = [workoutsQuery, goalsQuery, machinesQuery, brandsQuery];
   const loading = [...journalQueries, officialQuery].some((q) => q.isFetching);
   const loadError = journalQueries.find((q) => q.error)?.error?.message ?? '';
@@ -1717,20 +1736,23 @@ function Workspace() {
                   </div>
                   <label htmlFor={`set-${i}-exercise`} className="mb-0 text-meta">
                     운동명
-                    <CommonInput
+                    {/* #124: suggestions from earlier journals, goals, routines and machines. */}
+                    <Combobox
                       id={`set-${i}-exercise`}
                       className="md:pointer-coarse:text-base"
                       required
-                      list="exercise-names"
                       value={s.exercise}
-                      onChange={(e) => {
-                        const sets = [...editor.sets!];
-                        sets[i] = { ...s, exercise: e.target.value };
-                        setEditor({ ...editor, sets });
-                      }}
+                      options={exerciseNames}
+                      listLabel="운동명 후보"
+                      onValueChange={(exercise) => renameSet(i, exercise)}
                       {...invalid(`sets.${i}.exercise`)}
                     />
                   </label>
+                  <SimilarNameHint
+                    value={s.exercise}
+                    names={exerciseNames}
+                    onReplace={(exercise) => renameSet(i, exercise)}
+                  />
                   <label className="mb-0 text-meta">
                     머신
                     <select
@@ -1845,17 +1867,6 @@ function Workspace() {
                   </Button>
                 </div>
               ))}
-              <datalist id="exercise-names">
-                {Array.from(
-                  new Set([
-                    ...(progress?.today_plan?.target?.exercises.map((e) => e.exercise) ?? []),
-                    ...goals.map((g) => g.exercise),
-                    ...machines.map((m) => m.name),
-                  ]),
-                ).map((n) => (
-                  <option key={n}>{n}</option>
-                ))}
-              </datalist>
               <button
                 type="button"
                 className="subtle-button"
@@ -1922,6 +1933,7 @@ function Workspace() {
           <GoalForm
             deadline={to}
             saving={saving}
+            names={exerciseNames}
             onSave={(goal) =>
               void action(
                 () => api('/goals', 'POST', goal),
@@ -2143,10 +2155,12 @@ const noteText = 'text-meta text-muted-foreground';
 function GoalForm({
   deadline,
   saving,
+  names,
   onSave,
 }: {
   deadline: string;
   saving: boolean;
+  names: readonly string[];
   onSave: (goal: GoalInput) => void;
 }) {
   const {
@@ -2154,11 +2168,15 @@ function GoalForm({
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<GoalInput>({
     resolver: zodResolver(goalSchema),
     defaultValues: { exercise: '', target_reps: 10, start_date: today(), deadline },
   });
+  const exercise = watch('exercise') ?? '';
+  // A picked suggestion or an accepted similar name, validated like typing once submitted.
+  const rename = (value: string) =>
+    setValue('exercise', value, { shouldDirty: true, shouldValidate: isSubmitted });
   const field = (name: keyof GoalInput) => invalidProps(name, errors[name]?.message);
   const message = (name: keyof GoalInput) => (
     <FieldError name={name}>{errors[name]?.message}</FieldError>
@@ -2167,17 +2185,23 @@ function GoalForm({
     <form noValidate onSubmit={(event) => void handleSubmit(onSave)(event)}>
       <Label className={fieldLabel}>
         운동명
-        <CommonInput
+        {/* #124: the same suggestions as the journal; a pick sets the form value. */}
+        <Combobox
           className={touchText}
           maxLength={120}
           placeholder="일지와 같은 운동명을 입력하세요"
           {...register('exercise')}
           {...field('exercise')}
+          value={exercise}
+          options={names}
+          listLabel="운동명 후보"
+          onValueChange={rename}
         />
       </Label>
       {message('exercise')}
+      <SimilarNameHint value={exercise} names={names} onReplace={rename} />
       <GoalSuggestion
-        exercise={watch('exercise') ?? ''}
+        exercise={exercise}
         apply={(weight) => setValue('target_weight', weight, { shouldValidate: true })}
       />
       <div className="grid grid-cols-2 gap-x-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">

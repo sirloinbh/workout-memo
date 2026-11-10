@@ -71,7 +71,7 @@ async function openNew(ui: UI) {
   });
   // Every one of the three starting sets needs a name: the shared contract (#64) checks
   // the whole journal before anything is sent, exactly as the server would.
-  for (const name of document.querySelectorAll('input[list="exercise-names"]'))
+  for (const name of document.querySelectorAll('input[role="combobox"][id$="-exercise"]'))
     fireEvent.change(name, { target: { value: 'Squat' } });
   fireEvent.change(screen.getAllByRole('textbox', { name: '총중량 kg' })[0], {
     target: { value: '100' },

@@ -159,7 +159,7 @@ function mount(now?: string) {
     expect(found, `${label} trend chart exists`).toBeDefined();
     return {
       label: found!.getAttribute('aria-label')!,
-      points: found!.querySelectorAll('circle').length,
+      points: found!.querySelectorAll('[data-slot="chart-dot"]').length,
       lines: found!.querySelectorAll('polyline').length,
       text: found!.textContent,
     };

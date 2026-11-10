@@ -1,6 +1,7 @@
 import { Plus, Scale } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { ChartDot } from './chart-dot';
 import { AlertBanner } from './components/alert-banner';
 import { fieldLabel, formHint as hint, touchText } from './components/form-styles';
 import { List, ListItem } from './components/list';
@@ -453,9 +454,9 @@ function Trend({
             />
           ))}
         {points.map((p) => (
-          <circle key={p.date} className="fill-primary" cx={x(p.date)} cy={y(p.value)} r="3.5">
+          <ChartDot key={p.date} x={x(p.date)} y={y(p.value)}>
             <title>{`${p.date} ${fmt(p.value)} ${metric.unit}`}</title>
-          </circle>
+          </ChartDot>
         ))}
       </svg>
       <div className="mt-1.5 flex justify-between gap-1.5 text-meta text-muted-foreground">

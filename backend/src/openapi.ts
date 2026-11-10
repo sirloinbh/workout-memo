@@ -184,6 +184,8 @@ export const operations: Record<string, Operation> = {
     body: ['BodyPartMapping', bodyPartMappingSchema],
     status: [200, 400],
   },
+  // #124: autocomplete candidates; see docs/api.md.
+  'GET /api/exercise-names': { status: [200] },
   'GET /api/exercise-weight-steps': { status: [200] },
   'PUT /api/exercise-weight-steps': {
     body: ['WeightStep', weightStepSchema],

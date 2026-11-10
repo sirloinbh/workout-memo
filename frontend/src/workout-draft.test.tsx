@@ -136,7 +136,7 @@ const stat = (label: string) => {
 const dialog = () => screen.getByRole('dialog');
 const titleInput = () => dialog().querySelector<HTMLInputElement>('input[maxlength="120"]')!;
 const exerciseInputs = () => [
-  ...dialog().querySelectorAll<HTMLInputElement>('input[list="exercise-names"]'),
+  ...dialog().querySelectorAll<HTMLInputElement>('input[role="combobox"][id$="-exercise"]'),
 ];
 const weightInputs = () =>
   within(dialog()).getAllByRole<HTMLInputElement>('textbox', { name: '총중량 kg' });

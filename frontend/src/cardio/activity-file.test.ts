@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   ActivityFileError,
@@ -154,5 +154,15 @@ describe('activity files (#119)', () => {
       date: '2026-11-02',
       start_time: '07:10',
     });
+    // The tests run in UTC (vitest.config.ts), where a local reading would look right too, so
+    // the text handed to Date.parse is checked: it carries the "Z".
+    const parse = vi.spyOn(Date, 'parse');
+    try {
+      gpx('2026-11-01T22:10:05');
+      expect(parse).toHaveBeenCalledWith('2026-11-01T22:10:05Z');
+      expect(parse).not.toHaveBeenCalledWith('2026-11-01T22:10:05');
+    } finally {
+      parse.mockRestore();
+    }
   });
 });

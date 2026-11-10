@@ -175,6 +175,39 @@ test('of two files with the same id, either can be chosen, but not both', async 
   expect(screen.getByRole('button', { name: '파일 가져오기' })).toHaveFocus();
 });
 
+test('fixing an earlier twin does not take over the row the user chose', async () => {
+  const user = userEvent.setup();
+  mockApi(() => []);
+  render(<CardioPanel from="2026-11-01" to="2026-11-08" today={today} workouts={[]} />);
+  await user.click(await screen.findByRole('button', { name: '파일 가져오기' }));
+  const card = screen.getByRole('region', { name: '활동 파일 가져오기' });
+  // A GPX of the same run with one point: no duration, so the row is invalid at first.
+  const gpx = `<gpx><trk><type>running</type><trkseg>
+    <trkpt lat="37.5" lon="127"><time>2026-11-01T22:10:05Z</time></trkpt></trkseg></trk></gpx>`;
+  await user.upload(within(card).getByLabelText('활동 파일 (TCX·GPX)'), [
+    new File([gpx], 'run.gpx'),
+    new File([run], 'run.tcx'),
+  ]);
+  await within(card).findByRole('region', { name: '가져올 활동 미리보기' });
+  const first = within(card).getByRole('checkbox', { name: '1행 저장' });
+  const second = within(card).getByRole('checkbox', { name: '2행 저장' });
+  expect(first).toBeDisabled();
+  // The TCX row is a look-alike of the GPX row, so it starts unchecked; the user chooses it.
+  expect(second).not.toBeChecked();
+  await user.click(second);
+  expect(second).toBeChecked();
+
+  // Fixing the GPX row makes it savable, but it is not chosen over the user's choice.
+  await user.click(within(card).getByRole('button', { name: '1행 수정' }));
+  const dialog = await screen.findByRole('dialog', { name: '가져올 기록 수정' });
+  await user.type(within(dialog).getByRole('textbox', { name: '운동 시간 분' }), '20');
+  await user.click(within(dialog).getByRole('button', { name: '미리보기에 반영' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(first).toBeEnabled();
+  expect(first).not.toBeChecked();
+  expect(second).toBeChecked();
+});
+
 test('a 409 reads the stored sessions again, so the row turns into "already imported"', async () => {
   const user = userEvent.setup();
   // Imported meanwhile in another tab: the range answers it only after the refused save.

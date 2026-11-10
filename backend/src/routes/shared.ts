@@ -42,5 +42,10 @@ export function appErrors(
     sendError(res, 413, '요청 크기 제한을 초과했습니다 (백업 파일은 최대 10MB).');
     return;
   }
+  // #119: the cardio import has its own 2MB limit.
+  if (error.status === 413 && req.path === '/api/cardio-sessions/import') {
+    sendError(res, 413, '요청 크기 제한을 초과했습니다 (가져오기는 한 번에 최대 2MB).');
+    return;
+  }
   next(err);
 }

@@ -536,3 +536,17 @@ test('an import of 200 rows with full memos fits its own body limit, beyond the 
     },
   );
 });
+
+test('an import over its 2MB body limit names that limit', async () => {
+  await withApi(
+    () => ({ rows: [], rowCount: 0 }),
+    async (base, calls) => {
+      const sessions = [imported('big', { memo: 'x'.repeat(3 * 1024 * 1024) })];
+      assert.deepEqual(await call(`${base}/import`, 'POST', { sessions }), {
+        status: 413,
+        body: { error: '요청 크기 제한을 초과했습니다 (가져오기는 한 번에 최대 2MB).' },
+      });
+      assert.equal(calls.length, 0);
+    },
+  );
+});

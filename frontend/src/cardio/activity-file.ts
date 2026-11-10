@@ -66,7 +66,7 @@ function numberOf(element: Element | undefined) {
 // Both formats write UTC with a "Z". A time without any zone (seen in some exporters) is read
 // as UTC too, never as the browser's local time, so the date does not depend on the device.
 function instantOf(text: string) {
-  const zoned = /T[d:.]+$/.test(text) ? `${text}Z` : text;
+  const zoned = /T[\d:.]+$/.test(text) ? `${text}Z` : text;
   const time = Date.parse(zoned);
   return Number.isNaN(time) ? null : new Date(time);
 }

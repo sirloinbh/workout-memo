@@ -128,10 +128,16 @@ function checkRows(rows: readonly Row[], existing: readonly CardioSession[], tod
 function withDefaults(rows: readonly Row[], existing: readonly CardioSession[], today: string) {
   const out: Row[] = [];
   const checks: Check[] = [];
+  // A later twin the user chose wins: the row before it is not chosen by default, or it would
+  // block the user's choice (review round 2).
+  const chosenLater = (row: Row, i: number) =>
+    rows.some((r, j) => j > i && r.touched && r.selected && isSameActivity(r.body, row.body));
   rows.forEach((row, i) => {
     const draft = row.touched ? row : { ...row, selected: false };
     const check = checkRow(draft, i, [...out, draft], checks, existing, today);
-    const next = row.touched ? row : { ...row, selected: check.kind === 'ok' };
+    const next = row.touched
+      ? row
+      : { ...row, selected: check.kind === 'ok' && !chosenLater(row, i) };
     out.push(next);
     checks.push(row.touched ? check : checkRow(next, i, [...out], checks, existing, today));
   });
@@ -188,8 +194,12 @@ export function CardioImport({
   // the new answer.
   const range = rangeOf(rows);
   const rangeKey = range ? `${range.from}~${range.to}` : '';
+  // What was read last, so the range open() has just read is not read twice.
+  const loaded = useRef('');
   useEffect(() => {
-    if (!range) return;
+    const key = `${rangeKey}#${reload}`;
+    if (!range || loaded.current === key) return;
+    loaded.current = key;
     let current = true;
     listCardioSessions(range.from, range.to).then(
       (sessions) => {
@@ -242,6 +252,7 @@ export function CardioImport({
     if (span)
       try {
         stored = await listCardioSessions(span.from, span.to);
+        loaded.current = `${span.from}~${span.to}#${reload}`;
       } catch {
         setError(
           '기존 유산소 기록을 불러오지 못해 중복을 확인할 수 없습니다. 파일을 다시 선택하세요.',

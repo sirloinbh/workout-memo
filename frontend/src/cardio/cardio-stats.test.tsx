@@ -1,8 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
-import { json, mockApi } from '../test/api';
+import { deferred, json, mockApi } from '../test/api';
 import type { CardioRecords as Records, CardioSession } from './api';
 import { CardioRecords } from './cardio-records';
 import { CardioStats } from './cardio-stats';
@@ -187,4 +187,24 @@ test('a new period starts again from its default unit; a chosen unit holds withi
   expect(chart(/^전체 주별 거리/)).toBeInTheDocument();
   rerender(<CardioStats from="2025-11-16" to="2026-11-15" sessions={sessions} />);
   expect(chart(/^전체 월별 거리/)).toBeInTheDocument();
+});
+
+// #173: the first load shows placeholders in named busy regions; the status line stays for
+// screen readers only, and both go away once the data arrives.
+test('stats and records show placeholders while they first load', async () => {
+  const records = deferred<Records>();
+  mockApi(() => records.promise);
+  const { rerender } = render(
+    <CardioStats from="2026-11-02" to="2026-11-15" sessions={[]} pending />,
+  );
+  const stats = screen.getByRole('generic', { name: '유산소 통계', busy: true });
+  expect(stats.querySelector('[data-slot="skeleton-card"]')).not.toBeNull();
+  expect(screen.getByText('통계를 불러오는 중…')).toHaveClass('sr-only');
+  const list = screen.getByRole('generic', { name: '개인 기록', busy: true });
+  expect(list.querySelector('[data-slot="skeleton-list"]')).not.toBeNull();
+  expect(within(list).getByText('기록을 불러오는 중…')).toHaveClass('sr-only');
+
+  rerender(<CardioStats from="2026-11-02" to="2026-11-15" sessions={sessions} />);
+  records.resolve(noRecords);
+  await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
 });

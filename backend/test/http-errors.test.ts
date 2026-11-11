@@ -145,7 +145,7 @@ test('a malformed JSON body is a 400 from the central handler', async () => {
           headers: { 'Content-Type': 'application/json' },
           body: '{',
         }),
-        { status: 400, body: { error: '요청 본문의 JSON 형식이 올바르지 않습니다' } },
+        { status: 400, body: { error: 'Request body is not valid JSON' } },
       );
     },
   );
@@ -163,7 +163,7 @@ test('routes registered before the JSON 404 still answer, including the backup r
           headers: { 'Content-Type': 'application/json' },
           body: '{"mode":',
         }),
-        { status: 400, body: { error: '요청 본문의 JSON 형식이 올바르지 않습니다' } },
+        { status: 400, body: { error: 'Request body is not valid JSON' } },
       );
       assert.deepEqual(await call(base + '/backup/nope', { method: 'POST' }), {
         status: 404,

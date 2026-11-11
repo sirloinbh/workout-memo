@@ -477,7 +477,7 @@ test(
         [
           'corrupted JSON',
           undefined,
-          /요청 본문의 JSON 형식이 올바르지 않습니다/,
+          /Request body is not valid JSON/,
           400,
           '{"mode":"merge","backup":{',
         ],

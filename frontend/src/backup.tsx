@@ -9,12 +9,13 @@ import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { Spinner } from './components/ui/spinner';
+import { plural } from './labels';
 import { cn } from './lib/utils';
 
 // Analysis CSV and restore backup are separate artifacts (#33). The server validates and
 // computes every summary; this page only shows it and asks for explicit confirmation.
 const maxBytes = 10 * 1024 * 1024;
-const confirmation = '전체 교체';
+const confirmation = 'Replace all';
 // Each paragraph takes the size itself: the legacy `p` rule (12px) applies to the element directly.
 const copy = 'flex flex-col gap-2';
 const text = 'text-body-sm text-muted-foreground';
@@ -28,16 +29,16 @@ type Summary = {
   retry_keys_cleared: number;
 };
 const labels: [string, string][] = [
-  ['workouts', '운동 일지'],
-  ['sets', '세트'],
-  ['goals', '목표'],
-  ['routines', '루틴'],
+  ['workouts', 'Workout journals'],
+  ['sets', 'Sets'],
+  ['goals', 'Goals'],
+  ['routines', 'Routines'],
   // #114: backup v2. A server without cardio sessions sends no such table; the row is skipped.
-  ['cardio_sessions', '유산소'],
+  ['cardio_sessions', 'Cardio'],
   // #253: backup v3. An older server sends no such table; the row is skipped.
-  ['cardio_goals', '유산소 목표'],
-  ['machines', '머신'],
-  ['brands', '브랜드'],
+  ['cardio_goals', 'Cardio goals'],
+  ['machines', 'Machines'],
+  ['brands', 'Brands'],
 ];
 async function post(path: string, body: unknown): Promise<Summary> {
   const response = await fetch('/api/backup/' + path, {
@@ -46,7 +47,7 @@ async function post(path: string, body: unknown): Promise<Summary> {
     body: JSON.stringify(body),
   });
   const data = await response.json();
-  if (!response.ok) throw Error(data.error ?? '백업 요청에 실패했습니다');
+  if (!response.ok) throw Error(data.error ?? 'The backup request failed');
   return data;
 }
 
@@ -79,14 +80,16 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
     setTyped('');
     setFileName(file.name);
     if (file.size > maxBytes) {
-      setError('백업 파일은 10MB 이하여야 합니다.');
+      setError('The backup file must be 10 MB or smaller.');
       return;
     }
     let value: unknown;
     try {
       value = JSON.parse(await file.text());
     } catch {
-      setError('백업 파일을 읽을 수 없습니다. 이 앱에서 내려받은 JSON 백업인지 확인하세요.');
+      setError(
+        'Could not read the backup file. Check that it is a JSON backup downloaded from this app.',
+      );
       return;
     }
     setBackup(value);
@@ -115,73 +118,78 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
   const shown = result ?? preview;
   return (
     <section className="flex flex-col gap-4">
-      <h2>백업·내보내기</h2>
+      <h2>Backup & Export</h2>
       <Card>
         <CardHeader>
-          <CardTitle className="text-body font-semibold">분석용 CSV</CardTitle>
+          <CardTitle className="text-body font-semibold">CSV for analysis</CardTitle>
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>
-            운동 일지의 세트를 한 행씩 UTF-8 CSV로 내려받습니다. 날짜는 YYYY-MM-DD, 중량은 머신
-            기본중량을 포함한 총중량(kg)입니다. 머신이 없거나 기본중량을 모르면 빈 칸입니다.
+            Downloads the sets of your workout journals as a UTF-8 CSV, one row per set. Dates are
+            YYYY-MM-DD and weight is the total weight (kg) including the machine&apos;s base weight.
+            It is blank if there is no machine or the base weight is unknown.
           </p>
           <p className={text}>
-            스프레드시트가 수식으로 실행하지 않도록 =, +, -, @, 탭, CR로 시작하는 글자 값 앞에
-            작은따옴표(&apos;)를 붙입니다. CSV는 복원에 사용할 수 없습니다.
+            So that spreadsheets do not run them as formulas, a single quote (&apos;) is added
+            before text values that start with =, +, -, @, tab, or CR. CSV cannot be used for
+            restore.
           </p>
         </CardContent>
         <CardFooter>
           <Button asChild>
             <a href="/api/export/workouts.csv" download>
               <Download aria-hidden />
-              CSV 내려받기
+              Download CSV
             </a>
           </Button>
         </CardFooter>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle className="text-body font-semibold">복원용 백업 (JSON)</CardTitle>
+          <CardTitle className="text-body font-semibold">Backup for restore (JSON)</CardTitle>
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>
-            운동 일지·세트·목표·루틴·유산소 기록·유산소 목표·브랜드·머신과 그 연결을 버전이 있는
-            JSON 한 파일로 보관합니다. 저장 재시도 키는 일시적인 중복 방지 기록이라 포함하지
-            않습니다. 백업 파일에는 개인 기록이 들어 있으니 안전한 곳에 보관하세요.
+            Stores workout journals, sets, goals, routines, cardio records, cardio goals, brands,
+            machines, and their links in a single versioned JSON file. Save retry keys are temporary
+            duplicate-prevention records, so they are not included. A backup file contains personal
+            records, so keep it somewhere safe.
           </p>
         </CardContent>
         <CardFooter>
           <Button asChild>
             <a href="/api/backup" download>
               <Download aria-hidden />
-              백업 파일 내려받기
+              Download backup file
             </a>
           </Button>
         </CardFooter>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle className="text-body font-semibold">백업에서 복원</CardTitle>
+          <CardTitle className="text-body font-semibold">Restore from backup</CardTitle>
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>
-            추가만(기본): 기존 기록은 수정·삭제하지 않고 새 기록만 추가합니다. 내용이 동일한 기록은
-            건너뜁니다. 같은 브랜드·이름의 머신이 다르면 기존 값을 유지하고 충돌로 표시합니다.
+            Additions only (default): adds only new records without editing or deleting existing
+            ones. Identical records are skipped. If a machine with the same brand and name differs,
+            the existing value is kept and shown as a conflict.
           </p>
           <p className={text}>
-            전체 교체: 현재 기록을 모두 삭제하고 백업 내용으로 바꿉니다. 저장 재시도 기록도
-            초기화되므로 응답을 받지 못한 저장은 다시 저장하면 새 기록이 됩니다. 확인 문구 “
-            {confirmation}”를 입력해야 실행됩니다.
+            Replace all: deletes every current record and replaces it with the backup content. Save
+            retry records are also reset, so a save whose response was lost becomes a new record if
+            you save it again. Type the confirmation phrase “{confirmation}” to run it.
           </p>
           <p className={text}>
-            복원 전에 형식·버전·참조·크기(최대 10MB)를 검사하고 변경 요약을 미리 보여 줍니다. 복원은
-            전부 성공하거나 전부 취소됩니다.
+            Before restoring, the format, version, references, and size (up to 10 MB) are checked
+            and a summary of changes is previewed. A restore either fully succeeds or is fully
+            canceled.
           </p>
         </CardContent>
         <CardContent className="flex flex-col gap-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className={field}>
-              <Label htmlFor="backup-mode">복원 방식</Label>
+              <Label htmlFor="backup-mode">Restore mode</Label>
               <select
                 id="backup-mode"
                 className={selectField}
@@ -194,12 +202,12 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                   if (backup !== null) void check(backup, next);
                 }}
               >
-                <option value="merge">추가만 (기본)</option>
-                <option value="replace">전체 교체</option>
+                <option value="merge">Additions only (default)</option>
+                <option value="replace">Replace all</option>
               </select>
             </div>
             <div className={field}>
-              <Label htmlFor="backup-file">백업 파일 선택</Label>
+              <Label htmlFor="backup-file">Choose backup file</Label>
               <Input
                 id="backup-file"
                 className={touchText}
@@ -214,12 +222,12 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
             </div>
           </div>
           {fileName && (
-            <p className="text-body-sm text-muted-foreground">선택한 파일: {fileName}</p>
+            <p className="text-body-sm text-muted-foreground">Selected file: {fileName}</p>
           )}
           <Notice
             notice={
               busy
-                ? { kind: 'status', text: preview ? '복원하는 중…' : '백업을 확인하는 중…' }
+                ? { kind: 'status', text: preview ? 'Restoring…' : 'Checking backup…' }
                 : undefined
             }
           />
@@ -227,18 +235,18 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
           {/* #223: the deletion warning is its own alert, next to (not inside) the live summary. */}
           {shown && shown.mode === 'replace' && !result && (
             <AlertBanner className="mb-0">
-              기존 기록이 삭제됩니다. 삭제 수를 확인하세요. 진행 중이던 저장 재시도 기록도
-              초기화됩니다({shown.retry_keys_cleared}건).
+              Existing records will be deleted. Check the deleted counts. Save retry records in
+              progress are also reset ({plural(shown.retry_keys_cleared, 'record')}).
             </AlertBanner>
           )}
           {shown && (
             <div role="status" className="flex flex-col gap-3 rounded-lg border p-4">
               <h4 className="text-body-sm font-semibold">
                 {result
-                  ? '복원을 완료했습니다.'
-                  : `미리보기 · ${mode === 'replace' ? '전체 교체' : '추가만'} (아직 변경되지 않았습니다)`}
+                  ? 'Restore complete.'
+                  : `Preview · ${mode === 'replace' ? 'Replace all' : 'Additions only'} (nothing changed yet)`}
               </h4>
-              <ul aria-label="변경 요약" className="flex flex-col gap-1.5 text-body-sm">
+              <ul aria-label="Change summary" className="flex flex-col gap-1.5 text-body-sm">
                 {labels.map(([key, label]) => {
                   const c = shown.tables[key];
                   if (!c) return null;
@@ -247,9 +255,9 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                       <span className="font-medium">{label}</span>
                       <span className="text-muted-foreground">
                         {' '}
-                        · 추가 {c.added} · 건너뜀 {c.skipped}
-                        {c.conflicts > 0 && ` · 충돌(기존 유지) ${c.conflicts}`}
-                        {shown.mode === 'replace' && ` · 삭제 ${c.deleted}`}
+                        · Added {c.added} · Skipped {c.skipped}
+                        {c.conflicts > 0 && ` · Conflicts (kept existing) ${c.conflicts}`}
+                        {shown.mode === 'replace' && ` · Deleted ${c.deleted}`}
                       </span>
                     </li>
                   );
@@ -257,7 +265,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
               </ul>
               {shown.conflicts.length > 0 && (
                 <ul
-                  aria-label="충돌"
+                  aria-label="Conflict"
                   className="flex flex-col gap-1 border-t pt-3 text-body-sm text-muted-foreground"
                 >
                   {shown.conflicts.map((c) => (
@@ -271,7 +279,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
             <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
               {mode === 'replace' && (
                 <div className={cn(field, 'w-full md:w-64')}>
-                  <Label htmlFor="backup-confirm">확인 문구</Label>
+                  <Label htmlFor="backup-confirm">Confirmation phrase</Label>
                   <Input
                     id="backup-confirm"
                     className={touchText}
@@ -288,7 +296,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                 onClick={() => void run()}
               >
                 {busy && <Spinner size="sm" aria-hidden />}
-                복원 실행
+                Run restore
               </Button>
             </div>
           )}

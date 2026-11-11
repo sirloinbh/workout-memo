@@ -57,7 +57,7 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
           ].join(' · ')}
         </p>
       ) : (
-        <p className="text-meta text-muted-foreground">{range} 러닝 기록이 없습니다</p>
+        <p className="text-meta text-muted-foreground">{range} No running records</p>
       )}
     </ListItem>
   );
@@ -67,10 +67,10 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
     <Card className="gap-0 py-0 shadow-none">
       <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
         <CardTitle asHeading="h3" className="flex items-center gap-2 text-body font-semibold">
-          개인 기록
+          Personal records
         </CardTitle>
         <CardDescription className="text-caption">
-          전체 기간. 5km·10km는 거리가 ±2% 안인 러닝 기록만 비교합니다
+          All time. 5 km and 10 km only compare runs whose distance is within ±2%
         </CardDescription>
       </CardHeader>
       <div className="px-4 pt-3 pb-5 md:px-6 md:pb-6">
@@ -78,7 +78,7 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
           <AlertBanner
             action={
               <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
-                다시 연결
+                Reconnect
               </Button>
             }
           >
@@ -88,9 +88,13 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
         {!records ? (
           !error && (
             // #173: row placeholders while the records load; the hidden line keeps the status.
-            <div aria-busy="true" aria-label="개인 기록" className="px-4 pb-5 md:px-6 md:pb-6">
+            <div
+              aria-busy="true"
+              aria-label="Personal records"
+              className="px-4 pb-5 md:px-6 md:pb-6"
+            >
               <p role="status" className="sr-only">
-                기록을 불러오는 중…
+                Loading records…
               </p>
               <SkeletonList rows={3} />
             </div>
@@ -99,16 +103,18 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
           <EmptyState
             headingLevel="h4"
             icon={<Trophy />}
-            title="아직 개인 기록이 없습니다"
-            description="거리를 입력한 유산소 기록이 생기면 종류별 최장 거리와 5km·10km 최고 기록을 보여 줍니다."
+            title="No personal records yet"
+            description="Once you log cardio with a distance, the longest distance per type and your 5 km and 10 km bests appear here."
           />
         ) : (
-          <List aria-label="개인 기록">
-            {best('5km 최고 기록', '4.9~5.1 km', records.best5k)}
-            {best('10km 최고 기록', '9.8~10.2 km', records.best10k)}
+          <List aria-label="Personal records">
+            {best('5 km best', '4.9~5.1 km', records.best5k)}
+            {best('10 km best', '9.8~10.2 km', records.best10k)}
             {records.longest.map((r) => (
               <ListItem key={r.kind} className="flex-col items-start gap-1">
-                <h4 className="text-body-sm font-semibold">{cardioKindLabels[r.kind]} 최장 거리</h4>
+                <h4 className="text-body-sm font-semibold">
+                  Longest {cardioKindLabels[r.kind].toLowerCase()} distance
+                </h4>
                 <p className="text-meta text-muted-foreground">
                   <strong className="mr-1.5 text-body-sm font-semibold text-foreground tabular-nums">
                     {formatDistance(r.kind, r.distance_km)}

@@ -32,16 +32,17 @@ import {
   fieldErrors,
 } from './contract';
 import { seoulDate } from './date';
+import { plural } from './labels';
 
-// #116: cardio goals on the 나의 목표 page, next to the strength goals. The server judges them;
+// #116: cardio goals on the My Goals page, next to the strength goals. The server judges them;
 // this screen only shows the judgment. Kind labels and time/distance formats come from the
 // cardio session screen (#115).
 const typeLabels: Record<CardioGoalType, string> = {
-  distance: '거리 누적',
-  duration: '시간 누적',
-  count: '횟수 누적',
-  record_time: '기록 시간 (거리를 시간 안에)',
-  longest_distance: '최장 거리',
+  distance: 'Total distance',
+  duration: 'Total time',
+  count: 'Total sessions',
+  record_time: 'Record time (distance within time)',
+  longest_distance: 'Longest distance',
 };
 const isRecord = (type: CardioGoalType) => type === 'record_time' || type === 'longest_distance';
 
@@ -65,17 +66,17 @@ type StoredGoal = {
 /** A goal's own fields: a stored goal or a suggested next one (#251). */
 type GoalShape = Omit<StoredGoal, 'id' | 'achieved' | 'progress'>;
 
-const km = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 3 }).format(n);
-/** Seconds as 2시간 30분 (totals are shown in minutes). */
+const km = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(n);
+/** Seconds as 2 h 30 min (totals are shown in minutes). */
 const minutes = (seconds: number) => {
   const total = Math.floor(seconds / 60);
   const h = Math.floor(total / 60);
   const m = total % 60;
-  return h ? `${h}시간${m ? ` ${m}분` : ''}` : `${m}분`;
+  return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`;
 };
 const amount = (goal: GoalShape, value: number) =>
   goal.goal_type === 'count'
-    ? `${value}회`
+    ? `${plural(value, 'session')}`
     : goal.goal_type === 'duration'
       ? minutes(value)
       : distanceOf(goal, value);
@@ -89,14 +90,14 @@ const targetOf = (goal: GoalShape) =>
       ? goal.target_duration_sec!
       : goal.target_distance_km!;
 
-/** The goal in one line, e.g. "주간 러닝 15 km" or "러닝 5 km 30:00 이내". */
+/** The goal in one line, e.g. "Weekly running 15 km" or "Running 5 km within 30:00". */
 function goalTitle(goal: GoalShape) {
-  const kind = goal.kind ? cardioKindLabels[goal.kind] : '유산소';
+  const kind = goal.kind ? cardioKindLabels[goal.kind] : 'Cardio';
   if (goal.goal_type === 'record_time')
-    return `${kind} ${distanceOf(goal, goal.target_distance_km!)} ${formatDuration(goal.target_duration_sec!)} 이내`;
+    return `${kind} ${distanceOf(goal, goal.target_distance_km!)} within ${formatDuration(goal.target_duration_sec!)}`;
   if (goal.goal_type === 'longest_distance')
-    return `${kind} 한 번에 ${distanceOf(goal, goal.target_distance_km!)}`;
-  return `${goal.period === 'week' ? '주간' : '월간'} ${kind} ${amount(goal, targetOf(goal))}`;
+    return `${kind} ${distanceOf(goal, goal.target_distance_km!)} in one session`;
+  return `${goal.period === 'week' ? 'Weekly' : 'Monthly'} ${kind.toLowerCase()} ${amount(goal, targetOf(goal))}`;
 }
 
 async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
@@ -110,7 +111,7 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? '유산소 목표 요청에 실패했습니다');
+    if (!res.ok) throw Error(data.error ?? 'The cardio goal request failed');
     return data;
   } finally {
     clearTimeout(timer);
@@ -133,7 +134,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
     try {
       setGoals(await request<StoredGoal[]>(''));
     } catch (e) {
-      setError(`유산소 목표를 불러오지 못했습니다: ${(e as Error).message}`);
+      setError(`Could not load cardio goals: ${(e as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -145,22 +146,22 @@ export function CardioGoals({ deadline }: { deadline: string }) {
     try {
       await request('', 'POST', goal);
       setEditor(null);
-      setStatus('유산소 목표를 저장했습니다.');
+      setStatus('Cardio goal saved.');
       await load();
     } finally {
       setSaving(false);
     }
   }
   async function remove(goal: StoredGoal) {
-    if (!confirm('이 유산소 목표를 삭제할까요?')) return;
+    if (!confirm('Delete this cardio goal?')) return;
     setSaving(true);
     setError('');
     try {
       await request('/' + goal.id, 'DELETE');
-      setStatus('유산소 목표를 삭제했습니다.');
+      setStatus('Cardio goal deleted.');
       await load();
     } catch (e) {
-      setError(`유산소 목표를 삭제하지 못했습니다: ${(e as Error).message}`);
+      setError(`Could not delete the cardio goal: ${(e as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -171,22 +172,23 @@ export function CardioGoals({ deadline }: { deadline: string }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="cardio-goals-title" className="text-body font-semibold">
-            유산소 목표
+            Cardio goals
           </h2>
           <p className="text-caption text-muted-foreground">
-            주간·월간 거리·시간·횟수와 기록 목표를 유산소 기록으로 판정합니다.
+            Weekly and monthly distance, time, count, and record goals are judged from cardio
+            records.
           </p>
         </div>
         <Button variant="outline" onClick={() => setEditor({ initial: null })}>
           <Plus aria-hidden />
-          유산소 목표 추가
+          Add cardio goal
         </Button>
       </div>
       {error && (
         <AlertBanner
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
-              다시 연결
+              Reconnect
             </Button>
           }
         >
@@ -195,9 +197,9 @@ export function CardioGoals({ deadline }: { deadline: string }) {
       )}
       <Notice className="mb-3" notice={status ? { kind: 'status', text: status } : undefined} />
       {loading && goals.length === 0 ? (
-        <div aria-busy="true" aria-label="유산소 목표" className="grid gap-5 md:grid-cols-2">
+        <div aria-busy="true" aria-label="Cardio goals" className="grid gap-5 md:grid-cols-2">
           <p role="status" className="sr-only">
-            유산소 목표 불러오는 중…
+            Loading cardio goals…
           </p>
           <SkeletonCard />
         </div>
@@ -205,8 +207,8 @@ export function CardioGoals({ deadline }: { deadline: string }) {
         !error && (
           <EmptyState
             icon={<Timer />}
-            title="유산소 목표가 없습니다"
-            description="예: 주 3회 러닝, 주간 15 km, 5 km 30분 이내"
+            title="No cardio goals"
+            description="e.g. 3 runs a week, 15 km a week, 5 km within 30 min"
           />
         )
       ) : (
@@ -224,7 +226,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
         </div>
       )}
       {editor && (
-        <Modal title="유산소 목표" close={() => setEditor(null)}>
+        <Modal title="Cardio goals" close={() => setEditor(null)}>
           <CardioGoalForm
             deadline={deadline}
             initial={editor.initial}
@@ -270,15 +272,15 @@ function GoalCard({
   const upcoming = today < goal.start_date;
   const ended = today > goal.deadline;
   const p = goal.progress;
-  // Period goals are "achieved" only for the current period, so an ended one reads 기간 종료.
+  // Period goals are "achieved" only for the current period, so an ended one reads Period ended.
   const badge = goal.achieved
-    ? { variant: 'success' as const, text: '달성 완료' }
+    ? { variant: 'success' as const, text: 'Achieved' }
     : ended
-      ? { variant: 'warning' as const, text: '기간 종료' }
+      ? { variant: 'warning' as const, text: 'Period ended' }
       : upcoming
-        ? { variant: 'outline' as const, text: '시작 전' }
-        : { variant: 'outline' as const, text: '도전 중' };
-  const unit = goal.period === 'week' ? '주' : '달';
+        ? { variant: 'outline' as const, text: 'Not started' }
+        : { variant: 'outline' as const, text: 'In progress' };
+  const unit = goal.period === 'week' ? 'week' : 'month';
   return (
     <Card
       data-slot="cardio-goal"
@@ -296,12 +298,12 @@ function GoalCard({
           {p.current && (
             <>
               <p className="mt-5 text-body-sm">
-                이번 {unit} {amount(goal, p.current.value)}{' '}
+                This {unit} {amount(goal, p.current.value)}{' '}
                 <span className="text-muted-foreground">/ {amount(goal, targetOf(goal))}</span>
               </p>
               <div
                 role="progressbar"
-                aria-label={`${title} 이번 ${unit} 진행률`}
+                aria-label={`${title} progress this ${unit}`}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.min(100, Math.round((p.current.value / targetOf(goal)) * 100))}
@@ -317,19 +319,19 @@ function GoalCard({
             </>
           )}
           <p className="mt-3 text-body-sm text-muted-foreground">
-            달성한 {unit} {p.periods_achieved} / 전체 {p.periods.length}
-            {unit}
+            {unit === 'week' ? 'Weeks' : 'Months'} achieved {p.periods_achieved} /{' '}
+            {p.periods.length} total
           </p>
         </>
       ) : (
         <p className="mt-5 text-body-sm">
           {goal.goal_type === 'record_time'
             ? p.best === null
-              ? `${distanceOf(goal, goal.target_distance_km!)} 이상 기록이 아직 없어요.`
-              : `가장 빠른 기록 ${formatDuration(p.best)}`
+              ? `No records of ${distanceOf(goal, goal.target_distance_km!)} or more yet.`
+              : `Fastest record ${formatDuration(p.best)}`
             : p.best === null
-              ? '거리가 있는 기록이 아직 없어요.'
-              : `가장 긴 거리 ${distanceOf(goal, p.best)}`}
+              ? 'No records with a distance yet.'
+              : `Longest distance ${distanceOf(goal, p.best)}`}
         </p>
       )}
       <p className="mt-3 text-body-sm text-muted-foreground">
@@ -342,18 +344,18 @@ function GoalCard({
           className="mt-4 h-auto min-h-8 text-left [overflow-wrap:anywhere] whitespace-normal"
           onClick={() => suggest(next)}
         >
-          다음 목표: {goalTitle(next)}
+          Next goal: {goalTitle(next)}
         </Button>
       )}
       <Button
         variant="link"
         size="sm"
         className="mt-3 px-0"
-        aria-label={`${title} 목표 삭제`}
+        aria-label={`Delete ${title} goal`}
         disabled={saving}
         onClick={() => remove(goal)}
       >
-        목표 삭제
+        Delete goal
       </Button>
     </Card>
   );
@@ -468,7 +470,8 @@ function CardioGoalForm({
     const whole = (text: string, max: number) =>
       text.trim() === '' || (/^\d+$/.test(text.trim()) && Number(text.trim()) <= max);
     if (usesTime && !(whole(draft.minutes, 44640) && whole(draft.seconds, 59)))
-      found.target_duration_sec = '목표 시간은 분(0 이상 정수)과 초(0~59 정수)로 입력하세요';
+      found.target_duration_sec =
+        'Enter minutes (whole number, 0 or more) and seconds (whole number, 0–59)';
     // Metres must be whole (the schema keeps 1 m precision) and the message speaks in metres.
     const metres = num(draft.distance);
     const usesDistance = draft.goal_type !== 'duration' && draft.goal_type !== 'count';
@@ -479,7 +482,8 @@ function CardioGoalForm({
       !Number.isNaN(metres) &&
       (!Number.isInteger(metres) || metres <= 0 || metres > 10_000_000)
     )
-      found.target_distance_km = '수영 목표 거리는 1~10,000,000 m의 정수로 입력하세요';
+      found.target_distance_km =
+        'Enter a swimming goal distance as a whole number from 1 to 10,000,000 m';
     if (!parsed.success || Object.keys(found).length) {
       setErrors(found);
       return;
@@ -489,7 +493,7 @@ function CardioGoalForm({
     try {
       await onSave(parsed.data);
     } catch (e) {
-      setFailure(`유산소 목표를 저장하지 못했습니다: ${(e as Error).message}`);
+      setFailure(`Could not save the cardio goal: ${(e as Error).message}`);
     }
   }
 
@@ -498,7 +502,7 @@ function CardioGoalForm({
       {failure && <AlertBanner>{failure}</AlertBanner>}
       <div className="grid grid-cols-2 gap-x-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
         <Label className={fieldLabel}>
-          목표 종류
+          Goal type
           <select
             className={selectField}
             value={draft.goal_type}
@@ -516,7 +520,7 @@ function CardioGoalForm({
           </select>
         </Label>
         <Label className={fieldLabel}>
-          운동 종류
+          Workout type
           <select
             className={selectField}
             value={draft.kind}
@@ -526,8 +530,8 @@ function CardioGoalForm({
             }}
             {...field('kind')}
           >
-            {!record && <option value="">전체 유산소</option>}
-            {record && draft.kind === '' && <option value="">선택하세요</option>}
+            {!record && <option value="">All cardio</option>}
+            {record && draft.kind === '' && <option value="">Choose</option>}
             {cardioKinds.map((k) => (
               <option key={k} value={k}>
                 {cardioKindLabels[k]}
@@ -537,21 +541,21 @@ function CardioGoalForm({
         </Label>
         {!record && (
           <Label className={fieldLabel}>
-            기간 단위
+            Period unit
             <select
               className={selectField}
               value={draft.period}
               onChange={(e) => set({ period: e.target.value as 'week' | 'month' })}
               {...field('period')}
             >
-              <option value="week">주간 (월~일)</option>
-              <option value="month">월간</option>
+              <option value="week">Weekly (Mon–Sun)</option>
+              <option value="month">Monthly</option>
             </select>
           </Label>
         )}
         {draft.goal_type !== 'duration' && draft.goal_type !== 'count' && (
           <Label className={fieldLabel}>
-            목표 거리 ({distanceUnit(draft.kind)})
+            Goal distance ({distanceUnit(draft.kind)})
             <Input
               className={touchText}
               inputMode="decimal"
@@ -564,7 +568,7 @@ function CardioGoalForm({
         {(draft.goal_type === 'duration' || draft.goal_type === 'record_time') && (
           <>
             <Label className={fieldLabel}>
-              목표 시간 (분)
+              Goal time (min)
               <Input
                 className={touchText}
                 inputMode="numeric"
@@ -574,7 +578,7 @@ function CardioGoalForm({
               />
             </Label>
             <Label className={fieldLabel}>
-              목표 시간 (초)
+              Goal time (sec)
               <Input
                 className={touchText}
                 inputMode="numeric"
@@ -587,7 +591,7 @@ function CardioGoalForm({
         )}
         {draft.goal_type === 'count' && (
           <Label className={fieldLabel}>
-            목표 횟수
+            Goal sessions
             <Input
               className={touchText}
               inputMode="numeric"
@@ -598,7 +602,7 @@ function CardioGoalForm({
           </Label>
         )}
         <Label className={fieldLabel}>
-          시작일
+          Start date
           <Input
             className={touchText}
             type="date"
@@ -608,7 +612,7 @@ function CardioGoalForm({
           />
         </Label>
         <Label className={fieldLabel}>
-          종료일
+          End date
           <Input
             className={touchText}
             type="date"
@@ -629,13 +633,13 @@ function CardioGoalForm({
       <p className={hint}>
         {record
           ? draft.goal_type === 'record_time'
-            ? '한 번의 기록이 목표 거리 이상이고 그 기록의 전체 시간이 목표 시간 이하이면 달성입니다. 페이스로 추정하지 않습니다.'
-            : '한 번의 기록이 목표 거리 이상이면 달성입니다.'
-          : '주(월~일) 또는 달마다 판정합니다. 시작일·종료일에 걸친 주기도 목표값은 그대로이고, 기간 안의 기록만 셉니다.'}
+            ? 'It counts as achieved when a single record meets the goal distance and its total time is within the goal time. Pace is not used to estimate.'
+            : 'It counts as achieved when a single record meets the goal distance.'
+          : 'Judged per week (Mon–Sun) or month. Cycles that span the start or end date keep the same goal value, and only records within the period are counted.'}
       </p>
       <Button className="mt-4 w-full" disabled={saving}>
         {saving && <Spinner size="sm" aria-hidden />}
-        유산소 목표 저장하기
+        Save cardio goal
       </Button>
     </form>
   );

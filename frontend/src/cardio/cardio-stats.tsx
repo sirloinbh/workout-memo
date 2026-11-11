@@ -8,6 +8,7 @@ import { EmptyState } from '../components/ui/empty-state';
 import { SkeletonCard } from '../components/ui/skeleton';
 import type { CardioKind } from '../contract';
 import { rangeDays } from '../date-range';
+import { plural } from '../labels';
 import type { CardioSession } from './api';
 import { CardioRecords } from './cardio-records';
 import { cardioKindLabels, formatDistance, formatDuration, formatPace } from './format';
@@ -28,13 +29,13 @@ import {
 
 type Metric = 'distance' | 'duration' | 'count';
 const units: SegmentOption<StatUnit>[] = [
-  { value: 'week', label: '주별' },
-  { value: 'month', label: '월별' },
+  { value: 'week', label: 'Weekly' },
+  { value: 'month', label: 'Monthly' },
 ];
 const metrics: SegmentOption<Metric>[] = [
-  { value: 'distance', label: '거리' },
-  { value: 'duration', label: '시간' },
-  { value: 'count', label: '횟수' },
+  { value: 'distance', label: 'Distance' },
+  { value: 'duration', label: 'Time' },
+  { value: 'count', label: 'Sessions' },
 ];
 
 // Distance in km for a mix of kinds; swimming alone in m like everywhere else (format.ts).
@@ -47,7 +48,7 @@ const text = (t: Totals, metric: Metric, kind: CardioKind | null) =>
     ? distanceText(kind, t.distance_km)
     : metric === 'duration'
       ? formatDuration(t.duration_sec)
-      : `${t.count}회`;
+      : `${plural(t.count, 'session')}`;
 
 export function CardioStats({
   from,
@@ -79,15 +80,15 @@ export function CardioStats({
   const [metric, setMetric] = useState<Metric>('distance');
   const kinds = kindsOf(sessions);
   const total = totalsOf(sessions);
-  const unitName = unit === 'week' ? '주별' : '월별';
-  const metricName = metrics.find((m) => m.value === metric)!.label;
+  const unitName = unit === 'week' ? 'Weekly' : 'Monthly';
+  const metricName = metrics.find((m) => m.value === metric)!.label.toLowerCase();
 
   return (
-    <section aria-label="유산소 통계" className="flex flex-col gap-4">
+    <section aria-label="Cardio stats" className="flex flex-col gap-4">
       <Card className="gap-0 py-0 shadow-none">
         <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
           <CardTitle asHeading="h2" className="text-body font-semibold">
-            유산소 통계
+            Cardio stats
           </CardTitle>
           <CardDescription className="text-caption">
             {from} ~ {to}
@@ -95,9 +96,9 @@ export function CardioStats({
         </CardHeader>
         {pending && sessions.length === 0 ? (
           // #173: a card-shaped placeholder while the first stats load.
-          <div aria-busy="true" aria-label="유산소 통계" className="px-4 pb-5 md:px-6 md:pb-6">
+          <div aria-busy="true" aria-label="Cardio stats" className="px-4 pb-5 md:px-6 md:pb-6">
             <p role="status" className="sr-only">
-              통계를 불러오는 중…
+              Loading stats…
             </p>
             <SkeletonCard />
           </div>
@@ -106,17 +107,17 @@ export function CardioStats({
             className="m-4 md:m-6"
             headingLevel="h3"
             icon={<BarChart3 />}
-            title="선택한 기간에 통계를 낼 유산소 기록이 없습니다"
-            description="기록을 남기면 주별·월별 거리, 시간, 횟수와 러닝 페이스 추이를 보여 줍니다."
+            title="No cardio records to summarize in the selected period"
+            description="Once you log sessions, weekly and monthly distance, time, count, and running pace trends appear here."
           />
         ) : (
           <div className="flex flex-col gap-6 px-4 pt-4 pb-5 md:px-6 md:pb-6">
-            <dl aria-label="기간 합계" className="grid grid-cols-3 gap-3">
+            <dl aria-label="Period total" className="grid grid-cols-3 gap-3">
               {(
                 [
-                  ['거리', distanceText(null, total.distance_km)],
-                  ['시간', formatDuration(total.duration_sec)],
-                  ['횟수', `${total.count}회`],
+                  ['Distance', distanceText(null, total.distance_km)],
+                  ['Time', formatDuration(total.duration_sec)],
+                  ['Sessions', plural(total.count, 'session')],
                 ] as const
               ).map(([label, shown]) => (
                 <div key={label} className="min-w-0 rounded-md bg-muted px-3 py-2.5">
@@ -128,13 +129,13 @@ export function CardioStats({
 
             <div className="flex flex-wrap gap-2">
               <SegmentedControl
-                label="집계 단위"
+                label="Group by"
                 options={units}
                 value={unit}
                 onValueChange={setUnit}
               />
               <SegmentedControl
-                label="지표"
+                label="Metric"
                 options={metrics}
                 value={metric}
                 onValueChange={setMetric}
@@ -142,7 +143,7 @@ export function CardioStats({
             </div>
 
             <Trend
-              title={`전체 ${unitName} ${metricName}`}
+              title={`Total ${unitName.toLowerCase()} ${metricName}`}
               buckets={bucketsOf(sessions, from, to, unit)}
               unit={unit}
               metric={metric}
@@ -152,13 +153,13 @@ export function CardioStats({
             {kinds.length > 1 && (
               <div>
                 <h3 className="mb-3 text-body-sm font-semibold">
-                  종류별 {unitName} {metricName}
+                  {unitName} {metricName} by type
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {kinds.map((kind) => (
                     <Trend
                       key={kind}
-                      title={`${cardioKindLabels[kind]} ${unitName} ${metricName}`}
+                      title={`${cardioKindLabels[kind]} ${unitName.toLowerCase()} ${metricName}`}
                       buckets={bucketsOf(
                         sessions.filter((s) => s.kind === kind),
                         from,
@@ -208,16 +209,16 @@ function Trend({
   const max = Math.max(...values);
   // Up to a year of weeks: only every few labels are drawn so they do not overlap.
   const labelStep = Math.ceil(buckets.length / (small ? 6 : 12));
-  const name = (b: Bucket) => (unit === 'week' ? `${b.label} 주` : b.label);
+  const name = (b: Bucket) => (unit === 'week' ? `week of ${b.label}` : b.label);
   return (
     <figure className="m-0">
       <figcaption className="mb-2 flex justify-between gap-2 text-meta text-muted-foreground">
         <Heading className="text-body-sm font-semibold text-foreground">{title}</Heading>
-        {max > 0 && <span>최대 {text(buckets[values.indexOf(max)], metric, kind)}</span>}
+        {max > 0 && <span>Max {text(buckets[values.indexOf(max)], metric, kind)}</span>}
       </figcaption>
       {max === 0 ? (
         // Only possible for distance: the sessions here have time but no distance.
-        <p className="text-body-sm text-muted-foreground">거리를 입력한 기록이 없습니다</p>
+        <p className="text-body-sm text-muted-foreground">No records with a distance</p>
       ) : (
         <div
           data-slot="cardio-trend"
@@ -271,13 +272,13 @@ function KindTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-body-sm tabular-nums">
-        <caption className="mb-2 text-left text-body-sm font-semibold">종류별 합계</caption>
+        <caption className="mb-2 text-left text-body-sm font-semibold">Totals by type</caption>
         <thead>
           <tr className={`${cell} text-meta text-muted-foreground`}>
-            <th scope="col">종류</th>
-            <th scope="col">횟수</th>
-            <th scope="col">시간</th>
-            <th scope="col">거리</th>
+            <th scope="col">Type</th>
+            <th scope="col">Sessions</th>
+            <th scope="col">Time</th>
+            <th scope="col">Distance</th>
           </tr>
         </thead>
         <tbody>
@@ -290,9 +291,9 @@ function KindTable({
                 <th scope="row" className="font-medium">
                   {cardioKindLabels[kind]}
                 </th>
-                <td>{t.count}회</td>
+                <td>{plural(t.count, 'session')}</td>
                 <td>{formatDuration(t.duration_sec)}</td>
-                <td>{measured ? distanceText(kind, t.distance_km) : '거리 미입력'}</td>
+                <td>{measured ? distanceText(kind, t.distance_km) : 'No distance'}</td>
               </tr>
             );
           })}
@@ -306,13 +307,15 @@ function KindTable({
 // pace and are left out; the line is drawn in the body trend's SVG style.
 function PaceTrend({ sessions }: { sessions: readonly CardioSession[] }) {
   const points = runningPaces(sessions);
-  const heading = <h3 className="text-body-sm font-semibold text-foreground">러닝 페이스 추이</h3>;
+  const heading = (
+    <h3 className="text-body-sm font-semibold text-foreground">Running pace trend</h3>
+  );
   if (!points.length)
     return (
       <div>
         {heading}
         <p className="mt-2 text-body-sm text-muted-foreground">
-          거리를 입력한 러닝 기록이 없어 페이스를 계산할 수 없습니다
+          No running records with a distance, so the pace cannot be calculated
         </p>
       </div>
     );
@@ -331,7 +334,7 @@ function PaceTrend({ sessions }: { sessions: readonly CardioSession[] }) {
     <figure className="m-0">
       <figcaption className="mb-2 flex justify-between gap-2 text-meta text-muted-foreground">
         {heading}
-        <span>가장 빠름 {formatPace(low)}</span>
+        <span>Fastest {formatPace(low)}</span>
       </figcaption>
       {/* The heading stays outside role="img", which would hide it from screen readers. */}
       <svg
@@ -340,7 +343,7 @@ function PaceTrend({ sessions }: { sessions: readonly CardioSession[] }) {
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
         role="img"
-        aria-label={`러닝 페이스 추이(위가 빠름): ${points
+        aria-label={`Running pace trend (higher is faster): ${points
           .map((p) => `${p.date} ${formatPace(p.pace)}`)
           .join(', ')}`}
       >

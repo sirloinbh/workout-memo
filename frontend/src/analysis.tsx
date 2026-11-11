@@ -12,6 +12,7 @@ import { EmptyState } from './components/ui/empty-state';
 import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
+import { bodyPartLabel, plural } from './labels';
 import { cn } from './lib/utils';
 
 // #102: the whole analysis page is on the common components: period controls from #224
@@ -60,7 +61,7 @@ type Week = {
 };
 type Result = { from: string; to: string; today: string; exercises: Exercise[]; weeks: Week[] };
 
-const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
+const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n);
 const shift = (date: string, days: number) => {
   const d = new Date(date + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
@@ -79,20 +80,20 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json();
-  if (!response.ok) throw Error(data.error ?? '분석 요청에 실패했습니다');
+  if (!response.ok) throw Error(data.error ?? 'The analysis request failed');
   return data;
 }
 // #125: one line per exercise in the list: best weight, estimated 1RM and the last date.
 const summary = (x: Exercise) =>
   [
-    x.prs.max_weight ? `최고 ${fmt(x.prs.max_weight.value)}kg` : '중량 기록 없음',
-    x.prs.estimated_1rm ? `추정 1RM ${fmt(x.prs.estimated_1rm.value)}kg` : null,
+    x.prs.max_weight ? `Best ${fmt(x.prs.max_weight.value)}kg` : 'No weight recorded',
+    x.prs.estimated_1rm ? `Est. 1RM ${fmt(x.prs.estimated_1rm.value)}kg` : null,
     x.last_date,
   ]
     .filter(Boolean)
     .join(' · ');
 const record = (r: PersonalRecord | null, value: (r: PersonalRecord) => string, none: string) =>
-  r ? `${value(r)} · ${r.date}${r.ties > 1 ? ` · 동률 ${r.ties}회` : ''}` : none;
+  r ? `${value(r)} · ${r.date}${r.ties > 1 ? ` · ${r.ties} tied` : ''}` : none;
 
 export function Analysis() {
   const [anchor, setAnchor] = useState(seoulDate());
@@ -175,42 +176,46 @@ export function Analysis() {
   }
   return (
     <section data-slot="analysis-page">
-      <h2 className="mb-3 text-body font-semibold">종목 분석 · PR과 부위별 주간 운동량</h2>
+      <h2 className="mb-3 text-body font-semibold">
+        Exercise Analysis · PRs and weekly volume by body part
+      </h2>
       {/* The long rules fold away so the exercise list fits the first phone screen (#125). */}
       <details className="mb-4 rounded-md border px-3">
         <summary className="cursor-pointer py-2 text-body-sm font-medium pointer-coarse:py-3">
-          분석 기준 안내
+          About the analysis basis
         </summary>
         <p className={hint}>
-          서울 기준 오늘까지 서버에 저장된 기록만 사용합니다. 미래 날짜 기록과 브라우저의 저장 전
-          초안은 포함하지 않으며, 일지를 수정·삭제하면 다시 조회할 때 반영됩니다. 같은 종목은 목표
-          판정과 같이 앞뒤 공백과 영문 대소문자를 무시해 묶습니다.
+          Only records saved to the server up to today (Seoul time) are used. Future-dated records
+          and unsaved browser drafts are not included, and editing or deleting a journal is
+          reflected the next time you load. Like goal evaluation, the same exercise is grouped by
+          ignoring leading and trailing spaces and letter case.
         </p>
         <p className={cn(hint, 'mt-2 mb-3')}>
-          추정 1RM = 총중량 kg × (1 + 반복 수 ÷ 30) (Epley 공식). 1~10회 세트에만 적용하며 1회
-          세트는 그 중량입니다. 0kg(맨몸·보조 등 중량 미입력) 세트와 기본중량 미확인 머신 세트는
-          제외합니다. 추정값은 실제로 들어 올린 기록이 아니며, 실측 1RM은 1회를 수행한 세트의 최고
-          총중량입니다.
+          Est. 1RM = total weight kg × (1 + reps ÷ 30) (Epley formula). It applies only to sets of
+          1-10 reps, and a 1-rep set is that weight. Sets at 0 kg (bodyweight, assisted, or no
+          weight entered) and sets on machines with an unconfirmed base weight are excluded. An
+          estimate is not a weight you actually lifted; the measured 1RM is the highest total weight
+          of a set where you did 1 rep.
         </p>
       </details>
       {/* #224's period controls; like the dashboard, the date wraps under the tabs on phones. */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <SegmentedControl
-          label="분석 기간"
-          options={[1, 4, 12].map((n) => ({ value: String(n), label: `${n}주` }))}
+          label="Analysis period"
+          options={[1, 4, 12].map((n) => ({ value: String(n), label: `${n} weeks` }))}
           value={String(weeks)}
           onValueChange={(value) => setWeeks(Number(value))}
         />
-        <DateStepper label="분석 기준 날짜" value={anchor} onValueChange={setAnchor} />
+        <DateStepper label="Analysis reference date" value={anchor} onValueChange={setAnchor} />
       </div>
       <RangeSummary from={from} to={to}>
-        월요일 시작 주 · 기간 추이와 부위별 통계
+        Monday-start weeks · Period trends and body part stats
       </RangeSummary>
       {error && (
         <AlertBanner
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
-              다시 연결
+              Reconnect
             </Button>
           }
         >
@@ -220,9 +225,9 @@ export function Analysis() {
       {/* #173: placeholders in the shape of the two cards on the first load; a reload keeps the
           cards and shows a short status line instead. */}
       {loading && !data && (
-        <div aria-busy="true" aria-label="종목 분석" className="mt-4 flex flex-col gap-4">
+        <div aria-busy="true" aria-label="Exercise Analysis" className="mt-4 flex flex-col gap-4">
           <p role="status" className="sr-only">
-            분석 불러오는 중…
+            Loading analysis…
           </p>
           <SkeletonCard />
           <SkeletonCard />
@@ -234,21 +239,22 @@ export function Analysis() {
           className="mt-2 flex items-center gap-2 text-body-sm text-muted-foreground"
         >
           <Spinner size="sm" aria-hidden />
-          분석 불러오는 중…
+          Loading analysis…
         </p>
       )}
       {data && (
         <>
-          <Card role="region" aria-label="종목별 PR" className={card}>
+          <Card role="region" aria-label="PRs by exercise" className={card}>
             <CardHeader className={cardHeader}>
               <CardTitle asHeading="h2" className="text-body font-semibold">
-                종목별 PR{' '}
+                PRs by exercise{' '}
                 <Badge variant="secondary" className="ml-1.5 align-middle">
                   {data.exercises.length}
                 </Badge>
               </CardTitle>
               <CardDescription className="text-caption">
-                전체 기록의 최고값과 처음 달성한 날짜입니다. 운동을 고르면 자세히 봅니다.
+                Your best values across all records and the date you first reached them. Choose an
+                exercise to see details.
               </CardDescription>
             </CardHeader>
             <CardContent className={cardContent}>
@@ -256,13 +262,13 @@ export function Analysis() {
                 <EmptyState
                   className="my-2"
                   headingLevel="h3"
-                  title="분석할 기록이 없습니다"
-                  description="운동 일지를 저장하면 종목별 PR이 표시됩니다."
+                  title="No records to analyze"
+                  description="Save a workout journal to see PRs per exercise."
                 />
               ) : (
                 <div className="grid gap-4 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
                   <ul
-                    aria-label="운동 목록"
+                    aria-label="Exercise list"
                     className={cn('flex flex-col gap-1 py-2', selected !== null && 'max-md:hidden')}
                   >
                     {data.exercises.map((x) => (
@@ -297,7 +303,7 @@ export function Analysis() {
                       onClick={() => pick(null)}
                     >
                       <ChevronLeft aria-hidden />
-                      운동 목록
+                      Exercise list
                     </Button>
                     <article data-slot="exercise-pr" className="py-2" key={shown.key}>
                       <h3
@@ -308,13 +314,16 @@ export function Analysis() {
                         {shown.exercise}
                       </h3>
                       <p className="mt-1 flex flex-wrap items-center gap-x-2 text-body-sm text-muted-foreground">
-                        부위: {shown.body_parts.length ? shown.body_parts.join(', ') : '미분류'} ·
-                        총 {shown.set_count}세트
+                        Body parts:{' '}
+                        {shown.body_parts.length
+                          ? shown.body_parts.map(bodyPartLabel).join(', ')
+                          : bodyPartLabel('미분류')}{' '}
+                        · {plural(shown.set_count, 'set')} total
                         <Button
                           variant="link"
                           size="sm"
                           className="px-0"
-                          aria-label={`${shown.exercise} 부위 지정`}
+                          aria-label={`Set body part for ${shown.exercise}`}
                           disabled={saving}
                           onClick={() =>
                             setEditing({
@@ -324,17 +333,18 @@ export function Analysis() {
                             })
                           }
                         >
-                          부위 지정
+                          Set body part
                         </Button>
                       </p>
                       {editing?.key === shown.key && (
                         <div className="my-2 flex flex-wrap items-center gap-2">
                           <ToggleChips
-                            label={`${shown.exercise} 부위`}
+                            label={`Body part for ${shown.exercise}`}
                             options={[
                               ...parts,
                               ...legacyParts.filter((p) => editing.parts.includes(p)),
                             ]}
+                            renderOption={bodyPartLabel}
                             value={editing.parts}
                             onValueChange={(next) => setEditing({ ...editing, parts: next })}
                           />
@@ -345,68 +355,72 @@ export function Analysis() {
                             onClick={() => void saveParts()}
                           >
                             {saving && <Spinner size="sm" aria-hidden />}
-                            부위 저장
+                            Save body parts
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
-                            취소
+                            Cancel
                           </Button>
                         </div>
                       )}
                       <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-body-sm">
-                        <dt className="text-muted-foreground">최고 중량</dt>
+                        <dt className="text-muted-foreground">Best weight</dt>
                         <dd className={value}>
                           {record(
                             shown.prs.max_weight,
-                            (r) => `${fmt(r.value)}kg × ${r.reps}회`,
-                            '중량 기록 없음',
+                            (r) => `${fmt(r.value)}kg × ${plural(r.reps, 'rep')}`,
+                            'No weight recorded',
                           )}
                         </dd>
-                        <dt className="text-muted-foreground">최다 반복</dt>
+                        <dt className="text-muted-foreground">Most reps</dt>
                         <dd className={value}>
                           {record(
                             shown.prs.max_reps,
-                            (r) => `${r.value}회 · ${fmt(r.weight)}kg`,
-                            '기록 없음',
+                            (r) => `${plural(r.value, 'rep')} · ${fmt(r.weight)}kg`,
+                            'No records',
                           )}
                         </dd>
-                        <dt className="text-muted-foreground">최고 세트 볼륨</dt>
+                        <dt className="text-muted-foreground">Best set volume</dt>
                         <dd className={value}>
                           {record(
                             shown.prs.max_set_volume,
-                            (r) => `${fmt(r.value)}kg (${fmt(r.weight)}kg × ${r.reps}회)`,
-                            '중량 기록 없음',
+                            (r) =>
+                              `${fmt(r.value)}kg (${fmt(r.weight)}kg × ${plural(r.reps, 'rep')})`,
+                            'No weight recorded',
                           )}
                         </dd>
-                        <dt className="text-muted-foreground">실측 1RM</dt>
+                        <dt className="text-muted-foreground">Measured 1RM</dt>
                         <dd className={value}>
                           {record(
                             shown.prs.actual_1rm,
                             (r) => `${fmt(r.value)}kg`,
-                            '1회 세트 기록 없음',
+                            'No 1-rep set recorded',
                           )}
                         </dd>
-                        <dt className="text-muted-foreground">추정 1RM (Epley)</dt>
+                        <dt className="text-muted-foreground">Est. 1RM (Epley)</dt>
                         <dd className={value}>
                           {record(
                             shown.prs.estimated_1rm,
-                            (r) => `${fmt(r.value)}kg 추정 (${fmt(r.weight)}kg × ${r.reps}회)`,
-                            '계산 대상 세트 없음',
+                            (r) =>
+                              `${fmt(r.value)}kg est. (${fmt(r.weight)}kg × ${plural(r.reps, 'rep')})`,
+                            'No sets to calculate',
                           )}
                         </dd>
                       </dl>
                       <p className="mt-2 text-meta text-muted-foreground">
-                        같은 값은 동률로 표시합니다.
+                        Equal values are shown as ties.
                       </p>
                       {shown.unknown_base_sets > 0 && (
                         <p className={cn(hint, 'mt-2')}>
-                          기본중량 미확인 머신 세트 {shown.unknown_base_sets}개는 1RM 계산에서
-                          제외했습니다.
+                          {plural(shown.unknown_base_sets, 'set')} on machines with unconfirmed base
+                          weight {shown.unknown_base_sets === 1 ? 'is' : 'are'} excluded from the
+                          1RM calculation.
                         </p>
                       )}
                       {shown.bodyweight_sets > 0 && (
                         <p className={cn(hint, 'mt-2')}>
-                          0kg 세트 {shown.bodyweight_sets}개는 반복 PR에만 포함하고
-                          중량·볼륨·1RM에서 제외했습니다.
+                          {plural(shown.bodyweight_sets, 'set')} at 0kg{' '}
+                          {shown.bodyweight_sets === 1 ? 'is' : 'are'} included only in rep PRs and
+                          excluded from weight, volume, and 1RM.
                         </p>
                       )}
                       <Trend exercise={shown} />
@@ -416,15 +430,16 @@ export function Analysis() {
               )}
             </CardContent>
           </Card>
-          <Card role="region" aria-label="부위별 주간 운동량" className={card}>
+          <Card role="region" aria-label="Weekly volume by body part" className={card}>
             <CardHeader className={cardHeader}>
               <CardTitle asHeading="h2" className="text-body font-semibold">
-                부위별 주간 운동량
+                Weekly volume by body part
               </CardTitle>
               <CardDescription className="text-caption">
-                운동마다 직접 지정한 부위로 집계합니다. 운동명으로 부위를 추측하지 않으며 지정하지
-                않은 운동은 미분류입니다. 여러 부위에 지정한 운동의 세트는 각 부위에 모두 더하므로
-                부위별 합계가 주간 전체보다 클 수 있습니다.
+                Totals use the body parts you set for each exercise. Body parts are not guessed from
+                the exercise name, and exercises you have not set are unclassified. A set from an
+                exercise assigned to several body parts counts fully toward each, so the body part
+                totals can be larger than the weekly total.
               </CardDescription>
             </CardHeader>
             <CardContent className={cardContent}>
@@ -438,15 +453,16 @@ export function Analysis() {
                     key={w.week_start}
                   >
                     <h3 className="text-body-sm font-semibold">
-                      {w.week_start} — {w.week_end} · 전체 {w.sets}세트 · {fmt(w.volume)}kg
+                      {w.week_start} — {w.week_end} · Total {plural(w.sets, 'set')} ·{' '}
+                      {fmt(w.volume)}kg
                     </h3>
                     {done.length > 0 && <PartTable rows={done} />}
                     {/* #125: parts without a set this week fold away. */}
                     {empty.length > 0 && (
                       <details className="mt-1">
                         <summary className="cursor-pointer py-1 text-meta text-muted-foreground pointer-coarse:py-3">
-                          기록 없는 부위 {empty.length}개 ·{' '}
-                          {empty.map((p) => p.body_part).join(', ')}
+                          Body parts with no records ({empty.length}) ·{' '}
+                          {empty.map((p) => bodyPartLabel(p.body_part)).join(', ')}
                         </summary>
                         <PartTable rows={empty} />
                       </details>
@@ -466,16 +482,16 @@ function PartTable({ rows }: { rows: Week['parts'] }) {
     <table className="mt-1 w-full border-collapse text-body-sm">
       <thead>
         <tr className={cell}>
-          <th>부위</th>
-          <th>세트</th>
-          <th>볼륨</th>
+          <th>Body part</th>
+          <th>Sets</th>
+          <th>Volume</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((p) => (
           <tr className={cn(cell, 'text-muted-foreground')} key={p.body_part}>
-            <td>{p.body_part}</td>
-            <td>{p.sets}세트</td>
+            <td>{bodyPartLabel(p.body_part)}</td>
+            <td>{plural(p.sets, 'set')}</td>
             <td>{fmt(p.volume)}kg</td>
           </tr>
         ))}
@@ -485,17 +501,19 @@ function PartTable({ rows }: { rows: Week['parts'] }) {
 }
 function Trend({ exercise }: { exercise: Exercise }) {
   if (!exercise.trend.length)
-    return <p className="mt-3 text-body-sm text-muted-foreground">선택 기간 기록 없음</p>;
+    return (
+      <p className="mt-3 text-body-sm text-muted-foreground">No records in the selected period</p>
+    );
   const max = Math.max(1, ...exercise.trend.map((t) => t.max_weight ?? 0));
   return (
     <div
       data-slot="trend"
       className="mt-3 flex min-h-[100px] items-end gap-1.5 overflow-x-auto"
       role="img"
-      aria-label={`${exercise.exercise} 기간 추이: ${exercise.trend
+      aria-label={`${exercise.exercise} period trend: ${exercise.trend
         .map(
           (t) =>
-            `${t.date} 최고 중량 ${t.max_weight === null ? '없음' : fmt(t.max_weight) + 'kg'}, 최다 ${t.max_reps}회, 추정 1RM ${t.estimated_1rm === null ? '제외' : fmt(t.estimated_1rm) + 'kg'}`,
+            `${t.date} best weight ${t.max_weight === null ? 'none' : fmt(t.max_weight) + 'kg'}, max reps ${t.max_reps}, est. 1RM ${t.estimated_1rm === null ? 'excluded' : fmt(t.estimated_1rm) + 'kg'}`,
         )
         .join('; ')}`}
     >

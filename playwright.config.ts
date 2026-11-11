@@ -5,7 +5,7 @@ import { defineConfig } from '@playwright/test';
 const database = process.env.E2E_DATABASE_URL ?? process.env.TEST_DATABASE_URL;
 if (!database)
   throw new Error(
-    'E2E_DATABASE_URL 또는 TEST_DATABASE_URL에 db:migrate로 준비한 테스트 DB를 지정하세요.',
+    'Set E2E_DATABASE_URL or TEST_DATABASE_URL to a test DB prepared with db:migrate.',
   );
 // e2e ports come from the central registry (slot 1, ADR-0006), apart from the dev servers.
 const apiPort = 3201;
@@ -30,7 +30,7 @@ export default defineConfig({
     // The installed Chrome is used outside the container; no browser download is needed.
     channel: visual ? undefined : 'chrome',
     timezoneId: 'Asia/Seoul',
-    locale: 'ko-KR',
+    locale: 'en-US',
     trace: 'retain-on-failure',
   },
   webServer: [

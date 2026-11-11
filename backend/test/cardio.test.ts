@@ -215,7 +215,7 @@ test('invalid input, a future date and bad ids are a 400 before any query', asyn
       ])
         assert.deepEqual(await call(base + path, method, valid), {
           status: 400,
-          body: { error: '유산소 기록 ID가 올바르지 않습니다' },
+          body: { error: 'Invalid 유산소 기록 ID' },
         });
       for (const query of [
         '?from=2026-11-01',

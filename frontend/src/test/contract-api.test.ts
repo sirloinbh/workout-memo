@@ -12,7 +12,7 @@ describe('sample', () => {
         properties: { id: { type: 'integer', minimum: 1 }, done: { type: 'boolean' } },
       },
     };
-    expect(sample({ type: 'string', example: '스쿼트' })).toBe('스쿼트');
+    expect(sample({ type: 'string', example: 'Squat' })).toBe('Squat');
     expect(sample({ type: 'string', enum: ['weight', 'reps'] })).toBe('weight');
     expect(sample({ type: 'string', format: 'date' })).toBe('2026-01-01');
     expect(sample({ type: ['integer', 'null'] })).toBe(0);

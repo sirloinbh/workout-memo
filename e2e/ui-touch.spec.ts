@@ -165,8 +165,8 @@ test.describe('터치 내비게이션', () => {
 
   test('메뉴에 현재 페이지가 표시되고 고르면 그 페이지로 간다', async ({ page }) => {
     await openPage(page, '/goals');
-    await page.getByRole('button', { name: '메뉴 열기' }).click();
-    const menu = page.getByRole('dialog').getByRole('navigation', { name: '주 메뉴' });
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    const menu = page.getByRole('dialog').getByRole('navigation', { name: 'Main menu' });
     await expect(menu.getByRole('link', { name: '나의 목표' })).toHaveAttribute(
       'aria-current',
       'page',

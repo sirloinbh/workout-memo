@@ -37,7 +37,7 @@ export function appErrors(
     return;
   }
   // Only the backup routes take a large body, so only they name the 10MB limit. Other routes
-  // over the 256kb limit get the central "요청 본문이 너무 큽니다".
+  // over the 256kb limit get the central "Request body is too large".
   if (error.status === 413 && req.path.startsWith('/api/backup/')) {
     sendError(res, 413, '요청 크기 제한을 초과했습니다 (백업 파일은 최대 10MB).');
     return;

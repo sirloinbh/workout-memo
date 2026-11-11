@@ -43,7 +43,7 @@ test('an unknown /api path is a JSON 404, not an HTML page', async () => {
       for (const path of ['/nope', '/goals/1/extra']) {
         assert.deepEqual(await call(base + path), {
           status: 404,
-          body: { error: '요청한 API를 찾을 수 없습니다' },
+          body: { error: 'API not found' },
         });
       }
       // Paths that do exist keep working.
@@ -66,12 +66,12 @@ test('a path id must be plain digits; others are a 400 that names the record, be
       ]) {
         assert.deepEqual(await call(base + path, { method: 'DELETE' }), {
           status: 400,
-          body: { error: `${label} ID가 올바르지 않습니다` },
+          body: { error: `Invalid ${label} ID` },
         });
       }
       assert.deepEqual(await call(base + '/routines/07'), {
         status: 400,
-        body: { error: '루틴 ID가 올바르지 않습니다' },
+        body: { error: 'Invalid 루틴 ID' },
       });
       assert.equal(queries.length, 0);
     },
@@ -126,7 +126,7 @@ test('app messages for missing references and storage failures keep the { error 
       try {
         assert.deepEqual(await call(base + '/goals'), {
           status: 500,
-          body: { error: '서버 오류가 발생했습니다' },
+          body: { error: 'Server error' },
         });
       } finally {
         console.error = original;
@@ -145,7 +145,7 @@ test('a malformed JSON body is a 400 from the central handler', async () => {
           headers: { 'Content-Type': 'application/json' },
           body: '{',
         }),
-        { status: 400, body: { error: '요청 본문의 JSON 형식이 올바르지 않습니다' } },
+        { status: 400, body: { error: 'Request body is not valid JSON' } },
       );
     },
   );
@@ -163,11 +163,11 @@ test('routes registered before the JSON 404 still answer, including the backup r
           headers: { 'Content-Type': 'application/json' },
           body: '{"mode":',
         }),
-        { status: 400, body: { error: '요청 본문의 JSON 형식이 올바르지 않습니다' } },
+        { status: 400, body: { error: 'Request body is not valid JSON' } },
       );
       assert.deepEqual(await call(base + '/backup/nope', { method: 'POST' }), {
         status: 404,
-        body: { error: '요청한 API를 찾을 수 없습니다' },
+        body: { error: 'API not found' },
       });
       assert.deepEqual(
         await call(base + '/routines/abc/rests', {
@@ -175,7 +175,7 @@ test('routes registered before the JSON 404 still answer, including the backup r
           headers: { 'Content-Type': 'application/json' },
           body: '{}',
         }),
-        { status: 400, body: { error: '루틴 ID가 올바르지 않습니다' } },
+        { status: 400, body: { error: 'Invalid 루틴 ID' } },
       );
     },
   );
@@ -191,7 +191,7 @@ test('only the backup routes name the 10MB limit; other bodies over 256kb get th
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ exercise: 'x'.repeat(300 * 1024) }),
         }),
-        { status: 413, body: { error: '요청 본문이 너무 큽니다' } },
+        { status: 413, body: { error: 'Request body is too large' } },
       );
     },
   );

@@ -12,7 +12,10 @@ export const bodyPartMappingSchema = z
     exercise: limitLength(z.string().trim(), { min: 1, max: 120 }),
     body_parts: z.array(z.enum(allBodyParts)).max(allBodyParts.length),
   })
-  .refine((v) => new Set(v.body_parts).size === v.body_parts.length, '부위를 중복 없이 선택하세요');
+  .refine(
+    (v) => new Set(v.body_parts).size === v.body_parts.length,
+    'Select body parts without duplicates',
+  );
 
 export type AnalysisSet = {
   id: number;

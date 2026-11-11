@@ -144,7 +144,7 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
         machineIds,
       ]);
       if (found.rows[0].n !== machineIds.length) {
-        res.status(400).json({ error: '루틴에 지정한 머신을 찾을 수 없습니다' });
+        res.status(400).json({ error: 'The machine set in the routine could not be found' });
         return;
       }
     }
@@ -165,7 +165,7 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
   });
   app.get('/api/routines/:id', async (req, res) => {
     const result = await pool.query('SELECT id, plan FROM routines WHERE id=$1', [
-      parseId(req.params.id, '루틴'),
+      parseId(req.params.id, 'routine'),
     ]);
     const row = result.rows[0] as { id: number; plan: RoutinePlan } | undefined;
     res
@@ -173,7 +173,7 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
       .json(
         row
           ? { ...row.plan, id: row.id, schedule: routineSchedule(row.plan) }
-          : { error: '루틴을 찾을 수 없습니다' },
+          : { error: 'Routine not found' },
       );
   });
   app.get('/api/routine-progress', async (_req, res) => {
@@ -188,17 +188,17 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
   // Rest today: one row per routine and date. The derived schedule shifts every
   // remaining target at once, so the transaction either applies all or nothing.
   app.post('/api/routines/:id/rests', async (req, res) => {
-    const routineId = parseId(req.params.id, '루틴');
+    const routineId = parseId(req.params.id, 'routine');
     const body = z.object({ date }).parse(req.body ?? {});
     const day = today();
     if (body.date !== day) {
-      res.status(409).json({ error: '날짜가 바뀌었습니다. 오늘 일정을 다시 확인하세요.' });
+      res.status(409).json({ error: "The date changed. Check today's plan again." });
       return;
     }
     const result = await routineTransaction(routineId, async (client, routine) => {
       const active = await activeRoutine(client, day);
       if (active?.id !== routineId)
-        return fail(409, '진행 중인 루틴에서만 휴식을 선택할 수 있습니다');
+        return fail(409, 'You can only choose rest in a routine in progress');
       const rests = await restDates(client, routineId);
       // A duplicate click or resend never applies the same rest twice.
       if (rests.includes(day))
@@ -220,11 +220,11 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
     res.status(result.status).json(result.body);
   });
   app.delete('/api/routines/:id/rests/:date', async (req, res) => {
-    const routineId = parseId(req.params.id, '루틴');
+    const routineId = parseId(req.params.id, 'routine');
     const restDate = date.parse(req.params.date);
     const day = today();
     if (restDate !== day) {
-      res.status(409).json({ error: '휴식 취소는 휴식을 선택한 당일에만 할 수 있습니다' });
+      res.status(409).json({ error: 'You can only cancel rest on the day you chose it' });
       return;
     }
     const result = await routineTransaction(routineId, async (client, routine) => {
@@ -253,7 +253,7 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
         routineId,
       ]);
       const routine = found.rows[0] as ActiveRoutine | undefined;
-      const outcome = routine ? await run(client, routine) : fail(404, '루틴을 찾을 수 없습니다');
+      const outcome = routine ? await run(client, routine) : fail(404, 'Routine not found');
       await client.query(outcome.commit ? 'COMMIT' : 'ROLLBACK');
       return outcome;
     } catch (e) {

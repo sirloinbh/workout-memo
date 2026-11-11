@@ -42,8 +42,8 @@
 
 ## 2. 언어와 문서 규칙
 
-- 사용자 대화, 화면 문구, 문서(README·docs·이슈·PR)는 **한국어**로 쓴다. 코드 식별자, 커밋 제목 접두어(`feat:` 등), 코드 주석은 영어를 기본으로 한다.
-- 서버 검증 오류 메시지도 사용자에게 보이면 한국어로 지정한다. Zod 기본 영어 메시지("Array must contain…")가 화면에 그대로 노출되지 않게 `.min(1, '…')`처럼 메시지를 준다.
+- App screen text and replies to the user are written in **English** (sirloinbh/project-standards#453). Documents (README, docs, issues, PRs) follow the central writing rules. Code identifiers, commit title prefixes (`feat:` and so on), and code comments are English by default.
+- Server validation error messages that users can see are written in English too. Give each message explicitly, such as `.min(1, '…')`, so Zod's default messages ("Array must contain…") do not reach the screen unchanged.
 - 날짜는 `YYYY-MM-DD`, 서비스 시간대는 `<timezone>`. 서버의 "오늘"은 서버 시간대가 아니라 서비스 시간대로 계산한다.
 - 문서 위치:
   - `docs/changes/<이슈번호>-<slug>.md`: 이슈별 변경 기록. 목적, 변경, 실제 검증 명령과 pass/fail/skip, 한계를 남긴다.

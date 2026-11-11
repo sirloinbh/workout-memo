@@ -60,11 +60,11 @@ export function registerCardioGoalRoutes(app: express.Express, pool: Pool, today
   app.get('/api/cardio-goals/:id/suggestion', async (req, res) => {
     const goal = (
       await pool.query<StoredGoal>(`SELECT ${goalColumns} FROM cardio_goals WHERE id=$1`, [
-        parseId(req.params.id, '유산소 목표'),
+        parseId(req.params.id, 'cardio goal'),
       ])
     ).rows[0];
     if (!goal) {
-      sendError(res, 404, '유산소 목표를 찾을 수 없습니다');
+      sendError(res, 404, 'Cardio goal not found');
       return;
     }
     const { id: _id, created_at: _created, ...input } = goal;
@@ -72,10 +72,10 @@ export function registerCardioGoalRoutes(app: express.Express, pool: Pool, today
   });
   app.delete('/api/cardio-goals/:id', async (req, res) => {
     const r = await pool.query('DELETE FROM cardio_goals WHERE id=$1', [
-      parseId(req.params.id, '유산소 목표'),
+      parseId(req.params.id, 'cardio goal'),
     ]);
     if (!r.rowCount) {
-      sendError(res, 404, '유산소 목표를 찾을 수 없습니다');
+      sendError(res, 404, 'Cardio goal not found');
       return;
     }
     res.json({ ok: true });

@@ -98,21 +98,21 @@ async function isolated(run: (...dbs: Db[]) => Promise<void>, n = 1, wrap?: (p: 
   }
 }
 
-const tricky = '쉼표, "따옴표"\n줄바꿈 한글';
+const tricky = 'Comma, "quote"\nLine break text';
 async function seed(api: Api) {
   const brands = (await api('/brands')).data as unknown as { id: number; name: string }[];
   const arsenal = brands.find((b) => b.name === 'Arsenal Strength')!;
   const hammer = brands.find((b) => b.name === 'Hammer Strength')!;
   const press = await api('/machines', 'POST', {
     brand_id: arsenal.id,
-    name: '레그 프레스',
+    name: 'Leg Press',
     base_weight: null,
-    notes: '기본중량 미확인',
+    notes: 'Base weight unconfirmed',
     single_joint: true,
   });
   const row = await api('/machines', 'POST', {
     brand_id: hammer.id,
-    name: 'Iso Row, "와이드"',
+    name: 'Iso Row, "Wide"',
     base_weight: 20.5,
     notes: '',
   });
@@ -120,20 +120,20 @@ async function seed(api: Api) {
   assert.equal(row.status, 201);
   const first = await api('/workouts', 'POST', {
     date: '2024-02-29',
-    title: '=SUM(A1) 하체',
+    title: '=SUM(A1) Legs',
     notes: tricky,
     feedback: 'hard',
     sets: [
-      { exercise: '레그 프레스', machine_id: press.data.id, weight: 100.25, reps: 10, notes: '' },
-      { exercise: '레그 프레스', machine_id: press.data.id, weight: 120, reps: 8, notes: '+힘듦' },
-      { exercise: '맨몸 스쿼트', machine_id: null, weight: 0, reps: 20, notes: tricky },
+      { exercise: 'Leg Press', machine_id: press.data.id, weight: 100.25, reps: 10, notes: '' },
+      { exercise: 'Leg Press', machine_id: press.data.id, weight: 120, reps: 8, notes: '+Hard' },
+      { exercise: 'Bodyweight Squat', machine_id: null, weight: 0, reps: 20, notes: tricky },
     ],
   });
   const second = await api('/workouts', 'POST', {
     date: '2024-03-01',
     title: '등',
     notes: '',
-    sets: [{ exercise: '로우', machine_id: row.data.id, weight: 60.5, reps: 12, notes: '' }],
+    sets: [{ exercise: 'Row', machine_id: row.data.id, weight: 60.5, reps: 12, notes: '' }],
   });
   // Two identical sessions on the same day are both real records and must both survive.
   for (let i = 0; i < 2; i++)
@@ -141,9 +141,9 @@ async function seed(api: Api) {
       (
         await api('/workouts', 'POST', {
           date: '2024-03-02',
-          title: '반복',
+          title: 'Reps',
           notes: '',
-          sets: [{ exercise: '컬', machine_id: null, weight: 10, reps: 10, notes: '' }],
+          sets: [{ exercise: 'Curl', machine_id: null, weight: 10, reps: 10, notes: '' }],
         })
       ).status,
       201,
@@ -153,7 +153,7 @@ async function seed(api: Api) {
   assert.equal(
     (
       await api('/goals', 'POST', {
-        exercise: '레그 프레스',
+        exercise: 'Leg Press',
         target_weight: 150.5,
         target_reps: 5,
         start_date: '2024-02-01',
@@ -358,7 +358,7 @@ test(
       const linked = await target.pool.query(
         "SELECT w.title FROM cardio_sessions c JOIN workouts w ON w.id=c.workout_id WHERE c.external_id='g-100'",
       );
-      assert.equal(linked.rows[0].title, '=SUM(A1) 하체');
+      assert.equal(linked.rows[0].title, '=SUM(A1) Legs');
       assert.deepEqual(await target.count(), after);
       // Restoring into the source itself is also a no-op.
       const self = await source.api('/backup/restore', 'POST', { backup });
@@ -392,22 +392,22 @@ test(
       }[];
       const existing = await target.api('/machines', 'POST', {
         brand_id: brands.find((b) => b.name === 'Arsenal Strength')!.id,
-        name: '레그 프레스',
+        name: 'Leg Press',
         base_weight: 35,
-        notes: '현장 확인',
+        notes: 'On-site check',
       });
       const result = await target.api('/backup/restore', 'POST', { mode: 'merge', backup });
       assert.equal(result.status, 200);
       assert.equal(result.data.tables.machines.conflicts, 1);
       assert.equal(result.data.tables.machines.added, 1);
-      assert.match(result.data.conflicts.join('\n'), /Arsenal Strength \/ 레그 프레스/);
+      assert.match(result.data.conflicts.join('\n'), /Arsenal Strength \/ Leg Press/);
       const machine = await target.pool.query('SELECT * FROM machines WHERE id=$1', [
         existing.data.id,
       ]);
       assert.equal(Number(machine.rows[0].base_weight), 35, 'Existing value is not overwritten');
-      assert.equal(machine.rows[0].notes, '현장 확인');
+      assert.equal(machine.rows[0].notes, 'On-site check');
       const linked = await target.pool.query(
-        "SELECT count(*)::int n FROM sets WHERE machine_id=$1 AND exercise='레그 프레스'",
+        "SELECT count(*)::int n FROM sets WHERE machine_id=$1 AND exercise='Leg Press'",
         [existing.data.id],
       );
       assert.equal(linked.rows[0].n, 2);
@@ -424,20 +424,20 @@ test(
       const backup = (await source.api('/backup')).data;
       const extra = await target.api('/workouts', 'POST', {
         date: '2025-01-01',
-        title: '대상에만 있는 기록',
+        title: 'Records only in the target',
         notes: '',
-        sets: [{ exercise: '벤치', machine_id: null, weight: 50, reps: 5, notes: '' }],
+        sets: [{ exercise: 'Bench', machine_id: null, weight: 50, reps: 5, notes: '' }],
       });
       assert.equal(extra.status, 201);
       const before = await target.count();
-      for (const confirm of [undefined, '', '전체교체', 'replace']) {
+      for (const confirm of [undefined, '', 'REPLACE ALL', 'replace']) {
         const refused = await target.api('/backup/restore', 'POST', {
           mode: 'replace',
           backup,
           confirm,
         });
         assert.equal(refused.status, 400);
-        assert.match(refused.data.error, /전체 교체/);
+        assert.match(refused.data.error, /Replace all/);
       }
       assert.deepEqual(await target.count(), before, 'Nothing is deleted without confirmation');
 
@@ -451,13 +451,13 @@ test(
       const replaced = await target.api('/backup/restore', 'POST', {
         mode: 'replace',
         backup,
-        confirm: '전체 교체',
+        confirm: 'Replace all',
       });
       assert.equal(replaced.status, 200);
       assert.deepEqual(replaced.data.tables, preview.data.tables);
       assert.deepEqual(normalize((await target.api('/backup')).data), normalize(backup));
       assert.equal(
-        (await target.pool.query("SELECT 1 FROM workouts WHERE title='대상에만 있는 기록'"))
+        (await target.pool.query("SELECT 1 FROM workouts WHERE title='Records only in the target'"))
           .rowCount,
         0,
       );
@@ -481,8 +481,8 @@ test(
           400,
           '{"mode":"merge","backup":{',
         ],
-        ['other format', { ...backup, format: 'strong-app' }, /백업 파일 형식이 아닙니다/],
-        ['unsupported version', { ...backup, version: 99 }, /지원하지 않는 백업 버전/],
+        ['other format', { ...backup, format: 'strong-app' }, /Not a Workout Memo backup file/],
+        ['unsupported version', { ...backup, version: 99 }, /Unsupported backup version/],
         ['missing data', { ...backup, data: undefined }, /data/],
         [
           'unknown machine reference',
@@ -495,7 +495,7 @@ test(
               ),
             },
           }),
-          /머신 999999/,
+          /machine 999999/,
         ],
         [
           'unknown brand reference',
@@ -506,7 +506,7 @@ test(
               machines: backup.data.machines.map((m) => ({ ...m, brand_id: 888888 })),
             },
           },
-          /브랜드 888888/,
+          /brand 888888/,
         ],
         [
           'duplicate ids',
@@ -514,7 +514,7 @@ test(
             ...backup,
             data: { ...backup.data, goals: [...backup.data.goals, ...backup.data.goals] },
           },
-          /중복된 id/,
+          /duplicate id/,
         ],
       ];
       for (const [name, value, pattern, status = 400, raw] of cases) {
@@ -532,7 +532,7 @@ test(
         JSON.stringify({ backup: { pad: huge } }),
       );
       assert.equal(tooBig.status, 413);
-      assert.match(tooBig.data.error, /10MB/);
+      assert.match(tooBig.data.error, /10 MB/);
       const bad = await db.api('/backup/restore', 'POST', { mode: 'everything', backup });
       assert.equal(bad.status, 400);
       assert.deepEqual(await db.count(), before);
@@ -570,19 +570,19 @@ for (const mode of ['merge', 'replace'] as const) {
         const backup = (await source.api('/backup')).data;
         await target.api('/workouts', 'POST', {
           date: '2025-01-01',
-          title: '보존되어야 하는 기록',
+          title: 'Records that must be kept',
           notes: '',
-          sets: [{ exercise: '벤치', machine_id: null, weight: 50, reps: 5, notes: '' }],
+          sets: [{ exercise: 'Bench', machine_id: null, weight: 50, reps: 5, notes: '' }],
         });
         const before = await target.count();
         const snapshot = normalize((await target.api('/backup')).data);
         const result = await target.api('/backup/restore', 'POST', {
           mode,
           backup,
-          confirm: '전체 교체',
+          confirm: 'Replace all',
         });
         assert.equal(result.status, 500);
-        assert.match(result.data.error, /전체 취소/);
+        assert.match(result.data.error, /rolled back/);
         assert.deepEqual(await target.count(), before);
         assert.deepEqual(normalize((await target.api('/backup')).data), snapshot);
       },
@@ -627,7 +627,7 @@ test(
       const col = (name: string) => rows[0].indexOf(name);
       const first = rows[1];
       assert.equal(first[col('date')], '2024-02-29');
-      assert.equal(first[col('title')], "'=SUM(A1) 하체", 'Formula-like titles are neutralized');
+      assert.equal(first[col('title')], "'=SUM(A1) Legs", 'Formula-like titles are neutralized');
       assert.equal(first[col('workout_notes')], tricky);
       assert.equal(first[col('set_number')], '1');
       assert.equal(first[col('weight_kg')], '100.25');
@@ -638,13 +638,13 @@ test(
         '',
         'Unknown base weight is an empty cell',
       );
-      assert.equal(rows[2][col('set_notes')], "'+힘듦");
+      assert.equal(rows[2][col('set_notes')], "'+Hard");
       const bodyweight = rows[3];
       assert.equal(bodyweight[col('machine_id')], '');
       assert.equal(bodyweight[col('machine_name')], '');
       assert.equal(bodyweight[col('weight_kg')], '0');
       assert.equal(bodyweight[col('set_notes')], tricky);
-      assert.equal(rows[4][col('machine_name')], 'Iso Row, "와이드"');
+      assert.equal(rows[4][col('machine_name')], 'Iso Row, "Wide"');
       assert.equal(rows[4][col('machine_base_weight_kg')], '20.5');
       // #83: workout feedback repeats on each set row; not recorded is an empty cell.
       assert.equal(first[col('workout_feedback')], 'hard');
@@ -695,9 +695,9 @@ test(
       const key = randomUUID();
       const body = {
         date: '2025-02-01',
-        title: '응답 유실된 저장',
+        title: 'Save with lost response',
         notes: '',
-        sets: [{ exercise: '벤치', machine_id: null, weight: 60, reps: 5, notes: '' }],
+        sets: [{ exercise: 'Bench', machine_id: null, weight: 60, reps: 5, notes: '' }],
       };
       const save = (k: string) =>
         fetchJson(db, '/workouts', 'POST', body, { 'Idempotency-Key': k });
@@ -721,7 +721,7 @@ test(
       const replaced = await db.api('/backup/restore', 'POST', {
         mode: 'replace',
         backup,
-        confirm: '전체 교체',
+        confirm: 'Replace all',
       });
       assert.equal(replaced.status, 200);
       const exists = await db.pool.query('SELECT 1 FROM workouts WHERE id=$1', [first.data.id]);
@@ -761,7 +761,7 @@ test(
   async () => {
     await isolated(async (source, target) => {
       const brand = ((await source.api('/brands')).data as unknown as { id: number }[])[0];
-      const machine = { brand_id: brand.id, name: '루틴 머신', base_weight: 30, notes: '' };
+      const machine = { brand_id: brand.id, name: 'Routine machine', base_weight: 30, notes: '' };
       const created = await source.api('/machines', 'POST', machine);
       assert.equal(created.status, 201);
       const plan = routineInput(1) as ReturnType<typeof routineInput> & {
@@ -770,12 +770,12 @@ test(
       plan.splits[0].exercises[0].machine_id = created.data.id;
       assert.equal((await source.api('/routines', 'POST', plan)).status, 201);
       // The target already has another machine, so the restored one gets a different id.
-      await target.api('/machines', 'POST', { ...machine, name: '먼저 있던 머신' });
+      await target.api('/machines', 'POST', { ...machine, name: 'Existing machine' });
       const backup = (await source.api('/backup')).data;
       const restored = await target.api('/backup/restore', 'POST', { mode: 'merge', backup });
       assert.equal(restored.status, 200);
       const targetMachine = (
-        await target.pool.query('SELECT id FROM machines WHERE name=$1', ['루틴 머신'])
+        await target.pool.query('SELECT id FROM machines WHERE name=$1', ['Routine machine'])
       ).rows[0].id as number;
       assert.notEqual(targetMachine, created.data.id);
       const routine = (await target.pool.query('SELECT plan FROM routines')).rows[0].plan;
@@ -845,7 +845,7 @@ test(
       });
       assert.match(
         result.data.conflicts.join('\n'),
-        /유산소 2024-02-29 garmin \/ g-100: 기존 값 유지/,
+        /Cardio 2024-02-29 garmin \/ g-100: existing value kept/,
       );
       const kept = await target.pool.query(
         "SELECT duration_sec FROM cardio_sessions WHERE source='garmin' AND external_id='g-100'",
@@ -856,7 +856,7 @@ test(
       const replaced = await target.api('/backup/restore', 'POST', {
         mode: 'replace',
         backup,
-        confirm: '전체 교체',
+        confirm: 'Replace all',
       });
       assert.equal(replaced.status, 200);
       assert.equal(replaced.data.tables.cardio_sessions.deleted, 2);
@@ -959,7 +959,7 @@ test('cardio goals round-trip in a v3 backup and a v2 replace removes them', { s
     const replaced = await target.api('/backup/restore', 'POST', {
       mode: 'replace',
       backup: v2,
-      confirm: '전체 교체',
+      confirm: 'Replace all',
     });
     assert.equal(replaced.status, 200);
     assert.equal((await target.count()).cardio_goals, 0);

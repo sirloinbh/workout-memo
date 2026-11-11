@@ -19,7 +19,7 @@ function Weight({
   const [value, setValue] = useState(initial);
   return (
     <NumberInput
-      label="중량"
+      label="Weight"
       value={value}
       onValueChange={setValue}
       step={step}
@@ -29,9 +29,9 @@ function Weight({
   );
 }
 
-const field = () => screen.getByRole('textbox', { name: '중량' });
-const down = () => screen.getByRole('button', { name: '중량 줄이기' });
-const up = () => screen.getByRole('button', { name: '중량 늘리기' });
+const field = () => screen.getByRole('textbox', { name: 'Weight' });
+const down = () => screen.getByRole('button', { name: 'Decrease weight' });
+const up = () => screen.getByRole('button', { name: 'Increase weight' });
 
 test('the buttons change the value by the step', () => {
   render(<Weight />);
@@ -68,11 +68,11 @@ test('only the button at the limit stops, and it keeps keyboard focus', () => {
 test('a read-only or disabled field cannot be changed with the buttons', () => {
   const onValueChange = vi.fn();
   const { rerender } = render(
-    <NumberInput label="중량" value="10" onValueChange={onValueChange} readOnly />,
+    <NumberInput label="Weight" value="10" onValueChange={onValueChange} readOnly />,
   );
   expect(field()).toHaveAttribute('readonly');
   fireEvent.click(up());
-  rerender(<NumberInput label="중량" value="10" onValueChange={onValueChange} disabled />);
+  rerender(<NumberInput label="Weight" value="10" onValueChange={onValueChange} disabled />);
   expect(field()).toBeDisabled();
   fireEvent.click(down());
   expect(onValueChange).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ test('a whole-number step opens the numeric keypad, a fractional one the decimal
 
 test('the keypad can be chosen, for kg in whole steps that may hold decimals', () => {
   render(
-    <NumberInput label="중량" value="10" onValueChange={() => {}} step={5} inputMode="decimal" />,
+    <NumberInput label="Weight" value="10" onValueChange={() => {}} step={5} inputMode="decimal" />,
   );
   expect(field()).toHaveAttribute('inputmode', 'decimal');
 });
@@ -114,10 +114,10 @@ function NumericWeight({ initial = 100 }: { initial?: number }) {
   const [value, setValue] = useState(initial);
   return (
     <>
-      <NumberValueInput label="중량" value={value} onValueChange={setValue} step={2.5} min={0} />
+      <NumberValueInput label="Weight" value={value} onValueChange={setValue} step={2.5} min={0} />
       <output>{String(value)}</output>
       <button type="button" onClick={() => setValue(60)}>
-        초안 복구
+        Restore draft
       </button>
     </>
   );
@@ -139,7 +139,7 @@ test('a number field shows a value set from outside and steps from it', () => {
   fireEvent.click(up());
   expect(field()).toHaveValue('102.5');
   expect(stored()).toBe('102.5');
-  fireEvent.click(screen.getByRole('button', { name: '초안 복구' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Restore draft' }));
   expect(field()).toHaveValue('60');
   fireEvent.click(down());
   expect(stored()).toBe('57.5');
@@ -147,7 +147,7 @@ test('a number field shows a value set from outside and steps from it', () => {
 
 test('the field name is on the input only, so a label lookup finds one element', () => {
   render(<Weight />);
-  expect(screen.getAllByLabelText('중량')).toEqual([field()]);
+  expect(screen.getAllByLabelText('Weight')).toEqual([field()]);
 });
 
 test('a decimal comma reads as a point and unreadable text is not taken', () => {

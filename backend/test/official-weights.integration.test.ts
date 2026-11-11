@@ -211,34 +211,30 @@ test(
           assert.deepEqual(await snapshot(), before);
         }
       });
-      await t.test(
-        'an unknown reference id is a 400 with a Korean message, not a 500',
-        async () => {
-          const unknownId = 2147483647;
-          const posted = await call('/machines', 'POST', {
-            ...editBody,
-            name: `${name}-unknown`,
-            official_weight_id: unknownId,
-          });
-          const put = await call(`/machines/${machineIds[1]}`, 'PUT', {
-            ...editBody,
-            name: `${name}-0`,
-            base_weight: 0,
-            official_weight_id: unknownId,
-          });
-          for (const response of [posted, put]) {
-            assert.equal(response.status, 400);
-            assert.equal(response.data.error, '선택한 공식 참고값이 존재하지 않습니다');
-          }
-          assert.equal(
-            (await pool.query('SELECT 1 FROM machines WHERE name=$1', [`${name}-unknown`]))
-              .rowCount,
-            0,
-          );
-          assert.equal(await linkOf(machineIds[1]), bench.id, 'Rejected update keeps the link');
-          assert.deepEqual(await snapshot(), before);
-        },
-      );
+      await t.test('an unknown reference id is a 400 with a message, not a 500', async () => {
+        const unknownId = 2147483647;
+        const posted = await call('/machines', 'POST', {
+          ...editBody,
+          name: `${name}-unknown`,
+          official_weight_id: unknownId,
+        });
+        const put = await call(`/machines/${machineIds[1]}`, 'PUT', {
+          ...editBody,
+          name: `${name}-0`,
+          base_weight: 0,
+          official_weight_id: unknownId,
+        });
+        for (const response of [posted, put]) {
+          assert.equal(response.status, 400);
+          assert.equal(response.data.error, 'The selected official reference does not exist');
+        }
+        assert.equal(
+          (await pool.query('SELECT 1 FROM machines WHERE name=$1', [`${name}-unknown`])).rowCount,
+          0,
+        );
+        assert.equal(await linkOf(machineIds[1]), bench.id, 'Rejected update keeps the link');
+        assert.deepEqual(await snapshot(), before);
+      });
     } finally {
       try {
         if (workoutId !== undefined)

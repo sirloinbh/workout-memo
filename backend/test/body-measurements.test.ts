@@ -146,13 +146,13 @@ test('body measurement API maps same-date conflicts to 409 and missing records t
         body_weight_kg: 70,
       });
       assert.equal(created.status, 409);
-      assert.match((await created.json()).error, /이미.*기록/);
+      assert.match((await created.json()).error, /already.*record|record.*already/i);
       const moved = await call('/body-measurements/3', 'PUT', {
         date: '2024-03-01',
         body_weight_kg: 70,
       });
       assert.equal(moved.status, 409);
-      assert.match((await moved.json()).error, /이미.*기록/);
+      assert.match((await moved.json()).error, /already.*record|record.*already/i);
       const removed = await call('/body-measurements/3', 'DELETE');
       assert.equal(removed.status, 404);
     },

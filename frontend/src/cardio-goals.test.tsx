@@ -6,7 +6,7 @@ import { App } from './app';
 import { fixClock, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
-// #116: cardio goals on the 나의 목표 page. The server's judgment is shown as given. Today is
+// #116: cardio goals on the My Goals page. The server's judgment is shown as given. Today is
 // Thursday 2026-10-15 in Seoul, so the current week is 10-12 ~ 10-18.
 const weekly = {
   id: 1,
@@ -73,7 +73,7 @@ function mount(goals: unknown[]) {
   });
   return { user: userEvent.setup(), posted, requests: api.requests };
 }
-const section = () => screen.getByRole('region', { name: '유산소 목표' });
+const section = () => screen.getByRole('region', { name: 'Cardio goals' });
 const card = (name: string) =>
   within(section())
     .getByRole('heading', { level: 3, name })
@@ -82,61 +82,63 @@ const card = (name: string) =>
 test('cardio goals show the current period, achieved periods and records', async () => {
   const ui = mount([weekly, fiveK, ended]);
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await within(section()).findByRole('heading', { level: 3, name: '주간 러닝 15 km' });
+  await openPage('My Goals', ui.user);
+  await within(section()).findByRole('heading', { level: 3, name: 'Weekly running 15 km' });
 
-  const week = card('주간 러닝 15 km');
-  expect(within(week).getByText('도전 중')).toHaveAttribute('data-slot', 'badge');
-  expect(week.textContent).toMatch(/이번 주 9\.5 km \/ 15 km/);
+  const week = card('Weekly running 15 km');
+  expect(within(week).getByText('In progress')).toHaveAttribute('data-slot', 'badge');
+  expect(week.textContent).toMatch(/This week 9\.5 km \/ 15 km/);
   expect(
-    within(week).getByRole('progressbar', { name: '주간 러닝 15 km 이번 주 진행률' }),
+    within(week).getByRole('progressbar', { name: 'Weekly running 15 km progress this week' }),
   ).toHaveAttribute('aria-valuenow', '63');
-  expect(week.textContent).toMatch(/달성한 주 1 \/ 전체 3주/);
+  expect(week.textContent).toMatch(/Weeks achieved 1 \/ 3 total/);
 
-  const record = card('러닝 5 km 30:00 이내');
-  expect(within(record).getByText('달성 완료')).toBeInTheDocument();
-  expect(record.textContent).toMatch(/가장 빠른 기록 29:10/);
+  const record = card('Running 5 km within 30:00');
+  expect(within(record).getByText('Achieved')).toBeInTheDocument();
+  expect(record.textContent).toMatch(/Fastest record 29:10/);
 
-  // After the deadline there is no current period: 기간 종료 with the period summary only.
-  const over = card('주간 유산소 3회');
-  expect(within(over).getByText('기간 종료')).toBeInTheDocument();
+  // After the deadline there is no current period: Period ended with the period summary only.
+  const over = card('Weekly cardio 3 sessions');
+  expect(within(over).getByText('Period ended')).toBeInTheDocument();
   expect(within(over).queryByRole('progressbar')).toBeNull();
-  expect(over.textContent).toMatch(/달성한 주 1 \/ 전체 1주/);
+  expect(over.textContent).toMatch(/Weeks achieved 1 \/ 1 total/);
 });
 
 test('a new cardio goal sends only the targets of its type', async () => {
   const ui = mount([]);
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await within(section()).findByText('유산소 목표가 없습니다');
+  await openPage('My Goals', ui.user);
+  await within(section()).findByText('No cardio goals');
 
-  await ui.user.click(screen.getByRole('button', { name: '유산소 목표 추가' }));
-  const dialog = screen.getByRole('dialog', { name: '유산소 목표' });
+  await ui.user.click(screen.getByRole('button', { name: 'Add cardio goal' }));
+  const dialog = screen.getByRole('dialog', { name: 'Cardio goals' });
   // A time record without a kind is stopped on the screen; nothing is sent.
-  await ui.user.selectOptions(within(dialog).getByLabelText('목표 종류'), 'record_time');
-  await ui.user.type(within(dialog).getByLabelText('목표 거리 (km)'), '5');
-  await ui.user.type(within(dialog).getByLabelText('목표 시간 (분)'), '29');
-  await ui.user.type(within(dialog).getByLabelText('목표 시간 (초)'), '30');
-  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await ui.user.selectOptions(within(dialog).getByLabelText('Goal type'), 'record_time');
+  await ui.user.type(within(dialog).getByLabelText('Goal distance (km)'), '5');
+  await ui.user.type(within(dialog).getByLabelText('Goal time (min)'), '29');
+  await ui.user.type(within(dialog).getByLabelText('Goal time (sec)'), '30');
+  await ui.user.click(within(dialog).getByRole('button', { name: 'Save cardio goal' }));
   expect(
-    await within(dialog).findByText('기록 목표는 운동 종류를 하나 선택하세요'),
+    await within(dialog).findByText('Choose one exercise type for a record goal'),
   ).toBeInTheDocument();
-  expect(within(dialog).getByLabelText('운동 종류')).toHaveAttribute('aria-invalid', 'true');
+  expect(within(dialog).getByLabelText('Workout type')).toHaveAttribute('aria-invalid', 'true');
   expect(ui.posted).toEqual([]);
 
   // Seconds above 59 are stopped too; both time fields are marked.
-  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'running');
-  await ui.user.clear(within(dialog).getByLabelText('목표 시간 (초)'));
-  await ui.user.type(within(dialog).getByLabelText('목표 시간 (초)'), '90');
-  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await ui.user.selectOptions(within(dialog).getByLabelText('Workout type'), 'running');
+  await ui.user.clear(within(dialog).getByLabelText('Goal time (sec)'));
+  await ui.user.type(within(dialog).getByLabelText('Goal time (sec)'), '90');
+  await ui.user.click(within(dialog).getByRole('button', { name: 'Save cardio goal' }));
   expect(
-    await within(dialog).findByText('목표 시간은 분(0 이상 정수)과 초(0~59 정수)로 입력하세요'),
+    await within(dialog).findByText(
+      'Enter minutes (whole number, 0 or more) and seconds (whole number, 0–59)',
+    ),
   ).toBeInTheDocument();
-  expect(within(dialog).getByLabelText('목표 시간 (초)')).toHaveAttribute('aria-invalid', 'true');
+  expect(within(dialog).getByLabelText('Goal time (sec)')).toHaveAttribute('aria-invalid', 'true');
   expect(ui.posted).toEqual([]);
-  await ui.user.clear(within(dialog).getByLabelText('목표 시간 (초)'));
-  await ui.user.type(within(dialog).getByLabelText('목표 시간 (초)'), '30');
-  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await ui.user.clear(within(dialog).getByLabelText('Goal time (sec)'));
+  await ui.user.type(within(dialog).getByLabelText('Goal time (sec)'), '30');
+  await ui.user.click(within(dialog).getByRole('button', { name: 'Save cardio goal' }));
   await waitFor(() => expect(ui.posted).toHaveLength(1));
   expect(ui.posted[0]).toEqual({
     goal_type: 'record_time',
@@ -148,15 +150,15 @@ test('a new cardio goal sends only the targets of its type', async () => {
     start_date: '2026-10-15',
     deadline: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
   });
-  await waitFor(() => expect(screen.queryByRole('dialog', { name: '유산소 목표' })).toBeNull());
-  expect(within(section()).getByText('유산소 목표를 저장했습니다.')).toBeInTheDocument();
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Cardio goals' })).toBeNull());
+  expect(within(section()).getByText('Cardio goal saved.')).toBeInTheDocument();
 
   // A weekly count for every kind keeps the period and leaves distance and time empty.
-  await ui.user.click(screen.getByRole('button', { name: '유산소 목표 추가' }));
-  const next = screen.getByRole('dialog', { name: '유산소 목표' });
-  await ui.user.selectOptions(within(next).getByLabelText('목표 종류'), 'count');
-  await ui.user.type(within(next).getByLabelText('목표 횟수'), '3');
-  await ui.user.click(within(next).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Add cardio goal' }));
+  const next = screen.getByRole('dialog', { name: 'Cardio goals' });
+  await ui.user.selectOptions(within(next).getByLabelText('Goal type'), 'count');
+  await ui.user.type(within(next).getByLabelText('Goal sessions'), '3');
+  await ui.user.click(within(next).getByRole('button', { name: 'Save cardio goal' }));
   await waitFor(() => expect(ui.posted).toHaveLength(2));
   expect(ui.posted[1]).toMatchObject({
     goal_type: 'count',
@@ -171,13 +173,13 @@ test('a new cardio goal sends only the targets of its type', async () => {
 test('deleting a cardio goal removes only that card', async () => {
   const ui = mount([weekly, fiveK]);
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await within(section()).findByRole('heading', { level: 3, name: '주간 러닝 15 km' });
-  await ui.user.click(screen.getByRole('button', { name: '주간 러닝 15 km 목표 삭제' }));
+  await openPage('My Goals', ui.user);
+  await within(section()).findByRole('heading', { level: 3, name: 'Weekly running 15 km' });
+  await ui.user.click(screen.getByRole('button', { name: 'Delete Weekly running 15 km goal' }));
   await waitFor(() =>
-    expect(within(section()).queryByRole('heading', { name: '주간 러닝 15 km' })).toBeNull(),
+    expect(within(section()).queryByRole('heading', { name: 'Weekly running 15 km' })).toBeNull(),
   );
-  expect(card('러닝 5 km 30:00 이내')).toBeInTheDocument();
+  expect(card('Running 5 km within 30:00')).toBeInTheDocument();
   expect(ui.requests.some((r) => r.method === 'DELETE' && r.path === '/api/cardio-goals/1')).toBe(
     true,
   );
@@ -198,45 +200,51 @@ test('a swimming goal reads its distance in metres', async () => {
     },
   ]);
   render(<App />);
-  await openPage('나의 목표', ui.user);
+  await openPage('My Goals', ui.user);
   const swim = card(
-    (await within(section()).findByRole('heading', { level: 3, name: '수영 한 번에 1,500 m' }))
-      .textContent,
+    (
+      await within(section()).findByRole('heading', {
+        level: 3,
+        name: 'Swimming 1,500 m in one session',
+      })
+    ).textContent,
   );
-  expect(swim.textContent).toMatch(/가장 긴 거리 1,200 m/);
+  expect(swim.textContent).toMatch(/Longest distance 1,200 m/);
 });
 
 // Swimming distance is typed in metres and stored in km, like the session form (#252).
 test('a swimming goal takes metres and switching kinds keeps the same distance', async () => {
   const ui = mount([]);
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await within(section()).findByText('유산소 목표가 없습니다');
-  await ui.user.click(screen.getByRole('button', { name: '유산소 목표 추가' }));
-  const dialog = screen.getByRole('dialog', { name: '유산소 목표' });
-  await ui.user.selectOptions(within(dialog).getByLabelText('목표 종류'), 'longest_distance');
-  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'running');
-  await ui.user.type(within(dialog).getByLabelText('목표 거리 (km)'), '1.5');
+  await openPage('My Goals', ui.user);
+  await within(section()).findByText('No cardio goals');
+  await ui.user.click(screen.getByRole('button', { name: 'Add cardio goal' }));
+  const dialog = screen.getByRole('dialog', { name: 'Cardio goals' });
+  await ui.user.selectOptions(within(dialog).getByLabelText('Goal type'), 'longest_distance');
+  await ui.user.selectOptions(within(dialog).getByLabelText('Workout type'), 'running');
+  await ui.user.type(within(dialog).getByLabelText('Goal distance (km)'), '1.5');
   // Running 1.5 km becomes swimming 1500 m, and back.
-  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'swimming');
-  expect(within(dialog).getByLabelText('목표 거리 (m)')).toHaveValue('1500');
-  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'rowing');
-  expect(within(dialog).getByLabelText('목표 거리 (km)')).toHaveValue('1.5');
-  await ui.user.selectOptions(within(dialog).getByLabelText('운동 종류'), 'swimming');
+  await ui.user.selectOptions(within(dialog).getByLabelText('Workout type'), 'swimming');
+  expect(within(dialog).getByLabelText('Goal distance (m)')).toHaveValue('1500');
+  await ui.user.selectOptions(within(dialog).getByLabelText('Workout type'), 'rowing');
+  expect(within(dialog).getByLabelText('Goal distance (km)')).toHaveValue('1.5');
+  await ui.user.selectOptions(within(dialog).getByLabelText('Workout type'), 'swimming');
 
   // Metres must be whole.
-  const metres = within(dialog).getByLabelText('목표 거리 (m)');
+  const metres = within(dialog).getByLabelText('Goal distance (m)');
   await ui.user.clear(metres);
   await ui.user.type(metres, '1500.5');
-  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await ui.user.click(within(dialog).getByRole('button', { name: 'Save cardio goal' }));
   expect(
-    await within(dialog).findByText('수영 목표 거리는 1~10,000,000 m의 정수로 입력하세요'),
+    await within(dialog).findByText(
+      'Enter a swimming goal distance as a whole number from 1 to 10,000,000 m',
+    ),
   ).toBeInTheDocument();
   expect(ui.posted).toEqual([]);
 
   await ui.user.clear(metres);
   await ui.user.type(metres, '1500');
-  await ui.user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await ui.user.click(within(dialog).getByRole('button', { name: 'Save cardio goal' }));
   await waitFor(() => expect(ui.posted).toHaveLength(1));
   expect(ui.posted[0]).toMatchObject({
     goal_type: 'longest_distance',
@@ -272,23 +280,25 @@ test('an achieved goal offers its next goal and fills the add form with it', asy
   });
   const user = userEvent.setup();
   render(<App />);
-  await openPage('나의 목표', user);
-  const offer = await within(card('러닝 5 km 30:00 이내')).findByRole('button', {
-    name: '다음 목표: 러닝 5 km 29:05 이내',
+  await openPage('My Goals', user);
+  const offer = await within(card('Running 5 km within 30:00')).findByRole('button', {
+    name: 'Next goal: Running 5 km within 29:05',
   });
   // The weekly goal is not achieved: no suggestion request, no button.
-  expect(within(card('주간 러닝 15 km')).queryByRole('button', { name: /^다음 목표/ })).toBeNull();
+  expect(
+    within(card('Weekly running 15 km')).queryByRole('button', { name: /^Next goal/ }),
+  ).toBeNull();
   expect(api.requests.some((r) => r.path === '/api/cardio-goals/1/suggestion')).toBe(false);
 
   await user.click(offer);
-  const dialog = screen.getByRole('dialog', { name: '유산소 목표' });
-  expect(within(dialog).getByLabelText('목표 종류')).toHaveValue('record_time');
-  expect(within(dialog).getByLabelText('운동 종류')).toHaveValue('running');
-  expect(within(dialog).getByLabelText('목표 거리 (km)')).toHaveValue('5');
-  expect(within(dialog).getByLabelText('목표 시간 (분)')).toHaveValue('29');
-  expect(within(dialog).getByLabelText('목표 시간 (초)')).toHaveValue('5');
-  expect(within(dialog).getByLabelText('종료일')).toHaveValue('2027-01-14');
+  const dialog = screen.getByRole('dialog', { name: 'Cardio goals' });
+  expect(within(dialog).getByLabelText('Goal type')).toHaveValue('record_time');
+  expect(within(dialog).getByLabelText('Workout type')).toHaveValue('running');
+  expect(within(dialog).getByLabelText('Goal distance (km)')).toHaveValue('5');
+  expect(within(dialog).getByLabelText('Goal time (min)')).toHaveValue('29');
+  expect(within(dialog).getByLabelText('Goal time (sec)')).toHaveValue('5');
+  expect(within(dialog).getByLabelText('End date')).toHaveValue('2027-01-14');
   expect(posted).toEqual([]);
-  await user.click(within(dialog).getByRole('button', { name: '유산소 목표 저장하기' }));
+  await user.click(within(dialog).getByRole('button', { name: 'Save cardio goal' }));
   await waitFor(() => expect(posted).toEqual([next]));
 });

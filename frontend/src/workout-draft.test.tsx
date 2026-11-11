@@ -71,7 +71,10 @@ function mount(
         });
       if (state.loseResponse) throw new TypeError('Response lost after server commit');
       if (state.conflict)
-        return json({ error: '다른 기기에서 수정된 기록입니다. 최신 기록을 확인하세요.' }, 409);
+        return json(
+          { error: 'This record was edited on another device. Check the latest record.' },
+          409,
+        );
       return json({ id: 42, version: 1 }, 201);
     }
     const id = Number(url.pathname.split('/').at(-1));
@@ -124,7 +127,7 @@ function mount(
 type UI = ReturnType<typeof mount>;
 
 const content = () => document.body.textContent ?? '';
-const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
+const loaded = () => waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
 const stat = (label: string) => {
   const card = screen
     .getAllByText(
@@ -139,13 +142,13 @@ const exerciseInputs = () => [
   ...dialog().querySelectorAll<HTMLInputElement>('input[role="combobox"][id$="-exercise"]'),
 ];
 const weightInputs = () =>
-  within(dialog()).getAllByRole<HTMLInputElement>('textbox', { name: '총중량 kg' });
+  within(dialog()).getAllByRole<HTMLInputElement>('textbox', { name: 'Total weight kg' });
 const key = (request: ApiRequest) => request.headers['idempotency-key'];
 const storageSize = () => localStorage.length;
 const storageKeys = () =>
   Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)!);
 const recoverButtons = () =>
-  screen.queryAllByRole('button').filter((b) => /복구/.test(b.textContent ?? ''));
+  screen.queryAllByRole('button').filter((b) => /Restore/.test(b.textContent ?? ''));
 function matchingButton(label: RegExp) {
   const found = screen.getAllByRole('button').find((b) => label.test(b.textContent ?? ''));
   expect(found, 'button matching ' + label).toBeTruthy();
@@ -154,10 +157,10 @@ function matchingButton(label: RegExp) {
 
 async function fill(ui: UI) {
   await loaded();
-  await ui.user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
+  await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
   // #28: the editor starts with three sets; these scenarios save a single valid set.
   for (let i = 0; i < 2; i++)
-    await ui.user.click(within(dialog()).getAllByRole('button', { name: '세트 삭제' })[0]);
+    await ui.user.click(within(dialog()).getAllByRole('button', { name: 'Delete set' })[0]);
   expect(exerciseInputs()).toHaveLength(1);
   // #82: the title starts as today's date; these scenarios replace it.
   await ui.user.clear(titleInput());
@@ -170,23 +173,23 @@ async function fill(ui: UI) {
 function submit() {
   fireEvent.submit(dialog().querySelector('form')!);
 }
-const saveFailed = () => waitFor(() => expect(content()).toMatch(/저장 실패/));
-const saved = () => waitFor(() => expect(content()).toMatch(/서버 저장 완료/));
+const saveFailed = () => waitFor(() => expect(content()).toMatch(/Save failed/));
+const saved = () => waitFor(() => expect(content()).toMatch(/Saved to server/));
 
 test('refresh offers recovery and restores input without affecting server statistics', async () => {
   const first = mount();
   await fill(first);
   expect(storageSize(), 'input is persisted before submission').toBeGreaterThan(0);
-  expect(content()).toMatch(/로컬|초안/);
-  expect(stat('완료한 세트')).toBe('0세트');
+  expect(content()).toMatch(/Local|draft/);
+  expect(stat('Completed sets')).toBe('0 sets');
   const second = mount();
   await loaded();
   // #222: the page header's main button waits until the draft is restored or discarded.
   const headers = document.querySelectorAll<HTMLElement>('[data-slot="page-header"]');
   expect(
-    within(headers[headers.length - 1]).getByRole('button', { name: '운동 기록하기' }),
+    within(headers[headers.length - 1]).getByRole('button', { name: 'Log workout' }),
   ).toBeDisabled();
-  await second.user.click(matchingButton(/복구/));
+  await second.user.click(matchingButton(/Restore/));
   expect(titleInput()).toHaveValue('Recovery workout');
   expect(exerciseInputs()[0]).toHaveValue('Squat');
   expect(Number(weightInputs()[0].value)).toBe(100.25);
@@ -197,7 +200,7 @@ test('refresh offers recovery and restores input without affecting server statis
   // The draft is no longer waiting, so the header button is enabled again (behind the dialog).
   expect(
     within(headers[headers.length - 1]).getByRole('button', {
-      name: '운동 기록하기',
+      name: 'Log workout',
       hidden: true,
     }),
   ).toBeEnabled();
@@ -207,7 +210,7 @@ test('discard prevents another refresh from offering the same draft', async () =
   await fill(mount());
   const second = mount();
   await loaded();
-  await second.user.click(matchingButton(/폐기|버리기/));
+  await second.user.click(matchingButton(/Discard/));
   await waitFor(() => expect(recoverButtons()).toHaveLength(0));
   const third = mount();
   await loaded();
@@ -226,11 +229,11 @@ test('pending submission cannot report success or send duplicate requests', asyn
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   });
   try {
-    await waitFor(() => expect(content()).toMatch(/저장 중/));
+    await waitFor(() => expect(content()).toMatch(/Saving/));
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(ui.mutations(), 'duplicate submit sends one request').toHaveLength(1);
-    expect(content()).toMatch(/저장 중/);
-    expect(content()).not.toMatch(/저장 완료|저장 성공/);
+    expect(content()).toMatch(/Saving/);
+    expect(content()).not.toMatch(/Saved/);
     expect(storageSize(), 'keep draft until acknowledgment').toBeGreaterThan(0);
   } finally {
     pending.resolve();
@@ -248,9 +251,9 @@ for (const failure of ['offline', 'timeout'] as const) {
     expect(ui.mutations()).toHaveLength(1);
     expect(storageSize(), 'offline submission keeps draft').toBeGreaterThan(0);
     expect(screen.getByDisplayValue('Recovery workout')).toBeInTheDocument();
-    expect(content()).not.toMatch(/저장 완료|저장 성공/);
+    expect(content()).not.toMatch(/Saved/);
     ui.online();
-    await ui.user.click(matchingButton(/재시도|다시 저장/));
+    await ui.user.click(matchingButton(/Retry|save again/i));
     await waitFor(() => expect(ui.mutations()).toHaveLength(2));
     const [a, b] = ui.mutations();
     expect(key(a), 'mutation has retry key').toBeTruthy();
@@ -286,7 +289,7 @@ test('lost response retains retry key across refresh and acknowledgment clears d
   const firstKey = key(first.mutations()[0]);
   const second = mount();
   await loaded();
-  await second.user.click(matchingButton(/복구/));
+  await second.user.click(matchingButton(/Restore/));
   submit();
   await saved();
   expect(firstKey, 'initial request contains retry key').toBeTruthy();
@@ -300,7 +303,7 @@ test('unavailable storage warns but permits editing and server saving', async ()
   const ui = mount([], true);
   await fill(ui);
   expect(screen.getByDisplayValue('Recovery workout')).toBeInTheDocument();
-  expect(content()).toMatch(/저장 공간|로컬 저장|초안.*실패|보관.*실패/);
+  expect(content()).toMatch(/local storage|draft.*failed/i);
   submit();
   await waitFor(() => expect(ui.mutations()).toHaveLength(1));
 });
@@ -322,7 +325,7 @@ test('a draft at the seven day retention boundary is not offered for recovery', 
   mount();
   await loaded();
   expect(recoverButtons()).toHaveLength(0);
-  expect(content()).toMatch(/7일/);
+  expect(content()).toMatch(/7 days/);
   expect(storageSize()).toBe(0);
 });
 
@@ -371,7 +374,7 @@ test('the request deadline aborts pending transport and permits an explicit retr
   await saveFailed();
   expect(storageSize(), 'aborted request keeps draft').toBeGreaterThan(0);
   pending.resolve();
-  await ui.user.click(matchingButton(/재시도/));
+  await ui.user.click(matchingButton(/Retry/));
   await waitFor(() => expect(ui.mutations()).toHaveLength(2));
   const [a, b] = ui.mutations();
   expect(key(b)).toBe(key(a));
@@ -382,10 +385,10 @@ test('a conflicting device edit is visible and keeps the local draft', async () 
   await fill(ui);
   ui.conflict();
   submit();
-  await waitFor(() => expect(content()).toMatch(/다른 기기에서 수정/));
-  expect(content()).not.toMatch(/저장 완료|저장 성공/);
+  await waitFor(() => expect(content()).toMatch(/edited on another device/));
+  expect(content()).not.toMatch(/Saved/);
   expect(storageSize(), 'conflict keeps local draft').toBeGreaterThan(0);
-  expect(stat('완료한 세트')).toBe('0세트');
+  expect(stat('Completed sets')).toBe('0 sets');
 });
 
 test('a phone on local HTTP can generate a UUID key without randomUUID', async () => {
@@ -398,18 +401,18 @@ test('a phone on local HTTP can generate a UUID key without randomUUID', async (
   expect(key(ui.mutations()[0])).toMatch(
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
   );
-  expect(content()).toMatch(/서버 저장 완료/);
+  expect(content()).toMatch(/Saved to server/);
 });
 
 test('write quota failure still permits server save and reports the local persistence failure', async () => {
   const ui = mount([], 'write');
   await fill(ui);
-  expect(content()).toMatch(/로컬 저장 공간 오류/);
+  expect(content()).toMatch(/Local storage error/);
   expect(storageSize()).toBe(0);
   submit();
   await saved();
   expect(ui.mutations()).toHaveLength(1);
-  expect(content()).toMatch(/서버 저장 완료/);
+  expect(content()).toMatch(/Saved to server/);
 });
 
 // #223: the warning is announced at once and the save progress politely, in the common parts.
@@ -418,16 +421,16 @@ test('the storage warning is an alert banner and the save state a status line', 
   await fill(ui);
   const warning = within(dialog())
     .getAllByRole('alert')
-    .find((el) => /로컬 저장 공간 오류/.test(el.textContent));
+    .find((el) => /Local storage error/.test(el.textContent));
   expect(warning).toHaveAttribute('data-slot', 'alert-banner');
   submit();
   await saved();
   // The editor closes after the save, so the status line is the one above the page.
-  const status = screen.getAllByRole('status').find((el) => /서버 저장 완료/.test(el.textContent));
+  const status = screen.getAllByRole('status').find((el) => /Saved to server/.test(el.textContent));
   expect(status).toHaveAttribute('data-slot', 'notice');
 });
 
-test('a failed save offers 다시 저장 재시도 inside its alert banner', async () => {
+test('a failed save offers Retry save inside its alert banner', async () => {
   const ui = mount();
   await fill(ui);
   ui.offline();
@@ -435,9 +438,9 @@ test('a failed save offers 다시 저장 재시도 inside its alert banner', asy
   await saveFailed();
   const failure = within(dialog())
     .getAllByRole('alert')
-    .find((el) => /입력은 화면에 유지됩니다/.test(el.textContent));
+    .find((el) => /Your input stays on screen/.test(el.textContent));
   expect(failure).toHaveAttribute('data-slot', 'alert-banner');
-  const retry = within(failure!).getByRole('button', { name: '다시 저장 재시도' });
+  const retry = within(failure!).getByRole('button', { name: 'Retry save' });
   expect(retry).toHaveAttribute('type', 'button');
   ui.online();
   await ui.user.click(retry);
@@ -451,8 +454,8 @@ test('cleanup failure keeps server acknowledgment separate from the local storag
   submit();
   await saved();
   expect(ui.mutations()).toHaveLength(1);
-  expect(content()).toMatch(/서버 저장 완료/);
-  expect(content()).toMatch(/정리.*실패|저장 공간 오류/);
+  expect(content()).toMatch(/Saved to server/);
+  expect(content()).toMatch(/clearing.*failed|Local storage error/);
   expect(storageSize(), 'failed cleanup leaves the old draft on disk').toBeGreaterThan(0);
 });
 
@@ -467,11 +470,11 @@ test('refreshing an edit preserves its original revision so newer device data ca
   };
   const first = mount([saved]);
   await loaded();
-  await first.user.click(await screen.findByRole('button', { name: '수정' }));
+  await first.user.click(await screen.findByRole('button', { name: 'Edit' }));
   fireEvent.change(titleInput(), { target: { value: 'Unsaved edit' } });
   const second = mount([{ ...saved, version: 4, title: 'New device edit' }]);
   await loaded();
-  await second.user.click(matchingButton(/복구/));
+  await second.user.click(matchingButton(/Restore/));
   second.conflict();
   submit();
   await waitFor(() => expect(second.mutations()).toHaveLength(1));
@@ -479,14 +482,14 @@ test('refreshing an edit preserves its original revision so newer device data ca
   expect(request.path).toBe('/api/workouts/71');
   expect((request.body as Workout).version).toBe(3);
   expect((request.body as Workout).title).toBe('Unsaved edit');
-  await waitFor(() => expect(content()).toMatch(/다른 기기에서 수정/));
+  await waitFor(() => expect(content()).toMatch(/edited on another device/));
   expect(storageSize(), 'conflicting edit remains recoverable').toBeGreaterThan(0);
 });
 
 test('a new journal starts with three empty set rows and keeps the draft flow', async () => {
   const ui = mount();
   await loaded();
-  await ui.user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
+  await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
   const names = exerciseInputs();
   expect(names, '#28: the editor starts with 3 sets').toHaveLength(3);
   expect(names.every((e) => e.value === '')).toBe(true);
@@ -500,16 +503,16 @@ test('a set card steps weight by 5 kg and reps by one, with number keypads', asy
   const ui = mount();
   await fill(ui);
   const card = dialog().querySelector<HTMLElement>('[data-slot=set-row]')!;
-  const weight = within(card).getByRole('textbox', { name: '총중량 kg' });
-  const reps = within(card).getByRole('textbox', { name: '횟수' });
+  const weight = within(card).getByRole('textbox', { name: 'Total weight kg' });
+  const reps = within(card).getByRole('textbox', { name: 'Reps' });
   expect(weight).toHaveAttribute('inputmode', 'decimal');
   expect(reps).toHaveAttribute('inputmode', 'numeric');
-  await ui.user.click(within(card).getByRole('button', { name: '총중량 kg 늘리기' }));
+  await ui.user.click(within(card).getByRole('button', { name: 'Increase total weight kg' }));
   expect(weight).toHaveValue('105.25');
   const before = Number((reps as HTMLInputElement).value);
-  await ui.user.click(within(card).getByRole('button', { name: '횟수 줄이기' }));
+  await ui.user.click(within(card).getByRole('button', { name: 'Decrease reps' }));
   expect(reps).toHaveValue(String(before - 1));
-  expect(within(card).getByText('1세트')).toBeInTheDocument();
+  expect(within(card).getByText('Set 1')).toBeInTheDocument();
   // The stepped value is what the draft keeps.
   await waitFor(() =>
     expect(

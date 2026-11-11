@@ -7,20 +7,31 @@ import { DateStepper, RangeSummary } from './date-stepper';
 test('the previous and next buttons move by one step in each direction', async () => {
   const onMove = vi.fn();
   render(
-    <DateStepper label="기준 날짜" value="2026-10-15" onValueChange={() => {}} onMove={onMove} />,
+    <DateStepper
+      label="Reference date"
+      value="2026-10-15"
+      onValueChange={() => {}}
+      onMove={onMove}
+    />,
   );
-  await userEvent.click(screen.getByRole('button', { name: '이전 기간' }));
-  await userEvent.click(screen.getByRole('button', { name: '다음 기간' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Previous period' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Next period' }));
   expect(onMove.mock.calls).toEqual([[-1], [1]]);
   // Buttons inside a form must not submit it.
-  expect(screen.getByRole('button', { name: '이전 기간' })).toHaveAttribute('type', 'button');
-  expect(screen.getByLabelText('기준 날짜')).toHaveAttribute('data-slot', 'input');
+  expect(screen.getByRole('button', { name: 'Previous period' })).toHaveAttribute('type', 'button');
+  expect(screen.getByLabelText('Reference date')).toHaveAttribute('data-slot', 'input');
 });
 
 test('a picked date is passed on, a cleared input keeps the current date', () => {
   const onValueChange = vi.fn();
-  render(<DateStepper label="분석 기준 날짜" value="2026-10-15" onValueChange={onValueChange} />);
-  const input = screen.getByLabelText('분석 기준 날짜');
+  render(
+    <DateStepper
+      label="Analysis reference date"
+      value="2026-10-15"
+      onValueChange={onValueChange}
+    />,
+  );
+  const input = screen.getByLabelText('Analysis reference date');
   fireEvent.change(input, { target: { value: '2026-10-01' } });
   fireEvent.change(input, { target: { value: '' } });
   expect(onValueChange.mock.calls).toEqual([['2026-10-01']]);
@@ -31,10 +42,10 @@ test('a picked date is passed on, a cleared input keeps the current date', () =>
 test('the range summary reads the first and last day before its note', () => {
   render(
     <RangeSummary from="2026-10-12" to="2026-10-18">
-      선택한 기간의 기록
+      Records for the selected period
     </RangeSummary>,
   );
   expect(screen.getByText(/2026-10-12 — 2026-10-18/).textContent).toBe(
-    '2026-10-12 — 2026-10-18 선택한 기간의 기록',
+    '2026-10-12 — 2026-10-18 Records for the selected period',
   );
 });

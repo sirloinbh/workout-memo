@@ -65,13 +65,13 @@ function mount(now?: string) {
       id: 9,
       version: 1,
       date: '2024-03-06',
-      title: '하체',
+      title: 'Lower body',
       notes: '',
       sets: [
-        { exercise: '스쿼트', machine_id: null, weight: 100.25, reps: 10, notes: '' },
+        { exercise: 'Squat', machine_id: null, weight: 100.25, reps: 10, notes: '' },
         // #31: a planned set stays out of the same-day volume (still 1,002.5).
         {
-          exercise: '스쿼트',
+          exercise: 'Squat',
           machine_id: null,
           weight: 200,
           reps: 10,
@@ -94,7 +94,7 @@ function mount(now?: string) {
       if (method === 'POST') {
         if (records.some((r) => r.date === record.date))
           return json(
-            { error: '이 날짜의 신체 기록이 이미 있습니다. 기존 기록을 수정하세요.' },
+            { error: 'A body record already exists for this date. Edit the existing record.' },
             409,
           );
         records.push({ ...record, id: nextId });
@@ -116,7 +116,7 @@ function mount(now?: string) {
   const bodyGets = () =>
     api.requests.filter((r) => r.method === 'GET' && r.path.startsWith('/api/body-measurements'));
   // Waits for the newest body request to finish rendering.
-  const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
+  const loaded = () => waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
   const input = (label: string) => {
     const item = [...document.querySelectorAll('label')].find((e) =>
       e.textContent.trim().startsWith(label),
@@ -145,16 +145,16 @@ function mount(now?: string) {
   }
   async function setAnchor(value: string) {
     const before = bodyGets().length;
-    fireEvent.change(screen.getByLabelText('기준 날짜'), { target: { value } });
+    fireEvent.change(screen.getByLabelText('Reference date'), { target: { value } });
     await waitFor(() => expect(bodyGets().length).toBeGreaterThan(before));
     await loaded();
   }
   async function submit() {
-    await user.click(screen.getByRole('button', { name: '신체 기록 저장' }));
+    await user.click(screen.getByRole('button', { name: 'Save body record' }));
   }
   const chart = (label: string) => {
     const found = [...document.querySelectorAll('[aria-label]')].find((e) =>
-      e.getAttribute('aria-label')!.startsWith(label + ' 추이'),
+      e.getAttribute('aria-label')!.startsWith(label + ' trend'),
     );
     expect(found, `${label} trend chart exists`).toBeDefined();
     return {
@@ -182,17 +182,17 @@ const page = () => document.body.textContent ?? '';
 
 async function openWeek() {
   const ui = mount();
-  await openPage('신체 기록');
+  await openPage('Body records');
   await ui.loaded();
   // The body page starts at 12 weeks (#123); these cases pick one week explicitly.
-  await ui.click('1주');
+  await ui.click('1 week');
   await ui.loaded();
   // The period anchor is reused on the body page.
   await ui.setAnchor('2024-03-06');
   // 3/4..3/7 are the four records of the anchored week.
   await waitFor(() =>
     expect(
-      within(screen.getByRole('list', { name: '신체 기록' })).getAllByRole('listitem'),
+      within(screen.getByRole('list', { name: 'Body records' })).getAllByRole('listitem'),
     ).toHaveLength(4),
   );
   return ui;
@@ -202,7 +202,7 @@ test('body page reuses the selected period and plots only recorded values withou
   const ui = await openWeek();
   expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2024-03-04&to=2024-03-10');
   await waitFor(() => expect(page()).toMatch(/1,002\.5/));
-  const weight = ui.chart('체중');
+  const weight = ui.chart('Weight');
   // 3/4, 3/6, 3/7 have weight; 3/5 has a record without weight, so the line breaks there.
   expect(weight.points).toBe(3);
   // Only 3/6→3/7 is connected.
@@ -213,83 +213,85 @@ test('body page reuses the selected period and plots only recorded values withou
   expect(weight.label).not.toMatch(/2024-03-05/);
   // Out-of-range records are excluded.
   expect(weight.label).not.toMatch(/2024-03-03|99/);
-  const fat = ui.chart('체지방률');
+  const fat = ui.chart('Body fat');
   expect(fat.points).toBe(2);
   expect(fat.lines).toBe(1);
-  const muscle = ui.chart('골격근량');
+  const muscle = ui.chart('Skeletal muscle mass');
   expect(muscle.points).toBe(1);
   expect(muscle.lines).toBe(0);
-  expect(page()).toMatch(/미입력/);
+  expect(page()).toMatch(/Not entered/);
   // Same-day workout volume is shown side by side.
   expect(page()).toMatch(/1,002\.5/);
   // Side-by-side view states it is not causation.
-  expect(page()).toMatch(/인과/);
-  expect(page()).not.toMatch(/정상|비정상|비만|과체중|저체중|위험|건강 상태/);
+  expect(page()).toMatch(/causal/);
+  expect(page()).not.toMatch(/normal|abnormal|obese|overweight|underweight|risk|health status/i);
   expect(page()).not.toMatch(/2024-03-18/);
 });
 
 const trendCharts = () =>
   [...document.querySelectorAll('[aria-label]')].filter((e) =>
-    / 추이 \(/.test(e.getAttribute('aria-label')!),
+    / trend \(/.test(e.getAttribute('aria-label')!),
   );
 
 test('default period is 12 weeks so a record from last week is charted on first open', async () => {
   // Monday 2024-03-11 in Seoul; the latest records (3/3–3/7) are all from last week.
   const ui = mount('2024-03-11T03:00:00Z');
-  await openPage('신체 기록', ui.user);
+  await openPage('Body records', ui.user);
   await ui.loaded();
   expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2023-12-19&to=2024-03-11');
-  expect(screen.getByRole('radio', { name: '12주' })).toBeChecked();
-  await waitFor(() => expect(ui.chart('체중').points).toBe(4));
-  expect(ui.chart('체지방률').points).toBe(2);
-  expect(ui.chart('골격근량').points).toBe(1);
-  expect(page()).not.toMatch(/값이 없는 지표/);
+  expect(screen.getByRole('radio', { name: '12 weeks' })).toBeChecked();
+  await waitFor(() => expect(ui.chart('Weight').points).toBe(4));
+  expect(ui.chart('Body fat').points).toBe(2);
+  expect(ui.chart('Skeletal muscle mass').points).toBe(1);
+  expect(page()).not.toMatch(/Metrics with no values/);
 });
 
 test('the 12-week default is only for the body page; a chosen preset is shared', async () => {
   const ui = mount('2024-03-11T03:00:00Z');
-  await openPage('신체 기록', ui.user);
+  await openPage('Body records', ui.user);
   await ui.loaded();
-  await openPage('대시보드', ui.user);
+  await openPage('Dashboard', ui.user);
   // The dashboard keeps its one-week default.
   await waitFor(() => expect(page()).toMatch(/2024-03-11 — 2024-03-17/));
-  expect(screen.getByRole('radio', { name: '1주' })).toBeChecked();
-  await ui.click('4주');
-  await openPage('신체 기록', ui.user);
+  expect(screen.getByRole('radio', { name: '1 week' })).toBeChecked();
+  await ui.click('4 weeks');
+  await openPage('Body records', ui.user);
   // Once chosen, the period is shared again instead of falling back to 12 weeks.
   await waitFor(() =>
     expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2024-02-13&to=2024-03-11'),
   );
-  expect(screen.getByRole('radio', { name: '4주' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: '4 weeks' })).toBeChecked();
 });
 
 test('empty period replaces empty charts with one line', async () => {
   const ui = await openWeek();
-  await ui.click('다음 기간');
+  await ui.click('Next period');
   await waitFor(() =>
     expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2024-03-11&to=2024-03-17'),
   );
-  await waitFor(() => expect(page()).toMatch(/선택한 기간에 신체 기록이 없습니다/));
+  await waitFor(() => expect(page()).toMatch(/No body records in the selected period/));
   // No empty chart cards; the metrics without values are named in a single line.
   expect(trendCharts()).toHaveLength(0);
-  expect(page()).toMatch(/이 기간에 입력한 값이 없는 지표: 체중 · 체지방률 · 골격근량/);
-  await ui.click('1달');
+  expect(page()).toMatch(
+    /Metrics with no values in this period: Weight · Body fat · Skeletal muscle mass/,
+  );
+  await ui.click('1 month');
   await waitFor(() =>
     expect(ui.bodyGets().at(-1)?.path).toBe('/api/body-measurements?from=2024-03-01&to=2024-03-31'),
   );
   // Month view includes 3/3 and 3/18 weights.
-  await waitFor(() => expect(ui.chart('체중').points).toBe(5));
+  await waitFor(() => expect(ui.chart('Weight').points).toBe(5));
 });
 
 test('partial input is sent with nulls; blank input is blocked; duplicate date keeps the form', async () => {
   const ui = await openWeek();
-  await ui.click('신체 기록 추가');
+  await ui.click('Add body record');
   await ui.submit();
-  await waitFor(() => expect(page()).toMatch(/하나 이상을 입력하세요/));
+  await waitFor(() => expect(page()).toMatch(/Enter at least one/));
   expect(ui.requests.filter((r) => r.method === 'POST')).toHaveLength(0);
 
-  await ui.change('측정 날짜', '2024-03-08');
-  await ui.change('골격근량', '33.4');
+  await ui.change('Measurement date', '2024-03-08');
+  await ui.change('Skeletal muscle mass', '33.4');
   await ui.submit();
   await waitFor(() => expect(ui.requests.filter((r) => r.method === 'POST')).toHaveLength(1));
   const post = ui.requests.filter((r) => r.method === 'POST').at(-1);
@@ -300,24 +302,24 @@ test('partial input is sent with nulls; blank input is blocked; duplicate date k
     skeletal_muscle_kg: 33.4,
   });
   // Saved record is re-queried and plotted.
-  await waitFor(() => expect(ui.chart('골격근량').points).toBe(2));
+  await waitFor(() => expect(ui.chart('Skeletal muscle mass').points).toBe(2));
   // No weight was estimated for the new date.
-  expect(ui.chart('체중').points).toBe(3);
+  expect(ui.chart('Weight').points).toBe(3);
 
-  await ui.click('신체 기록 추가');
-  await ui.change('측정 날짜', '2024-03-04');
-  await ui.change('체중', '71');
+  await ui.click('Add body record');
+  await ui.change('Measurement date', '2024-03-04');
+  await ui.change('Weight', '71');
   await ui.submit();
-  await waitFor(() => expect(page()).toMatch(/이미 있습니다/));
+  await waitFor(() => expect(page()).toMatch(/already exists/));
   // Input is kept after a conflict.
-  expect(ui.input('체중').value).toBe('71');
+  expect(ui.input('Weight').value).toBe('71');
 });
 
 test('edit sends a full replacement via PUT and delete removes the record', async () => {
   const ui = await openWeek();
-  await ui.click('2024-03-05 신체 기록 수정');
-  expect(ui.input('체지방률').value).toBe('19.8');
-  await ui.change('체중', '71');
+  await ui.click('Edit body record 2024-03-05');
+  expect(ui.input('Body fat').value).toBe('19.8');
+  await ui.change('Weight', '71');
   await ui.submit();
   await waitFor(() => expect(ui.requests.filter((r) => r.method === 'PUT')).toHaveLength(1));
   const put = ui.requests.filter((r) => r.method === 'PUT').at(-1);
@@ -329,15 +331,15 @@ test('edit sends a full replacement via PUT and delete removes the record', asyn
     skeletal_muscle_kg: null,
   });
   // 3/4..3/7 now all have weight, so the whole week is one connected line.
-  await waitFor(() => expect(ui.chart('체중').points).toBe(4));
-  expect(ui.chart('체중').lines).toBe(1);
+  await waitFor(() => expect(ui.chart('Weight').points).toBe(4));
+  expect(ui.chart('Weight').lines).toBe(1);
 
-  await ui.click('2024-03-06 신체 기록 삭제');
+  await ui.click('Delete body record 2024-03-06');
   await waitFor(() => expect(ui.requests.filter((r) => r.method === 'DELETE')).toHaveLength(1));
   const del = ui.requests.filter((r) => r.method === 'DELETE').at(-1);
   expect(del?.path).toBe('/api/body-measurements/4');
-  await waitFor(() => expect(ui.chart('체중').label).not.toMatch(/2024-03-06/));
-  expect(ui.chart('체중').points).toBe(3);
+  await waitFor(() => expect(ui.chart('Weight').label).not.toMatch(/2024-03-06/));
+  expect(ui.chart('Weight').points).toBe(3);
 });
 
 test('a failed load reports the error without claiming the metrics are empty', async () => {
@@ -347,38 +349,38 @@ test('a failed load reports the error without claiming the metrics are empty', a
   });
   const user = userEvent.setup();
   render(<App />);
-  await openPage('신체 기록', user);
+  await openPage('Body records', user);
   const alert = await screen.findByRole('alert');
-  expect(alert).toHaveTextContent('다시 연결');
-  expect(page()).not.toMatch(/값이 없는 지표/);
+  expect(alert).toHaveTextContent('Reconnect');
+  expect(page()).not.toMatch(/Metrics with no values/);
 });
 
 test('the record form, its messages and the list are named for assistive technology', async () => {
   const ui = await openWeek();
-  const list = screen.getByRole('list', { name: '신체 기록' });
+  const list = screen.getByRole('list', { name: 'Body records' });
   // The card title carries the count.
-  expect(screen.getByRole('heading', { level: 2, name: '신체 기록 4' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2, name: 'Body records 4' })).toBeInTheDocument();
   expect(
     within(list)
       .getAllByRole('heading', { level: 3 })
       .map((h) => h.textContent),
   ).toEqual(['2024-03-07', '2024-03-06', '2024-03-05', '2024-03-04']);
-  expect(within(list).getByRole('button', { name: '2024-03-05 신체 기록 수정' })).toBeEnabled();
-  await ui.click('신체 기록 추가');
-  expect(screen.getByRole('heading', { level: 2, name: '새 신체 기록' })).toBeInTheDocument();
-  for (const name of ['체중 kg', '체지방률 %', '골격근량 kg'])
+  expect(within(list).getByRole('button', { name: 'Edit body record 2024-03-05' })).toBeEnabled();
+  await ui.click('Add body record');
+  expect(screen.getByRole('heading', { level: 2, name: 'New body record' })).toBeInTheDocument();
+  for (const name of ['Weight kg', 'Body fat %', 'Skeletal muscle mass kg'])
     expect(screen.getByRole('spinbutton', { name })).toHaveValue(null);
   // A blank form is refused with an alert next to the form.
   await ui.submit();
-  expect(await screen.findByRole('alert')).toHaveTextContent(/하나 이상을 입력하세요/);
-  await ui.user.type(screen.getByRole('spinbutton', { name: '체중 kg' }), '70.5');
-  await ui.change('측정 날짜', '2024-03-09');
+  expect(await screen.findByRole('alert')).toHaveTextContent(/Enter at least one/);
+  await ui.user.type(screen.getByRole('spinbutton', { name: 'Weight kg' }), '70.5');
+  await ui.change('Measurement date', '2024-03-09');
   await ui.submit();
-  expect(await screen.findByRole('status')).toHaveTextContent('신체 기록을 저장했습니다');
-  expect(screen.queryByRole('heading', { name: '새 신체 기록' })).toBeNull();
+  expect(await screen.findByRole('status')).toHaveTextContent('Body record saved');
+  expect(screen.queryByRole('heading', { name: 'New body record' })).toBeNull();
   // Cancel closes the form without saving.
-  await ui.click('신체 기록 추가');
-  await ui.click('취소');
-  expect(screen.queryByRole('heading', { name: '새 신체 기록' })).toBeNull();
+  await ui.click('Add body record');
+  await ui.click('Cancel');
+  expect(screen.queryByRole('heading', { name: 'New body record' })).toBeNull();
   expect(ui.requests.filter((r) => r.method === 'POST')).toHaveLength(1);
 });

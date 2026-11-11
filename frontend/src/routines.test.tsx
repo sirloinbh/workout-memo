@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 
 import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
 import { App } from './app';
+import { bodyPartLabel } from './labels';
 import { json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
@@ -22,13 +23,13 @@ function mount(failPost = false, failReadAfterPost = false, initialPlan: Plan = 
       pathname === '/api/routines/27' &&
       api.requests.some((r) => r.method === 'POST')
     )
-      return json({ error: '저장 후 조회 실패' }, 503);
+      return json({ error: 'Lookup after save failed' }, 503);
     if (pathname === '/api/routines' && method === 'POST') {
-      if (failPost) return json({ error: '휴식 요일과 주당 운동 횟수를 확인하세요' }, 400);
+      if (failPost) return json({ error: 'Check the rest weekdays and workouts per week' }, 400);
       saved = { ...(body as Plan), id: 27, schedule: [] };
       return json({ id: 27 }, 201);
     }
-    if (pathname === '/api/machines') return [{ id: 5, brand: '해머', name: '레그프레스' }];
+    if (pathname === '/api/machines') return [{ id: 5, brand: 'Hammer', name: 'Leg Press' }];
     const data =
       pathname === '/api/routines' ? [saved] : pathname === '/api/routines/27' ? saved : [];
     return structuredClone(data);
@@ -70,50 +71,50 @@ function mount(failPost = false, failReadAfterPost = false, initialPlan: Plan = 
   return { requests, user, text, labels, click, change, submit, form, nonGet };
 }
 async function openRoutines() {
-  await openPage('루틴짜기');
-  await screen.findByRole('button', { name: '새 루틴 만들기' });
+  await openPage('Routine Builder');
+  await screen.findByRole('button', { name: 'Create new routine' });
 }
 // #88: new routines start in cycle mode with default body parts. Tests of the weekday
 // form switch the mode and clear the prefilled parts of split 1 first.
 async function weekdayForm(ui: ReturnType<typeof mount>) {
-  await ui.change('운동 일정 방식', 'weekday');
-  while (screen.queryByRole('button', { name: '분할 1 부위 1 삭제' }))
-    await ui.click('분할 1 부위 1 삭제');
+  await ui.change('Workout schedule type', 'weekday');
+  while (screen.queryByRole('button', { name: 'Delete split 1 body part 1' }))
+    await ui.click('Delete split 1 body part 1');
 }
 // The UI offers 이두·삼두 instead of the legacy 팔 (#88).
 const offered = (parts: string[]) => parts.map((p) => (p === '팔' ? '이두' : p));
 // A save is finished once the form has left its saving state.
 const saveSettled = () =>
-  waitFor(() => expect(screen.getByRole('button', { name: '새 루틴 만들기' })).toBeEnabled());
+  waitFor(() => expect(screen.getByRole('button', { name: 'Create new routine' })).toBeEnabled());
 
 test('routine screen re-queries saved plans and displays all 12 manual weeks with distinct deloads', async () => {
   const ui = mount();
   await openRoutines();
   expect(ui.requests.some((r) => r.path === '/api/routines' && r.method === 'GET')).toBe(true);
-  await waitFor(() => expect(ui.text()).toMatch(/수동 12주 루틴/));
+  await waitFor(() => expect(ui.text()).toMatch(/Manual 12-week routine/));
   // The list may show the complete plan or expose a detail button.
-  const detail = screen.queryAllByRole('button', { name: '계획 보기' })[0];
+  const detail = screen.queryAllByRole('button', { name: 'View plan' })[0];
   if (detail) {
     await ui.user.click(detail);
     await waitFor(() => expect(document.querySelector('article')).not.toBeNull());
   }
   for (let week = 1; week <= 12; week++)
-    expect(ui.text()).toMatch(new RegExp(`(?:^|\\D)${week}주차`));
+    expect(ui.text()).toMatch(new RegExp(`Week ${week}(?!\\d)`));
   for (const week of [4, 8, 12]) {
     const row = [...document.querySelectorAll('tr, li, article, section')].filter(
       (el) =>
-        new RegExp(`(?:^|\\D)${week}주차`).test(ui.text(el)) &&
-        /디로딩/.test(ui.text(el)) &&
-        !/(?:^|\D)1주차/.test(ui.text(el)),
+        new RegExp(`Week ${week}(?!\\d)`).test(ui.text(el)) &&
+        /Deload/.test(ui.text(el)) &&
+        !/(?:^|\D)Week 1(?!\d)/.test(ui.text(el)),
     );
     expect(row.length, `Week ${week} has its own deload label`).toBeGreaterThan(0);
   }
   expect(ui.text()).toMatch(/7\.25/);
   expect(ui.text()).toMatch(/100\.25/);
   for (const part of ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'])
-    expect(ui.text()).toContain(part);
+    expect(ui.text()).toContain(bodyPartLabel(part));
   expect(
-    (ui.text().match(/가슴/g) ?? []).length,
+    (ui.text().match(/Chest/g) ?? []).length,
     'Repeated body parts remain visible',
   ).toBeGreaterThanOrEqual(3);
   expect(ui.nonGet(), 'Viewing a plan must not create workouts or achievement goals').toHaveLength(
@@ -123,45 +124,49 @@ test('routine screen re-queries saved plans and displays all 12 manual weeks wit
   cleanup();
   const reopened = mount();
   await openRoutines();
-  await waitFor(() => expect(reopened.text()).toMatch(/수동 12주 루틴/));
+  await waitFor(() => expect(reopened.text()).toMatch(/Manual 12-week routine/));
 });
 
 for (const failRead of [false, true]) {
   test(`routine form saves explicit schedule, duplicate parts, baselines and every manual week; follow-up read failure=${failRead}`, async () => {
     const ui = mount(false, failRead);
     const expected = routineInput(1);
-    expected.name = '새로 작성한 루틴 27';
+    expected.name = 'New routine 27';
     expected.weeks[7] = { week: 8, kind: 'deload', amount: 1, deload_metric: 'sets' };
     expected.weeks[11] = { week: 12, kind: 'deload', amount: 3, deload_metric: 'reps' };
     expected.splits[0].body_parts = offered(expected.splits[0].body_parts);
     await openRoutines();
-    await ui.click('새 루틴 만들기');
+    await ui.click('Create new routine');
     // #28 rule change: new routines default to automatic targets; this test covers manual mode.
-    await ui.change('주차 목표 방식', 'manual');
+    await ui.change('Weekly goal mode', 'manual');
     await weekdayForm(ui);
-    await ui.change('루틴 이름', expected.name);
-    await ui.change('시작일', expected.start_date);
-    await ui.change('주당 운동 횟수', '3');
-    for (const day of ['일', '화', '목', '토']) await ui.change(day, '', 0, true);
-    for (const part of expected.splits[0].body_parts) await ui.click(part + ' 추가');
-    await ui.click('운동 추가');
+    await ui.change('Routine name', expected.name);
+    await ui.change('Start date', expected.start_date);
+    await ui.change('Workouts per week', '3');
+    for (const day of ['Sun', 'Tue', 'Thu', 'Sat']) await ui.change(day, '', 0, true);
+    for (const part of expected.splits[0].body_parts) await ui.click(`Add ${bodyPartLabel(part)}`);
+    await ui.click('Add exercise');
     for (const [i, ex] of expected.splits[0].exercises.entries()) {
-      await ui.change('운동명', ex.exercise, i);
-      await ui.change('기준 세트 수', String(ex.sets), i);
-      await ui.change('기준 총중량 (kg, 머신 기본중량 포함)', String(ex.weight), i);
-      await ui.change('기준 반복 수', String(ex.reps), i);
+      await ui.change('Exercise name', ex.exercise, i);
+      await ui.change('Reference sets', String(ex.sets), i);
+      await ui.change(
+        'Reference total weight (kg, including machine base weight)',
+        String(ex.weight),
+        i,
+      );
+      await ui.change('Reference reps', String(ex.reps), i);
     }
     // Select inputs contain option text, so select the control within its week fieldset.
     for (const w of expected.weeks) {
       const field = [...document.querySelectorAll('fieldset')].filter((el) =>
-        ui.text(el).startsWith(`${w.week}주차`),
+        ui.text(el).startsWith(`Week ${w.week}`),
       )[0];
       expect(field).toBeTruthy();
       fireEvent.change(field.querySelector('select')!, {
         target: { value: w.deload_metric ?? w.kind },
       });
       await ui.change(
-        w.kind === 'deload' ? '감소량' : '증가량',
+        w.kind === 'deload' ? 'Decrease amount' : 'Increase amount',
         String(w.amount),
         w.kind === 'deload' ? w.week / 4 - 1 : w.week - 1 - Math.floor(w.week / 4),
       );
@@ -173,30 +178,32 @@ for (const failRead of [false, true]) {
     // #28: the form now states the mode explicitly; manual plans keep every manual week.
     expect(post!.body).toEqual({ ...expected, progression: 'manual', schedule_mode: 'weekday' });
     expect(ui.requests.some((r) => r.path === '/api/routines/27')).toBe(true);
-    if (failRead) await waitFor(() => expect(ui.text()).toMatch(/저장 후 조회 실패/));
+    if (failRead) await waitFor(() => expect(ui.text()).toMatch(/Lookup after save failed/));
     expect(ui.text()).toMatch(/7\.25/);
     expect(ui.text()).toMatch(/100\.25/);
-    expect(ui.text()).toMatch(/12주차 · 디로딩/);
+    expect(ui.text()).toMatch(/Week 12 · Deload/);
     expect(ui.form(), 'Successful save closes the draft').toHaveLength(0);
     expect(ui.nonGet()).toHaveLength(1);
-    expect(ui.text()).toMatch(/루틴 #27을 저장했습니다/);
+    expect(ui.text()).toMatch(/Routine #27 saved/);
     expect(
-      screen.getAllByRole('status').some((el) => /루틴 #27을 저장했습니다/.test(el.textContent)),
+      screen.getAllByRole('status').some((el) => /Routine #27 saved/.test(el.textContent)),
     ).toBe(true);
-    if (failRead) expect(ui.text()).toMatch(/저장 후 조회 실패/);
+    if (failRead) expect(ui.text()).toMatch(/Lookup after save failed/);
     else {
       // Use the actual posted plan, not the default fixture, in a new component session.
       cleanup();
       const reopened = mount(false, false, post!.body as Plan);
       await openRoutines();
-      await reopened.click('계획 보기');
-      await waitFor(() => expect(reopened.text()).toMatch(/새로 작성한 루틴 27/));
+      await reopened.click('View plan');
+      await waitFor(() => expect(reopened.text()).toMatch(/New routine 27/));
       expect(reopened.requests.some((r) => r.path === '/api/routines/27')).toBe(true);
-      expect(reopened.text()).toMatch(/무분할 · 시작일 2024-02-29 · 주 3회/);
-      expect(reopened.text()).toContain(expected.splits[0].body_parts.join(' → '));
-      expect(reopened.text()).toMatch(/5주차 · 총중량 kg 7\.25 증가/);
-      expect(reopened.text()).toMatch(/8주차 · 디로딩 · 세트 수 1 감소/);
-      expect(reopened.text()).toMatch(/12주차 · 디로딩 · 반복 수 3 감소/);
+      expect(reopened.text()).toMatch(/No split · Start date 2024-02-29 · 3 workouts\/week/);
+      expect(reopened.text()).toContain(
+        expected.splits[0].body_parts.map(bodyPartLabel).join(' → '),
+      );
+      expect(reopened.text()).toMatch(/Week 5 · Total weight kg \+7\.25/);
+      expect(reopened.text()).toMatch(/Week 8 · Deload · Sets -1/);
+      expect(reopened.text()).toMatch(/Week 12 · Deload · Reps -3/);
       expect(reopened.nonGet()).toHaveLength(0);
     }
   });
@@ -205,62 +212,64 @@ for (const failRead of [false, true]) {
 test('routine editor exposes all five splits and keeps a failed save available for correction', async () => {
   const ui = mount(true);
   await openRoutines();
-  await ui.click('새 루틴 만들기');
+  await ui.click('Create new routine');
   for (const n of [1, 2, 3, 4, 5]) {
-    await ui.change('분할 방식', String(n));
+    await ui.change('Split type', String(n));
     expect(
-      [...document.querySelectorAll('label')].filter((el) => ui.text(el).trim() === '분할 이름'),
+      [...document.querySelectorAll('label')].filter((el) => ui.text(el).trim() === 'Split name'),
     ).toHaveLength(n);
   }
-  await ui.change('루틴 이름', '실패 후 보존');
-  // #88: 5분할 fills split 1 with 가슴; the clicks add two more occurrences.
-  await ui.click('가슴 추가');
-  await ui.click('가슴 추가');
+  await ui.change('Routine name', 'Preserved after failure');
+  // #88: the 5-day split fills split 1 with Chest (가슴); the clicks add two more occurrences.
+  await ui.click('Add Chest');
+  await ui.click('Add Chest');
   ui.submit();
-  await waitFor(() => expect(ui.text()).toMatch(/휴식 요일과 주당 운동 횟수를 확인하세요/));
+  await waitFor(() => expect(ui.text()).toMatch(/Check the rest weekdays and workouts per week/));
   // #102: the failure is an AlertBanner, announced at once.
-  expect(screen.getByRole('alert')).toHaveTextContent('휴식 요일과 주당 운동 횟수를 확인하세요');
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Check the rest weekdays and workouts per week',
+  );
   await saveSettled();
   expect(ui.form()).toHaveLength(1);
   expect(
-    [...document.querySelectorAll('input')].filter((el) => el.value === '실패 후 보존'),
+    [...document.querySelectorAll('input')].filter((el) => el.value === 'Preserved after failure'),
   ).toHaveLength(1);
   const posted = ui.requests.find((r) => r.method === 'POST')!.body as Plan;
   expect(posted.split_count).toBe(5);
   expect(posted.splits[0].body_parts).toEqual(['가슴', '가슴', '가슴']);
-  expect(screen.getByRole('button', { name: '루틴 저장하기' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Save routine' })).toBeEnabled();
 });
 
 test('new routine requires explicit manual amounts and removes only the selected duplicate body part', async () => {
   const ui = mount();
   await openRoutines();
-  await ui.click('새 루틴 만들기');
-  await ui.change('주차 목표 방식', 'manual');
+  await ui.click('Create new routine');
+  await ui.change('Weekly goal mode', 'manual');
   for (let week = 1; week <= 12; week++) {
     const field = [...document.querySelectorAll('fieldset')].filter((el) =>
-      ui.text(el).startsWith(`${week}주차`),
+      ui.text(el).startsWith(`Week ${week}`),
     )[0];
     expect(field).toBeTruthy();
     const amount = field.querySelector('input')!;
     expect(amount.value, `Week ${week} has no automatic change amount`).toBe('');
     if (week % 4 === 0) {
-      expect(ui.text(field)).toMatch(/디로딩/);
+      expect(ui.text(field)).toMatch(/Deload/);
       expect(field.querySelector('select')!.value).toBe('');
     }
   }
   await weekdayForm(ui);
-  await ui.click('가슴 추가');
-  await ui.click('등 추가');
-  await ui.click('가슴 추가');
-  await ui.click('분할 1 부위 1 삭제');
+  await ui.click('Add Chest');
+  await ui.click('Add Back');
+  await ui.click('Add Chest');
+  await ui.click('Delete split 1 body part 1');
   const partList = [...document.querySelectorAll('ol')].filter((el) =>
-    ui.text(el).includes('삭제'),
+    ui.text(el).includes('Delete'),
   )[0];
   expect(partList).toBeTruthy();
   expect(
-    [...partList.querySelectorAll('li')].map((el) => ui.text(el).replace('삭제', '').trim()),
+    [...partList.querySelectorAll('li')].map((el) => ui.text(el).replace('Delete', '').trim()),
     'Removing one occurrence preserves the other occurrence and order',
-  ).toEqual(['등', '가슴']);
+  ).toEqual(['Back', 'Chest']);
   expect(ui.nonGet()).toHaveLength(0);
 });
 
@@ -269,72 +278,79 @@ test('new routines default to automatic double progression with a 12-week previe
   expected.splits[0].body_parts = offered(expected.splits[0].body_parts);
   const ui = mount(false, false, expected as unknown as Plan);
   await openRoutines();
-  await ui.click('새 루틴 만들기');
-  const mode = ui.labels('주차 목표 방식')[0];
+  await ui.click('Create new routine');
+  const mode = ui.labels('Weekly goal mode')[0];
   expect(mode, 'the form offers a target mode').toBeTruthy();
   expect(mode.querySelector('select')!.value).toBe('auto');
-  expect(ui.text(), 'the rule is explained on screen').toMatch(/반복 수를 1회씩/);
+  expect(ui.text(), 'the rule is explained on screen').toMatch(/Reps go up by 1 each session/);
   expect(
     [...document.querySelectorAll('label')].filter((el) =>
-      /^(증가량|감소량)/.test(ui.text(el).trim()),
+      /^(Increase amount|Decrease amount)/.test(ui.text(el).trim()),
     ),
     'no manual per-week amounts in auto mode',
   ).toHaveLength(0);
-  await ui.change('루틴 이름', expected.name);
-  await ui.change('분할 이름', expected.splits[0].name);
-  await ui.change('시작일', expected.start_date);
+  await ui.change('Routine name', expected.name);
+  await ui.change('Split name', expected.splits[0].name);
+  await ui.change('Start date', expected.start_date);
   await weekdayForm(ui);
-  await ui.change('주당 운동 횟수', '3');
-  for (const day of ['일', '화', '목', '토']) await ui.change(day, '', 0, true);
-  for (const part of expected.splits[0].body_parts) await ui.click(part + ' 추가');
-  await ui.click('운동 추가');
-  await ui.click('운동 추가');
+  await ui.change('Workouts per week', '3');
+  for (const day of ['Sun', 'Tue', 'Thu', 'Sat']) await ui.change(day, '', 0, true);
+  for (const part of expected.splits[0].body_parts) await ui.click(`Add ${bodyPartLabel(part)}`);
+  await ui.click('Add exercise');
+  await ui.click('Add exercise');
   for (const [i, ex] of expected.splits[0].exercises.entries()) {
-    const sets = ui.labels('세트 수')[i];
+    const sets = ui.labels('Number of sets')[i];
     expect(sets.querySelector('input'), 'default 3 sets').toHaveValue(3);
     const range = (label: string) => ui.labels(label)[i].querySelector('input');
-    expect(range('반복 하한')).toHaveValue(8);
-    expect(range('반복 상한')).toHaveValue(12);
-    await ui.change('운동명', ex.exercise, i);
-    await ui.change('현재 총중량 (kg, 머신 기본중량 포함)', String(ex.weight), i);
-    await ui.change('현재 반복 수', String(ex.reps), i);
+    expect(range('Lower reps')).toHaveValue(8);
+    expect(range('Upper reps')).toHaveValue(12);
+    await ui.change('Exercise name', ex.exercise, i);
+    await ui.change(
+      'Current total weight (kg, including machine base weight)',
+      String(ex.weight),
+      i,
+    );
+    await ui.change('Current reps', String(ex.reps), i);
   }
   const preview = ui.text();
   // #28: targets advance per session of the split (here 3 sessions a week), grouped by week.
   expect(preview).toMatch(
-    /1주차: 1번째 100 kg × 10회\(시작\), 2번째 100 kg × 11회\(반복 \+1\), 3번째 100 kg × 12회\(반복 \+1\)/,
+    /Week 1: Session 1 100 kg × 10 reps \(Start\), Session 2 100 kg × 11 reps \(Reps \+1\), Session 3 100 kg × 12 reps \(Reps \+1\)/,
   );
-  expect(preview).toMatch(/2주차: 1번째 105 kg × 8회\(증량 \+5 kg\)/);
+  expect(preview).toMatch(/Week 2: Session 1 105 kg × 8 reps \(Increase \+5 kg\)/);
   expect(preview).toMatch(
-    /4주차 디로딩: 1번째 100 kg × 8회\(디로딩\), 2번째 100 kg × 8회\(디로딩\)/,
+    /Week 4 deload: Session 1 100 kg × 8 reps \(Deload\), Session 2 100 kg × 8 reps \(Deload\)/,
   );
   // #86: light weights also go up by the 5 kg default increment.
-  expect(preview).toMatch(/1주차: 1번째 40 kg × 12회\(시작\), 2번째 45 kg × 8회\(증량 \+5 kg\)/);
-  expect(preview).toMatch(/12주차 디로딩: 1번째 0 kg × 12회\(디로딩\)/);
-  expect(preview, 'the per-session rule is explained').toMatch(/세션\(운동일\)마다/);
+  expect(preview).toMatch(
+    /Week 1: Session 1 40 kg × 12 reps \(Start\), Session 2 45 kg × 8 reps \(Increase \+5 kg\)/,
+  );
+  expect(preview).toMatch(/Week 12 deload: Session 1 0 kg × 12 reps \(Deload\)/);
+  expect(preview, 'the per-session rule is explained').toMatch(/each session \(workout day\)/);
   expect(ui.nonGet(), 'preview sends nothing').toHaveLength(0);
   ui.submit();
   await saveSettled();
   const post = ui.requests.find((r) => r.method === 'POST');
   expect(post).toBeTruthy();
   expect(post!.body).toEqual(expected);
-  await waitFor(() => expect(ui.text()).toMatch(/자동 · 이중 점진 과부하/));
-  expect(ui.text()).toMatch(/5주차: 1번째 110 kg × 9회\(반복 \+1\)/);
+  await waitFor(() => expect(ui.text()).toMatch(/Auto · double progressive overload/));
+  expect(ui.text()).toMatch(/Week 5: Session 1 110 kg × 9 reps \(Reps \+1\)/);
 });
 
 test('a new routine defaults to a cycle and fills each split count with its cycle and parts (#88)', async () => {
   const ui = mount();
   await openRoutines();
-  await ui.click('새 루틴 만들기');
+  await ui.click('Create new routine');
   const value = (label: string) =>
     ui.labels(label)[0].querySelector<HTMLInputElement | HTMLSelectElement>('input, select')!.value;
-  expect(value('운동 일정 방식')).toBe('cycle');
-  expect(ui.labels('휴식 요일')).toHaveLength(0);
+  expect(value('Workout schedule type')).toBe('cycle');
+  expect(ui.labels('Rest weekdays')).toHaveLength(0);
   const partsOf = (i: number) =>
     [...document.querySelectorAll('fieldset')]
-      .filter((el) => ui.text(el).startsWith(`분할 ${i + 1}`))[0]
+      .filter((el) => ui.text(el).startsWith(`Split ${i + 1}`))[0]
       .querySelectorAll('ol li');
-  const listed = (i: number) => [...partsOf(i)].map((li) => ui.text(li).replace('삭제', '').trim());
+  const listed = (i: number) =>
+    [...partsOf(i)].map((li) => ui.text(li).replace('Delete', '').trim());
   for (const [count, train, rest, parts] of [
     [
       2,
@@ -358,19 +374,23 @@ test('a new routine defaults to a cycle and fills each split count with its cycl
     [4, '4', '1', [['등'], ['가슴', '이두'], ['하체-앞', '하체-뒤', '복근'], ['어깨', '삼두']]],
     [5, '5', '2', [['가슴'], ['등'], ['하체-앞', '하체-뒤'], ['어깨'], ['이두', '삼두', '복근']]],
   ] as const) {
-    await ui.change('분할 방식', String(count));
-    expect(value('연속 운동일')).toBe(train);
-    expect(value('이어지는 휴식일')).toBe(rest);
-    parts.forEach((expected, i) => expect(listed(i), `${count}분할 ${i + 1}`).toEqual(expected));
+    await ui.change('Split type', String(count));
+    expect(value('Consecutive workout days')).toBe(train);
+    expect(value('Consecutive rest days')).toBe(rest);
+    parts.forEach((expected, i) =>
+      expect(listed(i), `${count}-day split ${i + 1}`).toEqual(expected.map(bodyPartLabel)),
+    );
   }
-  await ui.change('분할 방식', '1');
-  expect(listed(0)).toEqual(['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근']);
-  expect(screen.queryByRole('button', { name: '팔 추가' })).toBeNull();
+  await ui.change('Split type', '1');
+  expect(listed(0)).toEqual(
+    ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'].map(bodyPartLabel),
+  );
+  expect(screen.queryByRole('button', { name: 'Add Arms' })).toBeNull();
   // The defaults stay editable and the plan is sent as a cycle.
-  await ui.change('분할 방식', '3');
-  await ui.change('연속 운동일', '2');
-  await ui.change('루틴 이름', '주기 루틴');
-  await ui.change('시작일', '2026-10-21');
+  await ui.change('Split type', '3');
+  await ui.change('Consecutive workout days', '2');
+  await ui.change('Routine name', 'Cycle routine');
+  await ui.change('Start date', '2026-10-21');
   ui.submit();
   await saveSettled();
   const body = ui.requests.find((r) => r.method === 'POST')!.body as Plan & {
@@ -387,24 +407,28 @@ test('a routine exercise can name a machine that the plan keeps (#82)', async ()
   const expected = autoRoutineInput();
   const ui = mount(false, false, expected as unknown as Plan);
   await openRoutines();
-  await ui.click('새 루틴 만들기');
-  await ui.change('루틴 이름', expected.name);
-  await ui.change('분할 이름', expected.splits[0].name);
-  await ui.change('시작일', expected.start_date);
+  await ui.click('Create new routine');
+  await ui.change('Routine name', expected.name);
+  await ui.change('Split name', expected.splits[0].name);
+  await ui.change('Start date', expected.start_date);
   await weekdayForm(ui);
-  await ui.change('주당 운동 횟수', '3');
-  for (const day of ['일', '화', '목', '토']) await ui.change(day, '', 0, true);
-  await ui.click('가슴 추가');
-  await ui.click('운동 추가');
+  await ui.change('Workouts per week', '3');
+  for (const day of ['Sun', 'Tue', 'Thu', 'Sat']) await ui.change(day, '', 0, true);
+  await ui.click('Add Chest');
+  await ui.click('Add exercise');
   for (const [i, ex] of expected.splits[0].exercises.slice(0, 2).entries()) {
-    await ui.change('운동명', ex.exercise, i);
-    await ui.change('현재 총중량 (kg, 머신 기본중량 포함)', String(ex.weight), i);
-    await ui.change('현재 반복 수', String(ex.reps), i);
+    await ui.change('Exercise name', ex.exercise, i);
+    await ui.change(
+      'Current total weight (kg, including machine base weight)',
+      String(ex.weight),
+      i,
+    );
+    await ui.change('Current reps', String(ex.reps), i);
   }
   await waitFor(() =>
-    expect(ui.labels('머신')[0].querySelector('option[value="5"]')).not.toBeNull(),
+    expect(ui.labels('Machine')[0].querySelector('option[value="5"]')).not.toBeNull(),
   );
-  await ui.change('머신', '5', 0);
+  await ui.change('Machine', '5', 0);
   ui.submit();
   await saveSettled();
   const post = ui.requests.find((r) => r.method === 'POST');
@@ -412,40 +436,44 @@ test('a routine exercise can name a machine that the plan keeps (#82)', async ()
   expect(exercises[0].machine_id).toBe(5);
   // A free exercise omits the field, keeping the plan shape of older routines.
   expect('machine_id' in exercises[1]).toBe(false);
-  await waitFor(() => expect(ui.text()).toMatch(/벤치프레스 \(해머 · 레그프레스\)/));
+  await waitFor(() => expect(ui.text()).toMatch(/Benchpress \(Hammer · Leg Press\)/));
 });
 
 test('the plan view is a region named by the routine with its deload weeks marked (#102)', async () => {
   const ui = mount();
   await openRoutines();
-  await ui.click('계획 보기');
-  const view = await screen.findByRole('region', { name: '수동 12주 루틴' });
-  expect(within(view).getByRole('heading', { level: 3 }).textContent).toBe('수동 12주 루틴');
+  await ui.click('View plan');
+  const view = await screen.findByRole('region', { name: 'Manual 12-week routine' });
+  expect(within(view).getByRole('heading', { level: 3 }).textContent).toBe(
+    'Manual 12-week routine',
+  );
   const weeks = within(view)
-    .getByRole('heading', { level: 4, name: '주차별 목표' })
+    .getByRole('heading', { level: 4, name: 'Goals by week' })
     .closest('section')!;
   expect(
     [...weeks.querySelectorAll('li[data-deload]')].map((li) => li.textContent.split(' · ')[0]),
-  ).toEqual(['4주차', '8주차', '12주차']);
-  expect(within(view).getByRole('heading', { level: 4, name: /운동 일정/ })).toBeInTheDocument();
+  ).toEqual(['Week 4', 'Week 8', 'Week 12']);
+  expect(
+    within(view).getByRole('heading', { level: 4, name: /Workout schedule/ }),
+  ).toBeInTheDocument();
 });
 
 test('the 12-week preview heading follows the page outline: h3 in the form, h4 in the plan view (#102)', async () => {
   const ui = mount(false, false, autoRoutineInput() as unknown as Plan);
   await openRoutines();
-  await ui.click('계획 보기');
+  await ui.click('View plan');
   const view = await screen.findByRole('region', { name: autoRoutineInput().name });
-  const inView = within(view).getByRole('heading', { name: /12주 예상 목표/ });
+  const inView = within(view).getByRole('heading', { name: /12-week projected goals/ });
   expect(inView.tagName).toBe('H4');
   expect(view.querySelectorAll('li[data-deload]').length).toBeGreaterThan(0);
 
-  await ui.click('새 루틴 만들기');
-  await ui.change('시작일', '2026-10-12');
-  await ui.change('운동명', '스쿼트');
-  await ui.change('현재 총중량 (kg, 머신 기본중량 포함)', '100');
-  await ui.change('현재 반복 수', '8');
+  await ui.click('Create new routine');
+  await ui.change('Start date', '2026-10-12');
+  await ui.change('Exercise name', 'Squat');
+  await ui.change('Current total weight (kg, including machine base weight)', '100');
+  await ui.change('Current reps', '8');
   const inForm = await within(document.querySelector('form')!).findByRole('heading', {
-    name: /12주 예상 목표/,
+    name: /12-week projected goals/,
   });
   expect(inForm.tagName).toBe('H3');
 });

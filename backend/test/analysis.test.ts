@@ -130,7 +130,7 @@ test('PRs tie on the earliest date, group normalized names and separate actual f
 
 test('bodyweight-only exercises have no weight, volume or 1RM PRs', () => {
   const [pullup] = analyze(
-    [set('2024-03-01', '턱걸이', 0, 8), set('2024-03-02', '턱걸이', 0, 8)],
+    [set('2024-03-01', 'Pull-up', 0, 8), set('2024-03-02', 'Pull-up', 0, 8)],
     [],
     '2024-03-01',
     '2024-03-31',
@@ -269,7 +269,7 @@ test('analysis and mapping APIs reject invalid input before touching storage', a
     for (const body of [
       { exercise: '', body_parts: ['가슴'] },
       { exercise: 'Bench', body_parts: ['가슴', '가슴'] },
-      { exercise: 'Bench', body_parts: ['하체'] },
+      { exercise: 'Bench', body_parts: ['Lower body'] },
       { exercise: 'Bench' },
       { exercise: 'x'.repeat(121), body_parts: [] },
     ]) {
@@ -321,7 +321,7 @@ test('analysis API limits sets to the Seoul service date and returns computed re
   assert.match(calls[0].sql, /Asia\/Seoul/);
 });
 
-test('a legacy 팔 mapping is still counted and listed next to 이두·삼두 (#88)', () => {
+test('a legacy 팔 mapping is still counted and listed next to Biceps and Triceps (#88)', () => {
   const result = analyze(
     [{ ...set('2025-01-06', 'Curl', '20', 10), exercise_key: 'curl' }],
     [
@@ -338,11 +338,11 @@ test('a legacy 팔 mapping is still counted and listed next to 이두·삼두 (#
     assert.equal(result.weeks[0].parts.find((p) => p.body_part === name)!.sets, 1);
 });
 
-test('body part mappings accept 이두·삼두 and the legacy 팔 (#88)', () => {
+test('body part mappings accept Biceps, Triceps and the legacy 팔 (#88)', () => {
   for (const body_parts of [['이두'], ['삼두', '이두'], ['팔']])
     assert.equal(bodyPartMappingSchema.safeParse({ exercise: 'Curl', body_parts }).success, true);
   assert.equal(
-    bodyPartMappingSchema.safeParse({ exercise: 'Curl', body_parts: ['전완'] }).success,
+    bodyPartMappingSchema.safeParse({ exercise: 'Curl', body_parts: ['Forearms'] }).success,
     false,
   );
 });

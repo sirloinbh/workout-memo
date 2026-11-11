@@ -9,20 +9,35 @@ import { openPage } from './test/nav';
 // #173: while a page's first load is pending it shows placeholders in a busy region and keeps
 // the loading line for screen readers only; once the data arrives both go away.
 const cases = [
-  { page: '종목 분석', api: '/api/analysis', slot: 'skeleton-card', text: '분석 불러오는 중…' },
   {
-    page: '신체 기록',
+    page: 'Exercise Analysis',
+    api: '/api/analysis',
+    slot: 'skeleton-card',
+    text: 'Loading analysis…',
+  },
+  {
+    page: 'Body records',
     api: '/api/body-measurements',
     slot: 'skeleton-list',
-    text: '기록을 불러오는 중…',
+    text: 'Loading records…',
   },
-  { page: '루틴짜기', api: '/api/routines', slot: 'skeleton-list', text: '루틴 불러오는 중…' },
-  { page: '운동 일지', api: '/api/workouts', slot: 'skeleton-list', text: '기록을 불러오는 중…' },
   {
-    page: '운동 일지',
+    page: 'Routine Builder',
+    api: '/api/routines',
+    slot: 'skeleton-list',
+    text: 'Loading routines…',
+  },
+  {
+    page: 'Workout journal',
+    api: '/api/workouts',
+    slot: 'skeleton-list',
+    text: 'Loading records…',
+  },
+  {
+    page: 'Workout journal',
     api: '/api/routine-progress',
     slot: 'skeleton-text',
-    text: '루틴 목표를 불러오는 중…',
+    text: 'Loading routine goals…',
   },
 ];
 
@@ -46,7 +61,7 @@ test.each(cases)(
       expect(region).not.toBeNull();
       return region!;
     });
-    // The busy region is named (project-standards docs/ui-components.md "불러오는 중 화면").
+    // The busy region is named (project-standards docs/ui-components.md "Loading screens").
     expect(busy.getAttribute('aria-label')).toBeTruthy();
     expect(screen.getByText(text)).toHaveClass('sr-only');
     // The placeholders are decoration; assistive tech hears only the status line.
@@ -72,16 +87,16 @@ test('the body record save button shows a spinner while it saves', async () => {
   });
   const user = userEvent.setup();
   render(<App />);
-  await openPage('신체 기록', user);
-  await user.click(await screen.findByRole('button', { name: '신체 기록 추가' }));
-  await user.type(screen.getByLabelText(/^체중/), '70');
-  await user.click(screen.getByRole('button', { name: '신체 기록 저장' }));
+  await openPage('Body records', user);
+  await user.click(await screen.findByRole('button', { name: 'Add body record' }));
+  await user.type(screen.getByLabelText(/^Weight/), '70');
+  await user.click(screen.getByRole('button', { name: 'Save body record' }));
 
-  const saving = await screen.findByRole('button', { name: '저장 중…' });
+  const saving = await screen.findByRole('button', { name: 'Saving…' });
   expect(saving).toBeDisabled();
   expect(saving.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
   saved.resolve();
-  await waitFor(() => expect(screen.queryByRole('button', { name: '저장 중…' })).toBeNull());
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Saving…' })).toBeNull());
 });
 
 // #173: the journal editor's save button and its status line show a spinner while saving.
@@ -97,25 +112,25 @@ test('the journal save button and status line show a spinner while it saves', as
   });
   const user = userEvent.setup();
   render(<App />);
-  await waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
-  await user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
+  await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
+  await user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
   fireEvent.change(document.querySelector('input[maxlength="120"]')!, {
-    target: { value: '하체' },
+    target: { value: 'Lower body' },
   });
   for (const name of document.querySelectorAll('input[role="combobox"][id$="-exercise"]'))
     fireEvent.change(name, { target: { value: 'Squat' } });
   fireEvent.submit(document.querySelector('form')!);
 
-  const saving = await screen.findByRole('button', { name: '저장 중…' });
+  const saving = await screen.findByRole('button', { name: 'Saving…' });
   expect(saving).toBeDisabled();
   expect(saving.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
-  const line = screen.getAllByText('저장 중…').find((el) => el.dataset.slot === 'notice')!;
+  const line = screen.getAllByText('Saving…').find((el) => el.dataset.slot === 'notice')!;
   expect(line).toHaveAttribute('role', 'status');
   expect(line.parentElement!.querySelector('[data-slot="spinner"]')).toHaveAttribute(
     'aria-hidden',
     'true',
   );
   saved.resolve();
-  await waitFor(() => expect(screen.queryByText('저장 중…')).toBeNull());
+  await waitFor(() => expect(screen.queryByText('Saving…')).toBeNull());
   expect(document.querySelector('[data-slot="spinner"]')).toBeNull();
 });

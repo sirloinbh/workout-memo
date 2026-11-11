@@ -45,10 +45,10 @@ test('repository migrations are numbered uniquely and read in file order', async
 
 test('readMigrations rejects unexpected names and duplicate numbers', async () => {
   await withDir({ '001_a.sql': '', 'extra.sql': '' }, async (dir) => {
-    await assert.rejects(readMigrations(dir), /NNN_name\.sql 형식.*extra\.sql/);
+    await assert.rejects(readMigrations(dir), /NNN_name\.sql.*extra\.sql/);
   });
   await withDir({ '001_a.sql': '', '001_b.sql': '' }, async (dir) => {
-    await assert.rejects(readMigrations(dir), /번호가 중복됩니다: 001_a\.sql, 001_b\.sql/);
+    await assert.rejects(readMigrations(dir), /Duplicate migration number: 001_a\.sql, 001_b\.sql/);
   });
   await withDir({ '002_b.sql': 'b', '001_a.sql': 'a', 'notes.txt': '' }, async (dir) => {
     assert.deepEqual(
@@ -81,8 +81,8 @@ test('planMigrations reports changed, missing and out-of-order files', () => {
     { name: '003_c.sql', checksum: file('003_c.sql').checksum },
   ]);
   assert.deepEqual(plan.errors, [
-    '적용된 마이그레이션 파일의 내용이 바뀌었습니다: 002_b.sql',
-    '적용된 마이그레이션 파일이 없습니다: 003_c.sql',
+    'Applied migration file was modified: 002_b.sql',
+    'Applied migration file is missing: 003_c.sql',
   ]);
   const late = planMigrations(
     [file('001_a.sql'), file('002_b.sql'), file('003_c.sql')],
@@ -91,5 +91,7 @@ test('planMigrations reports changed, missing and out-of-order files', () => {
       { name: '003_c.sql', checksum: file('003_c.sql').checksum },
     ],
   );
-  assert.deepEqual(late.errors, ['이미 적용된 003_c.sql보다 앞선 번호의 새 파일입니다: 002_b.sql']);
+  assert.deepEqual(late.errors, [
+    'New file numbered before the already applied 003_c.sql: 002_b.sql',
+  ]);
 });

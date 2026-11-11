@@ -24,10 +24,10 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: 
     options.routine === false
       ? { today, routine: null }
       : {
-          routine: { id: 7, name: '수동 12주 루틴', splits: 2 },
+          routine: { id: 7, name: 'Manual 12-week routine', splits: 2 },
           ...routineProgress(options.plan ?? plan, rests, today),
           previous: {
-            스쿼트: {
+            squat: {
               date: '2024-03-01',
               sets: [
                 { weight: 100, reps: 10 },
@@ -40,7 +40,7 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: 
     const pathname = url.pathname;
     if (pathname === '/api/routine-progress') {
       if (progressFails) {
-        return json({ error: '루틴 목표를 불러오지 못했습니다' }, 500);
+        return json({ error: 'Could not load routine goals' }, 500);
       }
       return serverProgress();
     }
@@ -110,37 +110,37 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: 
   };
 }
 type UI = ReturnType<typeof mount>;
-const card = () => document.querySelector('[aria-label="루틴 목표"]');
+const card = () => document.querySelector('[aria-label="Routine goals"]');
 const progressLoads = (ui: UI) =>
   ui.requests.filter((r) => r.path === '/api/routine-progress').length;
 async function openJournal() {
-  await openPage('운동 일지');
+  await openPage('Workout journal');
   // Wait until the routine goals are loaded (no loading status inside the card).
-  await waitFor(() => expect(card()?.textContent).not.toMatch(/루틴 목표를 불러오는 중/));
+  await waitFor(() => expect(card()?.textContent).not.toMatch(/Loading routine goals/));
 }
 const posts = (ui: UI, path: string) =>
   ui.requests.filter((r) => r.method !== 'GET' && r.path === path);
 const weekRows = () =>
-  [...document.querySelectorAll('tr')].filter((e) => /^\d+주차/.test(e.textContent ?? ''));
+  [...document.querySelectorAll('tr')].filter((e) => /^Week \d+/.test(e.textContent ?? ''));
 
 test('journal shows per-exercise targets for today, this week and all 12 weeks', async () => {
   const ui = mount();
   await openJournal();
   expect(card(), 'routine goals card is on the journal page').toBeTruthy();
   const content = ui.text(card()!);
-  expect(content).toMatch(/오늘 목표 · 2024-03-04/);
-  expect(content).toMatch(/1주차 · 분할 2 · 총중량 2\.5 kg 증가/);
-  expect(content).toMatch(/스쿼트 3세트 · 총중량 102\.75 kg · 10회/);
-  expect(content).toMatch(/맨몸 런지 2세트 · 총중량 2\.5 kg · 12회/);
-  expect(content).toMatch(/기준 3세트 · 100\.25 kg · 10회/);
-  expect(content).toMatch(/직전 기록 2024-03-01 · 100 kg × 10회, 100 kg × 9회/);
-  expect(content, 'an exercise without history says so').toMatch(/직전 기록 없음/);
-  expect(content, 'weights of different exercises are not summed').not.toMatch(/105\.25|합계/);
+  expect(content).toMatch(/Today's goal · 2024-03-04/);
+  expect(content).toMatch(/Week 1 · Split 2 · Total weight \+2\.5 kg/);
+  expect(content).toMatch(/Squat 3 sets · total weight 102\.75 kg · 10 reps/);
+  expect(content).toMatch(/Bodyweight Lunge 2 sets · total weight 2\.5 kg · 12 reps/);
+  expect(content).toMatch(/base 3 sets · 100\.25 kg · 10 reps/);
+  expect(content).toMatch(/Previous 2024-03-01 · 100 kg × 10 reps, 100 kg × 9 reps/);
+  expect(content, 'an exercise without history says so').toMatch(/No previous record/);
+  expect(content, 'weights of different exercises are not summed').not.toMatch(/105\.25|\bsum\b/i);
   for (const date of ['2024-03-01', '2024-03-04', '2024-03-06'])
     expect(content).toMatch(new RegExp(date));
   const rows = weekRows();
   expect(rows).toHaveLength(12);
-  expect(ui.text(rows[3])).toMatch(/4주차디로딩 · 총중량 12\.5 kg 감소/);
+  expect(ui.text(rows[3])).toMatch(/Week 4Deload · Total weight -12\.5 kg/);
   expect(
     ui.requests.filter((r) => r.method !== 'GET'),
     'showing goals never creates a record',
@@ -151,8 +151,8 @@ test('returning to the journal reloads routine goals so a routine saved elsewher
   const ui = mount();
   await openJournal();
   const before = progressLoads(ui);
-  await openPage('대시보드');
-  await openPage('운동 일지');
+  await openPage('Dashboard');
+  await openPage('Workout journal');
   await waitFor(() =>
     expect(progressLoads(ui), 'switching pages fetches the active routine again').toBeGreaterThan(
       before,
@@ -163,26 +163,28 @@ test('returning to the journal reloads routine goals so a routine saved elsewher
 test('without a started routine the journal shows guidance to create one', async () => {
   const ui = mount({ routine: false });
   await openJournal();
-  expect(ui.text()).toMatch(/진행 중인 루틴이 없습니다\. 루틴짜기에서/);
-  expect(screen.queryAllByRole('button', { name: '오늘 루틴으로 기록하기' })).toHaveLength(0);
+  expect(ui.text()).toMatch(
+    /There is no routine in progress\. Create a 12-week routine in Routine Builder/,
+  );
+  expect(screen.queryAllByRole('button', { name: "Log with today's routine" })).toHaveLength(0);
 });
 
 test('prefilled routine draft saves unchanged values with one confirm', async () => {
   const ui = mount();
   await openJournal();
-  await ui.click('오늘 루틴으로 기록하기');
+  await ui.click("Log with today's routine");
   const rows = ui.setRows();
   expect(rows, 'one row per planned set: 3 squat + 2 lunge').toHaveLength(5);
-  expect(ui.field(rows[0], '운동명')).toHaveValue('스쿼트');
-  expect(Number(ui.field(rows[0], '총중량').value)).toBe(102.75);
-  expect(Number(ui.field(rows[0], '횟수').value)).toBe(10);
-  expect(ui.field(rows[0], '머신').value, 'machine stays unselected').toBe('');
-  expect(ui.field(rows[4], '운동명')).toHaveValue('맨몸 런지');
-  expect(ui.text(rows[0])).toMatch(/오늘 목표 102\.75 kg × 10회 · 직전 기록 2024-03-01/);
+  expect(ui.field(rows[0], 'Exercise name')).toHaveValue('Squat');
+  expect(Number(ui.field(rows[0], 'Total weight').value)).toBe(102.75);
+  expect(Number(ui.field(rows[0], 'Reps').value)).toBe(10);
+  expect(ui.field(rows[0], 'Machine').value, 'machine stays unselected').toBe('');
+  expect(ui.field(rows[4], 'Exercise name')).toHaveValue('Bodyweight Lunge');
+  expect(ui.text(rows[0])).toMatch(/Today's goal 102\.75 kg × 10 reps · Previous 2024-03-01/);
   expect(posts(ui, '/api/workouts'), 'the draft is not a record before saving').toHaveLength(0);
   expect(localStorage.length, 'the draft is kept locally like any other draft').toBeGreaterThan(0);
   ui.submit();
-  await waitFor(() => expect(ui.text()).toMatch(/서버 저장 완료/));
+  await waitFor(() => expect(ui.text()).toMatch(/Saved to server/));
   const [saved] = posts(ui, '/api/workouts');
   expect(saved?.headers['idempotency-key'], 'save uses the idempotent journal flow').toBeTruthy();
   const body = saved.body as {
@@ -198,18 +200,18 @@ test('prefilled routine draft saves unchanged values with one confirm', async ()
     }[];
   };
   expect(body.date).toBe(today);
-  expect(body.title).toBe('수동 12주 루틴 · 분할 2');
+  expect(body.title).toBe('Manual 12-week routine · Split 2');
   // #31: missing `completed` means a legacy completed set, so targets must say false.
   expect(
     body.sets.every((s) => s.completed === false && s.rpe === null),
     'unmarked routine targets are saved as planned sets, not performance',
   ).toBe(true);
   expect(body.sets.map((s) => [s.exercise, s.weight, s.reps, s.machine_id])).toEqual([
-    ['스쿼트', 102.75, 10, null],
-    ['스쿼트', 102.75, 10, null],
-    ['스쿼트', 102.75, 10, null],
-    ['맨몸 런지', 2.5, 12, null],
-    ['맨몸 런지', 2.5, 12, null],
+    ['Squat', 102.75, 10, null],
+    ['Squat', 102.75, 10, null],
+    ['Squat', 102.75, 10, null],
+    ['Bodyweight Lunge', 2.5, 12, null],
+    ['Bodyweight Lunge', 2.5, 12, null],
   ]);
   expect(localStorage.length, 'acknowledged save clears the draft').toBe(0);
   await waitFor(() =>
@@ -223,16 +225,16 @@ test('prefilled routine draft saves unchanged values with one confirm', async ()
 test('prefilled draft lets the user edit reps and add a non-routine exercise', async () => {
   const ui = mount();
   await openJournal();
-  await ui.click('오늘 루틴으로 기록하기');
-  ui.change(ui.setRows()[2], '횟수', '8');
-  await ui.click('다른 운동 추가');
+  await ui.click("Log with today's routine");
+  ui.change(ui.setRows()[2], 'Reps', '8');
+  await ui.click('Add another exercise');
   const added = ui.setRows()[5];
   expect(added, 'a blank row is added for another exercise').toBeTruthy();
-  expect(ui.field(added, '운동명')).toHaveValue('');
-  ui.change(added, '운동명', '케이블 크런치');
-  ui.change(ui.setRows()[5], '총중량', '35');
-  ui.change(ui.setRows()[5], '횟수', '15');
-  expect(ui.text(ui.setRows()[5]), 'no routine reference for others').not.toMatch(/오늘 목표/);
+  expect(ui.field(added, 'Exercise name')).toHaveValue('');
+  ui.change(added, 'Exercise name', 'Cable Crunch');
+  ui.change(ui.setRows()[5], 'Total weight', '35');
+  ui.change(ui.setRows()[5], 'Reps', '15');
+  expect(ui.text(ui.setRows()[5]), 'no routine reference for others').not.toMatch(/Today's goal/);
   ui.submit();
   await waitFor(() => expect(posts(ui, '/api/workouts')).toHaveLength(1));
   const body = posts(ui, '/api/workouts')[0].body as {
@@ -241,7 +243,7 @@ test('prefilled draft lets the user edit reps and add a non-routine exercise', a
   expect(body.sets).toHaveLength(6);
   expect(body.sets.map((s) => s.reps)).toEqual([10, 10, 8, 12, 12, 15]);
   expect(body.sets[5]).toEqual({
-    exercise: '케이블 크런치',
+    exercise: 'Cable Crunch',
     machine_id: null,
     weight: 35,
     reps: 15,
@@ -250,21 +252,23 @@ test('prefilled draft lets the user edit reps and add a non-routine exercise', a
     rpe: null,
   });
   // Let the save flow finish before the test environment is torn down.
-  await waitFor(() => expect(ui.text()).toMatch(/서버 저장 완료/));
+  await waitFor(() => expect(ui.text()).toMatch(/Saved to server/));
 });
 
 test('rest shows the preview first, applies once on rapid clicks and can be cancelled today', async () => {
   const ui = mount();
   await openJournal();
-  await ui.click('오늘 하루 휴식하기');
-  const preview = document.querySelector('[aria-label="휴식 전 확인"]');
+  await ui.click('Rest today');
+  const preview = document.querySelector('[aria-label="Confirm before rest"]');
   expect(preview, 'preview is shown before any change').toBeTruthy();
-  expect(ui.text(preview!)).toMatch(/1주차 · 분할 2 · 2024-03-04 → 2024-03-06/);
-  expect(ui.text(preview!)).toMatch(/12주차 디로딩 · 분할 2 · 2024-05-22 → 제외됨/);
-  expect(ui.text(preview!)).toMatch(/제외될 마지막 목표: 12주차 디로딩 · 분할 2 \(36번째 목표\)/);
+  expect(ui.text(preview!)).toMatch(/Week 1 · Split 2 · 2024-03-04 → 2024-03-06/);
+  expect(ui.text(preview!)).toMatch(/Week 12 deload · Split 2 · 2024-05-22 → Excluded/);
+  expect(ui.text(preview!)).toMatch(
+    /Last goal to be excluded: Week 12 deload · Split 2 \(goal #36\)/,
+  );
   expect(posts(ui, '/api/routines/7/rests'), 'preview sends nothing').toHaveLength(0);
   const pending = ui.holdNextRest();
-  const confirm = ui.button('휴식 확정');
+  const confirm = ui.button('Confirm rest');
   expect(confirm).toBeEnabled();
   // Both clicks are dispatched before React re-renders, like the legacy test's two
   // calls of the same render's onClick: the disabled state cannot block the second
@@ -274,20 +278,22 @@ test('rest shows the preview first, applies once on rapid clicks and can be canc
     confirm.click(); // A second click from the same render before the response.
   });
   // #173: the waiting button is disabled and shows a small spinner.
-  const busy = await screen.findByRole('button', { name: '처리 중…' });
+  const busy = await screen.findByRole('button', { name: 'Processing…' });
   expect(busy).toBeDisabled();
   expect(busy.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
   pending.resolve();
-  await waitFor(() => expect(ui.text()).toMatch(/오늘은 휴식일로 지정했습니다/));
+  await waitFor(() => expect(ui.text()).toMatch(/Today is set as a rest day/));
   expect(posts(ui, '/api/routines/7/rests')).toHaveLength(1);
   expect(posts(ui, '/api/routines/7/rests')[0].body).toEqual({ date: today });
-  expect(screen.queryAllByRole('button', { name: '오늘 루틴으로 기록하기' })).toHaveLength(0);
+  expect(screen.queryAllByRole('button', { name: "Log with today's routine" })).toHaveLength(0);
   const excludedRow = () => [...document.querySelectorAll('li[data-excluded]')];
   expect(excludedRow()).toHaveLength(1);
-  expect(ui.text(excludedRow()[0])).toMatch(/제외됨 · 분할 2/);
-  await ui.click('휴식 취소');
+  expect(ui.text(excludedRow()[0])).toMatch(/Excluded · Split 2/);
+  await ui.click('Cancel rest');
   await waitFor(() => expect(posts(ui, `/api/routines/7/rests/${today}`)).toHaveLength(1));
-  await waitFor(() => expect(ui.text()).toMatch(/스쿼트 3세트 · 총중량 102\.75 kg · 10회/));
+  await waitFor(() =>
+    expect(ui.text()).toMatch(/Squat 3 sets · total weight 102\.75 kg · 10 reps/),
+  );
   expect(excludedRow()).toHaveLength(0);
   expect(posts(ui, '/api/workouts'), 'rest never writes journals').toHaveLength(0);
 });
@@ -297,40 +303,44 @@ test('auto routine targets show firm values today and label future sessions as p
   const ui = mount({ plan: routineSchema.parse(autoRoutineInput()) });
   await openJournal();
   const content = ui.text(card()!);
-  expect(content).toMatch(/자동 목표/);
-  expect(content, "today's session label").toMatch(/1주차 1번째 · 전신/);
-  expect(content).toMatch(/벤치프레스 3세트 · 총중량 100 kg · 10회/);
+  expect(content).toMatch(/Auto goals/);
+  expect(content, "today's session label").toMatch(/Week 1 session 1 · Full body/);
+  expect(content).toMatch(/Benchpress 3 sets · total weight 100 kg · 10 reps/);
   const todayList = document.querySelector<HTMLElement>('ul[data-slot=target-list]')!;
-  expect(ui.text(todayList), "today's target is not a projection").not.toMatch(/예상/);
+  expect(ui.text(todayList), "today's target is not a projection").not.toMatch(/Projected/);
   const rows = weekRows();
-  expect(ui.text(rows[1])).toMatch(/예상/);
-  expect(ui.text(rows[3])).toMatch(/4주차디로딩 · 자동/);
+  expect(ui.text(rows[1])).toMatch(/Projected/);
+  expect(ui.text(rows[3])).toMatch(/Week 4Deload · auto/);
   // Per-session progression: week 5 resumes at 110 kg × 9 after the week-4 deload.
-  expect(ui.text(rows[4])).toMatch(/1번째 · 전신 · 벤치프레스 3세트 · 총중량 110 kg · 9회/);
-  expect(ui.text(rows[0])).toMatch(/3번째 · 전신 · 벤치프레스 3세트 · 총중량 100 kg · 12회/);
-  await ui.click('오늘 루틴으로 기록하기');
+  expect(ui.text(rows[4])).toMatch(
+    /Session 1 · Full body · Benchpress 3 sets · total weight 110 kg · 9 reps/,
+  );
+  expect(ui.text(rows[0])).toMatch(
+    /Session 3 · Full body · Benchpress 3 sets · total weight 100 kg · 12 reps/,
+  );
+  await ui.click("Log with today's routine");
   expect(ui.setRows(), '3 exercises × 3 sets').toHaveLength(9);
-  expect(Number(ui.field(ui.setRows()[0], '총중량').value)).toBe(100);
+  expect(Number(ui.field(ui.setRows()[0], 'Total weight').value)).toBe(100);
 });
 
 // #101: the card's buttons moved to the common Button; their behaviour stays the same.
 test('a failed load shows the error with a reload button that recovers the card', async () => {
   // The server fails until it recovers, however many times the app asks.
   const ui = mount({ failProgress: true });
-  await openPage('운동 일지');
+  await openPage('Workout journal');
   const alert = await screen.findByRole('alert');
   expect(card()!.contains(alert), 'error is inside the routine card').toBe(true);
-  expect(ui.text(alert)).toMatch(/루틴 목표를 불러오지 못했습니다/);
+  expect(ui.text(alert)).toMatch(/Could not load routine goals/);
   // #173: a failed load leaves no endless placeholder beside the error.
   expect(card()!.querySelector('[aria-busy="true"]')).toBeNull();
   const loads = progressLoads(ui);
   ui.recoverProgress();
-  await ui.click('루틴 목표 다시 불러오기');
+  await ui.click('Reload routine goals');
   await waitFor(() => expect(progressLoads(ui)).toBe(loads + 1));
-  await waitFor(() => expect(ui.text(card()!)).toMatch(/오늘 목표 · 2024-03-04/));
+  await waitFor(() => expect(ui.text(card()!)).toMatch(/Today's goal · 2024-03-04/));
   expect(card()!.querySelector('[role=alert]')).toBeNull();
   // The 12-week table scrolls sideways on phones, so its box takes keyboard focus.
-  const table = card()!.querySelector('[aria-label="12주 전체 목표 표"]')!;
+  const table = card()!.querySelector('[aria-label="12-week goals table"]')!;
   expect(table).toHaveAttribute('tabindex', '0');
   expect(table.querySelectorAll('tbody tr')).toHaveLength(12);
 });
@@ -338,10 +348,10 @@ test('a failed load shows the error with a reload button that recovers the card'
 test('going back from the rest preview sends nothing and offers rest again', async () => {
   const ui = mount();
   await openJournal();
-  await ui.click('오늘 하루 휴식하기');
-  expect(screen.queryByRole('button', { name: '오늘 하루 휴식하기' })).toBeNull();
-  await ui.click('돌아가기');
-  expect(document.querySelector('[aria-label="휴식 전 확인"]')).toBeNull();
-  expect(ui.button('오늘 하루 휴식하기')).toBeEnabled();
+  await ui.click('Rest today');
+  expect(screen.queryByRole('button', { name: 'Rest today' })).toBeNull();
+  await ui.click('Go back');
+  expect(document.querySelector('[aria-label="Confirm before rest"]')).toBeNull();
+  expect(ui.button('Rest today')).toBeEnabled();
   expect(posts(ui, '/api/routines/7/rests')).toHaveLength(0);
 });

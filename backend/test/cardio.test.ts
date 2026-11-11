@@ -40,7 +40,7 @@ test('a minimal cardio session gets nulls, not zeros, for every missing value', 
   });
 });
 
-test('all nine kinds and four sources are accepted; anything else is a Korean 400 message', () => {
+test('all nine kinds and four sources are accepted; anything else is a 400 message', () => {
   assert.deepEqual(cardioKinds, [
     'running',
     'walking',
@@ -64,34 +64,40 @@ test('all nine kinds and four sources are accepted; anything else is a Korean 40
       true,
       source,
     );
-  assert.match(errorsOf({ ...valid, kind: 'skiing' }).kind, /러닝·걷기.*수영·기타 중에서 선택/);
-  assert.match(errorsOf({ ...valid, kind: undefined }).kind, /선택하세요/);
-  assert.match(errorsOf({ ...valid, source: 'strava', external_id: 'x' }).source, /출처/);
+  assert.match(
+    errorsOf({ ...valid, kind: 'skiing' }).kind,
+    /Choose a type: running, walking.*swimming, or other/,
+  );
+  assert.match(errorsOf({ ...valid, kind: undefined }).kind, /Choose/);
+  assert.match(errorsOf({ ...valid, source: 'strava', external_id: 'x' }).source, /source/);
 });
 
 test('duration is a positive whole number of seconds up to 24 hours', () => {
   for (const duration_sec of [0, -1, 1.5, 86401, '1800', null, Infinity])
     assert.match(
       errorsOf({ ...valid, duration_sec }).duration_sec,
-      /운동 시간/,
+      /workout time/,
       String(duration_sec),
     );
-  assert.match(errorsOf({ ...valid, duration_sec: undefined }).duration_sec, /운동 시간/);
+  assert.match(errorsOf({ ...valid, duration_sec: undefined }).duration_sec, /workout time/);
   for (const duration_sec of [1, 86400])
     assert.equal(cardioSessionSchema.safeParse({ ...valid, duration_sec }).success, true);
 });
 
 test('distance is km with at most three decimals (1 m)', () => {
   for (const distance_km of [0, -0.5, 1000.001])
-    assert.match(errorsOf({ ...valid, distance_km }).distance_km, /거리는 0 km보다 크고/);
-  assert.match(errorsOf({ ...valid, distance_km: 5.0005 }).distance_km, /셋째 자리/);
+    assert.match(
+      errorsOf({ ...valid, distance_km }).distance_km,
+      /Enter a distance greater than 0 km/,
+    );
+  assert.match(errorsOf({ ...valid, distance_km: 5.0005 }).distance_km, /3 decimal places/);
   assert.equal(cardioSessionSchema.parse({ ...valid, distance_km: 0.025 }).distance_km, 0.025);
   assert.equal(cardioSessionSchema.parse({ ...valid, distance_km: 1000 }).distance_km, 1000);
 });
 
 test('the date must be a real date and not after today (injected), unlike strength workouts', () => {
-  assert.match(errorsOf({ ...valid, date: '2026-11-09' }).date, /오늘 이후로 입력할 수 없습니다/);
-  assert.match(errorsOf({ ...valid, date: '2026-02-30' }).date, /올바른 날짜/);
+  assert.match(errorsOf({ ...valid, date: '2026-11-09' }).date, /cannot be after today/);
+  assert.match(errorsOf({ ...valid, date: '2026-02-30' }).date, /valid date/);
   assert.match(errorsOf({ ...valid, date: '2026-11-8' }).date, /YYYY-MM-DD/);
   // Today itself and earlier days are fine; another injected today moves the limit.
   assert.equal(cardioSessionSchemaFor(today).safeParse(valid).success, true);
@@ -103,11 +109,11 @@ test('the date must be a real date and not after today (injected), unlike streng
 
 test('heart rate is 30~250 bpm and the maximum is not below the average', () => {
   for (const avg_heart_rate of [29, 251, 120.5])
-    assert.match(errorsOf({ ...valid, avg_heart_rate }).avg_heart_rate, /30~250 bpm/);
-  assert.match(errorsOf({ ...valid, max_heart_rate: 300 }).max_heart_rate, /30~250 bpm/);
+    assert.match(errorsOf({ ...valid, avg_heart_rate }).avg_heart_rate, /30 to 250 bpm/);
+  assert.match(errorsOf({ ...valid, max_heart_rate: 300 }).max_heart_rate, /30 to 250 bpm/);
   assert.match(
     errorsOf({ ...valid, avg_heart_rate: 160, max_heart_rate: 150 }).max_heart_rate,
-    /최대 심박은 평균 심박보다 낮을 수 없습니다/,
+    /Max heart rate cannot be lower than average heart rate/,
   );
   for (const hr of [
     { avg_heart_rate: 150, max_heart_rate: 150 },
@@ -118,14 +124,14 @@ test('heart rate is 30~250 bpm and the maximum is not below the average', () => 
 });
 
 test('other optional values have bounds and the memo a length limit', () => {
-  assert.match(errorsOf({ ...valid, calories_kcal: -1 }).calories_kcal, /0~20000 kcal/);
-  assert.match(errorsOf({ ...valid, elevation_gain_m: 10001 }).elevation_gain_m, /0~10000 m/);
-  assert.match(errorsOf({ ...valid, avg_cadence: 0 }).avg_cadence, /1~300/);
-  assert.match(errorsOf({ ...valid, effort: 'tired' }).effort, /힘듦·중간·쉬움/);
+  assert.match(errorsOf({ ...valid, calories_kcal: -1 }).calories_kcal, /0 to 20000 kcal/);
+  assert.match(errorsOf({ ...valid, elevation_gain_m: 10001 }).elevation_gain_m, /0 to 10000 m/);
+  assert.match(errorsOf({ ...valid, avg_cadence: 0 }).avg_cadence, /1 to 300/);
+  assert.match(errorsOf({ ...valid, effort: 'tired' }).effort, /hard, medium, or easy/);
   assert.match(errorsOf({ ...valid, start_time: '24:00' }).start_time, /HH:MM/);
   assert.match(errorsOf({ ...valid, start_time: '7:30' }).start_time, /HH:MM/);
-  assert.match(errorsOf({ ...valid, memo: 'x'.repeat(2001) }).memo, /2000자/);
-  assert.match(errorsOf({ ...valid, workout_id: 0 }).workout_id, /근력 일지/);
+  assert.match(errorsOf({ ...valid, memo: 'x'.repeat(2001) }).memo, /2000 characters/);
+  assert.match(errorsOf({ ...valid, workout_id: 0 }).workout_id, /strength journal/);
   const full = cardioSessionSchema.parse({
     ...valid,
     start_time: '23:59',
@@ -141,12 +147,15 @@ test('other optional values have bounds and the memo a length limit', () => {
 test('only imported sessions carry an external id, trimmed and 1~200 characters', () => {
   assert.match(
     errorsOf({ ...valid, external_id: 'abc' }).external_id,
-    /직접 입력한 기록\(manual\)에는 외부 ID를 넣지 않습니다/,
+    /Do not set an external ID for a manually entered record \(manual\)/,
   );
-  assert.match(errorsOf({ ...valid, source: 'garmin', external_id: '   ' }).external_id, /외부 ID/);
+  assert.match(
+    errorsOf({ ...valid, source: 'garmin', external_id: '   ' }).external_id,
+    /external ID/,
+  );
   assert.match(
     errorsOf({ ...valid, source: 'garmin', external_id: 'x'.repeat(201) }).external_id,
-    /200자/,
+    /200 characters/,
   );
   assert.equal(
     cardioSessionSchema.parse({ ...valid, source: 'nike', external_id: ' n-1 ' }).external_id,
@@ -200,7 +209,7 @@ test('invalid input, a future date and bad ids are a 400 before any query', asyn
       const future = await call(base, 'POST', { ...valid, date: '2026-11-09' });
       assert.deepEqual(future, {
         status: 400,
-        body: { error: '유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다' },
+        body: { error: 'The cardio record date cannot be after today' },
       });
       assert.equal((await call(base, 'POST', { ...valid, duration_sec: 0 })).status, 400);
       assert.equal(
@@ -215,7 +224,7 @@ test('invalid input, a future date and bad ids are a 400 before any query', asyn
       ])
         assert.deepEqual(await call(base + path, method, valid), {
           status: 400,
-          body: { error: 'Invalid 유산소 기록 ID' },
+          body: { error: 'Invalid cardio record ID' },
         });
       for (const query of [
         '?from=2026-11-01',
@@ -269,12 +278,12 @@ test('create, list with a kind filter, get, delete and 404s', async () => {
       assert.deepEqual(await call(base + '/7'), { status: 200, body: row });
       assert.deepEqual(await call(base + '/8'), {
         status: 404,
-        body: { error: '유산소 기록을 찾을 수 없습니다' },
+        body: { error: 'Cardio record not found' },
       });
       assert.deepEqual(await call(base + '/7', 'DELETE'), { status: 200, body: { ok: true } });
       assert.deepEqual(await call(base + '/8', 'DELETE'), {
         status: 404,
-        body: { error: '유산소 기록을 찾을 수 없습니다' },
+        body: { error: 'Cardio record not found' },
       });
     },
   );
@@ -285,12 +294,12 @@ test('a duplicate external id is a 409 and an unknown workout link a 400', async
     [
       { code: '23505', constraint: 'cardio_sessions_source_external_id_key' },
       409,
-      '같은 출처와 외부 ID의 유산소 기록이 이미 있습니다',
+      'A cardio record with the same source and external ID already exists',
     ],
     [
       { code: '23503', constraint: 'cardio_sessions_workout_id_fkey' },
       400,
-      '연결할 근력 일지가 존재하지 않습니다',
+      'The strength journal to link does not exist',
     ],
   ] as const)
     await withApi(
@@ -345,7 +354,7 @@ test('update is a full replacement inside a transaction that rolls back on 404 a
       calls.length = 0;
       assert.deepEqual(await call(base + '/8', 'PUT', body), {
         status: 404,
-        body: { error: '유산소 기록을 찾을 수 없습니다' },
+        body: { error: 'Cardio record not found' },
       });
       assert.deepEqual(
         calls.map((c) => c.sql.split(/\s/)[0]),

@@ -19,8 +19,8 @@ import { jsonSchema } from '../src/openapi.js';
 
 const workout = {
   date: '2026-01-05',
-  title: '제목',
-  sets: [{ exercise: '벤치', weight: 60, reps: 10 }],
+  title: 'Title',
+  sets: [{ exercise: 'Bench', weight: 60, reps: 10 }],
 };
 const messages = (schema: z.ZodType, input: unknown) => {
   const result = schema.safeParse(input);
@@ -34,17 +34,17 @@ test('a wrong type reports only the type, not the length rule as well', () => {
   assert.equal(messages(machineSchema, { brand_id: 1, name: [], base_weight: null }).length, 1);
 });
 
-test('the Korean text messages stay for missing, blank and too long values', () => {
+test('the text messages stay for missing, blank and too long values', () => {
   const { title: _title, ...untitled } = workout;
-  assert.deepEqual(messages(workoutSchema, untitled), ['일지 제목을 입력하세요']);
+  assert.deepEqual(messages(workoutSchema, untitled), ['Enter a journal title']);
   assert.deepEqual(messages(workoutSchema, { ...workout, title: '   ' }), [
-    '일지 제목을 입력하세요',
+    'Enter a journal title',
   ]);
   assert.deepEqual(messages(workoutSchema, { ...workout, title: 'x'.repeat(121) }), [
-    '일지 제목은 120자 이하로 입력하세요',
+    'Enter a journal title of 120 characters or fewer',
   ]);
   assert.deepEqual(messages(workoutSchema, { ...workout, notes: 'x'.repeat(4001) }), [
-    '메모는 4000자 이하로 입력하세요',
+    'Enter a memo of 4000 characters or fewer',
   ]);
 });
 
@@ -63,9 +63,7 @@ test('length checks count the trimmed value and limits stay readable for the API
 
 test('array limits still reject long arrays', () => {
   const sets = Array(201).fill(workout.sets[0]);
-  assert.deepEqual(messages(workoutSchema, { ...workout, sets }), [
-    '세트는 200개 이하로 입력하세요',
-  ]);
+  assert.deepEqual(messages(workoutSchema, { ...workout, sets }), ['Enter at most 200 sets']);
   const rest = jsonSchema(routineSchema) as { properties: { rest_days: { maxItems: number } } };
   assert.equal(rest.properties.rest_days.maxItems, 6);
 });
@@ -73,20 +71,20 @@ test('array limits still reject long arrays', () => {
 test('an infinite number (JSON 1e999) gets the message of the range it broke', () => {
   const set = (fields: object) => ({ ...workout, sets: [{ ...workout.sets[0], ...fields }] });
   assert.deepEqual(messages(workoutSchema, set({ weight: Infinity })), [
-    '총중량은 0~99999 kg으로 입력하세요',
+    'Enter a total weight from 0 to 99999 kg',
   ]);
   assert.deepEqual(messages(workoutSchema, set({ reps: -Infinity })), [
-    '반복 수는 1~1000의 정수로 입력하세요',
+    'Enter reps as a whole number from 1 to 1000',
   ]);
   assert.deepEqual(messages(weightStepSchema, { exercise: 'E', weight_step: Infinity }), [
-    '증량 단위는 100 kg 이하로 입력하세요',
+    'Enter an increase step of 100 kg or less',
   ]);
   assert.deepEqual(messages(weightStepSchema, { exercise: 'E', weight_step: -Infinity }), [
-    '증량 단위는 0보다 커야 합니다',
+    'The increase step must be greater than 0',
   ]);
   assert.deepEqual(
     messages(bodyMeasurementSchema, { date: '2026-01-05', body_weight_kg: Infinity }),
-    ['체중은 유한한 숫자여야 합니다'],
+    ['Weight must be a finite number'],
   );
 });
 
@@ -95,7 +93,7 @@ test('defaults fill only missing values and optional fields stay absent', () => 
   assert.equal(parsed.notes, '');
   assert.equal(parsed.feedback, null);
   assert.deepEqual(parsed.sets[0], {
-    exercise: '벤치',
+    exercise: 'Bench',
     machine_id: null,
     weight: 60,
     reps: 10,
@@ -124,7 +122,7 @@ test('a goal keeps its cross-field message on the deadline field', () => {
   assert.equal(result.success, false);
   assert.deepEqual(
     result.error?.issues.map((issue) => [issue.path, issue.message]),
-    [[['deadline'], '종료일은 시작일과 같거나 이후여야 합니다']],
+    [[['deadline'], 'The end date must be the same as or after the start date']],
   );
 });
 
@@ -163,5 +161,5 @@ test('the API answers 400, not 500, for bad bodies, constructor keys and retry k
   const infinite = `{"date":"2026-01-05","title":"t","sets":[{"exercise":"e","weight":1e999,"reps":1}]}`;
   const answer = await send('/api/workouts', infinite);
   assert.equal(answer.status, 400);
-  assert.equal((await answer.json()).error, '총중량은 0~99999 kg으로 입력하세요');
+  assert.equal((await answer.json()).error, 'Enter a total weight from 0 to 99999 kg');
 });

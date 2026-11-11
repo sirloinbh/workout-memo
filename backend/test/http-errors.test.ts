@@ -57,12 +57,12 @@ test('a path id must be plain digits; others are a 400 that names the record, be
     () => ({ rows: [], rowCount: 1 }),
     async (base, queries) => {
       for (const [path, label] of [
-        ['/goals/1e3', '목표'],
-        ['/goals/%207%20', '목표'],
-        ['/goals/0', '목표'],
-        ['/goals/-1', '목표'],
-        ['/body-measurements/1.5', '신체 기록'],
-        ['/workouts/abc', '일지'],
+        ['/goals/1e3', 'goal'],
+        ['/goals/%207%20', 'goal'],
+        ['/goals/0', 'goal'],
+        ['/goals/-1', 'goal'],
+        ['/body-measurements/1.5', 'body record'],
+        ['/workouts/abc', 'journal'],
       ]) {
         assert.deepEqual(await call(base + path, { method: 'DELETE' }), {
           status: 400,
@@ -71,7 +71,7 @@ test('a path id must be plain digits; others are a 400 that names the record, be
       }
       assert.deepEqual(await call(base + '/routines/07'), {
         status: 400,
-        body: { error: 'Invalid 루틴 ID' },
+        body: { error: 'Invalid routine ID' },
       });
       assert.equal(queries.length, 0);
     },
@@ -85,7 +85,7 @@ test('deleting a goal that is not there answers 404 with an error message', asyn
     async (base) => {
       assert.deepEqual(await call(base + '/goals/5', { method: 'DELETE' }), {
         status: 404,
-        body: { error: '목표를 찾을 수 없습니다' },
+        body: { error: 'Goal not found' },
       });
       rowCount = 1;
       assert.deepEqual(await call(base + '/goals/5', { method: 'DELETE' }), {
@@ -109,7 +109,7 @@ test('app messages for missing references and storage failures keep the { error 
       });
       assert.deepEqual(await call(base + '/goals'), {
         status: 400,
-        body: { error: '선택한 공식 참고값이 존재하지 않습니다' },
+        body: { error: 'The selected official reference does not exist' },
       });
       failure = Object.assign(new Error('fk'), {
         code: '23503',
@@ -117,7 +117,7 @@ test('app messages for missing references and storage failures keep the { error 
       });
       assert.deepEqual(await call(base + '/goals'), {
         status: 400,
-        body: { error: '선택한 머신 또는 브랜드가 존재하지 않습니다' },
+        body: { error: 'The selected machine or brand does not exist' },
       });
       // The internal message stays in the log; the response is the central 500 text.
       failure = new Error('connect ECONNREFUSED 10.0.0.1:5432');
@@ -175,7 +175,7 @@ test('routes registered before the JSON 404 still answer, including the backup r
           headers: { 'Content-Type': 'application/json' },
           body: '{}',
         }),
-        { status: 400, body: { error: 'Invalid 루틴 ID' } },
+        { status: 400, body: { error: 'Invalid routine ID' } },
       );
     },
   );

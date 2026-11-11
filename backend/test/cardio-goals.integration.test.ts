@@ -156,7 +156,7 @@ test(
       assert.deepEqual((await api(`/cardio-goals/${id}`, 'DELETE')).data, { ok: true });
       const gone = await api(`/cardio-goals/${id}`, 'DELETE');
       assert.equal(gone.status, 404);
-      assert.equal(gone.data.error, '유산소 목표를 찾을 수 없습니다');
+      assert.equal(gone.data.error, 'Cardio goal not found');
       assert.equal((await api('/cardio-goals/abc', 'DELETE')).status, 400);
       assert.equal(((await api('/cardio-goals')).data as unknown as Row[]).length, 1);
     });

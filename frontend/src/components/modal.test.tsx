@@ -50,7 +50,7 @@ test('Modal is labelled, keeps focus inside and closes on Escape or the close bu
   expect(close).not.toHaveBeenCalled();
   await user.keyboard('{Escape}');
   expect(close).toHaveBeenCalledTimes(1);
-  await user.click(screen.getByRole('button', { name: '닫기' }));
+  await user.click(screen.getByRole('button', { name: 'Close' }));
   expect(close).toHaveBeenCalledTimes(2);
 });
 

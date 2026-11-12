@@ -1,4 +1,4 @@
-// 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/e2e/에서
+// Managed file. Edit it in sirloinbh/project-standards templates/e2e/
 import { defineConfig } from '@playwright/test';
 
 // Browser checks need a dedicated, migrated test database (never the personal DB).

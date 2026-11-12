@@ -1,4 +1,4 @@
-// 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/msw/frontend/src/test/에서
+// Managed file. Edit it in sirloinbh/project-standards templates/msw/frontend/src/test/
 // Screen tests without the backend (#281): MSW answers every operation in the OpenAPI contract
 // (docs/openapi.json) with a sample built from its response schema. Opt in per test file:
 //

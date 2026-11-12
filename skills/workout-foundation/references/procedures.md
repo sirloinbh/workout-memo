@@ -1,58 +1,58 @@
-# 검증된 반복 절차
+# Verified repeatable procedures
 
-로드맵 #3의 2~4단계(#58·#60·#62·#64·#66·#68)에서 실제로 실행하고 결과를 확인한 절차다. 이 저장소에서 같은 종류의 작업을 할 때 그대로 반복한다. 근거와 실행 결과는 각 `docs/changes/<번호>-*.md`에 있다.
+These are procedures that were actually run, with results checked, in steps 2 to 4 of roadmap #3 (#58, #60, #62, #64, #66, #68). Repeat them as they are when doing the same kind of work in this repo. The reasons and the results are in each `docs/changes/<number>-*.md`.
 
-## 1. npm 패키지 도입
+## 1. Adding an npm package
 
-전역 규칙상 npm 설치·삭제는 사용자의 명시적 위험 인지 확인이 있어야 한다. 확인을 받은 뒤 다음 순서로 진행한다.
+Under the global rules, installing or removing npm packages needs the user's explicit acknowledgement of the risk. After you get it, proceed in this order.
 
-1. **후보 확인**: 읽기 전용 `npm view`로 게시자·저장소·버전별 게시일·peer 의존성·engines·install 스크립트를 확인한다.
-   - 게시 후 14일 이상 지난 버전 중 최신을 고른다. 공급망 공격은 새 게시본에서 일어난다.
-   - 설치된 React·Vite·Zod·Node와 peer 범위가 맞는지 확인한다. 예: react-router 8은 react ≥ 19.2.7, vitest 5는 vite ≥ 6.4.
-2. **사용자 확인**: 정확한 패키지·버전 목록과 위험 안내로 한 번에 확인받는다.
-3. **설치**: `npm install --ignore-scripts --save-exact [-w <workspace>] <pkg>@<version>`.
-4. **설치 후 점검**
-   - lockfile에서 `hasInstallScript`가 있는 패키지가 기존 esbuild·fsevents 외에 없는지 확인한다.
-   - 새로 추가된 패키지 목록을 기록한다.
-   - IOC 문자열(webhook.site, ngrok.io 등)과 의심 워크플로를 검색한다.
-5. **subtree용 lockfile 재생성**: `frontend/`·`backend/`는 자체 `package-lock.json`으로 Docker 안에서 `npm ci`를 한다. 이 lockfile은 임시 디렉터리에 해당 `package.json`과 기존 lockfile을 복사한 뒤 `npm install --package-lock-only --ignore-scripts --before=<14일 전 날짜>`로 다시 만들어 되돌려 놓는다. 하위 의존성도 같은 날짜 기준을 따른다.
-6. **Docker 빌드 확인**: `docker build ./frontend`, `docker build ./backend`. 모노레포에서는 hoisting 덕분에 통과해도 단독 빌드에서는 실패할 수 있다(#60에서 실제로 발생).
-7. **기록**: 버전·선정 기준·점검 결과를 docs/changes와 PR에 적는다.
+1. **Check the candidate**: with read-only `npm view`, check the publisher, the repository, the publish date of each version, peer dependencies, engines, and install scripts.
+   - Pick the newest version that was published at least 14 days ago. Supply-chain attacks happen in fresh releases.
+   - Check that the peer ranges match the installed React, Vite, Zod, and Node. Examples: react-router 8 needs react >= 19.2.7, and vitest 5 needs vite >= 6.4.
+2. **User confirmation**: get confirmation once, with the exact list of packages and versions and the risk notice.
+3. **Install**: `npm install --ignore-scripts --save-exact [-w <workspace>] <pkg>@<version>`.
+4. **Check after install**
+   - Check that no package other than the existing esbuild and fsevents has `hasInstallScript` in the lockfile.
+   - Record the list of newly added packages.
+   - Search for IOC strings (webhook.site, ngrok.io, and so on) and suspicious workflows.
+5. **Regenerate the lockfile for the subtrees**: `frontend/` and `backend/` run `npm ci` inside Docker with their own `package-lock.json`. Regenerate this lockfile by copying that `package.json` and the existing lockfile into a temporary directory, running `npm install --package-lock-only --ignore-scripts --before=<date 14 days ago>`, and copying the result back. Transitive dependencies follow the same date cutoff.
+6. **Check the Docker build**: `docker build ./frontend`, `docker build ./backend`. In the monorepo a build can pass thanks to hoisting and still fail when built alone (this really happened in #60).
+7. **Record**: write the versions, the selection criteria, and the check results in docs/changes and the PR.
 
-## 2. 영역별 독립 빌드 유지
+## 2. Keeping per-area builds independent
 
-- `frontend`·`backend`·`database`는 각자의 Docker 컨텍스트와 subtree 저장소에서 따로 빌드된다. 영역 밖 경로를 import하는 앱 코드를 만들지 않는다.
-- 두 영역이 같은 코드를 써야 하면 원본 하나와 복제본을 두고 검사한다. 사례:
-  - `shared/contract.ts` → `contract:sync`·`contract:check`
+- `frontend`, `backend`, and `database` are built separately in their own Docker contexts and subtree repositories. Do not write app code that imports from a path outside its own area.
+- If two areas must use the same code, keep one source and one copy and check them. Examples:
+  - `shared/contract.ts` → `contract:sync` and `contract:check`
   - `skills/` → `.claude/skills/`
-- 테스트는 다른 영역 소스를 import할 수 있다. 대신 frontend 빌드는 `tsconfig.build.json`으로 테스트와 `vite.config.ts`를 제외하고, 전체 타입 검사는 모노레포 `npm run typecheck`가 맡는다.
+- Tests may import another area's source. In exchange, the frontend build excludes tests and `vite.config.ts` through `tsconfig.build.json`, and the whole-repo type check is done by the monorepo `npm run typecheck`.
 
-## 3. 화면 리팩터링
+## 3. Screen refactoring
 
-1. **행동 테스트 먼저**: 사용자에게 보이는 역할·라벨·텍스트로 검증하는 RTL 테스트가 먼저 있어야 한다. 내부 hook·상태를 흉내 내는 테스트는 리팩터링에 깨진다. 그래서 #60에서 vm 하네스 테스트를 RTL로 옮긴 뒤 #62·#64·#66을 진행했다.
-2. **동작 보존 확인**: 리팩터링으로 바뀌는 것은 테스트의 탐색 방법뿐이어야 한다. 예: 메뉴 버튼 → 링크(`openPage`). assertion이 바뀌면 이유를 docs에 적는다. 목업만 받아주던 잘못된 입력처럼 실제 서버와 다른 테스트 데이터는 실제 계약에 맞춰 고친다.
-3. **모양 보존 확인**: 모양을 바꾸지 않는 변경(토큰화, 컴포넌트 추출, CSS 도구 도입)은 실제 Chrome에서 픽셀 비교한다.
-   - 브라우저 시계를 고정하고 애니메이션을 끈다. 데스크톱·모바일에서 주요 페이지와 모달의 전체 화면을 변경 전후로 찍는다.
-   - 기준을 먼저 두 번 찍어 차이가 0인지 확인한 다음, 변경 후와 비교한다.
-   - 스크린샷 스펙과 비교 스크립트는 임시로만 쓰고 커밋하지 않는다. 결과(장수·차이 픽셀)를 기록한다.
-4. 검증 중 발견한 기존 결함은 범위를 넓혀 고치지 않고 별도 이슈로 등록한다. 예: #71 모바일 가로 넘침.
+1. **Behavior tests first**: RTL tests that verify by the roles, labels, and text the user sees must exist first. Tests that imitate internal hooks or state break on a refactor. That is why #60 moved the vm harness tests to RTL before #62, #64, and #66.
+2. **Check behavior is preserved**: only the way the tests navigate should change in a refactor. Example: menu button → link (`openPage`). If an assertion changes, write the reason in the docs. Fix test data that differs from the real server, such as invalid input that only a mock accepted, to match the real contract.
+3. **Check appearance is preserved**: for changes that must not change the look (tokenizing, extracting components, adopting a CSS tool), compare pixels in real Chrome.
+   - Freeze the browser clock and turn off animations. Take full-screen shots of the main pages and modals on desktop and mobile, before and after the change.
+   - Take the baseline twice first and confirm the difference is 0, then compare against the after-change shots.
+   - Use the screenshot spec and the comparison script only temporarily and do not commit them. Record the results (number of shots, differing pixels).
+4. Do not widen the scope to fix an existing defect found during verification; register a separate issue. Example: #71, horizontal overflow on mobile.
 
-## 4. 연속(stacked) PR
+## 4. Stacked PRs
 
-- 앞 PR이 병합되기 전에 다음 단계를 진행해야 하면, 앞 브랜치에서 새 브랜치를 만든다. PR 대상은 항상 `main`으로 둔다.
-- PR 본문 첫 줄에 병합 순서를 적는다. 앞 PR이 병합되기 전까지는 diff에 앞 커밋이 함께 보인다는 점도 적는다.
-- 아래 브랜치를 고쳐야 하면 그 브랜치에 커밋하고, 위 브랜치마다 순서대로 `git merge`해서 push한다. force push로 PR 이력을 다시 쓰지 않는다.
-- 각 PR의 docs/changes 기록은 그 PR 브랜치에서 고친다. 위 PR에서 아래 PR 문서를 대신 고치지 않는다.
-- 병합은 아래 PR부터 순서대로 한다. 앞 PR이 병합되면 다음 브랜치에 `origin/main`을 merge해 충돌을 해결하고, 테스트를 다시 실행해 push한다. CI가 통과하면 병합하고 스택 끝까지 반복한다.
+- If you must continue to the next step before the earlier PR is merged, create the new branch from the earlier branch. The PR target is always `main`.
+- Write the merge order on the first line of the PR body. Also say that, until the earlier PR is merged, the diff shows the earlier commits too.
+- If a lower branch needs a fix, commit to that branch, then `git merge` it into each upper branch in order and push. Do not rewrite the PR history with a force push.
+- Fix the docs/changes record of each PR on that PR's branch. Do not edit a lower PR's doc from an upper PR.
+- Merge from the lowest PR up, in order. When an earlier PR is merged, merge `origin/main` into the next branch, resolve conflicts, re-run the tests, and push. Merge once CI passes, and repeat to the end of the stack.
 
-## 5. 문서·계약 산출물
+## 5. Docs and contract artifacts
 
-다음 산출물은 코드와 어긋나면 `npm run check`가 실패한다. 생성기를 실행한 결과를 함께 커밋한다.
+If the following artifacts drift from the code, `npm run check` fails. Commit the generator output with the change.
 
-| 산출물                                                | 갱신 명령                                  | 검사                               |
-| ----------------------------------------------------- | ------------------------------------------ | ---------------------------------- |
-| `docs/api.md` 엔드포인트 표                           | 직접 수정                                  | `api-contract.test.ts`             |
-| `docs/openapi.json`                                   | `npm run openapi`                          | `openapi.test.ts`                  |
-| `backend/src/contract.ts`, `frontend/src/contract.ts` | `npm run contract:sync`                    | `contract:check`                   |
-| `.claude/skills/`                                     | `npm run skills:sync`                      | `test:skills`                      |
-| DB 스키마                                             | `database/migrations/`에 새 번호 파일 추가 | `migrations.test.ts`, `db:migrate` |
+| Artifact                                              | Update command                                    | Check                              |
+| ----------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
+| `docs/api.md` endpoint table                          | Edit by hand                                      | `api-contract.test.ts`             |
+| `docs/openapi.json`                                   | `npm run openapi`                                 | `openapi.test.ts`                  |
+| `backend/src/contract.ts`, `frontend/src/contract.ts` | `npm run contract:sync`                           | `contract:check`                   |
+| `.claude/skills/`                                     | `npm run skills:sync`                             | `test:skills`                      |
+| DB schema                                             | Add a new numbered file to `database/migrations/` | `migrations.test.ts`, `db:migrate` |

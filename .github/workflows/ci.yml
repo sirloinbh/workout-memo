@@ -1,16 +1,16 @@
-# 중앙 관리 파일. 수정은 sirloinbh/project-standards의 .github/workflows/에서
-# public 리포는 private 중앙 리포의 재사용 워크플로를 부를 수 없어서, 중앙 reusable-app-ci.yml을 이 리포의 값으로 펼쳐 넣었다(#209).
+# Managed file. Edit it in sirloinbh/project-standards .github/workflows/
+# A public repo cannot call a reusable workflow of the private central repo, so the central reusable-app-ci.yml is expanded here with the values of this repo (#209).
 name: ci
 
 on: [push, pull_request]
 
 permissions:
   contents: read
-  packages: read # @sirloinbh 공유 패키지 설치
+  packages: read # install @sirloinbh shared packages
 
 env:
   NODE_AUTH_TOKEN: ${{ github.token }}
-  # inputs는 run 셸에 직접 넣지 않고 환경변수로만 쓴다(스크립트 주입 방지).
+  # inputs are never put into the run shell directly, only used as environment variables (prevents script injection).
   NPM_VERSION: 11.19.0
   DATABASE_URL: postgres://app:test@localhost:5432/workout_test
   TEST_DATABASE_URL: postgres://app:test@localhost:5432/workout_test
@@ -31,21 +31,21 @@ jobs:
         with:
           node-version: 24.21.0
           cache: npm
-      - name: 공급망 점검 (설치 전, lockfile 기준)
+      - name: Supply chain check (before install, based on lockfile)
         run: node .standards/ioc-scan.mjs
-      - name: 비밀값 유출 점검 (커밋된 토큰·키, .env)
+      - name: Secret leak check (committed tokens and keys, .env)
         run: node .standards/secret-scan.mjs
       - run: npm install --global "npm@$NPM_VERSION" --ignore-scripts
       - run: npm ci --ignore-scripts
-      - name: 중앙 표준 검사
+      - name: Central standards check
         run: node .standards/check.mjs
-      - name: 공급망 점검 (설치 후, node_modules 포함)
+      - name: Supply chain check (after install, including node_modules)
         run: node .standards/ioc-scan.mjs
-      - name: DB 마이그레이션
-        # 규칙: docs/conventions/database.md (#27). e2e job에도 같은 스크립트가 있다(테스트가 같은지 확인한다).
-        # 1) 빈 볼륨의 Docker 초기화처럼 psql로 모든 파일을 기록 없이 한 번 적용한다(다시 실행해도 안전한지 확인).
-        # 2) 공통 실행기(db:migrate)가 있으면 다시 적용하며 schema_migrations에 기록한다.
-        #    아직 실행기가 없는 앱은 psql로 한 번 더 적용하고 경고만 남긴다(이전 동작과 호환).
+      - name: DB migration
+        # Rule: docs/conventions/database.md (#27). The e2e job has the same script (a test checks they match).
+        # 1) Like Docker init on an empty volume, apply all files once with psql without recording (checks they are safe to run again).
+        # 2) If the shared runner (db:migrate) exists, apply again and record in schema_migrations.
+        #    Apps without a runner yet apply once more with psql and only get a warning (compatible with the old behavior).
         run: |
           shopt -s nullglob
           for migration in database/migrations/*.sql; do
@@ -54,26 +54,26 @@ jobs:
           if node -e "process.exit(require('./package.json').scripts?.['db:migrate'] ? 0 : 1)"; then
             npm run db:migrate
           else
-            echo "::warning title=DB 마이그레이션::db:migrate 실행기가 없어 psql로만 적용합니다. 적용 기록이 남지 않습니다. 중앙 docs/conventions/database.md를 따라 실행기를 추가하세요."
+            echo "::warning title=DB migration::There is no db:migrate runner, so migrations were applied with psql only. No applied-migration record is kept. Add a runner following the central docs/conventions/database.md."
             for migration in database/migrations/*.sql; do
               psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
             done
           fi
       - run: npm run check
-      - name: 안 쓰는 파일·export·의존성 (knip, 경고만)
-        # 처음에는 실패시키지 않는다(#263). 결과가 0이 된 앱은 features.knipStrict로 실패 단계를 쓴다(#342).
+      - name: Unused files, exports, and dependencies (knip, warning only)
+        # It does not fail at first (#263). Apps whose result reached 0 use the failing step via features.knipStrict (#342).
         if: hashFiles('knip.json') != '' && !false
-        run: npm run knip || echo "::warning title=knip::안 쓰는 파일·export·의존성이 있습니다. 이 단계 로그를 확인하세요."
-      - name: 안 쓰는 파일·export·의존성 (knip)
+        run: npm run knip || echo "::warning title=knip::There are unused files, exports, or dependencies. Check this step's log."
+      - name: Unused files, exports, and dependencies (knip)
         if: hashFiles('knip.json') != '' && false
         run: npm run knip
-      - name: 접근성·성능 점수 (Lighthouse CI, 경고만)
-        # 레지스트리 features.lighthouse인 앱만 lighthouserc.json을 받는다(#280). npm run check가 만든
-        # frontend/dist를 정적으로 띄워 러너의 Google Chrome으로 잰다. 기준 미달·측정 실패 모두 CI를 멈추지 않는다.
+      - name: Accessibility and performance scores (Lighthouse CI, warning only)
+        # Only apps with registry features.lighthouse receive lighthouserc.json (#280). It serves the frontend/dist built by npm run check
+        # statically and measures it with the runner's Google Chrome. Neither a missed threshold nor a failed measurement stops CI.
         id: lighthouse
         if: hashFiles('lighthouserc.json') != ''
         run: |
-          node_modules/.bin/lhci autorun || echo "::warning title=Lighthouse CI::측정 또는 기준 점수 확인에 실패했습니다. 이 단계 로그를 확인하세요."
+          node_modules/.bin/lhci autorun || echo "::warning title=Lighthouse CI::Measuring or checking the threshold scores failed. Check this step's log."
           # The score summary goes to node on standard input, so no shell quoting is involved.
           node - <<'JS'
           const fs = require('node:fs');
@@ -88,7 +88,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.lighthouse.outcome != 'skipped'
         with: { name: lighthouse-report, path: .lighthouseci, retention-days: 7, if-no-files-found: ignore }
-      - name: 배포 스크립트 문법 검사
+      - name: Deploy script syntax check
         run: |
           shopt -s nullglob
           for f in deploy/*.sh; do bash -n "$f" || exit 1; done
@@ -111,8 +111,8 @@ jobs:
           cache: npm
       - run: npm install --global "npm@$NPM_VERSION" --ignore-scripts
       - run: npm ci --ignore-scripts
-      - name: DB 마이그레이션
-        # verify job의 같은 이름 단계와 같은 스크립트다.
+      - name: DB migration
+        # Same script as the step with the same name in the verify job.
         run: |
           shopt -s nullglob
           for migration in database/migrations/*.sql; do
@@ -121,18 +121,18 @@ jobs:
           if node -e "process.exit(require('./package.json').scripts?.['db:migrate'] ? 0 : 1)"; then
             npm run db:migrate
           else
-            echo "::warning title=DB 마이그레이션::db:migrate 실행기가 없어 psql로만 적용합니다. 적용 기록이 남지 않습니다. 중앙 docs/conventions/database.md를 따라 실행기를 추가하세요."
+            echo "::warning title=DB migration::There is no db:migrate runner, so migrations were applied with psql only. No applied-migration record is kept. Add a runner following the central docs/conventions/database.md."
             for migration in database/migrations/*.sql; do
               psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
             done
           fi
-      # 러너 이미지(ubuntu-24.04)에 설치된 Google Chrome을 Playwright가 channel 'chrome'으로 쓴다.
+      # Playwright uses the Google Chrome installed on the runner image (ubuntu-24.04) as channel 'chrome'.
       - run: npm run test:e2e
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with: { name: playwright-report, path: playwright-report, retention-days: 7 }
 
-  # 화면 비교: 글꼴과 Chromium이 고정된 컨테이너에서만 스크린샷 기준 이미지와 비교한다.
+  # Screenshot comparison: compare against baseline images only in a container with fixed fonts and Chromium.
   e2e-visual:
     if: true && true
     runs-on: ubuntu-24.04
@@ -147,7 +147,7 @@ jobs:
     env:
       CI: 'true'
       E2E_VISUAL: '1'
-      # 컨테이너 안에서는 서비스 이름으로 DB에 접속한다.
+      # Inside the container, connect to the DB by service name.
       DATABASE_URL: postgres://app:test@postgres:5432/workout_test
       TEST_DATABASE_URL: postgres://app:test@postgres:5432/workout_test
       E2E_DATABASE_URL: postgres://app:test@postgres:5432/workout_test
@@ -159,8 +159,8 @@ jobs:
           cache: npm
       - run: npm install --global "npm@$NPM_VERSION" --ignore-scripts
       - run: npm ci --ignore-scripts
-      # Playwright 이미지에는 psql이 없다. 다시 실행해도 안전한지는 verify job이 psql로 확인한다.
-      - name: DB 마이그레이션
+      # The Playwright image has no psql. The verify job checks with psql that running again is safe.
+      - name: DB migration
         run: npm run db:migrate
       - run: npm run test:e2e
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -171,8 +171,8 @@ jobs:
             playwright-report
             test-results
           retention-days: 7
-      # 없거나 의도적으로 바뀐 화면의 기준 이미지 후보. playwright-report에서 차이를 확인한 뒤
-      # 이 artifact를 e2e/__screenshots__에 커밋한다.
+      # Candidate baseline images for screens that are missing or intentionally changed. After checking the differences in playwright-report,
+      # commit this artifact to e2e/__screenshots__.
       - if: failure()
         run: npx playwright test --update-snapshots=changed --retries=0 || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -183,6 +183,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # 패키지 인증 토큰은 BuildKit secret으로만 넘긴다. 이미지 레이어에 남지 않는다.
+      # The package auth token is passed only as a BuildKit secret. It does not stay in image layers.
       - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN ./frontend
       - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN ./backend

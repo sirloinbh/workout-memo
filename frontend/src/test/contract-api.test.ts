@@ -1,4 +1,4 @@
-// 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/msw/frontend/src/test/에서
+// Managed file. Edit it in sirloinbh/project-standards templates/msw/frontend/src/test/
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 

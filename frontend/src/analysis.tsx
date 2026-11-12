@@ -202,7 +202,7 @@ export function Analysis() {
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <SegmentedControl
           label="Analysis period"
-          options={[1, 4, 12].map((n) => ({ value: String(n), label: `${n} weeks` }))}
+          options={[1, 4, 12].map((n) => ({ value: String(n), label: n === 1 ? '1 week' : `${n} weeks` }))}
           value={String(weeks)}
           onValueChange={(value) => setWeeks(Number(value))}
         />

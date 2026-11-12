@@ -20,7 +20,7 @@ import {
   workoutSchema,
 } from './domain.js';
 import { analysisQuery } from './routes/analysis.js';
-import { cardioQuery } from './routes/cardio.js';
+import { cardioImportDocument, cardioQuery } from './routes/cardio.js';
 import { goalSuggestionQuery } from './routes/weight-steps.js';
 
 type Json = Record<string, unknown>;
@@ -200,6 +200,11 @@ export const operations: Record<string, Operation> = {
   'POST /api/cardio-sessions': {
     body: ['CardioSession', cardioSessionSchema],
     status: [201, 400, 409],
+  },
+  // #119: all rows or none; a refused row comes back by its index (see docs/api.md).
+  'POST /api/cardio-sessions/import': {
+    body: ['CardioImport', cardioImportDocument],
+    status: [201, 400, 409, 413],
   },
   'PUT /api/cardio-sessions/:id': {
     body: ['CardioSession', cardioSessionSchema],

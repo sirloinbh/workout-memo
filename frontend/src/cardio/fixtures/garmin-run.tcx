@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- #119 fixture in the shape of a Garmin Connect TCX export. Hand-made: no real person's data. -->
+<TrainingCenterDatabase xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd" xmlns:ns5="http://www.garmin.com/xmlschemas/ActivityGoals/v1" xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2" xmlns:ns2="http://www.garmin.com/xmlschemas/UserProfile/v2" xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Activities>
+    <Activity Sport="Running">
+      <Id>2026-11-01T22:10:05.000Z</Id>
+      <Lap StartTime="2026-11-01T22:10:05.000Z">
+        <TotalTimeSeconds>600.0</TotalTimeSeconds>
+        <DistanceMeters>2000.0</DistanceMeters>
+        <MaximumSpeed>3.6</MaximumSpeed>
+        <Calories>150</Calories>
+        <AverageHeartRateBpm><Value>140</Value></AverageHeartRateBpm>
+        <MaximumHeartRateBpm><Value>155</Value></MaximumHeartRateBpm>
+        <Intensity>Active</Intensity>
+        <TriggerMethod>Distance</TriggerMethod>
+        <Track>
+          <Trackpoint>
+            <Time>2026-11-01T22:10:05.000Z</Time>
+            <Position><LatitudeDegrees>37.5</LatitudeDegrees><LongitudeDegrees>127.0</LongitudeDegrees></Position>
+            <AltitudeMeters>30.2</AltitudeMeters>
+            <DistanceMeters>0.0</DistanceMeters>
+            <HeartRateBpm><Value>120</Value></HeartRateBpm>
+            <Extensions><ns3:TPX><ns3:Speed>0.0</ns3:Speed><ns3:RunCadence>82</ns3:RunCadence></ns3:TPX></Extensions>
+          </Trackpoint>
+        </Track>
+        <Extensions><ns3:LX><ns3:AvgSpeed>3.33</ns3:AvgSpeed><ns3:AvgRunCadence>84</ns3:AvgRunCadence></ns3:LX></Extensions>
+      </Lap>
+      <Lap StartTime="2026-11-01T22:20:05.000Z">
+        <TotalTimeSeconds>610.4</TotalTimeSeconds>
+        <DistanceMeters>2005.6</DistanceMeters>
+        <Calories>152</Calories>
+        <AverageHeartRateBpm><Value>150</Value></AverageHeartRateBpm>
+        <MaximumHeartRateBpm><Value>165</Value></MaximumHeartRateBpm>
+        <Intensity>Active</Intensity>
+        <TriggerMethod>Manual</TriggerMethod>
+      </Lap>
+      <Notes>아침 한강</Notes>
+      <Creator xsi:type="Device_t"><Name>Forerunner 265</Name></Creator>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>

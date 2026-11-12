@@ -64,6 +64,7 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 | GET    | `/api/cardio-sessions/records`     | 유산소 개인 기록(전체 기간): 종류별 최장 거리, 러닝 5km·10km 최고 기록    |
 | GET    | `/api/cardio-sessions/:id`         | 유산소 기록 1개                                                           |
 | POST   | `/api/cardio-sessions`             | 유산소 기록 등록 → 201. 같은 출처·외부 ID는 409                           |
+| POST   | `/api/cardio-sessions/import`      | 가져온 유산소 기록 일괄 저장(전부 또는 없음) → 201. 거절 행은 `rows`로    |
 | PUT    | `/api/cardio-sessions/:id`         | 유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 `null`                  |
 | DELETE | `/api/cardio-sessions/:id`         | 유산소 기록 삭제 → `{ ok: true }`                                         |
 | GET    | `/api/export/cardio.csv`           | 유산소 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                 |
@@ -177,6 +178,38 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 - 응답은 저장한 필드와 `id`, `created_at`, `updated_at`, 계산값 `pace_sec_per_km`(초/km, 소수 1자리)·`speed_kmh`(km/h, 소수 2자리)입니다. 계산값은 저장하지 않고 조회할 때 SQL로 계산하며 거리가 없으면 둘 다 `null`입니다.
 - 목록 `GET /api/cardio-sessions?from&to[&kind]`는 날짜·시작 시각 최근 순입니다. 없는 기록은 404 "유산소 기록을 찾을 수 없습니다", 잘못된 경로 ID는 400 "유산소 기록 ID가 올바르지 않습니다"입니다.
 - 구간(랩·인터벌)과 GPS 경로는 저장하지 않습니다(요약값만).
+
+### 유산소 기록 가져오기 `POST /api/cardio-sessions/import` (#119)
+
+```json
+{
+  "sessions": [
+    {
+      "date": "2026-11-02",
+      "start_time": "07:10",
+      "kind": "running",
+      "duration_sec": 1210,
+      "distance_km": 4.006,
+      "source": "file",
+      "external_id": "2026-11-01T22:10:05Z"
+    }
+  ]
+}
+```
+
+- 활동 파일(TCX·GPX)에서 읽은 기록을 한 번에 저장합니다. 파일은 브라우저에서 읽고 요약값만 보내며 원본 파일은 서버로 보내지 않습니다.
+- 행마다 `POST /api/cardio-sessions`와 같은 규칙으로 검증하고, 출처는 `manual`이 아니어야 하며 `external_id`가 있어야 합니다. 한 번에 1~200건이고, 메모가 긴 행(최대 2000자)도 담도록 이 경로만 본문 한도가 2MB입니다(다른 경로는 256kb). 넘으면 413 "요청 크기 제한을 초과했습니다 (가져오기는 한 번에 최대 2MB)."입니다.
+- 한 트랜잭션으로 모두 저장하거나 하나도 저장하지 않습니다(2026-11-08 사용자 결정 3). 성공은 201 `{ "sessions": [저장한 기록…] }`입니다.
+- 거절하면 아무것도 저장하지 않고 행 번호(`index`, 0부터)별 이유를 함께 돌려줍니다. 검증 실패와 요청 안의 같은 활동(같은 `source`·`external_id`)은 400, 이미 저장된 같은 출처·외부 ID는 409입니다.
+
+```json
+{
+  "error": "1건에 문제가 있어 아무것도 저장하지 않았습니다",
+  "rows": [{ "index": 0, "message": "이미 가져온 활동입니다" }]
+}
+```
+
+- 출처가 다른 중복 후보(시작 ±2분, 시작 시각이 없으면 같은 날짜 · 거리 ±1%, 거리가 없으면 시간 ±1%)는 거절하지 않습니다. 화면이 미리보기에서 기본 해제로 묻고, 사용자가 고르면 저장합니다.
 
 ### 유산소 개인 기록 `GET /api/cardio-sessions/records` (#115)
 

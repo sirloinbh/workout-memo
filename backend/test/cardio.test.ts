@@ -409,3 +409,144 @@ test('records: registered before /:id, three queries, ±2% window in NUMERIC, lo
     },
   );
 });
+
+// #119: POST /api/cardio-sessions/import saves every row or none.
+const imported = (external_id: string, extra = {}) => ({
+  ...valid,
+  source: 'file',
+  external_id,
+  ...extra,
+});
+type ImportAnswer = { error?: string; rows?: { index: number; message: string }[] };
+
+test('an import refuses invalid rows by index before any query', async () => {
+  await withApi(
+    () => ({ rows: [], rowCount: 0 }),
+    async (base, calls) => {
+      const answer = await call(`${base}/import`, 'POST', {
+        sessions: [
+          imported('a'),
+          imported('b', { duration_sec: 0 }),
+          { ...valid },
+          imported('a'),
+          imported('c', { date: '2026-11-09' }),
+        ],
+      });
+      assert.deepEqual(answer, {
+        status: 400,
+        body: {
+          error: '4건에 문제가 있어 아무것도 저장하지 않았습니다',
+          rows: [
+            { index: 1, message: '운동 시간은 1~86400초(24시간) 사이의 정수 초로 입력하세요' },
+            { index: 2, message: '가져온 기록에는 출처(file·garmin·nike)와 외부 ID가 필요합니다' },
+            { index: 3, message: '1번째 행과 같은 활동입니다' },
+            { index: 4, message: '유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다' },
+          ],
+        } satisfies ImportAnswer,
+      });
+      for (const [body, error] of [
+        [{}, '가져올 유산소 기록 목록(sessions)을 배열로 보내세요'],
+        [{ sessions: [] }, '가져올 유산소 기록을 1건 이상 선택하세요'],
+        [
+          { sessions: Array.from({ length: 201 }, (_, i) => imported(`x${i}`)) },
+          '유산소 기록은 한 번에 200건까지 가져올 수 있습니다',
+        ],
+      ] as const)
+        assert.deepEqual(await call(`${base}/import`, 'POST', body), {
+          status: 400,
+          body: { error },
+        });
+      assert.equal(calls.length, 0);
+    },
+  );
+});
+
+test('an import of an activity already saved rolls back and names the row', async () => {
+  await withApi(
+    (sql) =>
+      sql.includes('unnest')
+        ? { rows: [{ source: 'file', external_id: 'b' }], rowCount: 1 }
+        : { rows: [], rowCount: 0 },
+    async (base, calls, released) => {
+      const answer = await call(`${base}/import`, 'POST', {
+        sessions: [imported('a'), imported('b')],
+      });
+      assert.deepEqual(answer, {
+        status: 409,
+        body: {
+          error: '1건에 문제가 있어 아무것도 저장하지 않았습니다',
+          rows: [{ index: 1, message: '이미 가져온 활동입니다' }],
+        },
+      });
+      assert.deepEqual(
+        calls.map((c) => c.sql.trim().split(/\s/)[0]),
+        ['BEGIN', 'SELECT', 'ROLLBACK'],
+      );
+      assert.deepEqual(calls[1].params, [
+        ['file', 'file'],
+        ['a', 'b'],
+      ]);
+      assert.equal(released(), 1);
+    },
+  );
+});
+
+test('an import saves every row in one transaction and answers them in order', async () => {
+  let id = 0;
+  await withApi(
+    (sql, params) =>
+      sql.startsWith('INSERT')
+        ? { rows: [{ id: ++id, external_id: params![13] }], rowCount: 1 }
+        : { rows: [], rowCount: 0 },
+    async (base, calls, released) => {
+      const answer = await call(`${base}/import`, 'POST', {
+        sessions: [imported('a'), imported('b', { distance_km: 4.006, start_time: '07:10' })],
+      });
+      assert.deepEqual(answer, {
+        status: 201,
+        body: {
+          sessions: [
+            { id: 1, external_id: 'a' },
+            { id: 2, external_id: 'b' },
+          ],
+        },
+      } as never);
+      assert.deepEqual(
+        calls.map((c) => c.sql.trim().split(/\s/)[0]),
+        ['BEGIN', 'SELECT', 'INSERT', 'INSERT', 'COMMIT'],
+      );
+      assert.equal(released(), 1);
+    },
+  );
+});
+
+test('an import of 200 rows with full memos fits its own body limit, beyond the app-wide 256kb', async () => {
+  let id = 0;
+  await withApi(
+    (sql) =>
+      sql.startsWith('INSERT') ? { rows: [{ id: ++id }], rowCount: 1 } : { rows: [], rowCount: 0 },
+    async (base) => {
+      const memo = '가'.repeat(2000);
+      const sessions = Array.from({ length: 200 }, (_, i) => imported(`m${i}`, { memo }));
+      // About 1.2 MB of UTF-8, over the app-wide 256kb limit.
+      assert.ok(Buffer.byteLength(JSON.stringify({ sessions })) > 1024 * 1024);
+      const answer = await call(`${base}/import`, 'POST', { sessions });
+      assert.equal(answer.status, 201);
+      assert.equal((answer.body as { sessions: unknown[] }).sessions.length, 200);
+    },
+  );
+});
+
+test('an import over its 2MB body limit names that limit', async () => {
+  await withApi(
+    () => ({ rows: [], rowCount: 0 }),
+    async (base, calls) => {
+      const sessions = [imported('big', { memo: 'x'.repeat(3 * 1024 * 1024) })];
+      assert.deepEqual(await call(`${base}/import`, 'POST', { sessions }), {
+        status: 413,
+        body: { error: '요청 크기 제한을 초과했습니다 (가져오기는 한 번에 최대 2MB).' },
+      });
+      assert.equal(calls.length, 0);
+    },
+  );
+});

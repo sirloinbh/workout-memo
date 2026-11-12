@@ -21,7 +21,7 @@ export function SimilarNameHint({
     >
       {similar && (
         <>
-          기존 이름 &lsquo;{similar}&rsquo;로 바꿀까요?{' '}
+          Replace with the existing name &lsquo;{similar}&rsquo;?{' '}
           <Button
             type="button"
             variant="link"
@@ -29,7 +29,7 @@ export function SimilarNameHint({
             className="h-auto px-0 pointer-coarse:min-h-11"
             onClick={() => onReplace(similar)}
           >
-            바꾸기
+            Replace
           </Button>
         </>
       )}

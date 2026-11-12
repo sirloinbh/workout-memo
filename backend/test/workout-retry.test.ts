@@ -76,9 +76,9 @@ test(
     const original = {
       date: '2040-02-29',
       title,
-      notes: '재시도 검증',
+      notes: 'Retry check',
       sets: [
-        { exercise: 'Squat', machine_id: null, weight: 100.25, reps: 10, notes: '총중량' },
+        { exercise: 'Squat', machine_id: null, weight: 100.25, reps: 10, notes: 'Total weight' },
         { exercise: 'Row', machine_id: null, weight: 40, reps: 8, notes: '' },
       ],
     };

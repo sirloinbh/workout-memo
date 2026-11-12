@@ -56,7 +56,7 @@ test(
       input.name = prefix;
       input.start_date = start;
       for (const split of input.splits)
-        split.exercises.forEach((e, i) => (e.exercise = `${prefix}-운동${i}`));
+        split.exercises.forEach((e, i) => (e.exercise = `${prefix}-Exercise${i}`));
       const older = await call('/routines', 'POST', { ...input, start_date: '2097-02-25' });
       assert.equal(older.status, 201);
       routineIds.push(older.data.id);
@@ -72,9 +72,9 @@ test(
         date: slots[0],
         title: prefix,
         sets: [
-          { exercise: `${prefix}-운동0`, weight: 95.5, reps: 8 },
-          { exercise: `${prefix}-운동0`, weight: 97.5, reps: 7 },
-          { exercise: `${prefix}-운동0`, weight: 120, reps: 5, completed: false },
+          { exercise: `${prefix}-Exercise0`, weight: 95.5, reps: 8 },
+          { exercise: `${prefix}-Exercise0`, weight: 97.5, reps: 7 },
+          { exercise: `${prefix}-Exercise0`, weight: 120, reps: 5, completed: false },
         ],
       });
       assert.equal(record.status, 201);
@@ -83,7 +83,7 @@ test(
       const planned = await call('/workouts', 'POST', {
         date: slots[0],
         title: prefix,
-        sets: [{ exercise: `${prefix}-운동0`, weight: 130, reps: 3, completed: false }],
+        sets: [{ exercise: `${prefix}-Exercise0`, weight: 130, reps: 3, completed: false }],
       });
       assert.equal(planned.status, 201);
       const journal = async () =>
@@ -97,16 +97,16 @@ test(
         assert.equal(progress.data.routine.id, id);
         const target = progress.data.today_plan.target;
         assert.equal(target.order, 2);
-        assert.equal(target.split_name, '분할 2');
+        assert.equal(target.split_name, 'Split 2');
         assert.deepEqual(target.exercises[0], {
-          exercise: `${prefix}-운동0`,
+          exercise: `${prefix}-Exercise0`,
           machine_id: null,
           sets: 3,
           weight: 102.75,
           reps: 10,
           base: { sets: 3, weight: 100.25, reps: 10 },
         });
-        assert.deepEqual(progress.data.previous[`${prefix}-운동0`.toLowerCase()], {
+        assert.deepEqual(progress.data.previous[`${prefix}-Exercise0`.toLowerCase()], {
           date: slots[0],
           sets: [
             { weight: 95.5, reps: 8 },

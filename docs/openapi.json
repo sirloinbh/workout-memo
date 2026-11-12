@@ -3,7 +3,7 @@
   "info": {
     "title": "Workout Memo API",
     "version": "1.0.0",
-    "description": "개인 운동 일지 API. 날짜는 YYYY-MM-DD(Asia/Seoul), 중량은 기본중량 포함 총중량 kg. 응답 본문과 교차 필드 규칙은 docs/api.md를 참고하세요."
+    "description": "Personal workout journal API. Dates are YYYY-MM-DD (Asia/Seoul) and weights are total weight in kg including the base weight. See docs/api.md for response bodies and cross-field rules."
   },
   "servers": [
     {
@@ -27,10 +27,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -40,7 +40,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -76,10 +76,10 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -89,7 +89,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -99,7 +99,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -127,10 +127,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -140,7 +140,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -168,10 +168,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -181,7 +181,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -207,10 +207,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -220,7 +220,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -256,10 +256,10 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -269,7 +269,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -279,7 +279,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -307,10 +307,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -320,7 +320,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -357,10 +357,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -370,7 +370,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -380,7 +380,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -408,10 +408,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -421,7 +421,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -448,7 +448,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "같은 요청을 7일 동안 한 번만 반영하는 재시도 키",
+            "description": "Retry key that applies the same request only once for 7 days",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -467,10 +467,10 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -480,7 +480,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -490,7 +490,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -527,10 +527,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -547,7 +547,7 @@
         "summary": "복원용 JSON 백업 파일",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       }
@@ -577,10 +577,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -605,10 +605,10 @@
         },
         "responses": {
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -618,7 +618,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -635,7 +635,7 @@
         "summary": "브랜드 목록(id 순)",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       }
@@ -645,7 +645,7 @@
         "summary": "유산소 목표 목록과 서버 판정 achieved·progress",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       },
@@ -663,10 +663,10 @@
         },
         "responses": {
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -694,10 +694,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -707,7 +707,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -763,10 +763,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -791,10 +791,10 @@
         },
         "responses": {
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -804,7 +804,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -821,7 +821,7 @@
         "summary": "유산소 개인 기록(전체 기간): 종류별 최장 거리, 러닝 5km·10km 최고 기록",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       }
@@ -831,7 +831,7 @@
         "summary": "운동별 부위 매핑",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       },
@@ -849,10 +849,10 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -869,7 +869,7 @@
         "summary": "운동명 자동완성 후보(#124). 최근 → 자주 사용 순 최대 50개",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       }
@@ -879,7 +879,7 @@
         "summary": "운동별 증량 단위(#86). 지정한 운동만",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       },
@@ -897,10 +897,10 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -937,7 +937,7 @@
         ],
         "responses": {
           "200": {
-            "description": "성공",
+            "description": "Success",
             "content": {
               "text/csv": {
                 "schema": {
@@ -947,7 +947,7 @@
             }
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -984,7 +984,7 @@
         ],
         "responses": {
           "200": {
-            "description": "성공",
+            "description": "Success",
             "content": {
               "text/csv": {
                 "schema": {
@@ -994,7 +994,7 @@
             }
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1023,10 +1023,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1043,7 +1043,7 @@
         "summary": "목표 목록과 서버 판정 achieved",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       },
@@ -1061,10 +1061,10 @@
         },
         "responses": {
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1081,10 +1081,10 @@
         "summary": "DB 연결 확인. { \"status\": \"ok\" }",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "500": {
-            "description": "서버 오류",
+            "description": "Server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1101,7 +1101,7 @@
         "summary": "머신 목록과 연결된 공식 참고값(최근 등록 순)",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       },
@@ -1119,10 +1119,10 @@
         },
         "responses": {
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1132,7 +1132,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -1161,10 +1161,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1181,7 +1181,7 @@
         "summary": "진행 중 루틴의 오늘 목표·주간/12주 진행·이전 기록. 없으면 routine: null",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       }
@@ -1191,7 +1191,7 @@
         "summary": "저장된 루틴과 84일 일정(schedule)",
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           }
         }
       },
@@ -1209,10 +1209,10 @@
         },
         "responses": {
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1240,10 +1240,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1253,7 +1253,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -1290,10 +1290,10 @@
         ],
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1311,7 +1311,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "같은 요청을 7일 동안 한 번만 반영하는 재시도 키",
+            "description": "Retry key that applies the same request only once for 7 days",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -1330,10 +1330,10 @@
         },
         "responses": {
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1343,7 +1343,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -1370,10 +1370,10 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1383,7 +1383,7 @@
             }
           },
           "413": {
-            "description": "요청 크기 한도 초과",
+            "description": "Request size limit exceeded",
             "content": {
               "application/json": {
                 "schema": {
@@ -1393,7 +1393,7 @@
             }
           },
           "500": {
-            "description": "서버 오류",
+            "description": "Server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1420,10 +1420,10 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1433,7 +1433,7 @@
             }
           },
           "413": {
-            "description": "요청 크기 한도 초과",
+            "description": "Request size limit exceeded",
             "content": {
               "application/json": {
                 "schema": {
@@ -1443,7 +1443,7 @@
             }
           },
           "500": {
-            "description": "서버 오류",
+            "description": "Server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1481,13 +1481,13 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1497,7 +1497,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -1507,7 +1507,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -1545,10 +1545,10 @@
         },
         "responses": {
           "200": {
-            "description": "성공"
+            "description": "Success"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1558,7 +1558,7 @@
             }
           },
           "404": {
-            "description": "대상 없음",
+            "description": "No target",
             "content": {
               "application/json": {
                 "schema": {
@@ -1568,7 +1568,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -1588,7 +1588,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "한국어 오류 메시지"
+            "description": "English error message"
           }
         },
         "required": [

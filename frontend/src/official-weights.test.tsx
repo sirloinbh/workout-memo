@@ -12,7 +12,7 @@ import { openPage } from './test/nav';
 const brands = [
   { id: 1, name: 'Arsenal Strength' },
   { id: 2, name: 'Hammer Strength' },
-  { id: 3, name: '기타' },
+  { id: 3, name: 'Other' },
   { id: 4, name: 'Newtech' },
 ];
 const bench = {
@@ -57,13 +57,13 @@ const onhim = {
   brand: 'Newtech',
   lineup: '온힘',
   model_name: '온힘 라인업 (모델 미확인)',
-  notes: '공식 사이트 조회 실패',
+  notes: 'Official site lookup failed',
 };
 const linkedMachine = {
   id: 5,
   brand_id: 2,
   brand: 'Hammer Strength',
-  name: '내 체스트 프레스',
+  name: 'My Chest Press',
   base_weight: null,
   notes: '',
   official_weight_id: 11,
@@ -114,7 +114,7 @@ function mount(failReferences = false) {
   };
   const options = (select: HTMLSelectElement) =>
     [...select.querySelectorAll('option')].map((o) => o.textContent);
-  const submit = () => user.click(screen.getByRole('button', { name: '머신 저장하기' }));
+  const submit = () => user.click(screen.getByRole('button', { name: 'Save machine' }));
   return { user, settle, button, labelled, options, submit, mutations };
 }
 
@@ -124,13 +124,15 @@ const texts = (value: string) =>
 test('machine library shows the linked official reference with basis and source, not as base weight', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('머신 라이브러리', ui.user);
+  await openPage('Machine Library', ui.user);
   const row = document.querySelector<HTMLElement>('[data-slot="machine-row"]')!;
   expect(row).not.toBeNull();
   const rowText = row.textContent;
-  expect(rowText).toMatch(/공식 참고값\(Iso-Lateral Bench Press\): 7 lb = 3\.18 kg · 편측/);
-  expect(rowText).toMatch(/2026-10-19 확인/);
-  expect(row.querySelector('strong')!.textContent).toBe('미입력');
+  expect(rowText).toMatch(
+    /Official reference \(Iso-Lateral Bench Press\): 7 lb = 3\.18 kg · One side/,
+  );
+  expect(rowText).toMatch(/checked 2026-10-19/);
+  expect(row.querySelector('strong')!.textContent).toBe('Not entered');
   const link = row.querySelector('a')!;
   expect(link).toHaveAttribute('href', bench.source_url);
   expect(link).toHaveAttribute('rel', 'noreferrer');
@@ -139,37 +141,39 @@ test('machine library shows the linked official reference with basis and source,
 test('journal machine select shows the official reference next to the user base weight', async () => {
   const ui = mount();
   await ui.settle();
-  await ui.user.click(ui.button('운동 기록하기'));
+  await ui.user.click(ui.button('Log workout'));
   const option = document.querySelector('option[value="5"]');
   expect(option).not.toBeNull();
   expect(option!.textContent).toBe(
-    'Hammer Strength · 내 체스트 프레스 (기본중량 미확인) · 공식 참고값 7 lb = 3.18 kg · 편측',
+    'Hammer Strength · My Chest Press (base weight unconfirmed) · Official reference 7 lb = 3.18 kg · One side',
   );
 });
 
 test('registering a machine links a reference without filling or changing base weight', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('머신 라이브러리', ui.user);
-  await ui.user.click(ui.button('머신 등록'));
-  await ui.user.selectOptions(ui.labelled('브랜드', 'select'), '2');
-  const select = ui.labelled('공식 참고값', 'select');
+  await openPage('Machine Library', ui.user);
+  await ui.user.click(ui.button('Add machine'));
+  await ui.user.selectOptions(ui.labelled('Brand', 'select'), '2');
+  const select = ui.labelled('Official reference', 'select');
   expect(ui.options(select)).toEqual([
-    '연결 안 함',
-    'Plate-Loaded · Iso-Lateral Bench Press — 7 lb = 3.18 kg · 편측',
+    'Not linked',
+    'Plate-Loaded · Iso-Lateral Bench Press — 7 lb = 3.18 kg · One side',
   ]);
   await ui.user.selectOptions(select, '11');
   // Selected reference details are shown.
   const note = screen.getByRole('note');
   const noteText = note.textContent;
-  expect(noteText).toMatch(/공식 참고값: 7 lb = 3\.18 kg · 편측/);
-  expect(noteText).toMatch(/IL-BP · Starting Resistance \(per arm\) · 제조사 kg 표기 3\.2 kg/);
-  expect(noteText).toMatch(/2026-10-19 확인/);
-  expect(noteText).toMatch(/자동 반영되지 않습니다/);
+  expect(noteText).toMatch(/Official reference: 7 lb = 3\.18 kg · One side/);
+  expect(noteText).toMatch(
+    /IL-BP · Starting Resistance \(per arm\) · Manufacturer kg figure 3\.2 kg/,
+  );
+  expect(noteText).toMatch(/checked 2026-10-19/);
+  expect(noteText).toMatch(/not automatically added/);
   expect(note.querySelector('a')).toHaveAttribute('href', bench.source_url);
   // Base weight stays empty.
-  expect(ui.labelled('기본중량', 'input').value).toBe('');
-  await ui.user.type(ui.labelled('머신 이름', 'input'), '벤치');
+  expect(ui.labelled('Base weight', 'input').value).toBe('');
+  await ui.user.type(ui.labelled('Machine name', 'input'), 'Bench');
   await ui.submit();
   await waitFor(() => expect(ui.mutations()).toHaveLength(1));
   expect(ui.mutations()[0].path).toBe('/api/machines');
@@ -177,22 +181,22 @@ test('registering a machine links a reference without filling or changing base w
   expect(ui.mutations()[0].body.base_weight).toBeNull();
 });
 
-test('unverified references read 공식값 미확인 and changing brand clears a mismatched link', async () => {
+test('unverified references read Official value unconfirmed and changing brand clears a mismatched link', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('머신 라이브러리', ui.user);
-  await ui.user.click(ui.button('머신 등록'));
-  await ui.user.selectOptions(ui.labelled('브랜드', 'select'), '1');
-  await ui.user.selectOptions(ui.labelled('공식 참고값', 'select'), '12');
+  await openPage('Machine Library', ui.user);
+  await ui.user.click(ui.button('Add machine'));
+  await ui.user.selectOptions(ui.labelled('Brand', 'select'), '1');
+  await ui.user.selectOptions(ui.labelled('Official reference', 'select'), '12');
   const noteText = screen.getByRole('note').textContent;
-  expect(noteText).toMatch(/공식 참고값: 공식값 미확인/);
+  expect(noteText).toMatch(/Official reference: Official value unconfirmed/);
   expect(noteText).toMatch(/제조사 공식 자료를 찾지 못했다/);
-  expect(noteText).toMatch(/공식 출처 없음/);
+  expect(noteText).toMatch(/No official source/);
   expect(noteText).not.toMatch(/0 kg/);
-  await ui.user.selectOptions(ui.labelled('브랜드', 'select'), '3');
+  await ui.user.selectOptions(ui.labelled('Brand', 'select'), '3');
   expect(screen.queryAllByRole('note')).toHaveLength(0);
-  expect(texts('이 브랜드의 공식 참고값 자료가 없습니다.').length).toBeGreaterThan(0);
-  await ui.user.type(ui.labelled('머신 이름', 'input'), '기타 머신');
+  expect(texts('No official reference data for this brand.').length).toBeGreaterThan(0);
+  await ui.user.type(ui.labelled('Machine name', 'input'), 'Other machine');
   await ui.submit();
   await waitFor(() => expect(ui.mutations()).toHaveLength(1));
   expect(ui.mutations()[0].body.official_weight_id).toBeNull();
@@ -202,44 +206,44 @@ test('a reference load failure does not block machines and is reported in the fo
   const ui = mount(true);
   await ui.settle();
   expect(screen.queryAllByRole('alert')).toHaveLength(0);
-  await openPage('머신 라이브러리', ui.user);
-  expect(within(screen.getByRole('list', { name: '머신' })).getAllByRole('listitem')).toHaveLength(
-    1,
-  );
-  await ui.user.click(ui.button('머신 등록'));
-  expect(texts('공식 참고값을 불러오지 못했습니다.').length).toBeGreaterThan(0);
+  await openPage('Machine Library', ui.user);
+  expect(
+    within(screen.getByRole('list', { name: 'Machine' })).getAllByRole('listitem'),
+  ).toHaveLength(1);
+  await ui.user.click(ui.button('Add machine'));
+  expect(texts('Could not load the official reference.').length).toBeGreaterThan(0);
 });
 
-test('Newtech is selectable on register and its references read 공식값 미확인', async () => {
+test('Newtech is selectable on register and its references read Official value unconfirmed', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('머신 라이브러리', ui.user);
+  await openPage('Machine Library', ui.user);
   expect(screen.getByRole('radio', { name: 'Newtech' })).toBeInTheDocument();
-  await ui.user.click(ui.button('머신 등록'));
-  const brandSelect = ui.labelled('브랜드', 'select');
+  await ui.user.click(ui.button('Add machine'));
+  const brandSelect = ui.labelled('Brand', 'select');
   expect(ui.options(brandSelect)).toContain('Newtech');
   await ui.user.selectOptions(brandSelect, '4');
-  expect(ui.options(ui.labelled('공식 참고값', 'select'))).toEqual([
-    '연결 안 함',
-    '온힘 · 온힘 라인업 (모델 미확인) — 공식값 미확인',
+  expect(ui.options(ui.labelled('Official reference', 'select'))).toEqual([
+    'Not linked',
+    '온힘 · 온힘 라인업 (모델 미확인) — Official value unconfirmed',
   ]);
 });
 
 test('brand tabs pick one brand at a time and an empty brand shows the empty state', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('머신 라이브러리', ui.user);
-  const tabs = screen.getByRole('radiogroup', { name: '브랜드' });
-  expect(within(tabs).getByRole('radio', { name: '전체 브랜드' })).toBeChecked();
-  expect(within(screen.getByRole('list', { name: '머신' })).getAllByRole('listitem')).toHaveLength(
-    1,
-  );
+  await openPage('Machine Library', ui.user);
+  const tabs = screen.getByRole('radiogroup', { name: 'Brand' });
+  expect(within(tabs).getByRole('radio', { name: 'All brands' })).toBeChecked();
+  expect(
+    within(screen.getByRole('list', { name: 'Machine' })).getAllByRole('listitem'),
+  ).toHaveLength(1);
   await ui.user.click(within(tabs).getByRole('radio', { name: 'Arsenal Strength' }));
   expect(within(tabs).getByRole('radio', { name: 'Arsenal Strength' })).toBeChecked();
-  expect(within(tabs).getByRole('radio', { name: '전체 브랜드' })).not.toBeChecked();
-  expect(screen.queryByRole('list', { name: '머신' })).toBeNull();
+  expect(within(tabs).getByRole('radio', { name: 'All brands' })).not.toBeChecked();
+  expect(screen.queryByRole('list', { name: 'Machine' })).toBeNull();
   expect(
-    screen.getByRole('heading', { level: 3, name: '나만의 머신을 등록하세요' }),
+    screen.getByRole('heading', { level: 3, name: 'Register your own machine' }),
   ).toBeInTheDocument();
   // Clicking the current tab again keeps it selected.
   await ui.user.click(within(tabs).getByRole('radio', { name: 'Arsenal Strength' }));
@@ -247,38 +251,38 @@ test('brand tabs pick one brand at a time and an empty brand shows the empty sta
   // A brand that has a machine keeps it (the tab value is a string, the brand id a number).
   await ui.user.click(within(tabs).getByRole('radio', { name: 'Hammer Strength' }));
   expect(
-    within(screen.getByRole('list', { name: '머신' })).getByRole('heading', { level: 3 }),
-  ).toHaveTextContent('내 체스트 프레스');
-  await ui.user.click(within(tabs).getByRole('radio', { name: '전체 브랜드' }));
-  expect(within(screen.getByRole('list', { name: '머신' })).getAllByRole('listitem')).toHaveLength(
-    1,
-  );
-  expect(screen.getByRole('heading', { level: 2, name: '머신 라이브러리' })).toBeInTheDocument();
+    within(screen.getByRole('list', { name: 'Machine' })).getByRole('heading', { level: 3 }),
+  ).toHaveTextContent('My Chest Press');
+  await ui.user.click(within(tabs).getByRole('radio', { name: 'All brands' }));
+  expect(
+    within(screen.getByRole('list', { name: 'Machine' })).getAllByRole('listitem'),
+  ).toHaveLength(1);
+  expect(screen.getByRole('heading', { level: 2, name: 'Machine Library' })).toBeInTheDocument();
 });
 
 test('the machine form names every field and saves notes and the single-joint checkbox', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('머신 라이브러리', ui.user);
-  await ui.user.click(ui.button('머신 등록'));
-  const dialog = screen.getByRole('dialog', { name: '머신 등록' });
+  await openPage('Machine Library', ui.user);
+  await ui.user.click(ui.button('Add machine'));
+  const dialog = screen.getByRole('dialog', { name: 'Add machine' });
   const form = within(dialog);
-  await ui.user.selectOptions(form.getByRole('combobox', { name: '브랜드' }), '2');
-  expect(form.getByRole('combobox', { name: '공식 참고값 (선택)' })).toHaveValue('');
-  await ui.user.type(form.getByRole('textbox', { name: '머신 이름' }), '케이블 플라이');
-  expect(form.getByRole('spinbutton', { name: /기본중량 \(kg\)/ })).toHaveValue(null);
-  await ui.user.type(form.getByRole('textbox', { name: '확인 자료 / 설정 메모' }), '핀 3번');
-  const singleJoint = form.getByRole('checkbox', { name: /단관절 운동 머신/ });
+  await ui.user.selectOptions(form.getByRole('combobox', { name: 'Brand' }), '2');
+  expect(form.getByRole('combobox', { name: 'Official reference (optional)' })).toHaveValue('');
+  await ui.user.type(form.getByRole('textbox', { name: 'Machine name' }), 'Cable Fly');
+  expect(form.getByRole('spinbutton', { name: /Base weight \(kg\)/ })).toHaveValue(null);
+  await ui.user.type(form.getByRole('textbox', { name: 'Source / setting notes' }), 'Pin 3');
+  const singleJoint = form.getByRole('checkbox', { name: /Single-joint exercise machine/ });
   expect(singleJoint).not.toBeChecked();
   // The visible label toggles the checkbox too.
-  await ui.user.click(form.getByText(/단관절 운동 머신/));
+  await ui.user.click(form.getByText(/Single-joint exercise machine/));
   expect(singleJoint).toBeChecked();
   await ui.submit();
   await waitFor(() => expect(ui.mutations()).toHaveLength(1));
   expect(ui.mutations()[0].body).toMatchObject({
     brand_id: 2,
-    name: '케이블 플라이',
-    notes: '핀 3번',
+    name: 'Cable Fly',
+    notes: 'Pin 3',
     single_joint: true,
     base_weight: null,
     official_weight_id: null,

@@ -8,18 +8,20 @@ test('it shows the eyebrow, the h1 with its closing dot, the description and the
     <main>
       <PageHeader
         eyebrow="YOUR PROGRESS, IN FOCUS"
-        title="꾸준함을 기록하는 공간"
-        description="운동의 흐름을 살펴보세요."
-        actions={<button>운동 기록하기</button>}
+        title="A place to record consistency"
+        description="See how your training flows."
+        actions={<button>Log workout</button>}
       />
     </main>,
   );
 
   // The dot stays part of the heading so the page's h1 reads the same as before (#222).
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('꾸준함을 기록하는 공간.');
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+    'A place to record consistency.',
+  );
   expect(screen.getByText('YOUR PROGRESS, IN FOCUS')).toBeInTheDocument();
-  expect(screen.getByText('운동의 흐름을 살펴보세요.')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '운동 기록하기' })).toBeInTheDocument();
+  expect(screen.getByText('See how your training flows.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Log workout' })).toBeInTheDocument();
   // A plain block, not a second banner landmark next to the app shell's header.
   expect(screen.queryByRole('banner')).toBeNull();
 });

@@ -10,8 +10,8 @@ import { workoutSchema } from '../src/domain.js';
 // #83: one feedback level per workout (hard · medium · easy); missing stays NULL.
 const workout = {
   date: '2026-10-15',
-  title: '하체',
-  sets: [{ exercise: '스쿼트', weight: 100, reps: 10 }],
+  title: 'Lower body',
+  sets: [{ exercise: 'Squat', weight: 100, reps: 10 }],
 };
 const invalid = ['tired', '', 0, 1, true, 'HARD'];
 
@@ -22,7 +22,7 @@ test('a missing feedback stays null and only the three levels are accepted', () 
   for (const feedback of invalid) {
     const parsed = workoutSchema.safeParse({ ...workout, feedback });
     assert.equal(parsed.success, false, `feedback ${String(feedback)}`);
-    assert.match(parsed.error!.issues[0].message, /힘듦·중간·쉬움/);
+    assert.match(parsed.error!.issues[0].message, /hard, medium, or easy/);
   }
 });
 

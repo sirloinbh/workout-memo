@@ -211,7 +211,7 @@ function autoExercises(
 function skeletons(plan: RoutinePlan): Skeleton[] {
   const perWeek = new Map<number, number>();
   return routineSchedule(plan).map((slot, index) => {
-    // n-th training day of its planned week, e.g. "3주차 2번째".
+    // n-th training day of its planned week, e.g. "Week 3 session 2".
     const session = (perWeek.get(slot.week) ?? 0) + 1;
     perWeek.set(slot.week, session);
     return {
@@ -279,11 +279,11 @@ export const planTargets = (plan: RoutinePlan) => {
 
 // Returns the reason a rest cannot be chosen today, or null when it can.
 export function restUnavailable(plan: RoutinePlan, rests: readonly string[], today: string) {
-  if (rests.includes(today)) return '오늘은 이미 휴식일로 지정했습니다';
+  if (rests.includes(today)) return 'Today is already set as a rest day';
   const day = arrangeTargets(plan, rests).days.find((d) => d.date === today);
-  if (today < plan.start_date || today > planEndDate(plan)) return '루틴 기간이 아닙니다';
-  if (!day) return '오늘은 계획된 운동일이 아닙니다';
-  if (!day.target) return '오늘 남은 계획 목표가 없습니다';
+  if (today < plan.start_date || today > planEndDate(plan)) return 'Not within the routine period';
+  if (!day) return 'Today is not a planned workout day';
+  if (!day.target) return 'No planned goals left for today';
   return null;
 }
 

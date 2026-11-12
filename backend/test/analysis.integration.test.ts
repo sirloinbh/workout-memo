@@ -79,7 +79,7 @@ test(
         await call(
           '/machines',
           'POST',
-          { brand_id: brand, name: `${tag} 머신`, base_weight: null, notes: '' },
+          { brand_id: brand, name: `${tag} machine`, base_weight: null, notes: '' },
           201,
         )
       ).id;

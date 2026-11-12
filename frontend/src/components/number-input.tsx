@@ -9,6 +9,9 @@ import { Input } from './ui/input';
 // kg and reps with − and + for one-handed entry. The value stays a string like the app's other
 // form fields, so typing "12." is not rewritten; the form and the server still validate it.
 // A button at its limit uses aria-disabled, not disabled, so keyboard focus stays on it.
+// "Increase total weight kg": the label reads as part of a sentence.
+const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
+
 export function NumberInput({
   label,
   value,
@@ -44,7 +47,7 @@ export function NumberInput({
         type="button"
         variant="outline"
         size="icon"
-        aria-label={`${label} 줄이기`}
+        aria-label={`Decrease ${lowerFirst(label)}`}
         aria-disabled={atMin || undefined}
         className={limitClass}
         disabled={disabled || readOnly}
@@ -69,7 +72,7 @@ export function NumberInput({
         type="button"
         variant="outline"
         size="icon"
-        aria-label={`${label} 늘리기`}
+        aria-label={`Increase ${lowerFirst(label)}`}
         aria-disabled={atMax || undefined}
         className={limitClass}
         disabled={disabled || readOnly}

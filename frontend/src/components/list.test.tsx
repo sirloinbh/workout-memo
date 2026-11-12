@@ -5,13 +5,13 @@ import { List, ListItem } from './list';
 
 test('rows are exposed as a named list with their items', () => {
   render(
-    <List aria-label="운동 기록">
-      <ListItem>하체</ListItem>
-      <ListItem className="custom">상체</ListItem>
+    <List aria-label="Workout records">
+      <ListItem>Lower body</ListItem>
+      <ListItem className="custom">Upper body</ListItem>
     </List>,
   );
-  expect(screen.getByRole('list', { name: '운동 기록' })).toBeInTheDocument();
+  expect(screen.getByRole('list', { name: 'Workout records' })).toBeInTheDocument();
   const items = screen.getAllByRole('listitem');
-  expect(items.map((item) => item.textContent)).toEqual(['하체', '상체']);
+  expect(items.map((item) => item.textContent)).toEqual(['Lower body', 'Upper body']);
   expect(items[1]).toHaveClass('custom');
 });

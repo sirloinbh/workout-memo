@@ -11,26 +11,26 @@ test('a field message is linked to its control and absent without a message', ()
   const { rerender } = render(
     <>
       <label>
-        총중량 kg
-        <Input {...invalidProps('sets.0.weight', '총중량은 0~99999 kg으로 입력하세요')} />
+        Total weight kg
+        <Input {...invalidProps('sets.0.weight', 'Enter a total weight from 0 to 99999 kg')} />
       </label>
-      <FieldError name="sets.0.weight">총중량은 0~99999 kg으로 입력하세요</FieldError>
+      <FieldError name="sets.0.weight">Enter a total weight from 0 to 99999 kg</FieldError>
     </>,
   );
-  const input = screen.getByLabelText('총중량 kg');
+  const input = screen.getByLabelText('Total weight kg');
   expect(input).toHaveAttribute('aria-invalid', 'true');
-  expect(input).toHaveAccessibleDescription('총중량은 0~99999 kg으로 입력하세요');
+  expect(input).toHaveAccessibleDescription('Enter a total weight from 0 to 99999 kg');
   expect(document.getElementById('issue-sets-0-weight')).toHaveClass('field-error');
   rerender(
     <>
       <label>
-        총중량 kg
+        Total weight kg
         <Input {...invalidProps('sets.0.weight', undefined)} />
       </label>
       <FieldError name="sets.0.weight">{undefined}</FieldError>
     </>,
   );
-  expect(screen.getByLabelText('총중량 kg')).not.toHaveAttribute('aria-invalid');
+  expect(screen.getByLabelText('Total weight kg')).not.toHaveAttribute('aria-invalid');
   expect(document.getElementById('issue-sets-0-weight')).toBeNull();
 });
 
@@ -40,13 +40,13 @@ test('Modal is labelled, keeps focus inside and closes on Escape or the close bu
   const user = userEvent.setup();
   const close = vi.fn();
   render(
-    <Modal title="머신 등록" close={close}>
-      <p>내용</p>
+    <Modal title="Add machine" close={close}>
+      <p>Content</p>
     </Modal>,
   );
-  const dialog = screen.getByRole('dialog', { name: '머신 등록' });
+  const dialog = screen.getByRole('dialog', { name: 'Add machine' });
   expect(dialog).toContainElement(document.activeElement as HTMLElement);
-  await user.click(screen.getByText('내용'));
+  await user.click(screen.getByText('Content'));
   expect(close).not.toHaveBeenCalled();
   await user.keyboard('{Escape}');
   expect(close).toHaveBeenCalledTimes(1);
@@ -79,17 +79,17 @@ test('Modal follows the visual viewport so the keyboard does not cover the field
   HTMLElement.prototype.scrollIntoView = scrolled;
   try {
     const { unmount } = render(
-      <Modal title="새로운 운동 기록" layout="full" close={() => {}}>
+      <Modal title="New workout record" layout="full" close={() => {}}>
         <label>
-          운동 메모
+          Workout memo
           <textarea />
         </label>
       </Modal>,
     );
-    const dialog = screen.getByRole('dialog', { name: '새로운 운동 기록' });
+    const dialog = screen.getByRole('dialog', { name: 'New workout record' });
     expect(dialog).toHaveAttribute('data-layout', 'full');
     expect(dialog.style.getPropertyValue('--keyboard-inset')).toBe('0px');
-    screen.getByLabelText('운동 메모').focus();
+    screen.getByLabelText('Workout memo').focus();
     viewport.height = window.innerHeight - 300;
     act(() => listeners.get('resize')!());
     expect(dialog.style.getPropertyValue('--keyboard-inset')).toBe('300px');
@@ -110,16 +110,16 @@ test('Modal follows the visual viewport so the keyboard does not cover the field
 
 test('a short form opens as a bottom sheet by default, with its footer inside the dialog', () => {
   render(
-    <Modal title="머신 등록" close={() => {}}>
+    <Modal title="Add machine" close={() => {}}>
       <form>
         <ModalFooter>
-          <button>저장</button>
+          <button>Save</button>
         </ModalFooter>
       </form>
     </Modal>,
   );
-  const dialog = screen.getByRole('dialog', { name: '머신 등록' });
+  const dialog = screen.getByRole('dialog', { name: 'Add machine' });
   expect(dialog).toHaveAttribute('data-layout', 'sheet');
-  const footer = screen.getByRole('button', { name: '저장' }).closest('[data-slot=modal-footer]');
+  const footer = screen.getByRole('button', { name: 'Save' }).closest('[data-slot=modal-footer]');
   expect(dialog).toContainElement(footer as HTMLElement);
 });

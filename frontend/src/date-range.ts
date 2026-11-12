@@ -1,4 +1,5 @@
 import { date } from './contract';
+import { monthNames } from './date';
 
 // #85: a period chosen directly by start and end date. Both ends are included.
 export const maxRangeDays = 371;
@@ -10,14 +11,14 @@ export const rangeDays = (from: string, to: string) =>
 // Per-field messages; an empty object means the range can be requested.
 export function checkRange(from: string, to: string) {
   const errors: { from?: string; to?: string } = {};
-  if (!from) errors.from = '시작일을 입력하세요';
-  else if (!date.safeParse(from).success) errors.from = '올바른 시작일을 입력하세요';
-  if (!to) errors.to = '종료일을 입력하세요';
-  else if (!date.safeParse(to).success) errors.to = '올바른 종료일을 입력하세요';
+  if (!from) errors.from = 'Enter a start date';
+  else if (!date.safeParse(from).success) errors.from = 'Enter a valid start date';
+  if (!to) errors.to = 'Enter an end date';
+  else if (!date.safeParse(to).success) errors.to = 'Enter a valid end date';
   if (errors.from || errors.to) return errors;
-  if (to < from) errors.to = '종료일은 시작일과 같거나 이후여야 합니다';
+  if (to < from) errors.to = 'The end date must be the same as or after the start date';
   else if (rangeDays(from, to) > maxRangeDays)
-    errors.to = `기간은 최대 ${maxRangeDays}일까지 선택할 수 있습니다`;
+    errors.to = `You can select up to ${maxRangeDays} days`;
   return errors;
 }
 // A range from the address, or null when it is missing or invalid.
@@ -47,7 +48,7 @@ export function rangeBuckets(from: string, to: string) {
     buckets.push({
       start: iso(a),
       end: iso(next),
-      label: years > 1 ? `${String(d.getUTCFullYear()).slice(2)}.${month}` : `${month}월`,
+      label: years > 1 ? `${String(d.getUTCFullYear()).slice(2)}.${month}` : monthNames[month - 1],
     });
     a = next;
   }

@@ -30,10 +30,10 @@ const fieldLabel = cn(stackedLabel, 'mb-0');
 const cell = 'px-3 py-2 text-left align-middle font-normal';
 
 const labels: Record<Target, string> = {
-  date: '측정 날짜',
-  body_weight_kg: '체중 kg',
-  body_fat_percent: '체지방률 %',
-  skeletal_muscle_kg: '골격근량 kg',
+  date: 'Measurement date',
+  body_weight_kg: 'Weight kg',
+  body_fat_percent: 'Body fat %',
+  skeletal_muscle_kg: 'Skeletal muscle mass kg',
 };
 type Row = PreviewRow & { selected: boolean; result?: string };
 type Csv = { cells: string[][]; columns: Record<Target, number | null> };
@@ -89,15 +89,15 @@ export function InbodyImport({
     setError('');
     if (file.type.startsWith('image/')) {
       setBusy(true);
-      setStatus('사진에서 글자를 읽는 중…');
+      setStatus('Reading text from the photo…');
       try {
         const recognized = await recognize(file);
         setText(recognized);
         preview([rowFromText(recognized)]);
-        setStatus('읽은 값을 확인하고 비어 있거나 틀린 값을 고친 뒤 저장하세요.');
+        setStatus('Check the values read, fix any that are empty or wrong, then save.');
       } catch (e) {
         setStatus('');
-        setError(`사진을 읽지 못했습니다: ${(e as Error).message}`);
+        setError(`Could not read the photo: ${(e as Error).message}`);
       } finally {
         setBusy(false);
       }
@@ -105,7 +105,7 @@ export function InbodyImport({
     }
     const cells = parseCsv(await file.text());
     if (cells.length < 2) {
-      setError('머리글과 측정값이 있는 CSV 파일을 선택하세요.');
+      setError('Choose a CSV file with a header row and measurements.');
       return;
     }
     const columns = detectColumns(cells[0]);
@@ -113,8 +113,8 @@ export function InbodyImport({
     preview(rowsFromCsv(cells, columns));
     setStatus(
       targets.every((t) => columns[t] !== null)
-        ? '열을 자동으로 찾았습니다. 값을 확인한 뒤 저장하세요.'
-        : '일부 열을 찾지 못했습니다. 아래에서 열을 직접 고르세요.',
+        ? 'Columns were found automatically. Check the values, then save.'
+        : 'Some columns were not found. Choose them below.',
     );
   }
   function remap(target: Target, index: number | null) {
@@ -136,7 +136,7 @@ export function InbodyImport({
       if (!row.selected || check(row).error) continue;
       try {
         await save(check(row).body);
-        next[i] = { ...row, selected: false, result: '저장함' };
+        next[i] = { ...row, selected: false, result: 'Saved' };
         saved++;
       } catch (e) {
         // A failed row (e.g. a date that already has a record) stays for correction.
@@ -145,30 +145,30 @@ export function InbodyImport({
       setRows([...next]);
     }
     setBusy(false);
-    setStatus(`${saved}건을 저장했습니다.`);
+    setStatus(`${saved} ${saved === 1 ? 'record' : 'records'} saved.`);
     // #223: a partial failure is a warning, not a progress line; each row keeps its reason.
     if (saved < chosen.length)
       setError(
-        `${chosen.length - saved}건은 저장하지 못했습니다. 표의 확인 칸에서 이유를 보고 고친 뒤 다시 저장하세요.`,
+        `${chosen.length - saved} ${chosen.length - saved === 1 ? 'record was' : 'records were'} not saved. Check the reason in the Check column of the table, fix it, then save again.`,
       );
     if (saved) done();
   }
 
   return (
-    <Card role="region" aria-label="인바디 가져오기" className="mt-4 gap-4 shadow-none">
+    <Card role="region" aria-label="Import InBody" className="mt-4 gap-4 shadow-none">
       <CardHeader>
         <CardTitle asHeading="h2" className="text-body font-semibold">
-          인바디 가져오기
+          Import InBody
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className={hint}>
-          인바디에서 내보낸 CSV 파일이나 결과지 사진을 고르세요. 사진은 이 브라우저에서만 읽고
-          서버로 보내지 않으며, 원본 파일은 보관하지 않습니다. 읽지 못한 값은 비워 두니 확인한 뒤
-          저장하세요.
+          Choose a CSV file exported from InBody or a photo of the result sheet. Photos are read
+          only in this browser and are not sent to the server, and the original file is not kept.
+          Values that could not be read are left blank, so check them before saving.
         </p>
         <Label className={fieldLabel}>
-          인바디 파일 또는 결과지 사진
+          InBody file or result sheet photo
           <Input
             className={touchText}
             type="file"
@@ -188,19 +188,19 @@ export function InbodyImport({
             className="m-0 grid min-w-0 grid-cols-2 gap-x-3 gap-y-4 border-0 p-0 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1"
             disabled={busy}
           >
-            <legend className="mb-2 text-body-sm font-medium">파일의 열</legend>
+            <legend className="mb-2 text-body-sm font-medium">File column</legend>
             {targets.map((t) => (
               <Label key={t} className={fieldLabel}>
-                {labels[t]} 열
+                {labels[t]} column
                 <select
                   className={selectField}
                   value={csv.columns[t] ?? ''}
                   onChange={(e) => remap(t, e.target.value === '' ? null : Number(e.target.value))}
                 >
-                  <option value="">없음</option>
+                  <option value="">None</option>
                   {csv.cells[0].map((h, i) => (
                     <option key={i} value={i}>
-                      {h || `${i + 1}번째 열`}
+                      {h || `Column ${i + 1}`}
                     </option>
                   ))}
                 </select>
@@ -210,7 +210,7 @@ export function InbodyImport({
         )}
         {text && (
           <details className="text-body-sm">
-            <summary className="cursor-pointer">사진에서 읽은 글자</summary>
+            <summary className="cursor-pointer">Text read from the photo</summary>
             <pre className="mt-2 rounded-md bg-muted p-3 text-meta whitespace-pre-wrap">{text}</pre>
           </details>
         )}
@@ -221,14 +221,14 @@ export function InbodyImport({
               // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- a scrollable region must be focusable.
               tabIndex={0}
               role="region"
-              aria-label="인바디 미리보기"
+              aria-label="InBody preview"
               className="max-w-full overflow-x-auto rounded-md border outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               <table className="w-full border-collapse text-body-sm">
                 <thead className="bg-muted text-meta text-muted-foreground">
                   <tr>
                     <th scope="col" className={cell}>
-                      저장
+                      Save
                     </th>
                     {targets.map((t) => (
                       <th scope="col" key={t} className={cell}>
@@ -236,7 +236,7 @@ export function InbodyImport({
                       </th>
                     ))}
                     <th scope="col" className={cell}>
-                      확인
+                      Confirm
                     </th>
                   </tr>
                 </thead>
@@ -247,7 +247,7 @@ export function InbodyImport({
                       <tr key={i} className="border-t">
                         <td className={cell}>
                           <Checkbox
-                            aria-label={`${i + 1}행 저장`}
+                            aria-label={`Save row ${i + 1}`}
                             // The legacy touch rule makes every .legacy button 44px; the box
                             // stays 16px with the common 44px ::after area, as in the machine form.
                             className="pointer-coarse:min-h-4 pointer-coarse:min-w-4"
@@ -259,12 +259,12 @@ export function InbodyImport({
                         {targets.map((t) => (
                           <td key={t} className={cell}>
                             <Input
-                              aria-label={`${i + 1}행 ${labels[t]}`}
+                              aria-label={`Row ${i + 1} ${labels[t].toLowerCase()}`}
                               className={cn(touchText, t === 'date' ? 'min-w-36' : 'w-24')}
                               type={t === 'date' ? 'date' : 'number'}
                               step={t === 'date' ? undefined : '0.01'}
                               inputMode={t === 'date' ? undefined : 'decimal'}
-                              placeholder="미입력"
+                              placeholder="Not entered"
                               disabled={busy}
                               value={row[t]}
                               onChange={(e) =>
@@ -278,7 +278,7 @@ export function InbodyImport({
                           </td>
                         ))}
                         <td className={cn(cell, 'min-w-32 text-meta text-muted-foreground')}>
-                          {row.result ?? (problem || '저장 가능')}
+                          {row.result ?? (problem || 'Can save')}
                         </td>
                       </tr>
                     );
@@ -291,7 +291,7 @@ export function InbodyImport({
               disabled={busy || !chosen.length}
               onClick={() => void saveAll()}
             >
-              선택한 {chosen.length}건 저장
+              Save {chosen.length} selected
             </Button>
           </>
         )}

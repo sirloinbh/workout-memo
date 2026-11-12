@@ -9,8 +9,8 @@ import { workoutSchema } from '../src/domain.js';
 test('set notes are optional for older clients and bounded like journal notes', () => {
   const workout = {
     date: '2026-10-15',
-    title: '하체',
-    sets: [{ exercise: '스쿼트', weight: 20, reps: 10 }],
+    title: 'Lower body',
+    sets: [{ exercise: 'Squat', weight: 20, reps: 10 }],
   };
   assert.equal(workoutSchema.parse(workout).sets[0].notes, '');
   for (const notes of [null, 123, 'x'.repeat(4001)]) {
@@ -40,19 +40,19 @@ test(
       await client.query(
         'CREATE TEMP TABLE sets (id integer PRIMARY KEY, exercise text) ON COMMIT DROP',
       );
-      await client.query("INSERT INTO sets VALUES (1, '스쿼트')");
+      await client.query("INSERT INTO sets VALUES (1, 'Squat')");
       const migration = readFileSync(
         new URL('../../database/migrations/002_set_notes.sql', import.meta.url),
         'utf8',
       );
       await client.query(migration);
       assert.deepEqual((await client.query('SELECT * FROM sets')).rows, [
-        { id: 1, exercise: '스쿼트', notes: '' },
+        { id: 1, exercise: 'Squat', notes: '' },
       ]);
-      await client.query("UPDATE sets SET notes='저장한 메모' WHERE id=1");
+      await client.query("UPDATE sets SET notes='Saved memo' WHERE id=1");
       await client.query(migration);
       assert.deepEqual((await client.query('SELECT * FROM sets')).rows, [
-        { id: 1, exercise: '스쿼트', notes: '저장한 메모' },
+        { id: 1, exercise: 'Squat', notes: 'Saved memo' },
       ]);
     } finally {
       await client.query('ROLLBACK');

@@ -24,7 +24,7 @@ const slots = routineSchedule(plan).map((s) => s.date);
 test('week targets apply only that week’s manual change to the base values', () => {
   const [squat1, lunge1] = weekExercises(plan, 0, 1);
   assert.deepEqual(squat1, {
-    exercise: '스쿼트',
+    exercise: 'Squat',
     // A plan saved before #82 has no machine.
     machine_id: null,
     sets: 3,
@@ -142,7 +142,7 @@ test('resting on the last training day excludes only that day’s target', () =>
   assert.equal(restUnavailable(plan, [], last), null);
   const preview = restPreview(plan, [], last)!;
   assert.deepEqual(preview.moves, [
-    { order: 36, week: 12, is_deload: true, split_name: '분할 2', from: last, to: null },
+    { order: 36, week: 12, is_deload: true, split_name: 'Split 2', from: last, to: null },
   ]);
   assert.deepEqual(
     preview.excluded.map((t) => t.order),
@@ -151,11 +151,11 @@ test('resting on the last training day excludes only that day’s target', () =>
 });
 
 test('rest is refused for duplicates, non-training days and dates outside the plan', () => {
-  assert.match(restUnavailable(plan, [slots[1]], slots[1])!, /이미/);
+  assert.match(restUnavailable(plan, [slots[1]], slots[1])!, /already/i);
   assert.equal(restPreview(plan, [slots[1]], slots[1]), null);
-  assert.match(restUnavailable(plan, [], '2024-03-05')!, /운동일이 아닙니다/); // Tuesday
-  assert.match(restUnavailable(plan, [], '2024-02-28')!, /기간/);
-  assert.match(restUnavailable(plan, [], '2024-05-24')!, /기간/);
+  assert.match(restUnavailable(plan, [], '2024-03-05')!, /not a planned workout day/); // Tuesday
+  assert.match(restUnavailable(plan, [], '2024-02-28')!, /routine period/);
+  assert.match(restUnavailable(plan, [], '2024-05-24')!, /routine period/);
 });
 
 test('the preview equals the applied result for every training day and prior rests', () => {

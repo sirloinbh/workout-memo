@@ -13,7 +13,9 @@ const pages = [
 ];
 
 // #184: the app is dark only, whatever was saved before the mode menu went away.
-test('저장값이 라이트여도 다크로 표시하고 화면 모드 메뉴가 없다', async ({ page }) => {
+test('Shows dark even if the saved value is light and has no display mode menu', async ({
+  page,
+}) => {
   await page.addInitScript(() => localStorage.setItem('theme', 'light'));
   await page.goto('/');
   await page.waitForLoadState('networkidle');
@@ -24,7 +26,7 @@ test('저장값이 라이트여도 다크로 표시하고 화면 모드 메뉴�
 });
 
 for (const width of [320, 390])
-  test(`페이지가 ${width}px 폭에서 가로로 넘치지 않는다`, async ({ page }) => {
+  test(`the page does not overflow horizontally at ${width}px width`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     for (const path of pages) {
       await page.goto(path);

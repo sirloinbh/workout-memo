@@ -2,6 +2,7 @@ import { Footprints } from 'lucide-react';
 import { useState } from 'react';
 
 import { StatCard } from '../components/stat-card';
+import { plural } from '../labels';
 import type { CardioSession } from './api';
 import type { LinkableWorkout } from './cardio-form';
 import { type CardioListStatus, CardioPanel } from './cardio-panel';
@@ -9,7 +10,7 @@ import { CardioStats } from './cardio-stats';
 import { formatDistance, formatDuration } from './format';
 import { totalsOf } from './stats';
 
-// #115 PR ③: the journal's 유산소 tab. CardioPanel loads the period and keeps its list; the
+// #115 PR ③: the journal's Cardio tab. CardioPanel loads the period and keeps its list; the
 // statistics reuse that list (no second request) and the personal records reload after every
 // save or delete through `refreshKey`.
 export function CardioTab({
@@ -70,22 +71,22 @@ export function CardioSummaryCard({ sessions }: { sessions: readonly CardioSessi
   if (!total.distance_km)
     return (
       <StatCard
-        label="유산소"
+        label="Cardio"
         value={String(total.count)}
-        unit="회"
+        unit={total.count === 1 ? ' session' : ' sessions'}
         icon={<Footprints size={19} />}
-        foot={`${formatDuration(total.duration_sec)} · 거리 미입력`}
+        foot={`${formatDuration(total.duration_sec)} · No distance`}
       />
     );
   // "12.3 km" → the number and its unit, as StatCard shows them apart.
   const [distance, unit] = formatDistance('running', total.distance_km)!.split(' ');
   return (
     <StatCard
-      label="유산소"
+      label="Cardio"
       value={distance}
       unit={unit}
       icon={<Footprints size={19} />}
-      foot={`${total.count}회 · ${formatDuration(total.duration_sec)}`}
+      foot={`${plural(total.count, 'session')} · ${formatDuration(total.duration_sec)}`}
     />
   );
 }

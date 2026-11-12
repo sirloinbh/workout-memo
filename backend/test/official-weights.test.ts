@@ -281,7 +281,7 @@ test('machine PUT keeps an omitted link and maps an unknown reference id to 400'
     for (const method of ['POST', 'PUT']) {
       const response: Response = await send(method, { ...body, official_weight_id: 99 });
       assert.equal(response.status, 400, method);
-      assert.equal((await response.json()).error, '선택한 공식 참고값이 존재하지 않습니다');
+      assert.equal((await response.json()).error, 'The selected official reference does not exist');
     }
   } finally {
     await new Promise<void>((resolve, reject) =>

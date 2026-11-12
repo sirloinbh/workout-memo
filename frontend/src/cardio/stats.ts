@@ -15,6 +15,7 @@ type StatSession = {
   distance_km: number | null;
 };
 export type StatUnit = 'week' | 'month';
+import { monthNames } from '../date';
 export type Totals = { distance_km: number; duration_sec: number; count: number };
 // `end` is exclusive.
 export type Bucket = { start: string; end: string; label: string } & Totals;
@@ -46,7 +47,7 @@ export function totalsOf(sessions: readonly StatSession[]): Totals {
 }
 
 // Every week or month touching from..to, empty ones included so the chart keeps its time axis.
-// Labels: the week's Monday "11/2", the month "11월" ("25.12" when the period spans years).
+// Labels: the week's Monday "11/2", the month "Nov" ("25.12" when the period spans years).
 export function bucketsOf(
   sessions: readonly StatSession[],
   from: string,
@@ -76,7 +77,8 @@ export function bucketsOf(
       buckets.push({
         start: iso(a.getTime()),
         end: iso(Date.UTC(y, m + 1, 1)),
-        label: years > 1 ? `${String(a.getUTCFullYear()).slice(2)}.${month}` : `${month}월`,
+        label:
+          years > 1 ? `${String(a.getUTCFullYear()).slice(2)}.${month}` : monthNames[month - 1],
         ...empty(),
       });
     }

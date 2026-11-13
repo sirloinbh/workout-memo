@@ -1,92 +1,92 @@
-# #32 feat: 종목별 PR·추정 1RM·부위별 주간 운동량 분석
+# #32 feat: Per-exercise PRs, estimated 1RM, and weekly training volume by body part
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/32
-- 브랜치: `feat/32-exercise-pr-analysis` (최신 `origin/main` 기준)
+- Issue: https://github.com/sirloinbh/workout-memo/issues/32
+- Branch: `feat/32-exercise-pr-analysis` (based on the latest `origin/main`)
 
-## 목적
+## Purpose
 
-#17의 기간 총량 통계를 확장해 어떤 종목과 부위가 성장하는지 확인한다. 의학적 피로·회복 점수와 AI 해설은 범위에서 제외했다.
+Extend #17's period total statistics so you can see which exercises and body parts are growing. Medical fatigue and recovery scores and AI commentary are out of scope.
 
-## 변경 내용
+## Changes
 
-- `backend/src/analysis.ts` (신규): 저장된 세트로부터 종목별 PR·기간 추이·월요일 시작 주간 부위 통계를 계산하는 순수 함수 `analyze`, 추정 1RM 함수 `estimatedOneRepMax`, 부위 매핑 입력 스키마 `bodyPartMappingSchema`(Zod). PR을 저장하지 않고 조회할 때마다 계산한다.
-- `backend/src/domain.ts`: #27의 일곱 부위를 `bodyParts`로 공유하고 루틴 스키마도 이를 사용한다. 같은 종목 판단식 `exerciseKeySql`(`lower(trim(운동명))`)을 추가해 기존 목표 판정 SQL과 분석·매핑 SQL이 같은 식을 사용한다. 정규화는 PostgreSQL에서 수행해 두 기능이 같은 collation을 따른다.
+- `backend/src/analysis.ts` (new): the pure function `analyze`, which calculates per-exercise PRs, period trends, and Monday-start weekly body-part statistics from the saved sets; the estimated 1RM function `estimatedOneRepMax`; and the body-part mapping input schema `bodyPartMappingSchema` (Zod). PRs are not stored and are calculated on every lookup.
+- `backend/src/domain.ts`: shares #27's seven body parts as `bodyParts`, and the routine schema uses it too. Added the same-exercise expression `exerciseKeySql` (`lower(trim(exercise name))`) so the existing goal evaluation SQL and the analysis and mapping SQL use the same expression. The normalization is done in PostgreSQL so both features follow the same collation.
 - `backend/src/app.ts`:
-  - `GET /api/analysis?from&to`: 날짜 형식·실제 달력 날짜·시작일 ≤ 종료일·최대 371일을 DB 조회 전에 검증한다. 서울 기준 오늘 이하의 세트만 조회한다.
-  - `GET /api/exercise-body-parts`: 정규화된 운동 키별 부위 목록.
-  - `PUT /api/exercise-body-parts` `{ exercise, body_parts }`: 일곱 부위만, 중복 없이 허용한다(중복·알 수 없는 부위·빈 운동명·120자 초과는 400). 트랜잭션에서 기존 매핑을 교체하며 빈 배열은 매핑 해제(미분류)다.
-  - 목표 판정 SQL은 동작 변경 없이 공유 식으로 바꿨다.
-- `database/migrations/007_exercise_body_parts.sql` (신규, `CREATE TABLE IF NOT EXISTS`로 재실행 안전): `exercise_body_parts(exercise, body_part)` 기본키 쌍, 부위 CHECK. 부위 리터럴은 `U&'\XXXX'` ASCII 유니코드 이스케이프로 작성했다(아래 판단 사항). `database/README.md`에 적용 명령과 의미를 추가했다.
-- `frontend/src/analysis.tsx` (신규) 및 `main.tsx`의 `종목 분석` 메뉴: 기준 날짜와 1/4/12주(월요일 시작, 기준일이 속한 주로 끝남) 선택, 정책 안내, 주차별 부위 표(일곱 부위 + 미분류, 세트·볼륨), 종목별 PR 카드(최고 중량·최다 반복·최고 세트 볼륨·실측 1RM·추정 1RM, 달성일, 동률 횟수, 제외 세트 안내), 날짜별 최고 중량 막대 추이(차트 라이브러리 없이 기존 막대 그래프 방식), 부위 지정 편집기. 늦게 도착한 이전 기간 응답은 최신 결과를 덮어쓰지 않는다. `style.css`에 해당 스타일을 추가했다.
-- `README.md` 기능 설명에 분석 규칙을 추가했다.
+  - `GET /api/analysis?from&to`: validates the date format, a real calendar date, start ≤ end, and a maximum of 371 days before the DB query. It reads only sets on or before today in Seoul time.
+  - `GET /api/exercise-body-parts`: the list of body parts per normalized exercise key.
+  - `PUT /api/exercise-body-parts` `{ exercise, body_parts }`: allows only the seven body parts, without duplicates (a duplicate, an unknown body part, an empty exercise name, or more than 120 characters gives 400). It replaces the existing mapping in a transaction, and an empty array clears the mapping (unclassified).
+  - Changed the goal evaluation SQL to the shared expression with no behavior change.
+- `database/migrations/007_exercise_body_parts.sql` (new, safe to re-run with `CREATE TABLE IF NOT EXISTS`): `exercise_body_parts(exercise, body_part)` primary key pair, and a body-part CHECK. The body-part literals are written with `U&'\XXXX'` ASCII Unicode escapes (see the judgment calls below). Added the apply command and the meaning to `database/README.md`.
+- `frontend/src/analysis.tsx` (new) and the `종목 분석` (Exercise analysis) menu in `main.tsx`: choice of a reference date and 1/4/12 weeks (Monday start, ending in the week that contains the reference date), a policy notice, a weekly body-part table (seven body parts + unclassified, sets and volume), per-exercise PR cards (best weight, most reps, best set volume, measured 1RM, estimated 1RM, achievement date, tie count, excluded-set notice), a per-date best-weight bar trend (the existing bar graph method, without a chart library), and a body-part assignment editor. A late response for an earlier period does not overwrite the latest result. Added the matching styles to `style.css`.
+- Added the analysis rules to the feature description in `README.md`.
 
-## 공식과 정책
+## Formulas and policy
 
-- **같은 종목**: 목표 판정과 같은 `lower(trim(운동명))`. 앞뒤 공백·영문 대소문자를 무시하며 내부 공백·표기 차이는 다른 종목이다. 화면 이름은 가장 최근 기록의 표기를 사용한다.
-- **PR**: 서울 기준 오늘까지의 전체 서버 기록(선택 기간과 무관). 최고 중량·최고 세트 볼륨(총중량 × 반복)은 0kg 세트를 제외한다. 최다 반복은 0kg 세트도 포함한다. 같은 값이 여러 번이면 **처음 달성한 날짜**를 PR 날짜로 하고 `ties`(동률 횟수)를 함께 반환·표시한다. 값은 소수 둘째 자리로 반올림해 비교한다.
-- **추정 1RM (Epley)**: `총중량 kg × (1 + 반복 수 ÷ 30)`, 소수 둘째 자리 반올림, 단위 kg. 1~10회 세트에만 적용하고 1회 세트는 그 중량이다. 0kg 세트(맨몸·보조 등 중량 미입력)와 기본중량 미확인 머신(선택한 머신의 `base_weight`가 NULL) 세트는 제외한다. 화면에 "추정"으로 표기하고 실측과 구분한다.
-- **실측 1RM**: 실제 1회 수행한 세트 중 최고 총중량(0kg·기본중량 미확인 세트 제외).
-- **기간 추이**: 선택 기간 안의 날짜별 최고 중량·최다 반복·최고 세트 볼륨·추정 1RM.
-- **부위별 주간 운동량**: 월요일 시작 주(날짜는 YYYY-MM-DD 달력 연산, 서울 기준 오늘까지). 사용자가 명시한 매핑만 사용하며 운동명으로 부위를 추측하지 않는다. 매핑이 없으면 `미분류`. 여러 부위에 매핑된 운동의 세트는 **각 부위에 세트와 볼륨을 모두 더한다**. 따라서 부위 합계가 주간 전체보다 클 수 있으며 화면에 명시했다. 주간 전체 세트·볼륨은 중복 없이 따로 표시한다. 볼륨은 #17과 같이 기록된 총중량 × 반복(0kg 세트는 세트 수만 증가)이다.
-- **미래 기록·초안**: 목표 판정과 같이 서울 기준 오늘 이후 날짜의 기록은 분석에서 제외한다. 브라우저 초안은 서버 기록이 아니므로 포함되지 않는다. 기존 #17 기간 통계는 변경하지 않았다.
-- **수정·삭제**: 저장 값이 없고 매 조회 시 계산하므로 일지 수정·삭제 후 분석 화면을 다시 열거나 기간을 바꾸면 반영된다.
+- **Same exercise**: the same `lower(trim(exercise name))` as the goal evaluation. Leading and trailing spaces and English letter case are ignored, and inner spacing and notation differences make a different exercise. The on-screen name uses the notation of the most recent record.
+- **PR**: all server records up to today in Seoul time (regardless of the selected period). The best weight and the best set volume (total weight × reps) exclude 0 kg sets. The most reps includes 0 kg sets. If the same value occurs several times, the **first date it was achieved** is the PR date, and `ties` (the tie count) is returned and shown together. Values are rounded to two decimals before comparison.
+- **Estimated 1RM (Epley)**: `total weight kg × (1 + reps ÷ 30)`, rounded to two decimals, unit kg. It applies only to sets of 1 to 10 reps, and a 1-rep set is that weight. Sets of 0 kg (bodyweight or assisted, with no weight entered) and sets on a machine with an unconfirmed base weight (the selected machine's `base_weight` is NULL) are excluded. It is labeled "추정" (estimated) on screen and distinguished from the measured value.
+- **Measured 1RM**: the best total weight among sets actually done for 1 rep (0 kg and unconfirmed-base-weight sets excluded).
+- **Period trend**: the per-date best weight, most reps, best set volume, and estimated 1RM within the selected period.
+- **Weekly volume by body part**: Monday-start weeks (dates use YYYY-MM-DD calendar arithmetic, up to today in Seoul time). Only the mapping the user stated explicitly is used, and the body part is not guessed from the exercise name. With no mapping it is `미분류` (Unclassified). For sets of an exercise mapped to several body parts, **both sets and volume are added to each body part**. So the body-part totals can be larger than the weekly total, and this is stated on screen. The weekly total sets and volume are shown separately without duplication. Volume is the recorded total weight × reps, as in #17 (a 0 kg set only increases the set count).
+- **Future records and drafts**: as in the goal evaluation, records dated after today in Seoul time are excluded from the analysis. A browser draft is not a server record, so it is not included. The existing #17 period statistics were not changed.
+- **Edit and delete**: nothing is stored and it is calculated on every lookup, so it is reflected when you reopen the analysis screen or change the period after editing or deleting a log.
 
-## 판단 사항 (모호한 요구의 보수적 선택)
+## Judgment calls (conservative choices for ambiguous requirements)
 
-1. 기본중량 미확인 머신 세트도 최고 중량·볼륨 PR에는 기록값 그대로 포함하고(사용자가 입력한 총중량 기록), 1RM 계산에서만 제외한다. 화면에 제외 세트 수를 표시한다. 머신 기본중량을 나중에 입력하면 과거 세트의 제외 여부도 조회 시점의 머신 값으로 바뀐다.
-2. 보조(어시스트) 운동을 식별할 필드가 없으므로 이름으로 추측하지 않는다. 0kg이 아닌 보조 세트는 일반 세트로 계산된다. 별도 플래그가 필요하면 후속 이슈로 남긴다.
-3. 일반 공식 적용 범위는 1~10회로 제한했다(고반복 세트는 오차가 커서 제외).
-4. 분석 범위는 371일 이하로 제한했다(53주). UI는 최대 12주를 요청한다.
-5. 미래 기록 제외는 목표 판정 규칙을 따랐다. 주간 부위 통계도 같은 분석 응답이므로 같은 규칙을 적용했다. #17 기간 통계(미래 기록 포함 가능)는 그대로 두었다.
-6. 마이그레이션의 한글 부위 리터럴은 문서화된 `Get-Content | docker ... psql` 경로에서 Windows PowerShell 5.1 기본 출력 인코딩으로 깨지는 것을 첫 전체 검사에서 실제로 관찰했다(CHECK 위반으로 PUT 실패). 그래서 ASCII 유니코드 이스케이프로 바꿨다. 전용 테스트 DB의 깨진 테이블만 삭제한 뒤 다시 적용했다. 다른 마이그레이션(예: 001의 `기타` 브랜드)도 같은 경로로 적용하면 영향을 받을 수 있으나 범위 밖이라 변경하지 않았다.
-7. 매핑 저장 시 운동명 키는 서버가 PostgreSQL 식으로 계산한다. 아직 기록이 없는 운동명도 매핑할 수 있다(현재 UI는 기록이 있는 종목에서만 편집).
+1. Sets on a machine with an unconfirmed base weight are still included as recorded in the best weight and volume PRs (they are total weights the user entered), and are excluded only from the 1RM calculation. The screen shows the number of excluded sets. If the machine's base weight is entered later, whether past sets are excluded also changes to the machine's value at lookup time.
+2. There is no field to identify assisted exercises, so I do not guess from the name. An assisted set that is not 0 kg is calculated as a normal set. If a separate flag is needed, it is left for a follow-up issue.
+3. The range where the general formula applies is limited to 1 to 10 reps (high-rep sets are excluded because of large error).
+4. The analysis range is limited to 371 days or less (53 weeks). The UI requests at most 12 weeks.
+5. Excluding future records follows the goal evaluation rule. The weekly body-part statistics are in the same analysis response, so the same rule applies. The #17 period statistics (which may include future records) were left as they are.
+6. In the first full check, I actually observed that the Korean body-part literals in the migration are corrupted by Windows PowerShell 5.1's default output encoding on the documented `Get-Content | docker ... psql` path (the PUT failed with a CHECK violation). So I changed them to ASCII Unicode escapes. I deleted only the corrupted table in the dedicated test DB and applied again. Other migrations (for example the `기타` (Other) brand in 001) can be affected the same way if applied through the same path, but that is out of scope and I did not change them.
+7. When a mapping is saved, the server computes the exercise-name key with the PostgreSQL expression. An exercise name that has no records yet can also be mapped (the current UI edits only exercises that have records).
 
-## 테스트
+## Tests
 
-- `backend/test/analysis.test.ts` (단위·HTTP 모의 저장소, 9개): 빈 기록(월요일 시작 주, 일곱 부위 + 미분류 0), Epley 값과 적용/제외 경계, 동률 PR의 최초 달성일과 동률 수, 대소문자 다른 표기의 동일 종목 묶음과 최신 표기, 실측/추정 1RM 구분, 맨몸 전용 종목, 연말 주 경계의 시작·종료일 포함과 인접일 제외(PR은 전체 기록), 복수 부위 중복 집계와 미분류, 수정·삭제된 행으로 재계산, 잘못된 날짜·역전 범위·372일 범위·잘못된 매핑 입력이 저장소 접근 전에 400인지, 서울 기준 오늘 파라미터로 세트를 제한하는지.
-- `backend/test/analysis.integration.test.ts` (전용 DB, 1개, `TEST_DATABASE_URL` 없으면 skip): 실제 API로 매핑(대문자·공백 표기 → 정규화 키), 1987-03-02(월)~03-08(일) 경계, 직전 일요일·다음 월요일 기록, 2099년 미래 기록 제외, 기본중량 미확인 머신 세트의 1RM 제외, 같은 식별 규칙의 목표 달성, 일지 수정 후 PR 하향과 동률 재등장, 삭제 후 재계산, 매핑 해제 후 미분류. 생성한 일지·목표·매핑·머신만 정리한다.
-- `backend/test/analysis-ui.test.ts` (기존 VM 렌더링 어댑터 방식, 3개): 실제 `main.tsx` 진입점과 서버 `analyze` 함수를 쓰는 메모리 API. 빈 상태·정책 문구·월요일 주 범위, 1/4/12주와 기준 날짜 변경 요청 범위, PR·동률·제외 안내·추이 라벨, 부위 지정 PUT 본문과 재조회 결과, 다른 화면에서 일지가 수정·삭제된 뒤 재진입 시 재계산. 어댑터는 숫자 0을 React처럼 출력하고 화면에서 사라진 컴포넌트 상태를 버리도록 이 파일 안에서만 보완했다.
-- `backend/test/workout-draft-ui.test.ts`: 이 하네스는 알 수 없는 import를 거부하므로 기존 `./routines`와 같은 방식으로 `./analysis`를 빈 컴포넌트로 연결했다. assertion은 변경하지 않았다.
+- `backend/test/analysis.test.ts` (unit and HTTP mock repository, 9): empty records (Monday-start week, seven body parts + unclassified 0), Epley values and the apply/exclude boundary, the first achievement date and tie count of a tied PR, grouping the same exercise written with different letter case and the latest notation, measured vs estimated 1RM, an exercise that is bodyweight only, including the start and end dates at a year-end week boundary and excluding adjacent days (PR uses all records), duplicate counting for several body parts and unclassified, recalculation from edited and deleted rows, whether an invalid date, a reversed range, a 372-day range, and an invalid mapping input give 400 before repository access, and whether sets are limited by the Seoul-today parameter.
+- `backend/test/analysis.integration.test.ts` (dedicated DB, 1, skipped without `TEST_DATABASE_URL`): through the real API, mapping (uppercase and spaced notation → normalized key), the 1987-03-02 (Mon) to 03-08 (Sun) boundary, records on the previous Sunday and the next Monday, excluding 2099 future records, excluding sets on a machine with an unconfirmed base weight from 1RM, goal achievement with the same identification rule, a lower PR after a log edit and the tie reappearing, recalculation after delete, and unclassified after the mapping is cleared. It cleans up only the logs, goals, mappings, and machines it created.
+- `backend/test/analysis-ui.test.ts` (existing VM rendering adapter method, 3): an in-memory API that uses the real `main.tsx` entry point and the server `analyze` function. Empty state, policy text, and the Monday week range; the request range for 1/4/12 weeks and a reference date change; PR, tie, exclusion notice, and trend labels; the body-part assignment PUT body and the re-fetch result; and recalculation on re-entry after a log is edited or deleted on another screen. I patched the adapter only inside this file so it prints the number 0 like React and discards the state of a component that disappeared from the screen.
+- `backend/test/workout-draft-ui.test.ts`: this harness rejects unknown imports, so I connected `./analysis` as an empty component the same way as the existing `./routines`. Assertions were not changed.
 
-## 실제 실행 결과 (2026-10-19, Asia/Seoul)
+## Actual run results (2026-10-19, Asia/Seoul)
 
-| 명령                                                                                                                                                  | 결과                                                                                                                                                                                                                                                                    |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 구현 파일을 `git stash -u`로 잠시 제외하고 `node node_modules/tsx/dist/cli.mjs --test backend/test/analysis.test.ts backend/test/analysis-ui.test.ts` | exit 1; 2개 파일 모두 `../src/analysis.js` 모듈 부재로 실패(pass 0 / fail 2). 이후 stash 복원                                                                                                                                                                           |
-| 같은 명령 (구현 후 첫 실행)                                                                                                                           | fail 1 / pass 11. UI 어댑터가 숫자 0을 빈 문자열로 출력하는 문제였다. 어댑터를 보완해 pass 12 / fail 0                                                                                                                                                                  |
-| `issue-check.ps1 -Issue 32 -Migrate` 1차                                                                                                              | migration 001~004, 007 적용 후 lint 실패(`prefer-const`, 통합 테스트)                                                                                                                                                                                                   |
-| 2차                                                                                                                                                   | typecheck 실패(`best` 함수 타입). 제네릭으로 수정                                                                                                                                                                                                                       |
-| 3차                                                                                                                                                   | format:check 실패(analysis.ts). Prettier 적용                                                                                                                                                                                                                           |
-| 4차                                                                                                                                                   | 앱 테스트 222 중 pass 204 / fail 18: 마이그레이션 한글 CHECK 깨짐으로 매핑 PUT 실패(통합 1), `workout-draft-ui` 하네스의 `./analysis` import 거부(17)                                                                                                                   |
-| 5차                                                                                                                                                   | format:check 실패(workout-draft-ui.test.ts 줄바꿈). Prettier 적용                                                                                                                                                                                                       |
-| 6차 (최종)                                                                                                                                            | **EXIT=0**. format:check·lint·frontend/backend typecheck 통과, 앱 테스트 **222 pass / 0 fail / 0 skip**(전용 DB 통합 포함, 새 통합 테스트 통과), test:agents **162 pass / 0 fail / 0 skip**, test:skills **4 pass / 0 fail / 0 skip**, frontend(vite)·backend 빌드 통과 |
+| Command                                                                                                                                                                          | Result                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| With the implementation files temporarily excluded by `git stash -u`, `node node_modules/tsx/dist/cli.mjs --test backend/test/analysis.test.ts backend/test/analysis-ui.test.ts` | exit 1; both files failed because the `../src/analysis.js` module is missing (pass 0 / fail 2). Then restored the stash                                                                                                                                                                                                    |
+| Same command (first run after implementation)                                                                                                                                    | fail 1 / pass 11. The UI adapter printed the number 0 as an empty string. After patching the adapter, pass 12 / fail 0                                                                                                                                                                                                     |
+| `issue-check.ps1 -Issue 32 -Migrate` run 1                                                                                                                                       | after applying migrations 001 to 004 and 007, lint failed (`prefer-const`, integration test)                                                                                                                                                                                                                               |
+| Run 2                                                                                                                                                                            | typecheck failed (the type of the `best` function). Fixed with a generic                                                                                                                                                                                                                                                   |
+| Run 3                                                                                                                                                                            | format:check failed (analysis.ts). Applied Prettier                                                                                                                                                                                                                                                                        |
+| Run 4                                                                                                                                                                            | app tests 204 pass / 18 fail out of 222: the mapping PUT failed because the migration's Korean CHECK was corrupted (integration 1), and the `workout-draft-ui` harness rejected the `./analysis` import (17)                                                                                                               |
+| Run 5                                                                                                                                                                            | format:check failed (line breaks in workout-draft-ui.test.ts). Applied Prettier                                                                                                                                                                                                                                            |
+| Run 6 (final)                                                                                                                                                                    | **EXIT=0**. format:check, lint, and frontend/backend typecheck passed, app tests **222 pass / 0 fail / 0 skip** (including the dedicated-DB integration; the new integration test passed), test:agents **162 pass / 0 fail / 0 skip**, test:skills **4 pass / 0 fail / 0 skip**, frontend (vite) and backend builds passed |
 
-- 실행 런타임은 프로젝트 지정 Node 24.21.0이며 전용 DB `workout_test_32`를 사용했다. 연결 문자열은 출력·기록하지 않았다.
-- 이 기록 작성·Prettier 적용 후 같은 `issue-check.ps1 -Issue 32 -Migrate`를 다시 실행했다: **EXIT=0**, 앱 222 pass / 0 fail / 0 skip, test:agents 162/0/0, test:skills 4/0/0, 빌드 통과. `git diff --check` exit 0.
+- The runtime was the project-specified Node 24.21.0 with the dedicated DB `workout_test_32`. The connection string was not printed or recorded.
+- After writing this record and applying Prettier, I re-ran the same `issue-check.ps1 -Issue 32 -Migrate`: **EXIT=0**, app 222 pass / 0 fail / 0 skip, test:agents 162/0/0, test:skills 4/0/0, builds passed. `git diff --check` exit 0.
 
-## 제한·후속
+## Limits and follow-up
 
-- 실제 브라우저(PC·모바일 레이아웃, 포커스, 터치)는 이 단계에서 확인하지 않았다. VM 렌더링 테스트는 브라우저 검증이 아니다. 코디네이터의 브라우저 확인이 남아 있다.
-- 보조 운동 표시 필드, 부위 매핑을 일지 입력 화면에서 바로 지정하는 기능, 종목 이름 병합(오타·동의어)은 범위 밖이다.
-- 분석 API는 서울 기준 오늘까지의 전체 세트를 매번 읽는다. 개인 기록 규모에서는 충분하지만 기록이 매우 많아지면 집계 SQL/색인 최적화가 필요할 수 있다.
+- I did not check a real browser (PC and mobile layout, focus, touch) in this phase. A VM rendering test is not browser verification. The coordinator's browser check remains.
+- A field to mark assisted exercises, assigning body-part mappings directly from the log entry screen, and merging exercise names (typos and synonyms) are out of scope.
+- The analysis API reads all sets up to today in Seoul time every time. This is enough at personal-record scale, but aggregation SQL and index optimization may be needed if the records grow very large.
 
-## 코디네이터 검토·실제 브라우저 확인 — 2026-10-19
+## Coordinator review and real-browser check — 2026-10-19
 
-- 독립 검토(읽기 전용): 차단 지적 없음. 007의 `U&'\XXXX'` 이스케이프가 일곱 부위(가슴·등·어깨·팔·하체-앞·하체-뒤·복근)로 정확히 복원됨, 목표 판정 쿼리는 정규화 표현식만 공유하고 결과는 그대로임, JS/SQL 종목 키 일치, 매핑 PUT 트랜잭션, 날짜 문자열 파서·월요일 시작 주 계산, Epley 범위, 동률 처리, 370일 범위 제한과 파라미터 쿼리를 확인했다. 참고(P3): PR 계산을 위해 오늘까지의 전체 세트를 읽음(개인 규모에서 문제 없음), 기본중량 미확인 머신 세트도 주간 볼륨에는 포함.
-- 실제 브라우저(Playwright, 전용 DB `workout_test_32`의 dev 서버): 10/13·10/15·10/19 기록과 미래 날짜 10/25(벤치 200 kg × 1)를 저장하고 벤치프레스를 가슴·팔에 매핑했다.
-  - 벤치 최고 중량 65 kg × 5 · 2026-10-15 · 동률 2회(처음 달성일 유지), 미래 200 kg 제외, " 벤치프레스 "(앞뒤 공백)도 같은 종목으로 묶임.
-  - 추정 1RM: 벤치 76 kg(60 × (1 + 8/30)), 스쿼트 121 kg(110 × 3회). 12회 세트와 풀업 0 kg 세트는 1RM에서 제외하고, 0 kg 세트는 반복 PR에만 포함한다는 안내가 표시됨.
-  - 10/19 주(월요일 시작): 전체 2세트 655 kg, 가슴 1세트 325 kg, 팔 1세트 325 kg(복수 부위 중복 집계 안내 표시), 미분류 1세트 330 kg.
-  - 모바일 390px 가로 스크롤 없음, PC 1440px 배치 정상.
+- Independent review (read-only): no blocking findings. Confirmed that the `U&'\XXXX'` escapes in 007 restore exactly the seven body parts (가슴 chest, 등 back, 어깨 shoulders, 팔 arms, 하체-앞 lower body front, 하체-뒤 lower body back, 복근 abs), that the goal evaluation query shares only the normalization expression and its result is unchanged, that the JS and SQL exercise keys match, the mapping PUT transaction, the date string parser and Monday-start week calculation, the Epley range, tie handling, the 370-day range limit, and parameterized queries. Notes (P3): it reads all sets up to today for the PR calculation (fine at personal scale), and sets on a machine with an unconfirmed base weight are still included in the weekly volume.
+- Real browser (Playwright, dev server on the dedicated DB `workout_test_32`): saved records on 10/13, 10/15, and 10/19 and a future date 10/25 (Bench 200 kg × 1), and mapped Bench press to chest and arms.
+  - Bench best weight 65 kg × 5 · 2026-10-15 · tied 2 times (first achievement date kept), the future 200 kg excluded, and " 벤치프레스 " (Bench press, with leading and trailing spaces) is also grouped as the same exercise.
+  - Estimated 1RM: Bench 76 kg (60 × (1 + 8/30)), Squat 121 kg (110 × 3 reps). The 12-rep set and the pull-up 0 kg set are excluded from 1RM, and a notice is shown that 0 kg sets are included only in the reps PR.
+  - Week of 10/19 (Monday start): total 2 sets 655 kg, chest 1 set 325 kg, arms 1 set 325 kg (the duplicate counting notice for several body parts is shown), unclassified 1 set 330 kg.
+  - No horizontal scrolling at mobile 390px, and the PC 1440px layout is normal.
 
-## main 통합: #28 루틴 진행·#31 세트 완료와 충돌 해결 — 2026-10-19
+## Merge into main: resolving conflicts with #28 routine progress and #31 set completion — 2026-10-19
 
-- #28(PR #50)·#31(PR #51) 병합 후 `backend/src/app.ts`, `backend/src/domain.ts`, `backend/test/workout-draft-ui.test.ts`, `database/README.md`, `frontend/src/main.tsx`, `frontend/src/style.css`가 충돌했다. 각 기능이 추가한 import·스타일·문서 절을 모두 유지했다.
-  - `app.ts`: #28의 `progress.js`가 `seoulToday()` 함수를 내보내므로 이 작업의 SQL 상수는 `seoulTodaySql`로 이름을 바꿨다. 목표 판정 쿼리는 #31의 `s.completed` 조건과 이 작업의 `exerciseKeySql` 동일성 규칙을 함께 적용한다.
-  - `domain.ts`: 루틴 분할 부위는 `bodyParts` 목록을 쓰고 #27/#28의 오류 문구를 유지한다.
-  - `database/README.md`: 005(#28) 절 뒤에 007 절을 둔다.
-- git이 감지하지 못한 의미 충돌을 고쳤다. `/api/analysis`가 미완료(`completed=false`) 계획 세트까지 읽어 PR·추정 1RM·추이·주간 운동량에 반영할 수 있었다. 조회에 `s.completed` 조건을 추가했고 README에 명시했다.
-- 테스트: `analysis.integration.test.ts`에 1987-03-08 일지의 미완료 200 kg × 10 세트를 추가했다. 기존 PR·추이·주간 합계 검증이 그대로 유지돼야 한다. 필터를 임시로 제거하면 이 테스트가 **fail**(최고 중량 PR이 200 kg)하고, 필터 적용 시 pass함을 확인했다. `set-completion-ui.test.ts`는 `./analysis` 페이지를 다른 UI 테스트와 같이 빈 컴포넌트로 대체한다.
-- 전용 테스트 DB에 `007_exercise_body_parts.sql`을 `psql -f`로 적용했다(005·006은 #31 통합 때 적용).
-- `npm run check`(Node 24, `TEST_DATABASE_URL` 설정): **EXIT=0**. 포맷·lint·typecheck·build 통과, `npm test` **287 pass / 0 fail / 0 skip**(DB 통합 포함), `test:agents` **162 pass**, `test:skills` **4 pass**.
-- 통합 후 실제 브라우저 확인은 하지 않았다.
+- After #28 (PR #50) and #31 (PR #51) were merged, `backend/src/app.ts`, `backend/src/domain.ts`, `backend/test/workout-draft-ui.test.ts`, `database/README.md`, `frontend/src/main.tsx`, and `frontend/src/style.css` conflicted. I kept all the imports, styles, and doc sections that each feature added.
+  - `app.ts`: #28's `progress.js` exports a `seoulToday()` function, so I renamed this work's SQL constant to `seoulTodaySql`. The goal evaluation query applies #31's `s.completed` condition and this work's `exerciseKeySql` same-identity rule together.
+  - `domain.ts`: the routine split body parts use the `bodyParts` list and keep the error wording of #27/#28.
+  - `database/README.md`: the 007 section is placed after the 005 (#28) section.
+- I fixed a semantic conflict that git did not detect. `/api/analysis` could read even incomplete (`completed=false`) planned sets and reflect them in PRs, estimated 1RM, trends, and weekly volume. I added the `s.completed` condition to the query and stated it in the README.
+- Tests: added an incomplete 200 kg × 10 set to the 1987-03-08 log in `analysis.integration.test.ts`. The existing PR, trend, and weekly total checks must still hold. When I temporarily removed the filter, this test **failed** (the best weight PR was 200 kg), and I confirmed it passes with the filter. `set-completion-ui.test.ts` replaces the `./analysis` page with an empty component like the other UI tests.
+- Applied `007_exercise_body_parts.sql` to the dedicated test DB with `psql -f` (005 and 006 were applied during the #31 merge).
+- `npm run check` (Node 24, `TEST_DATABASE_URL` set): **EXIT=0**. Format, lint, typecheck, and build passed, `npm test` **287 pass / 0 fail / 0 skip** (including DB integration), `test:agents` **162 pass**, `test:skills` **4 pass**.
+- I did not do a real-browser check after the merge.

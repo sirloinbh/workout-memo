@@ -1,31 +1,31 @@
-# #101 통계 카드를 공통 Card로 교체 (2단계)
+# #101 Replace the stat cards with the shared Card (step 2)
 
-- 이슈: [#101](https://github.com/sirloinbh/workout-memo/issues/101)
-- 브랜치: `feat/101-stat-cards`
+- Issue: [#101](https://github.com/sirloinbh/workout-memo/issues/101)
+- Branch: `feat/101-stat-cards`
 
-## 목적
+## Purpose
 
-#101을 요소 하나씩 나눠 옮기는 두 번째 PR입니다. 대시보드와 운동 일지의 통계 카드를 공통 `Card` 기준으로 바꾸고 해당 `style.css` 규칙을 지웁니다. 이 PR은 #101을 닫지 않습니다.
+This is the second PR in #101, which moves one element at a time. The stat cards on the dashboard and the workout journal now follow the shared `Card` standard, and the matching `style.css` rules are removed. This PR does not close #101.
 
-## 변경 — feat: 통계 카드 교체
+## Change — feat: replace the stat cards
 
-- `frontend/src/components/stat-card.tsx`: `Card` 위에 만든 `StatCard`를 추가하고 `app.tsx`의 `Stat`을 대체했습니다.
-- `frontend/src/app.tsx`: 카드 묶음의 배치를 유틸리티 클래스로 옮겼습니다.
-- `frontend/src/style.css`: `.stats`, `.stat`, `.stat-top`, `.stat-value`, `.stat-foot` 규칙과 반응형 규칙, 대비 규칙의 `.stat-top span`을 지웠습니다.
-- 글자 크기를 공통 토큰(`text-caption`, `text-meta`, `text-2xl`, `text-3xl`)으로 바꿔 라벨과 설명이 조금 커지고 큰 숫자는 좁은 화면에서 조금 작아집니다.
-- 화면 차이: 모서리가 `Card` 기준으로 바뀝니다. 아이콘 색이 전경색으로, 카드 안쪽 여백이 16px(`xl`부터 20px)로 바뀝니다. 큰 간격과 큰 숫자는 1101px이 아니라 `xl`(1280px)부터 적용합니다.
+- `frontend/src/components/stat-card.tsx`: added `StatCard`, built on `Card`, and it replaces `Stat` in `app.tsx`.
+- `frontend/src/app.tsx`: moved the layout of the card group to utility classes.
+- `frontend/src/style.css`: removed the `.stats`, `.stat`, `.stat-top`, `.stat-value`, and `.stat-foot` rules, the responsive rules, and `.stat-top span` in the contrast rules.
+- The font sizes now use the shared tokens (`text-caption`, `text-meta`, `text-2xl`, `text-3xl`), so the label and description get a little larger, and the big number gets a little smaller on narrow screens.
+- Visual differences: the corners follow `Card`. The icon color becomes the foreground color, and the inner padding becomes 16px (20px from `xl`). The large gap and the large number apply from `xl` (1280px), not 1101px.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-- 사이드바가 있는 768px에서 4열이면 카드가 약 112px로 좁아져 긴 값(`1,234,567kg`)이 옆 카드와 겹칩니다. 공통 Tailwind 열은 `minmax(0, 1fr)`이라 이전처럼 열이 늘어나지 않습니다.
-- 4열 전환을 761px에서 `lg`(1024px)로 올렸습니다. 768px 태블릿은 이제 2열입니다. 값에는 `break-words`를 넣어 더 긴 값은 카드 안에서 줄을 바꿉니다.
-- 자동 테스트는 추가하지 않았습니다. e2e 넘침 검사는 `scrollWidth`만 봐서 이 겹침을 잡지 못하고, 긴 값을 만드는 e2e 데이터가 없습니다. 확인은 리뷰의 정적 HTML 측정과 시각 기준선입니다.
+- With four columns at 768px with the sidebar, the card narrows to about 112px, and a long value (`1,234,567kg`) overlaps the next card. The shared Tailwind column is `minmax(0, 1fr)`, so the column does not grow as it did before.
+- I raised the switch to four columns from 761px to `lg` (1024px). A 768px tablet now gets two columns. I added `break-words` to the value, so an even longer value wraps inside the card.
+- I did not add an automated test. The e2e overflow check looks only at `scrollWidth`, so it cannot catch this overlap, and no e2e data produces a long value. The checks are the reviewer's static HTML measurement and the visual baselines.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/components/stat-card.test.tsx`
-- 수정: 통계 값을 찾는 화면 테스트 4개와 `e2e/workout-crud.spec.ts`의 선택자를 지운 클래스에서 `data-slot`으로 바꿨습니다. 검증 내용은 같습니다.
+- Added: `frontend/src/components/stat-card.test.tsx`
+- Changed: the selectors in 4 screen tests that look up stat values and in `e2e/workout-crud.spec.ts` now use `data-slot` instead of the removed classes. The verified content is the same.
 - `npm run test -w frontend -- src/components/stat-card.test.tsx src/custom-range.test.tsx src/period.test.tsx src/set-completion.test.tsx src/workout-draft.test.tsx`: 54 pass
-- `npm run typecheck`, `npm run lint`: 통과
-- 시각 기준선 12장 갱신: 대시보드·일지 4개 폭(8장)과 뒤에 카드가 보이는 일지 편집 모달 4장입니다. CI 첫 실행의 실패 12건이 모두 이 시각 회귀였고, axe를 포함한 나머지 66건은 통과했습니다. `dashboard-360`, `dashboard-768`, `dashboard-1280`을 직접 봤습니다.
-- 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다. e2e는 PR CI로 확인합니다.
+- `npm run typecheck`, `npm run lint`: pass
+- Updated 12 visual baselines: the dashboard and journal at 4 widths (8 images), and 4 images of the journal edit modal with the cards visible behind it. All 12 failures in the first CI run were these visual regressions, and the other 66 checks, including axe, passed. I looked at `dashboard-360`, `dashboard-768`, and `dashboard-1280` directly.
+- I did not run the full local `npm run check` because it has a history of running out of memory. e2e is checked by PR CI.

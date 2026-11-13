@@ -1,77 +1,77 @@
-# #105 모바일 입력 흐름 최적화 3단계: 휴식 타이머 상단 고정·진동 알림
+# #105 Mobile input flow, step 3: rest timer fixed at the top and vibration alert
 
-- 이슈: [#105](https://github.com/sirloinbh/workout-memo/issues/105)
-- 브랜치: `feat/105-rest-timer`
-- 앞 단계: [1단계 세트 카드](105-set-cards.md)(#232), [2단계 모바일 모달](105-mobile-modal.md)(#237)
+- Issue: [#105](https://github.com/sirloinbh/workout-memo/issues/105)
+- Branch: `feat/105-rest-timer`
+- Earlier steps: [step 1 set cards](105-set-cards.md) (#232), [step 2 mobile modal](105-mobile-modal.md) (#237)
 
-## 목적
+## Purpose
 
-운동 중 긴 일지 폼을 스크롤해도 남은 휴식 시간과 시작·일시정지 버튼이 늘 보이게 하고, 휴식이 끝나면 화면을 보지 않아도 알 수 있게 합니다.
+Even when scrolling the long journal form during a workout, the remaining rest time and the start and pause buttons should always be visible, and when the rest ends the user should know without looking at the screen.
 
-## 변경 — feat: 휴식 타이머 상단 고정과 진동 알림
+## Change — feat: rest timer fixed at the top and vibration alert
 
 - `frontend/src/app.tsx`
-  - 휴식 타이머 카드를 둘로 나눴습니다.
-    - 타이머 줄(`data-slot="rest-timer"`): 남은 시간과 휴식 시작·일시정지·재개·취소 버튼
-    - 휴식 설정(`data-slot="rest-settings"`): 휴식 시간, 자동 시작, 운동별 기본 휴식, 안내 문구
-  - sticky는 부모 안에서만 붙어 있으므로, 타이머 줄을 설정 카드 밖으로 뺐습니다.
-  - 일지 편집 창: 타이머 줄을 창 위쪽에 고정합니다(`sticky top-0`). 창의 좌우 24px 여백까지 덮어 폼이 그 뒤로 지나갑니다. 설정은 그 아래에서 함께 스크롤됩니다.
-  - 일지 화면(편집 창이 닫혀 있고 타이머가 돌거나 멈춰 있을 때): 타이머 줄을 앱 머리글(56px) 바로 아래에 고정합니다. 이전에는 이 자리에 설정까지 포함한 카드 전체가 나왔는데, 이제는 타이머 줄만 나옵니다. 설정은 편집 창에서 바꿉니다.
-  - 타이머 줄의 버튼은 480px 이상에서 오른쪽에 붙습니다(이전에는 768px부터). 좁은 편집 창에서도 한 줄에 들어가게 했습니다.
-  - 휴식이 앱을 보는 중에 끝나면 `navigator.vibrate([200, 100, 200])`로 한 번 짧게 진동합니다.
-    - 같은 종료(`endsAt`)에는 한 번만 진동합니다.
-    - 진동 API가 없는 브라우저(iPhone Safari)는 지금처럼 "휴식 종료" 글자만 보입니다.
-  - 타이머 저장 경고(`timerWarning`)는 설정 카드 안에서 타이머 줄 아래로 옮겨, 일지 화면에서도 보입니다.
-  - 안내 문구에 진동 알림과 iPhone 미지원을 적었습니다.
-- `frontend/src/rest-timer.ts`: `endAlertDue(timer, now)`. 휴식이 끝났고 끝난 지 5초(`endAlertWindow`) 안일 때만 참입니다. 새로고침이나 백그라운드에서 오래 있다가 돌아와 이미 한참 전에 끝난 휴식에는 진동하지 않습니다.
-- 화면 차이: 편집 창의 타이머 카드가 타이머 줄과 설정 카드 둘로 나뉩니다. 일지 화면의 진행 중 타이머는 설정 없이 타이머 줄만 나옵니다. 안내 문구가 한 줄 늘어납니다.
+  - Split the rest timer card in two.
+    - Timer row (`data-slot="rest-timer"`): the remaining time and the rest start, pause, resume, and cancel buttons
+    - Rest settings (`data-slot="rest-settings"`): rest time, auto start, default rest per exercise, and the hint text
+  - Sticky sticks only inside its parent, so the timer row was taken out of the settings card.
+  - Journal edit window: the timer row is fixed to the top of the window (`sticky top-0`). It also covers the 24px left and right margins of the window, so the form passes behind it. The settings scroll along below it.
+  - Journal screen (when the edit window is closed and the timer is running or paused): the timer row is fixed right below the app header (56px). Before, the whole card including the settings appeared here, but now only the timer row appears. The settings are changed in the edit window.
+  - The timer row buttons sit on the right at 480px and wider (before, from 768px). This makes them fit on one line even in a narrow edit window.
+  - When the rest ends while the user is looking at the app, it vibrates once briefly with `navigator.vibrate([200, 100, 200])`.
+    - It vibrates only once for the same end (`endsAt`).
+    - In browsers without the vibration API (iPhone Safari), only the "휴식 종료" ("rest over") text shows, as now.
+  - The timer save warning (`timerWarning`) moved from inside the settings card to below the timer row, so it is visible on the journal screen too.
+  - Wrote the vibration alert and the lack of iPhone support in the hint text.
+- `frontend/src/rest-timer.ts`: `endAlertDue(timer, now)`. It is true only when the rest has ended and fewer than 5 seconds (`endAlertWindow`) have passed since. It does not vibrate for a rest that ended long ago and the user comes back after a refresh or a long time in the background.
+- Screen difference: the timer card in the edit window is split into the timer row and the settings card. A running timer on the journal screen shows only the timer row, without the settings. The hint text grows by one line.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/set-completion.test.tsx` 2개
-  1. 진동 테스트: 앱을 보는 중에 휴식이 끝나면 `[200, 100, 200]`으로 진동하고, 같은 종료에는 다시 진동하지 않으며, 끝난 지 1분 뒤에 돌아온 휴식에는 진동하지 않는지 확인합니다. 시계는 `returnToTab`(시스템 시간 이동 + `visibilitychange`)으로 옮깁니다. 실제로 마지막 tick 타이머가 끝나 화면을 다시 그리는 경로는 이 테스트가 지나가지 않습니다.
-  2. 배치 테스트: 타이머 줄이 `sticky top-0` 안에 있고, 남은 시간·휴식 시작 버튼은 들어 있되 휴식 시간 칸은 설정 카드에 있는지 확인합니다.
-- 추가: `e2e/ui-responsive.spec.ts`의 "390px 휴식 타이머" 1개. 편집 창을 맨 아래로 스크롤해도 남은 시간이 창 위쪽 80px 안에 있는지 봅니다. 창을 닫은 뒤 대시보드(편집 창을 연 화면)를 맨 아래로 스크롤해도 머리글(56px) 바로 아래에 있는지 봅니다. 대시보드가 400px 넘게 스크롤되는지 먼저 확인합니다. CI에서 실행합니다.
-- 기존 `set-completion`·`rest-by-exercise` 테스트는 타이머 줄(`data-slot="rest-timer"`)의 글자로 남은 시간을 확인하므로 바꾸지 않고 통과했습니다.
+- Added: 2 tests in `frontend/src/set-completion.test.tsx`
+  1. Vibration test: checks that when the rest ends while the user is looking at the app it vibrates with `[200, 100, 200]`, does not vibrate again for the same end, and does not vibrate for a rest that the user returns to 1 minute after it ended. The clock moves with `returnToTab` (system time move + `visibilitychange`). This test does not go through the real path where the last tick timer ends and the screen is redrawn.
+  2. Layout test: checks that the timer row is inside `sticky top-0`, that it contains the remaining time and the rest start button, and that the rest time field is in the settings card.
+- Added: 1 "390px rest timer" test in `e2e/ui-responsive.spec.ts`. It checks that even when the edit window is scrolled to the bottom, the remaining time is within 80px of the top of the window. After closing the window, it checks that even when the dashboard (the screen where the edit window was opened) is scrolled to the bottom, the timer is right below the header (56px). It first checks that the dashboard scrolls more than 400px. It runs in CI.
+- The existing `set-completion` and `rest-by-exercise` tests check the remaining time with the text of the timer row (`data-slot="rest-timer"`), so they passed without changes.
 - `npm run test -w frontend -- --maxWorkers=1 src/set-completion.test.tsx src/rest-by-exercise.test.tsx`: 18 pass
-- `npm run typecheck -w frontend`, 바뀐 파일 eslint(`--max-warnings 0`)·prettier: 통과
-- 실행하지 않은 것
-  - e2e와 로컬 `npm run check`는 메모리 부족으로 돌리지 않았습니다. 시각 기준선·axe·반응형·터치는 PR CI로 확인합니다.
-  - 실제 기기 진동은 확인하지 못했습니다. 단위 테스트의 `navigator.vibrate` 흉내로만 검증했습니다.
-- 예상 기준선 변화: 360·390·768·1280px의 `workout-editor` 4장(타이머 카드 분리, 안내 문구). 시각 검사 고정 화면은 타이머가 멈춰 있어 일지 화면은 바뀌지 않아야 합니다.
+- `npm run typecheck -w frontend`, eslint of changed files (`--max-warnings 0`) and prettier: pass
+- Not run
+  - e2e and the local `npm run check` were not run because of low memory. Visual baselines, axe, responsive, and touch are checked by the PR CI.
+  - Real device vibration was not checked. It was verified only by the `navigator.vibrate` imitation in the unit tests.
+- Expected baseline change: 4 `workout-editor` images at 360, 390, 768, and 1280px (timer card split, hint text). In the fixed screen of the visual check the timer is stopped, so the journal screen should not change.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-1차 리뷰는 필수 지적 없이 권장 5건이었고 모두 반영했습니다.
+The first review had no required items and 5 recommended items, and all were applied.
 
-- 권장 1: 480px 미만에서 타이머 줄이 두 줄(약 130px)이라, 이전 칸으로 포커스를 옮기면 브라우저가 칸을 창 맨 위로 올려 타이머 줄 밑에 가려질 수 있었습니다. 전체 화면 모달(`layout="full"`)에 위쪽 `scroll-padding`(144px)을 줬습니다. 타이머 줄을 더 얇게 만드는 일은 하지 않았습니다(버튼 44px 기준 유지).
-- 권장 2: 루틴짜기·백업·신체 기록·종목 분석 화면은 각자의 컴포넌트가 먼저 그려져, 진행 중인 휴식이 화면 맨 아래에 나오고 위에 붙지 않았습니다(위치는 예전부터 그랬습니다). 이 네 화면에서는 타이머 줄을 맨 앞에 둡니다. 나머지 화면은 지금처럼 머리글·초안 복구 카드 다음입니다.
-- 권장 3: 새 e2e는 편집 창을 대시보드에서 엽니다. 테스트 이름을 "편집 창과 대시보드"로 바꾸고, 스크롤 전에 대시보드가 400px 넘게 스크롤되는지 확인해 실패 이유가 바로 보이게 했습니다.
-- 권장 4: Chrome은 사용자가 화면을 한 번도 누르지 않은 문서에서 진동을 막습니다. 백그라운드 탭은 tick이 늦어 5초를 넘기기 쉽습니다. 코드는 그대로 두고, 안내 문구를 "이 화면을 보고 있고 화면을 한 번 이상 누른 뒤"로 고쳤습니다.
-- 권장 5: 위 테스트 항목을 테스트별로 묶었고, 진동 테스트가 실제 마지막 tick 경로를 지나지 않는다는 점을 적었습니다.
-- 추가 테스트: `set-completion.test.tsx`에 루틴짜기 화면에서 진행 중인 휴식이 맨 앞의 고정 줄에 있는지 1개
-- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/set-completion.test.tsx src/rest-by-exercise.test.tsx src/components/modal.test.tsx` 24 pass, typecheck·eslint·prettier 통과
+- Recommended 1: below 480px the timer row is two lines (about 130px), so when focus moved to the previous field the browser could lift the field to the very top of the window and hide it under the timer row. Gave the full-screen modal (`layout="full"`) a top `scroll-padding` (144px). Making the timer row thinner was not done (the 44px button standard is kept).
+- Recommended 2: on the Routine planner, backup, body records, and exercise analysis screens, each one's own component is drawn first, so a running rest appeared at the very bottom of the screen and was not fixed to the top (the position has been like that from before). On these four screens the timer row is put first. The other screens come after the header and the draft recovery card as now.
+- Recommended 3: the new e2e opens the edit window from the dashboard. Renamed the test to "edit window and dashboard" and, before scrolling, checks that the dashboard scrolls more than 400px so the reason for a failure is clear.
+- Recommended 4: Chrome blocks vibration in a document the user has never tapped. A background tab easily goes past 5 seconds because its tick is late. The code was left as is, and the hint text was changed to "while you are looking at this screen and after you have tapped the screen at least once".
+- Recommended 5: grouped the test items above by test, and wrote that the vibration test does not go through the real last tick path.
+- Added test: 1 in `set-completion.test.tsx` that a running rest on the Routine planner screen is in the fixed row at the very front
+- After the follow-up: `npm run test -w frontend -- --maxWorkers=1 src/set-completion.test.tsx src/rest-by-exercise.test.tsx src/components/modal.test.tsx` 24 pass, typecheck, eslint, and prettier pass
 
-## 변경 — fix: 2차 리뷰 보완
+## Change — fix: second review follow-up
 
-2차 리뷰는 1차 권장 5건이 모두 반영됐다고 확인했고, 필수 지적 없이 권장 3건을 냈습니다. 모두 반영했습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+The second review confirmed that all 5 first review recommendations were applied, and raised 3 recommended items with no required ones. All were applied. Two reviews are done, so there is no third review.
 
-- 권장 1: 자체 컴포넌트 화면 목록이 타이머 위치(`ownPage`)와 페이지 머리글 조건에 따로 적혀 있었습니다. 머리글 조건도 `!ownPage`로 바꿔 목록을 한 곳에서 관리합니다. 동작은 같습니다.
-- 권장 2: 루틴짜기·백업·신체 기록·종목 분석 화면에서는 진행 중인 휴식의 타이머 줄이 화면 제목보다 위에 나옵니다. 다른 화면은 제목 다음입니다. 의도한 동작입니다. 이 화면들은 제목을 각 컴포넌트가 그리므로, 그 사이에 넣으려면 네 컴포넌트를 모두 고쳐야 합니다.
-- 권장 3: 위쪽 `scroll-padding`(144px)은 `layout="full"`의 모든 폭에 적용됩니다. 넓은 화면에서는 타이머 줄이 한 줄(약 80px)이라 여유분입니다. 포커스로 스크롤될 때만 작동하므로 화면 모양과 기준선은 바뀌지 않습니다.
-- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/set-completion.test.tsx src/rest-by-exercise.test.tsx src/routines.test.tsx` 29 pass, typecheck·eslint·prettier 통과
+- Recommended 1: the list of screens with their own components was written separately in the timer position (`ownPage`) and in the page header condition. The header condition was also changed to `!ownPage` so the list is managed in one place. The behavior is the same.
+- Recommended 2: on the Routine planner, backup, body records, and exercise analysis screens, the timer row of a running rest appears above the screen title. On other screens it is after the title. This is intended. These screens draw the title in each component, so putting it between would need changing all four components.
+- Recommended 3: the top `scroll-padding` (144px) applies at every width of `layout="full"`. On wide screens the timer row is one line (about 80px), so it is spare room. It works only when scrolling because of focus, so the screen look and the baselines do not change.
+- After the follow-up: `npm run test -w frontend -- --maxWorkers=1 src/set-completion.test.tsx src/rest-by-exercise.test.tsx src/routines.test.tsx` 29 pass, typecheck, eslint, and prettier pass
 
-## 변경 — test: 시각 기준선 갱신
+## Change — test: update visual baselines
 
-- a246df2의 PR CI에서 e2e-visual은 360·390·768·1280px `workout-editor` 4장만 실패했습니다. 예상과 같습니다. 새 "390px 휴식 타이머"를 포함한 반응형 검사와 verify·docker-build·windows-auth는 통과했습니다.
-- diff 이미지로 바뀐 곳을 확인했습니다. 타이머 카드가 타이머 줄(남은 시간·휴식 시작)과 설정 카드(휴식 시간·자동 시작·운동별 기본 휴식·안내 문구)로 나뉘었고, 안내 문구에 진동 안내가 한 줄 늘었습니다. 그 외 화면 변화는 없습니다.
-- main이 섞이지 않도록 push 실행(run 42463940560)의 `visual-baselines` 산출물에서 이 4장만 `e2e/__screenshots__/ui-visual.spec.ts/`로 옮겼습니다.
+- In the PR CI for a246df2, e2e-visual failed only the 4 `workout-editor` images at 360, 390, 768, and 1280px. This is as expected. The responsive checks including the new "390px rest timer", and verify, docker-build, and windows-auth passed.
+- The diff images were used to check what changed. The timer card was split into the timer row (remaining time, rest start) and the settings card (rest time, auto start, default rest per exercise, hint text), and the hint text grew by one line for the vibration note. There are no other screen changes.
+- So that main does not get mixed in, only these 4 images were moved from the `visual-baselines` output of the push run (run 42463940560) to `e2e/__screenshots__/ui-visual.spec.ts/`.
 
-## main 병합
+## Merge main
 
-- 병합 직전 `git merge-base --is-ancestor origin/main HEAD`가 실패했습니다. main에 #242(페이지 머리글 공통 컴포넌트)·#245·#247·#248·#249·#250이 들어왔고 `app.tsx`와 `workout-editor` 768·1280 기준선이 겹쳐 origin/main을 병합했습니다.
-- `app.tsx` 충돌: main의 `PageHeader`를 그대로 쓰고, 표시 조건만 이 브랜치의 `!ownPage`로 바꿨습니다.
-- 기준선 2장은 이 브랜치 것을 임시로 두고, 병합 후 CI 결과로 다시 받습니다.
-- 병합 후: typecheck·eslint·prettier 통과, `npm run test -w frontend -- --maxWorkers=1`로 set-completion·rest-by-exercise·routines·modal·workout-draft·page-header·loading-placeholders 7개 파일 62 pass
-- 병합 후 CI(e30a418)에서 e2e-visual은 `workout-editor` 768·1280px 2장만 실패했습니다. diff 이미지에서 모달 안쪽은 같고, 뒤 배경의 페이지 머리글과 "운동 기록하기" 버튼만 #242의 `PageHeader`로 바뀌었습니다. push 실행(run 42471364741)의 `visual-baselines` 산출물에서 이 2장을 옮겼습니다. 나머지 42장은 저장소와 같았습니다.
-- 두 번째 병합: 기준선 갱신 후 CI(9929d69)는 모두 통과했지만, 병합 직전 확인에서 main에 #252·#254(유산소 기록·목표)가 들어와 `app.tsx`가 겹치고 e2e·shared 변경이 있어 origin/main을 다시 병합했습니다. 충돌은 없었습니다. typecheck·eslint 통과, set-completion·rest-by-exercise·routines·cardio-goals·workout-draft 5개 파일 54 pass
+- Just before the merge, `git merge-base --is-ancestor origin/main HEAD` failed. #242 (shared page header component), #245, #247, #248, #249, and #250 entered main, and `app.tsx` and the `workout-editor` 768 and 1280 baselines overlapped, so origin/main was merged.
+- `app.tsx` conflict: kept main's `PageHeader` as it is and changed only the display condition to this branch's `!ownPage`.
+- The 2 baselines were left as this branch's for now, and will be received again from the post-merge CI result.
+- After the merge: typecheck, eslint, and prettier pass, and `npm run test -w frontend -- --maxWorkers=1` gave 62 pass over 7 files: set-completion, rest-by-exercise, routines, modal, workout-draft, page-header, and loading-placeholders
+- In the post-merge CI (e30a418), e2e-visual failed only the 2 `workout-editor` images at 768 and 1280px. In the diff images the inside of the modal is the same, and only the page header and the "운동 기록하기" ("record workout") button in the background changed to the `PageHeader` of #242. These 2 images were moved from the `visual-baselines` output of the push run (run 42471364741). The other 42 were the same as the repository.
+- Second merge: after the baseline update CI (9929d69) all passed, but in the check just before the merge, #252 and #254 (cardio records and goals) had entered main and overlapped `app.tsx`, and there were e2e and shared changes, so origin/main was merged again. There were no conflicts. typecheck and eslint pass, and 54 pass over 5 files: set-completion, rest-by-exercise, routines, cardio-goals, and workout-draft

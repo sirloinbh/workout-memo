@@ -1,68 +1,68 @@
-# #18 feat: [MVP] 점진적 과부하 목표 설정과 달성 판정
+# #18 feat: [MVP] Progressive overload goal setting and achievement judgment
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/18
-- 브랜치: feat/18-agent-task
+- Issue: https://github.com/sirloinbh/workout-memo/issues/18
+- Branch: feat/18-agent-task
 
-## 변경 및 검증
+## Changes and verification
 
-### 테스트 단계 (2026-10-15)
+### Test phase (2026-10-15)
 
-- 기준 SHA: `a0ce3245dddf8974f36054d01967ff21efbb5f29`.
-- `AGENTS.md`, `skills/workout-implementation/SKILL.md`, `skills/workout-testing/SKILL.md`를 읽고 기존 이슈와 브랜치를 재사용했다. 테스트 역할 범위에 따라 구현, 커밋, 원격 작업은 수행하지 않았다.
-- 추가 파일: `backend/test/goals.test.ts`. 기존 Node test/tsx 및 HTTP API를 사용하며 새 의존성을 추가하지 않았다.
-- DB 없이 실행하는 API 테스트는 빈 운동명, 음수·상한 초과·문자열 중량, 0·소수·상한 초과 반복 수, 불가능한 날짜, 역전된 기간, 잘못된 날짜 형식을 거부하고 저장을 시도하지 않는지 검증한다.
-- 전용 DB 통합 테스트는 목표 생성·조회 시 모든 설정값 보존, 최초 미달 상태, 시작일·종료일 포함, 기간 밖 제외, 목표값과 같은 값·초과값·미달값, 서로 다른 세트의 분리 충족 제외, 다른 운동명 제외, 앞뒤 공백·영문 대소문자 무시를 검증한다. 일지 날짜 및 세트 수정, 충족 세트 제거·재추가, 일지 삭제 후 재판정과 같은 날 시작·종료하는 목표도 포함한다.
-- 별도 시간대 통합 테스트는 PostgreSQL 세션을 `Etc/GMT+12`, `Etc/GMT-14`로 각각 실행한다. Asia/Seoul의 오늘 기록은 포함하고 내일 기록은 제외해야 한다. 테스트 날짜는 DB의 현재 시각을 Asia/Seoul로 명시 변환해 구한다. 두 시간대를 사용하여 실행 시간에 관계없이 DB 세션 날짜와 한국 날짜가 다른 경우를 포함한다. 무작위 운동명으로 데이터를 분리하고 생성한 목표·일지를 정리한다.
+- Base SHA: `a0ce3245dddf8974f36054d01967ff21efbb5f29`.
+- Read `AGENTS.md`, `skills/workout-implementation/SKILL.md`, and `skills/workout-testing/SKILL.md`, and reused the existing issue and branch. Following the scope of the test role, no implementation, commit, or remote work was done.
+- Added file: `backend/test/goals.test.ts`. It uses the existing Node test/tsx setup and the HTTP API, and adds no new dependencies.
+- The API tests that run without a DB check that the server rejects an empty exercise name, a negative, over-limit, or string weight, a zero, fractional, or over-limit rep count, an impossible date, a reversed period, and a wrong date format, and that it does not try to save them.
+- The dedicated DB integration tests check that goal creation and lookup keep every setting, the initial not-met state, inclusion of the start and end dates, exclusion outside the period, values equal to, above, and below the goal, exclusion of requirements met by separate sets, exclusion of other exercise names, and that leading and trailing spaces and English letter case are ignored. They also cover re-judging after a log date or set is edited, a met set is removed and added again, or a log is deleted, and a goal that starts and ends on the same day.
+- A separate time zone integration test runs the PostgreSQL session as `Etc/GMT+12` and `Etc/GMT-14`. Today's Asia/Seoul record must be included and tomorrow's record must be excluded. The test date is computed by explicitly converting the DB's current time to Asia/Seoul. Using the two time zones covers the case where the DB session date differs from the Korean date, whatever the run time. Random exercise names isolate the data, and the goals and logs the test creates are cleaned up.
 
-#### 실제 실행 결과
+#### Actual run results
 
-- `npm test`: exit 0, 총 17개, pass 14, fail 0, skip 3. 새 입력 검증 하위 사례 10개가 통과했다. 기존 DB 통합 테스트 1개와 새 DB 통합 테스트 2개는 모두 `TEST_DATABASE_URL` 미제공으로 skip되었다. DB 검증 완료를 의미하지 않는다.
+- `npm test`: exit 0, 17 total, pass 14, fail 0, skip 3. The 10 new input validation sub-cases passed. The 1 existing DB integration test and the 2 new DB integration tests were all skipped because `TEST_DATABASE_URL` was not provided. This does not mean the DB checks are done.
 - `npm run typecheck -w backend`: exit 0.
 - `npx eslint backend/test/goals.test.ts --max-warnings 0`: exit 0.
-- `npx prettier --write backend/test/goals.test.ts`: exit 0, 새 테스트 파일만 포맷했다.
+- `npx prettier --write backend/test/goals.test.ts`: exit 0, formatted only the new test file.
 - `npx prettier --check backend/test/goals.test.ts`: exit 0.
-- `node -e "console.log('TEST_DATABASE_URL provided:', Boolean(process.env.TEST_DATABASE_URL))"`: `false`. 환경변수의 존재 여부만 확인했으며 연결 문자열이나 다른 비밀 파일은 읽지 않았다.
+- `node -e "console.log('TEST_DATABASE_URL provided:', Boolean(process.env.TEST_DATABASE_URL))"`: `false`. Only whether the environment variable exists was checked; no connection string or other secret file was read.
 
-#### 구현 전 예상 실패와 차단 사항
+#### Expected failures before implementation and blockers
 
-- 코드 검토에서 `backend/src/app.ts`의 목표 조회가 `LEAST(g.deadline,CURRENT_DATE)`를 사용하는 것을 확인했다. `CURRENT_DATE`는 PostgreSQL 세션 시간대에 의존하므로 Asia/Seoul 기준과 다른 날짜일 때 오늘 기록을 제외하거나 내일 기록을 포함할 것으로 예상한다. 새 두 시간대 통합 테스트가 이 차이를 잡도록 작성했다. **전용 DB가 없어 실제 실패는 관찰하지 못했으며 예상 실패와 실행 결과를 구분한다.**
-- 필요한 입력인 전용 `TEST_DATABASE_URL`이 제공되지 않아 DB의 실제 목표 저장·판정·수정·삭제 및 시간대 회귀 검증은 차단되었다. 구현 담당자는 전용 스키마가 준비된 테스트 DB에서 `npm test`를 실행해 구현 전 실패와 수정 후 성공을 확인해야 한다.
-- `npm run check`는 테스트 단계에서 실행하지 않았다. 관련 백엔드 테스트·타입·lint·포맷 검사만 실행했으며 전체 검사는 최종 구현 후 수행해야 한다.
-- UI에서 목표 설정 후 기록 추가·수정·삭제하는 브라우저 흐름은 실행하지 않았다. 이번 변경은 서버 API 테스트만 추가했으며 UI 검증은 구현·최종 검증 단계에 남아 있다.
+- Code review showed that the goal lookup in `backend/src/app.ts` uses `LEAST(g.deadline,CURRENT_DATE)`. `CURRENT_DATE` depends on the PostgreSQL session time zone, so when that date differs from the Asia/Seoul date, it is expected to exclude today's record or include tomorrow's record. The two new time zone integration tests were written to catch this difference. **No dedicated DB was available, so the actual failure was not observed. The expected failure is kept separate from the run results.**
+- The required input, a dedicated `TEST_DATABASE_URL`, was not provided, so verification against the real DB of goal saving, judgment, editing, deletion, and the time zone regression was blocked. The implementer must run `npm test` on a test DB with a prepared dedicated schema to confirm the failure before implementation and the success after the fix.
+- `npm run check` was not run in the test phase. Only the related backend test, type, lint, and format checks were run. The full check must run after the final implementation.
+- The browser flow of setting a goal in the UI and then adding, editing, and deleting records was not run. This change adds only server API tests, so UI verification remains for the implementation and final verification phases.
 
-### 테스트 단계 재실행 (2026-10-15, 전용 DB 제공 후)
+### Test phase rerun (2026-10-15, after the dedicated DB was provided)
 
-- 기존 미커밋 테스트와 위 기록을 보존하고 검토했다. 이번 실행에는 전용 `TEST_DATABASE_URL`이 제공되었다. 위의 DB 미제공 차단은 해소되었으며 연결 문자열은 출력하지 않았다.
-- `backend/test/goals.test.ts`에 120자 초과 운동명, null 운동명, 문자열 반복 수, null 시작일, 불가능한 종료일 거부 사례를 추가했다. 구현 파일은 변경하지 않았다.
-- 변경 전 `npm test`: exit 1, 총 35개, pass 32, fail 3, skip 0. 실제 DB 통합 테스트를 실행하여 예상했던 한국 날짜 기준 판정 실패를 재현했다.
-- 보강 후 `npm test`: exit 1, 총 40개, pass 37, fail 3, skip 0. 실패 3개는 하나의 실제 assertion 실패 및 상위 두 테스트의 실패 집계다. `Etc/GMT+12` 세션의 `today is included`에서 기대 `true`, 실제 `false`였다. `CURRENT_DATE`가 한국의 오늘보다 이전 날짜인 세션에서 오늘 기록을 제외한다. `Etc/GMT-14` 세션의 오늘 포함·내일 제외는 이번 실행에서 통과했다.
-- 입력 검증 15개, 목표 설정값 저장·조회, 기간 양끝 경계, 기간 밖 제외, 동일·초과·미달 수치, 서로 다른 세트의 분리 충족 제외, 운동명 공백·대소문자와 다른 이름 비교, 일지·세트 수정 및 삭제 후 재판정, 같은 날 시작·종료 목표가 통과했다. 기존 PostgreSQL CRUD 통합 테스트도 통과했다.
-- `npm run typecheck -w backend`: exit 0 (보강 전·후).
-- `npx eslint backend/test/goals.test.ts --max-warnings 0`: exit 0 (보강 전).
-- `node node_modules/eslint/bin/eslint.js backend/test/goals.test.ts --max-warnings 0`: exit 0 (보강 후).
-- `npx prettier --check backend/test/goals.test.ts`: exit 0 (보강 전).
-- `node node_modules/prettier/bin/prettier.cjs --check backend/test/goals.test.ts`: exit 0 (보강 후).
+- Preserved and reviewed the existing uncommitted tests and the record above. This run had a dedicated `TEST_DATABASE_URL`. The DB-not-provided blocker above is resolved, and the connection string was not printed.
+- Added to `backend/test/goals.test.ts` the rejection cases for an exercise name over 120 characters, a null exercise name, a string rep count, a null start date, and an impossible end date. No implementation file was changed.
+- `npm test` before the change: exit 1, 35 total, pass 32, fail 3, skip 0. Running the real DB integration tests reproduced the expected failure of judging by the Korean date.
+- `npm test` after the additions: exit 1, 40 total, pass 37, fail 3, skip 0. The 3 failures are one real assertion failure plus the failure counts of the two parent tests. In the `Etc/GMT+12` session, `today is included` expected `true` but got `false`. In a session where `CURRENT_DATE` is earlier than today in Korea, today's record is excluded. In the `Etc/GMT-14` session, including today and excluding tomorrow passed in this run.
+- Passed: 15 input validation cases, saving and looking up goal settings, both ends of the period, exclusion outside the period, equal, above, and below values, exclusion of requirements met by separate sets, exercise name spaces, letter case, and comparison with a different name, re-judging after editing logs and sets and after deleting a log, and a goal that starts and ends on the same day. The existing PostgreSQL CRUD integration test also passed.
+- `npm run typecheck -w backend`: exit 0 (before and after the additions).
+- `npx eslint backend/test/goals.test.ts --max-warnings 0`: exit 0 (before the additions).
+- `node node_modules/eslint/bin/eslint.js backend/test/goals.test.ts --max-warnings 0`: exit 0 (after the additions).
+- `npx prettier --check backend/test/goals.test.ts`: exit 0 (before the additions).
+- `node node_modules/prettier/bin/prettier.cjs --check backend/test/goals.test.ts`: exit 0 (after the additions).
 - `node -e "console.log('TEST_DATABASE_URL provided:', Boolean(process.env.TEST_DATABASE_URL))"`: `true`.
-- 테스트 단계는 차단되지 않았다. 구현 담당자는 목표 조회 날짜 상한을 Asia/Seoul 기준으로 수정한 후 테스트를 다시 실행해야 한다. 전체 `npm run check`와 브라우저 흐름 검증은 구현 및 최종 검증 단계에 남겨 둔다. 커밋·푸시·PR·추가 에이전트 실행은 수행하지 않았다.
+- The test phase was not blocked. The implementer must change the date upper bound of the goal lookup to Asia/Seoul and rerun the tests. The full `npm run check` and the browser flow verification remain for the implementation and final verification phases. No commit, push, PR, or extra agent run was done.
 
-### 구현 단계 (2026-10-15)
+### Implementation phase (2026-10-15)
 
-- 기존 이슈·브랜치·미커밋 테스트를 재사용하고 `workout-implementation`, `workout-testing`을 적용했다. 구현 역할 범위에 따라 커밋·푸시·PR·승인·병합·추가 에이전트 실행은 수행하지 않았다. 별도 이전 검토자 지적은 전달되지 않았으며 테스트 단계에서 재현한 날짜 판정 실패를 수정했다.
-- `backend/src/app.ts`: 목표 조회의 날짜 상한을 세션 시간대에 의존하는 `CURRENT_DATE`에서 `(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date`로 변경했다. 서버가 한국의 오늘까지 기록을 포함하고 미래 기록을 제외한다. 목표 기간 양끝 포함, 운동명 trim/lower 비교, 한 세트에서 중량·반복 수 동시 충족 및 조회 시 재판정 로직은 기존 구현을 재사용한다.
-- `backend/test/goals.test.ts`의 테스트·assertion은 모두 보존했다. 테스트 단계에서 추가한 HTTP API·DB 회귀 테스트가 수정 전 실패와 수정 후 성공을 검증한다.
-- 기존 UI를 읽어 목표 설정 폼·상태 표시와 일지 저장·수정·삭제 후 `action` → `refresh` → `/api/goals` 재조회 흐름을 확인했다. 화면 변경은 없다.
+- Reused the existing issue, branch, and uncommitted tests, and applied `workout-implementation` and `workout-testing`. Following the scope of the implementation role, no commit, push, PR, approval, merge, or extra agent run was done. No separate earlier reviewer finding was passed on, and the date judgment failure reproduced in the test phase was fixed.
+- `backend/src/app.ts`: changed the date upper bound of the goal lookup from `CURRENT_DATE`, which depends on the session time zone, to `(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date`. The server now includes records up to today in Korea and excludes future records. The existing implementation is reused for including both ends of the goal period, the trim/lower comparison of exercise names, meeting weight and reps in a single set, and re-judging on lookup.
+- Kept every test and assertion in `backend/test/goals.test.ts`. The HTTP API and DB regression tests added in the test phase verify the failure before the fix and the success after it.
+- Read the existing UI and confirmed the goal setting form and status display, and the `action` → `refresh` → `/api/goals` re-fetch flow after saving, editing, and deleting a log. There is no screen change.
 
-#### 실제 실행 결과
+#### Actual run results
 
-- 수정 전 `npm test`: exit 1, 총 40개, pass 37, fail 3, skip 0. `Etc/GMT+12`의 한국 오늘 기록 포함 assertion이 실제 실패했고 상위 테스트 2개가 실패로 집계되었다.
-- 수정 후 `npm run check`: exit 0. 포맷·ESLint·양쪽 workspace 타입 검사·백엔드 테스트·에이전트 테스트·프런트엔드 및 백엔드 빌드가 모두 통과했다.
-- 위 전체 검사에 포함된 전용 `TEST_DATABASE_URL` DB 실행: 백엔드 총 40개, pass 40, fail 0, skip 0. 두 세션 시간대에서 한국 오늘 포함·내일 제외가 모두 통과했다. 목표 설정값 저장·조회, 입력 오류, 기간·수치 경계, 운동명 비교, 세트 조건 분리 제외, 일지·세트 수정 및 일지 삭제 후 재판정도 통과했다.
-- 위 전체 검사에 포함된 `npm run test:agents`: 총 34개, pass 34, fail 0, skip 0.
+- `npm test` before the fix: exit 1, 40 total, pass 37, fail 3, skip 0. The assertion that today's Korean record is included in `Etc/GMT+12` actually failed, and the 2 parent tests were counted as failures.
+- `npm run check` after the fix: exit 0. Formatting, ESLint, type checks of both workspaces, backend tests, agent tests, and the frontend and backend builds all passed.
+- The run against the dedicated `TEST_DATABASE_URL` DB included in the full check above: backend 40 total, pass 40, fail 0, skip 0. Including today and excluding tomorrow in Korea passed in both session time zones. Saving and looking up goal settings, input errors, period and value boundaries, exercise name comparison, exclusion by separate set conditions, and re-judging after editing logs and sets and after deleting a log also passed.
+- `npm run test:agents` included in the full check above: 34 total, pass 34, fail 0, skip 0.
 - `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/18 diff --check`: exit 0.
-- 구현 기록 추가 후 `node node_modules/prettier/bin/prettier.cjs --check docs/changes/18-agent-task.md`: exit 0.
-- 전용 테스트 DB 환경변수는 존재 여부만 확인하고 기존 테스트를 통해 사용했다. 연결 문자열·인증 정보·`.env`·백업·Terraform state는 읽거나 출력하지 않았다.
+- `node node_modules/prettier/bin/prettier.cjs --check docs/changes/18-agent-task.md` after adding the implementation record: exit 0.
+- Only the existence of the dedicated test DB environment variable was checked, and it was used through the existing tests. Connection strings, credentials, `.env`, backups, and Terraform state were not read or printed.
 
-#### 검증 한계 및 인계
+#### Verification limits and handoff
 
-- 브라우저 도구가 제공되지 않아 실제 UI에서 목표 설정 후 기록 추가·수정·삭제하는 조작 검증과 화면 증거 수집은 수행하지 않았다. 위 UI 확인은 코드 검토이며 API·DB 테스트 결과와 구분한다. 최종 검토 시 브라우저 흐름 확인이 남아 있다.
-- 구현과 자동 검증에 차단은 없다. 변경 파일과 테스트는 미커밋 상태로 코디네이터의 독립 검토에 넘긴다.
+- No browser tool was available, so the manual check in the real UI of setting a goal and then adding, editing, and deleting records, and the collection of screen evidence, were not done. The UI check above is a code review and is kept separate from the API and DB test results. The browser flow check remains for the final review.
+- Nothing blocked the implementation or the automated verification. The changed files and tests are uncommitted and are handed to the coordinator for independent review.

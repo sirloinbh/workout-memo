@@ -1,162 +1,162 @@
-# #17 feat: [MVP] 기간별 운동 기록 조회·통계·그래프
+# #17 feat: [MVP] View, statistics, and graphs of workout records by period
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/17
-- 브랜치: feat/17-agent-task
+- Issue: https://github.com/sirloinbh/workout-memo/issues/17
+- Branch: feat/17-agent-task
 
-## 변경 및 검증
+## Changes and verification
 
-### 테스트 단계 — 2026-10-15
+### Test phase — 2026-10-15
 
-- 기준 SHA: `a0ce3245dddf8974f36054d01967ff21efbb5f29`.
-- `AGENTS.md`, `workout-implementation`, `workout-testing`을 읽고 기존 이슈와 브랜치를 재사용했다. 테스트와 이 기록만 변경했으며 구현·커밋·푸시·PR 작업은 수행하지 않았다.
-- 기존 테스트 4개에 행동 테스트 18개를 추가했다. 새로운 패키지나 검사 명령은 추가하지 않았다. 기존 `npm test`가 새 테스트를 실행한다.
+- Base SHA: `a0ce3245dddf8974f36054d01967ff21efbb5f29`.
+- Read `AGENTS.md`, `workout-implementation`, and `workout-testing`, and reused the existing issue and branch. Changed only the tests and this record. Did not do any implementation, commit, push, or PR work.
+- Added 18 behavior tests to the 4 existing tests. Did not add any new package or check command. The existing `npm test` runs the new tests.
 
-#### 추가한 검증
+#### Added verification
 
-- `backend/test/period-ui.test.ts`: 실제 프런트엔드 진입점을 TypeScript로 변환해 격리된 VM에서 실행한다. 최소 React hook/element 어댑터와 메모리 API로 표시 값 및 이벤트 핸들러를 검증한다. 소스 문자열의 특정 구현 형태를 검사하지 않는다.
-- 1일, 월요일/일요일의 연말 주간, 윤년 2월 및 연말 달력 월간, 기준일까지 최근 28일/84일의 요청 범위를 고정된 기대 날짜와 비교한다. 각 범위의 시작·종료일 및 바로 전후 날짜에 데이터를 놓아 목록·합계·그래프의 포함/제외를 확인한다.
-- 모든 기간의 빈 목록과 0일·0세트·0kg 및 0 그래프를 확인한다. 같은 날의 여러 일지는 하루로 계산하며 모든 세트의 총중량 × 반복 수를 합산한다. PostgreSQL numeric 문자열 형태와 소수 중량도 포함한다.
-- 수정 창에서 중량을 바꾸고 저장한 뒤 목록 데이터·통계·그래프가 갱신되는지 확인한다. 기록을 삭제하고 마지막 기록까지 삭제한 뒤에도 일수·세트 수·볼륨과 빈 상태가 갱신되는지 확인한다.
-- UTC 기기에서 `2026-10-14T15:30:00Z`일 때 기준 날짜가 서울 날짜 `2026-10-15`인지 확인한다.
-- `backend/test/period-api.test.ts`: Express HTTP 요청으로 잘못된 달력 날짜, YYYY-MM-DD 형식 오류, 종료일 누락, 역전된 범위를 검증한다. 잘못된 범위는 저장소를 조회하기 전에 400으로 거부해야 한다. 저장소 응답은 모의하므로 DB 통합 검증으로 계산하지 않는다.
-- `backend/test/integration.test.ts`: 전용 DB가 있을 때 실제 API 생성 → 경계 조회 → 날짜 수정으로 조회 범위 밖으로 이동 → 삭제를 검증한다. 윤일·월말·연말·28일·84일 경계와 날짜 문자열 및 볼륨을 확인한다. 생성한 ID만 정리하며 기존 데이터를 전체 삭제하지 않는다.
+- `backend/test/period-ui.test.ts`: Transpiles the real frontend entry point with TypeScript and runs it in an isolated VM. Verifies displayed values and event handlers with a minimal React hook/element adapter and an in-memory API. It does not check the source text for a specific implementation shape.
+- Compares the requested ranges against fixed expected dates for 1 day, a year-end week starting Monday/Sunday, a leap-year February and a year-end calendar month, and the last 28 days/84 days up to the reference date. Places data on the start and end dates of each range and on the days just before and after, and checks that the list, totals, and graph include or exclude it correctly.
+- Checks the empty list, 0 days, 0 sets, 0 kg, and the 0 graph for every period. Several logs on the same day count as one day, and every set's total weight × reps is summed. Includes PostgreSQL numeric string forms and decimal weights.
+- Changes the weight in the edit window, saves, and checks that the list data, statistics, and graph are refreshed. Deletes a record, including the last record, and checks that the day count, set count, volume, and empty state are refreshed.
+- Checks that on a UTC device at `2026-10-14T15:30:00Z`, the reference date is the Seoul date `2026-10-15`.
+- `backend/test/period-api.test.ts`: Verifies, with Express HTTP requests, an invalid calendar date, a YYYY-MM-DD format error, a missing end date, and a reversed range. An invalid range must be rejected with 400 before the repository is queried. The repository response is mocked, so this is not counted as DB integration verification.
+- `backend/test/integration.test.ts`: When a dedicated DB is available, verifies a real API create → boundary query → date edit that moves the record out of the query range → delete. Checks the leap day, month end, year end, 28-day and 84-day boundaries, plus date strings and volumes. Cleans up only the IDs it created and does not delete all existing data.
 
-#### 실제 실행 결과
+#### Actual run results
 
-| 명령                                                                                                                                                  | 결과                                                                                                                                    |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test` (추가 전)                                                                                                                                  | exit 0; pass 3, fail 0, skip 1                                                                                                          |
-| `npx prettier --write backend/test/period-ui.test.ts backend/test/period-api.test.ts backend/test/integration.test.ts`                                | exit 0; 테스트 파일 포맷 적용                                                                                                           |
-| `node node_modules/prettier/bin/prettier.cjs --write backend/test/period-ui.test.ts backend/test/period-api.test.ts backend/test/integration.test.ts` | exit 0; 최종 테스트 포맷 적용                                                                                                           |
-| `npm run typecheck`                                                                                                                                   | 최종 exit 0; frontend/backend 모두 통과. 작성 도중 테스트의 응답 변수 타입 추론 오류를 명시적 `Response` 타입으로 해결한 뒤 재실행      |
-| `npm run lint`                                                                                                                                        | exit 0                                                                                                                                  |
-| `npm test` (추가 후)                                                                                                                                  | exit 1; pass 18, fail 2, skip 2                                                                                                         |
-| `npm run check`                                                                                                                                       | exit 1; format:check·lint·typecheck 통과, 테스트 pass 18 / fail 2 / skip 2에서 중단. 뒤의 test:agents·build는 이 명령에서 실행되지 않음 |
-| `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`                                | exit 0                                                                                                                                  |
+| Command                                                                                                                                               | Result                                                                                                                                                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm test` (before the additions)                                                                                                                     | exit 0; pass 3, fail 0, skip 1                                                                                                                                                 |
+| `npx prettier --write backend/test/period-ui.test.ts backend/test/period-api.test.ts backend/test/integration.test.ts`                                | exit 0; applied formatting to the test files                                                                                                                                   |
+| `node node_modules/prettier/bin/prettier.cjs --write backend/test/period-ui.test.ts backend/test/period-api.test.ts backend/test/integration.test.ts` | exit 0; applied final test formatting                                                                                                                                          |
+| `npm run typecheck`                                                                                                                                   | final exit 0; frontend and backend both pass. During authoring, a type inference error on a response variable in a test was fixed with an explicit `Response` type, then rerun |
+| `npm run lint`                                                                                                                                        | exit 0                                                                                                                                                                         |
+| `npm test` (after the additions)                                                                                                                      | exit 1; pass 18, fail 2, skip 2                                                                                                                                                |
+| `npm run check`                                                                                                                                       | exit 1; format:check, lint, and typecheck passed, then stopped at the tests with pass 18 / fail 2 / skip 2. The later test:agents and build were not run by this command       |
+| `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`                                | exit 0                                                                                                                                                                         |
 
-#### 구현 전 실패 및 구현 단계 인계
+#### Failures before implementation and handoff to the implementation phase
 
-1. 서울 기준 오늘 날짜: UTC 기기에서 실제 `2026-10-14`, 기대 `2026-10-15`. 화면의 기본 기준 날짜가 기기 현지 시간대를 사용한다. 서비스 시간대 `Asia/Seoul` 적용이 필요하다.
-2. 역전된 조회 범위: `from=2025-01-05&to=2024-12-30`의 실제 HTTP 200, 기대 400. 서버에서 시작일 ≤ 종료일을 검증해야 한다.
+1. Today's date in Seoul time: on a UTC device the actual value is `2026-10-14` and the expected value is `2026-10-15`. The screen's default reference date uses the device's local time zone. The service time zone `Asia/Seoul` must be applied.
+2. Reversed query range: for `from=2025-01-05&to=2024-12-30` the actual HTTP status is 200 and the expected status is 400. The server must validate that start date ≤ end date.
 
-이 두 실패를 skip하거나 assertion을 약화하지 않았다. 테스트 어댑터 작성 중 발생한 import 및 타입 오류는 해결했으며 최종 실패는 위 두 사용자 동작뿐이다.
+These two failures were not skipped and no assertion was weakened. The import and type errors that came up while writing the test adapter were fixed, and the only final failures are the two user behaviors above.
 
-#### 차단 및 검증 한계
+#### Blockers and verification limits
 
-- `TEST_DATABASE_URL`이 제공되지 않아 기존 DB 테스트와 새 DB 테스트 모두 skip이다. 실제 DB 검증은 차단되어 있으며 DB 검증 완료로 보고하지 않는다. 구현 후 스키마가 준비된 전용 테스트 DB를 제공해 `npm test`와 최종 `npm run check`를 다시 실행해야 한다.
-- 화면 테스트는 실제 컴포넌트의 표시 값과 이벤트 핸들러를 실행하지만 DOM·브라우저·실제 React 스케줄러를 사용하지 않는다. 레이아웃, 키보드/포커스, 브라우저 네트워크 경쟁 조건 및 실제 화면의 날짜별 표시 검토는 별도로 남는다. 모의 API의 필터링 성공을 PostgreSQL 필터링 성공으로 계산하지 않는다.
-- 이 환경의 관찰된 Node 버전은 `v22.17.0`으로 프로젝트 기준 `24.21.0`과 다르다. 테스트는 실행됐으나 최종 검증 시 지정 런타임에서도 확인해야 한다.
-- 구현 완료 후 같은 테스트를 재실행하고 이 문서에 수정 후 결과를 누적한다. 커밋·푸시·PR 및 독립 검토는 코디네이터 담당이다.
+- `TEST_DATABASE_URL` was not provided, so both the existing DB tests and the new DB tests are skipped. Real DB verification is blocked and is not reported as complete. After the implementation, a dedicated test DB with the schema prepared must be provided, and `npm test` and the final `npm run check` must be run again.
+- The screen tests run the real components' displayed values and event handlers, but they do not use a DOM, a browser, or the real React scheduler. Layout, keyboard/focus, browser network race conditions, and a review of the real screen's per-date display remain separate. A mock API's filtering success is not counted as PostgreSQL filtering success.
+- The Node version observed in this environment is `v22.17.0`, which differs from the project standard `24.21.0`. The tests ran, but they must also be confirmed on the specified runtime at final verification.
+- After the implementation is complete, rerun the same tests and accumulate the post-fix results in this document. Commit, push, PR, and independent review are the coordinator's job.
 
-### 테스트 단계 재실행 — 2026-10-15
+### Test phase rerun — 2026-10-15
 
-- 준비된 테스트 18개와 기존 테스트 4개를 검토하고 현재 구현에 대해 재실행했다. 기존 파일을 보존했으며 구현은 수정하지 않았다.
-- 이번 실행에는 전용 `TEST_DATABASE_URL`이 제공되었다. 값은 출력하거나 기록하지 않았다. 앞선 실행의 DB 미제공 차단은 이번 실행에서 해소되었다.
-- `npm test`: exit 1; **pass 20, fail 2, skip 0**. 실제 PostgreSQL 통합 테스트 2개 모두 통과했다. 기간 시작·종료일 포함과 인접일 제외, 날짜 문자열, 소수 중량 볼륨, 수정으로 범위 밖 이동, 삭제 후 조회를 검증했다.
-- `npm run check`: exit 1; format:check·lint·frontend/backend typecheck 통과 후 테스트에서 동일한 **pass 20, fail 2, skip 0**으로 중단했다. 뒤의 test:agents·build는 실행되지 않았다.
-- 구현 전 실패 2건은 앞선 실행과 같다: 역전된 조회 범위의 HTTP 200(기대 400), UTC 기기에서 기본 날짜 `2026-10-14`(서울 날짜 기대 `2026-10-15`). 테스트 실패를 그대로 유지해 구현 단계에 인계한다.
-- 현재 런타임은 `v22.17.0`이다. 프로젝트 지정 Node `24.21.0`과 실제 브라우저에서의 검증은 여전히 남는다.
+- Reviewed the 18 prepared tests and the 4 existing tests and reran them against the current implementation. Preserved the existing files and did not modify the implementation.
+- A dedicated `TEST_DATABASE_URL` was provided for this run. The value was not printed or recorded. The DB-not-provided blocker from the earlier run is resolved in this run.
+- `npm test`: exit 1; **pass 20, fail 2, skip 0**. Both real PostgreSQL integration tests passed. They verified inclusion of the period start and end dates and exclusion of adjacent days, date strings, decimal-weight volume, moving out of the range by an edit, and the query after a delete.
+- `npm run check`: exit 1; format:check, lint, and frontend/backend typecheck passed, then it stopped at the tests with the same **pass 20, fail 2, skip 0**. The later test:agents and build were not run.
+- The 2 failures before implementation are the same as in the earlier run: HTTP 200 for a reversed query range (expected 400), and the default date `2026-10-14` on a UTC device (expected Seoul date `2026-10-15`). The test failures are kept as they are and handed to the implementation phase.
+- The current runtime is `v22.17.0`. Verification on the project-specified Node `24.21.0` and in a real browser still remains.
 
-### 구현 단계 — 2026-10-15
+### Implementation phase — 2026-10-15
 
-- 기존 이슈·브랜치·테스트를 재사용했다. 테스트 파일과 assertion은 변경하지 않았으며 이 worktree에서 구현과 문서만 수정했다. 커밋·푸시·PR 및 독립 검토는 코디네이터에게 인계한다.
-- `frontend/src/main.tsx`: 기본 기준 날짜를 `Intl.DateTimeFormat`의 명시적 `Asia/Seoul` 시간대에서 구한다. 기간 경계·이전/다음 기간 이동·그래프 구간은 UTC 달력 연산으로 통일해 기기 시간대 및 일광절약시간의 영향을 제거했다. 날짜 라벨도 같은 달력 날짜의 요일을 표시한다.
-- `backend/src/app.ts`: 조회 시작일이 종료일보다 늦으면 DB 조회 전에 HTTP 400으로 거부한다. 기존 날짜 형식·실제 달력 날짜 검증은 유지한다.
-- 기존 기간별 목록·통계·그래프·편집/삭제 후 재조회 동작은 재사용했다. 기존 행동 테스트에서 1일, 월요일 기준 1주, 달력 월간, 최근 28일/84일의 경계와 빈 상태, 같은 날의 여러 일지 합산 및 수정·삭제 후 통계/그래프 갱신을 확인했다.
+- Reused the existing issue, branch, and tests. Did not change the test files or assertions, and modified only the implementation and docs in this worktree. Commit, push, PR, and independent review are handed off to the coordinator.
+- `frontend/src/main.tsx`: Gets the default reference date from `Intl.DateTimeFormat` with the explicit `Asia/Seoul` time zone. Period boundaries, previous/next period navigation, and graph intervals are unified on UTC calendar arithmetic, which removes the influence of the device time zone and daylight saving time. The date label also shows the weekday of the same calendar date.
+- `backend/src/app.ts`: If the query start date is later than the end date, it is rejected with HTTP 400 before the DB query. The existing date format and real calendar date validation are kept.
+- Reused the existing behavior for the per-period list, statistics, graph, and re-query after edit/delete. The existing behavior tests confirmed the boundaries and empty state for 1 day, 1 week starting Monday, a calendar month, and the last 28 days/84 days, the summing of several logs on the same day, and the update of statistics/graph after an edit or delete.
 
-#### 실제 실행 결과
+#### Actual run results
 
-| 명령                                                                                                                   | 결과                                                                                                                                                               |
-| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm test`                                                                                                             | exit 0; pass 22, fail 0, skip 0. 전용 DB 통합 테스트 2개 포함. 구현 전 실패 2건 모두 해결                                                                          |
-| `npm run check`                                                                                                        | exit 0; format:check·lint·frontend/backend typecheck 통과, 앱 테스트 pass 22 / fail 0 / skip 0, test:agents pass 34 / fail 0 / skip 0, frontend/backend build 통과 |
-| `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check` | exit 0                                                                                                                                                             |
+| Command                                                                                                                | Result                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`                                                                                                             | exit 0; pass 22, fail 0, skip 0. Includes the 2 dedicated-DB integration tests. Both failures from before the implementation are resolved                                    |
+| `npm run check`                                                                                                        | exit 0; format:check, lint, and frontend/backend typecheck passed, app tests pass 22 / fail 0 / skip 0, test:agents pass 34 / fail 0 / skip 0, frontend/backend build passed |
+| `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check` | exit 0                                                                                                                                                                       |
 
-- 제공된 `TEST_DATABASE_URL`만 사용했다. 값은 열람·출력·기록하지 않았다. DB 관련 차단은 없다.
-- 실행 런타임은 Node `v22.17.0`이다. 프로젝트 지정 Node `24.21.0`에서의 실행과 실제 브라우저 레이아웃·포커스·네트워크 경쟁 조건 검증은 수행하지 않았다. 기존 UI 행동 테스트는 격리된 VM의 컴포넌트 이벤트 검증이며 브라우저 검증으로 계산하지 않는다.
+- Used only the provided `TEST_DATABASE_URL`. The value was not viewed, printed, or recorded. There is no DB-related blocker.
+- The runtime used is Node `v22.17.0`. Did not run on the project-specified Node `24.21.0`, and did not verify real browser layout, focus, or network race conditions. The existing UI behavior tests verify component events in an isolated VM and are not counted as browser verification.
 
-### 검토 지적 수정 — 2026-10-15
+### Review finding fix — 2026-10-15
 
-- 검토의 P2 지적(이전 기간의 지연 응답이 현재 선택 기간을 덮어씀)을 수정했다. `frontend/src/main.tsx`의 조회마다 증가하는 요청 번호를 ref에 유지하고 최신 요청만 목록·통계·그래프의 원본 데이터, 오류 및 로딩 상태를 갱신하도록 했다. 서버 API와 기존 기간 계산 수정은 유지했다.
-- `backend/test/period-ui.test.ts`에 응답을 보류하고 원하는 순서로 완료할 수 있는 메모리 API 제어를 추가했다. 기존 테스트와 assertion은 유지했다.
-- 회귀 테스트 3개를 추가했다: 이전 성공 응답이 최신 목록·통계·그래프를 덮어쓰지 않음, 이전 실패 응답이 현재 화면에 오류를 표시하지 않음, 이전 응답이 최신 조회의 로딩 상태를 해제하지 않음.
-- 수정 전 재현에서 최신 3월 1일의 2,000kg이 이전 2월 29일의 1,000kg으로 바뀌었다. 오류·로딩 회귀도 수정 전에 실패하고 수정 후 통과했다.
+- Fixed the review's P2 finding (a late response for a previous period overwrote the currently selected period). In `frontend/src/main.tsx`, a request number that increases with every query is kept in a ref, and only the latest request updates the raw data, errors, and loading state of the list, statistics, and graph. The server API and the earlier period-calculation fix are kept.
+- Added to `backend/test/period-ui.test.ts` an in-memory API control that can hold responses and complete them in any order. Kept the existing tests and assertions.
+- Added 3 regression tests: an earlier successful response does not overwrite the latest list, statistics, and graph; an earlier failed response does not show an error on the current screen; and an earlier response does not clear the loading state of the latest query.
+- In the reproduction before the fix, the latest March 1 value of 2,000kg was replaced by the earlier February 29 value of 1,000kg. The error and loading regressions also failed before the fix and passed after it.
 
-#### 실제 실행 결과
+#### Actual run results
 
-- `node node_modules/tsx/dist/cli.mjs --test backend/test/period-ui.test.ts`: 수정 전 exit 1; pass 16, fail 3, skip 0. 수정 후 exit 0; pass 19, fail 0, skip 0.
-- `node node_modules/prettier/bin/prettier.cjs --write frontend/src/main.tsx backend/test/period-ui.test.ts`: exit 0; 포맷 변경 없음.
-- `npm run check`: exit 0; format:check·lint·frontend/backend typecheck 통과, 앱 테스트 pass 25 / fail 0 / skip 0(전용 DB 통합 2개 포함), 워커 테스트 pass 34 / fail 0 / skip 0, frontend/backend build 통과.
+- `node node_modules/tsx/dist/cli.mjs --test backend/test/period-ui.test.ts`: before the fix exit 1; pass 16, fail 3, skip 0. After the fix exit 0; pass 19, fail 0, skip 0.
+- `node node_modules/prettier/bin/prettier.cjs --write frontend/src/main.tsx backend/test/period-ui.test.ts`: exit 0; no formatting changes.
+- `npm run check`: exit 0; format:check, lint, and frontend/backend typecheck passed, app tests pass 25 / fail 0 / skip 0 (including the 2 dedicated-DB integration tests), worker tests pass 34 / fail 0 / skip 0, frontend/backend build passed.
 - `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: exit 0.
-- 제공된 전용 `TEST_DATABASE_URL`만 테스트가 사용했으며 값을 출력하거나 기록하지 않았다. DB 차단은 없다.
-- 실제 브라우저 대신 VM에서 응답 순서를 역전시켜 검증했다. 실제 브라우저 및 지정 Node 버전 검증은 여전히 미실행이다. 모든 변경은 미커밋 상태로 코디네이터의 검증·독립 검토에 인계한다.
+- The tests used only the provided dedicated `TEST_DATABASE_URL`, and the value was not printed or recorded. There is no DB blocker.
+- Verified by reversing the response order in the VM instead of in a real browser. Real browser and specified Node version verification is still not run. All changes are left uncommitted and handed to the coordinator for verification and independent review.
 
-### 테스트 단계 재확인 — 2026-10-15
+### Test phase recheck — 2026-10-15
 
-- 이번 테스트 단계 시작 시 응답 순서 보호 구현과 회귀 테스트 3개가 이미 작업 트리에 있었다. 기존 테스트·assertion·구현을 보존하고 중복 테스트를 추가하지 않았다. 이번 단계의 변경은 이 실행 기록뿐이며 커밋·푸시·PR 작업은 수행하지 않았다.
-- 기존 회귀 테스트는 이전 성공 응답의 목록·통계·그래프 덮어쓰기, 이전 실패 응답의 오류 표시, 최신 요청이 대기 중일 때 이전 응답의 로딩 해제를 각각 검증한다. 수정 전 실패는 위 단계의 기록이며 이번 실행에서 구현을 되돌려 재현하지 않았다.
-- `npm test`: exit 0; **pass 25, fail 0, skip 0**. 응답 순서 회귀 3개와 전용 PostgreSQL 통합 테스트 2개가 모두 통과했다. 제공된 전용 `TEST_DATABASE_URL`은 테스트 실행에만 사용했으며 값을 열람·출력·기록하지 않았다.
-- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: exit 0 (문서 추가 전).
-- 구현·테스트 변경이 없으므로 이미 기록된 전체 `npm run check`를 반복하지 않았다. 이번 단계는 실제 브라우저 및 지정 Node 버전 검증을 수행하지 않았다. 실행 차단은 없다.
+- At the start of this test phase, the response-order protection implementation and the 3 regression tests were already in the working tree. Preserved the existing tests, assertions, and implementation, and did not add duplicate tests. The only change in this phase is this run record, and no commit, push, or PR work was done.
+- The existing regression tests verify, respectively, that an earlier successful response does not overwrite the list, statistics, and graph, that an earlier failed response does not show an error, and that an earlier response does not clear loading while the latest request is pending. The failures before the fix are recorded in the phase above, and this run did not revert the implementation to reproduce them.
+- `npm test`: exit 0; **pass 25, fail 0, skip 0**. The 3 response-order regressions and the 2 dedicated PostgreSQL integration tests all passed. The provided dedicated `TEST_DATABASE_URL` was used only to run the tests, and the value was not viewed, printed, or recorded.
+- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: exit 0 (before the doc was added).
+- Because there are no implementation or test changes, did not repeat the already recorded full `npm run check`. This phase did not verify in a real browser or on the specified Node version. There was no execution blocker.
 
-### 구현 단계 재확인 — 2026-10-15
+### Implementation phase recheck — 2026-10-15
 
-- 이전 검토의 P2 수정과 응답 순서 회귀 테스트 3개가 이미 존재함을 확인했다. 최신 요청 번호로 성공 데이터·오류·로딩 상태를 모두 보호한다. 기존 구현과 테스트·assertion은 수정하지 않고 보존했다. 이번 단계는 검증 기록만 추가했다.
-- `npm run check`: exit 0; format:check·lint·frontend/backend typecheck 통과, 앱 테스트 pass 25 / fail 0 / skip 0(전용 PostgreSQL 통합 2개와 응답 순서 회귀 3개 포함), 워커 테스트 pass 34 / fail 0 / skip 0, frontend/backend build 통과.
-- `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md` 및 `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: exit 0.
-- 테스트에는 제공된 전용 TEST_DATABASE_URL만 사용했고 값을 열람·출력·기록하지 않았다. 실행 차단은 없다.
-- 실제 브라우저 및 프로젝트 지정 Node 버전 검증은 이번 단계에서 수행하지 않았다. 모든 변경을 미커밋 상태로 유지하며 독립 검토와 커밋·푸시·PR은 코디네이터에게 맡긴다.
+- Confirmed that the earlier review's P2 fix and the 3 response-order regression tests already exist. The latest request number protects the successful data, the error, and the loading state. Preserved the existing implementation, tests, and assertions without modification. This phase only added the verification record.
+- `npm run check`: exit 0; format:check, lint, and frontend/backend typecheck passed, app tests pass 25 / fail 0 / skip 0 (including the 2 dedicated PostgreSQL integration tests and the 3 response-order regressions), worker tests pass 34 / fail 0 / skip 0, frontend/backend build passed.
+- `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md` and `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: exit 0.
+- The tests used only the provided dedicated TEST_DATABASE_URL, and the value was not viewed, printed, or recorded. There was no execution blocker.
+- Did not verify in a real browser or on the project-specified Node version in this phase. All changes are kept uncommitted, and independent review, commit, push, and PR are left to the coordinator.
 
-### 두 번째 검토 지적 수정 — 2026-10-15
+### Second review finding fix — 2026-10-15
 
-- P2 지적: 삭제 요청을 보낸 뒤 기준 날짜를 변경하면 삭제 완료 시 이전 기간의 `refresh`가 새 요청 번호를 얻어 현재 목록·통계·그래프를 덮어썼다. 편집 저장도 같은 공통 `action`을 사용해 같은 문제가 있었다.
-- `frontend/src/main.tsx`: 기간 조회 effect에서 최신 `refresh`를 ref에 보관하고, 변경 요청 완료 후 그 최신 함수를 호출한다. 기존 응답 번호 보호를 유지하며 삭제·저장 후 현재 선택 기간을 다시 조회한다.
-- `backend/test/period-ui.test.ts`: PUT/DELETE 완료를 보류할 수 있는 메모리 API 제어와 회귀 테스트 2개를 추가했다. 삭제 대기 중 날짜 변경, 편집 저장 대기 중 날짜·기간 변경을 각각 검증한다. 완료 후 현재 기간 재조회, 목록, 운동 일수, 세트 수, 볼륨, 그래프 및 오류 없음까지 확인한다. 기존 테스트와 assertion은 보존했다.
-- 수정 전 두 테스트 모두 이전 `2024-02-29`를 다시 조회해 실패했다. 수정 후 현재 선택한 `2024-03-01`의 일간 또는 3월 월간 범위를 조회한다.
+- P2 finding: if the reference date was changed after a delete request was sent, then when the delete completed, the previous period's `refresh` got a new request number and overwrote the current list, statistics, and graph. Saving an edit used the same shared `action` and had the same problem.
+- `frontend/src/main.tsx`: In the period query effect, the latest `refresh` is kept in a ref, and that latest function is called after a mutation request completes. It keeps the existing response-number protection and re-queries the currently selected period after a delete or save.
+- `backend/test/period-ui.test.ts`: Added an in-memory API control that can hold PUT/DELETE completion, and 2 regression tests. They verify a date change while a delete is pending, and a date and period change while an edit save is pending. After completion they check the re-query of the current period, the list, workout days, set count, volume, the graph, and that there is no error. Preserved the existing tests and assertions.
+- Before the fix, both tests failed because they re-queried the previous `2024-02-29`. After the fix, they query the daily or March monthly range for the currently selected `2024-03-01`.
 
-#### 실제 실행 결과
+#### Actual run results
 
-- `node node_modules/tsx/dist/cli.mjs --test backend/test/period-ui.test.ts`: 수정 전 exit 1; pass 19, fail 2, skip 0. 구현 수정 직후 exit 1; pass 20, fail 1, skip 0. 남은 실패는 새 월간 테스트가 같은 그래프 구간의 합계 5,000kg을 개별 일지 볼륨 3,000kg으로 잘못 기대한 것이었다. 해당 기대값을 고정 데이터의 합계 5,000kg으로 바로잡았으며 기존 assertion은 변경하지 않았다.
-- `node node_modules/prettier/bin/prettier.cjs --write frontend/src/main.tsx backend/test/period-ui.test.ts`: exit 0; 포맷 변경 없음.
-- 첫 `npm run check`: exit 1; format:check·lint·typecheck 통과, 앱 pass 26 / fail 1 / skip 0(위 신규 그래프 기대값 오류), 워커·빌드 미실행.
-- 기대값 수정 후 최종 `npm run check`: exit 0; format:check·lint·frontend/backend typecheck 통과, 앱 **pass 27 / fail 0 / skip 0**(전용 PostgreSQL 통합 2개 및 새 회귀 2개 포함), 워커 **pass 34 / fail 0 / skip 0**, frontend/backend build 통과.
-- 문서 갱신 후 `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md` 및 `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: exit 0.
-- 제공된 전용 `TEST_DATABASE_URL`만 테스트에 사용했으며 값은 열람·출력·기록하지 않았다. 실행 차단은 없다.
-- `node --version`: `v22.17.0`. 실제 브라우저 및 지정 Node `24.21.0` 검증은 수행하지 않았다. VM의 이벤트·응답 순서 검증을 브라우저 검증으로 계산하지 않는다.
-- 변경은 이 worktree에 미커밋으로 유지했다. 이슈·브랜치 생성, 커밋·푸시·PR, 승인·병합 및 추가 에이전트 실행은 수행하지 않았다.
+- `node node_modules/tsx/dist/cli.mjs --test backend/test/period-ui.test.ts`: before the fix exit 1; pass 19, fail 2, skip 0. Right after the implementation fix exit 1; pass 20, fail 1, skip 0. The remaining failure was the new monthly test wrongly expecting the individual log volume of 3,000kg instead of the total of 5,000kg for the same graph interval. Corrected that expected value to the fixed data's total of 5,000kg, and did not change any existing assertion.
+- `node node_modules/prettier/bin/prettier.cjs --write frontend/src/main.tsx backend/test/period-ui.test.ts`: exit 0; no formatting changes.
+- First `npm run check`: exit 1; format:check, lint, and typecheck passed, app pass 26 / fail 1 / skip 0 (the new graph expectation error above), worker and build not run.
+- Final `npm run check` after the expected-value fix: exit 0; format:check, lint, and frontend/backend typecheck passed, app **pass 27 / fail 0 / skip 0** (including the 2 dedicated PostgreSQL integration tests and the 2 new regressions), worker **pass 34 / fail 0 / skip 0**, frontend/backend build passed.
+- After the doc update, `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md` and `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: exit 0.
+- The tests used only the provided dedicated `TEST_DATABASE_URL`, and the value was not viewed, printed, or recorded. There was no execution blocker.
+- `node --version`: `v22.17.0`. Did not verify in a real browser or on the specified Node `24.21.0`. The VM's event and response-order verification is not counted as browser verification.
+- The changes were kept uncommitted in this worktree. Did not create an issue or branch, commit, push, open a PR, approve or merge, or run additional agents.
 
-### 테스트 단계 최종 재확인 — 2026-10-16
+### Test phase final recheck — 2026-10-16
 
-- `AGENTS.md`, `workout-implementation`, `workout-testing`을 읽고 준비된 이슈·브랜치·테스트를 재사용했다. 기간 경계·빈 상태·통계·그래프·수정/삭제 및 응답 순서 테스트가 이미 있어 중복 추가하지 않았다. 이번 단계에서는 구현과 테스트를 변경하지 않고 실행 기록만 추가했다.
-- 지연된 삭제·편집 완료 후 현재 선택 기간을 재조회하는 회귀 테스트 2개를 확인했다. 기존의 응답 순서 회귀 3개도 유지했다. 수정 전 실패는 위 구현 단계의 관찰 기록이며 이번 단계에서 구현을 되돌려 재현하지 않았다.
-- `npm test`: exit 0; **pass 27, fail 0, skip 0**. 새 회귀 2개와 실제 PostgreSQL 통합 테스트 2개 모두 통과했다. 제공된 전용 `TEST_DATABASE_URL`만 테스트가 사용했으며 값을 열람·출력·기록하지 않았다. 실행 차단은 없다.
-- `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md`: exit 0. `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: 문서 추가 전후 모두 exit 0.
-- 구현·테스트 변경이 없고 직전 구현 단계의 전체 검사가 통과했으므로 이번 단계는 `npm run check`를 반복하지 않았다. 실제 브라우저 및 지정 Node 버전 검증은 수행하지 않았다. 모든 변경을 미커밋 상태로 유지했다.
+- Read `AGENTS.md`, `workout-implementation`, and `workout-testing`, and reused the prepared issue, branch, and tests. Tests for period boundaries, the empty state, statistics, graph, edit/delete, and response order already exist, so did not add duplicates. In this phase did not change the implementation or tests and only added the run record.
+- Confirmed the 2 regression tests that re-query the currently selected period after a delayed delete or edit completes. Also kept the existing 3 response-order regressions. The failures before the fix are the observation record of the implementation phase above, and this phase did not revert the implementation to reproduce them.
+- `npm test`: exit 0; **pass 27, fail 0, skip 0**. The 2 new regressions and the 2 real PostgreSQL integration tests all passed. The tests used only the provided dedicated `TEST_DATABASE_URL`, and the value was not viewed, printed, or recorded. There was no execution blocker.
+- `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md`: exit 0. `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: exit 0 both before and after the doc was added.
+- Because there are no implementation or test changes and the previous implementation phase's full check passed, this phase did not repeat `npm run check`. Did not verify in a real browser or on the specified Node version. All changes were kept uncommitted.
 
-### 구현 단계 최종 재확인 — 2026-10-16
+### Implementation phase final recheck — 2026-10-16
 
-- 준비된 구현에서 이전 P2 지적의 수정이 이미 적용되어 있음을 확인했다. 변경 작업 완료 시 `latestRefresh.current()`로 현재 선택 기간을 재조회하며, 조회 응답 번호로 이전 성공·실패·로딩 완료의 상태 덮어쓰기를 막는다. 추가 구현 변경은 필요하지 않아 기존 코드와 assertion을 보존했다.
-- Node의 SHA-256으로 테스트 파일 3개의 해시를 확인했고 전달받은 테스트 단계 해시와 모두 동일했다. 이번 단계의 변경은 이 작업 기록뿐이다.
-- `npm run check`: exit 0; format:check·lint·frontend/backend typecheck 통과, 앱 **pass 27 / fail 0 / skip 0**(전용 PostgreSQL 통합 2개와 응답 순서 회귀 5개 포함), 워커 **pass 34 / fail 0 / skip 0**, frontend/backend build 통과.
-- 제공된 전용 `TEST_DATABASE_URL`만 테스트에서 사용했으며 값을 열람·출력·기록하지 않았다. DB·의존성·실행 권한 차단은 없다. 읽기 전용 Git 상태 조회에서 전역 ignore 파일 접근 경고가 있었지만 조회는 exit 0으로 완료했으며 설정을 변경하지 않았다.
-- `node -e`로 확인한 런타임은 `v22.17.0`이다. 실제 브라우저 및 지정 Node `24.21.0` 검증은 수행하지 않았다. 변경은 미커밋 상태이며 독립 검토와 커밋·푸시·PR은 코디네이터가 담당한다.
-- 문서 갱신 후 `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md`와 `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: 모두 exit 0.
+- Confirmed that the fix for the earlier P2 finding is already applied in the prepared implementation. When a mutation completes, the currently selected period is re-queried with `latestRefresh.current()`, and the query response number prevents an earlier success, failure, or loading completion from overwriting state. No further implementation change was needed, so the existing code and assertions were preserved.
+- Checked the hashes of the 3 test files with Node's SHA-256, and all were identical to the test-phase hashes that were handed over. The only change in this phase is this work record.
+- `npm run check`: exit 0; format:check, lint, and frontend/backend typecheck passed, app **pass 27 / fail 0 / skip 0** (including the 2 dedicated PostgreSQL integration tests and the 5 response-order regressions), worker **pass 34 / fail 0 / skip 0**, frontend/backend build passed.
+- Used only the provided dedicated `TEST_DATABASE_URL` in the tests, and did not view, print, or record the value. There was no DB, dependency, or execution-permission blocker. A read-only Git status query showed a warning about access to the global ignore file, but the query completed with exit 0 and no setting was changed.
+- The runtime confirmed with `node -e` is `v22.17.0`. Did not verify in a real browser or on the specified Node `24.21.0`. The changes are uncommitted, and independent review, commit, push, and PR are the coordinator's job.
+- After the doc update, `node node_modules/prettier/bin/prettier.cjs --check docs/changes/17-agent-task.md` and `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/17 diff --check`: both exit 0.
 
-### PR 생성 후 리뷰 보완 — 2026-10-16
+### Review follow-up after PR creation — 2026-10-16
 
-- 사용자가 PR #40의 추가 코드 리뷰에서 제안한 브라우저 검증과 PR 설명 정정을 승인했다. 앱 코드·테스트·스킬은 변경하지 않았다.
-- 검증 대상 앱 커밋: `1a7c6483c591f46c8190dce53b05d517e57a6322`. 해당 커밋의 프로덕션 빌드와 전용 PostgreSQL 테스트 DB, loopback 서버, 사용자 프로필과 분리된 headless Chrome을 사용했다.
-- `node .local/agent-workflow/browser-check-17.mjs` (저장소 루트, ignored 검사기): 최종 exit 0. PC 1440×1000 및 모바일 에뮬레이션 390×844에서 1일·월요일 기준 1주·윤년 2월·최근 28일/84일의 실제 화면 기간 경계, 누적 볼륨과 그래프, 수평 넘침 없음을 확인했다. 모바일 크기에서 200→250 kg 수정 후 볼륨 3,000→3,500 kg 및 그래프 갱신, 새로고침 후 보존, 삭제 후 1,000 kg, 빈 날짜의 0 통계·빈 그래프를 확인했다.
-- 첫 실행은 화면 검사가 모두 통과했지만 정리 단계에서 이미 UI로 삭제한 fixture를 다시 삭제해 404로 종료했다. ignored 검사기에서 정리용 DELETE의 404를 허용하고 남은 fixture를 정리한 후 전체를 재실행해 통과했다. 앱 오류로 계산하지 않는다. 이 검사에서 만든 fixture만 삭제했다.
-- 화면 캡처 `browser-desktop.png`, `browser-mobile.png`를 ignored `.local/agent-workflow/jobs/17/`에 보관하고 직접 확인했다. 실제 모바일 기기·Safari·Firefox·터치 및 포커스 이동 검증은 포함하지 않는다. 캡처와 검사기는 로컬 증거이며 GitHub에 업로드하지 않았다.
-- PR 본문은 최종 게시/CI 상태 및 위 검증 범위를 반영해 갱신한다. 이전 단계의 미커밋·브라우저 미검증 기록은 당시 이력으로 보존한다. PR 병합은 사용자가 수행한다.
-- 호스트 최종 재검사: 지정 Node `24.21.0` 및 npm `11.19.0`, 전용 `TEST_DATABASE_URL`로 `npm run check` exit 0. 포맷·lint·타입 검사, 앱 **27 pass / 0 fail / 0 skip**(DB 통합 2개 포함), 워커 **34 pass / 0 fail / 0 skip**, frontend/backend 빌드 모두 통과했다. 로그: ignored `.local/agent-workflow/jobs/17/post-review-check.log`. 문서만 추가했으므로 앱 테스트 코드는 새로 추가하지 않았다.
+- The user approved the browser verification and the PR description correction that were suggested in the additional code review of PR #40. Did not change the app code, tests, or skills.
+- App commit verified: `1a7c6483c591f46c8190dce53b05d517e57a6322`. Used that commit's production build, a dedicated PostgreSQL test DB, a loopback server, and headless Chrome separated from the user profile.
+- `node .local/agent-workflow/browser-check-17.mjs` (repository root, ignored checker): final exit 0. On PC 1440×1000 and mobile emulation 390×844, confirmed on the real screen the period boundaries for 1 day, 1 week starting Monday, a leap-year February, and the last 28 days/84 days, the cumulative volume and graph, and no horizontal overflow. At mobile size, confirmed that after editing 200→250 kg the volume changed 3,000→3,500 kg and the graph updated, that it was preserved after a reload, that it was 1,000 kg after a delete, and that an empty date showed 0 statistics and an empty graph.
+- In the first run, all screen checks passed, but in the cleanup step it exited with 404 because it deleted again a fixture that had already been deleted through the UI. Allowed a 404 on the cleanup DELETE in the ignored checker, cleaned up the remaining fixtures, and reran the whole thing, which passed. It is not counted as an app error. Deleted only the fixtures this check created.
+- Kept the screen captures `browser-desktop.png` and `browser-mobile.png` in the ignored `.local/agent-workflow/jobs/17/` and checked them directly. Verification on a real mobile device, Safari, Firefox, touch, and focus movement is not included. The captures and the checker are local evidence and were not uploaded to GitHub.
+- The PR body is updated to reflect the final publication/CI state and the verification scope above. The earlier phases' records of being uncommitted and not browser-verified are kept as the history of that time. The user merges the PR.
+- Host final recheck: `npm run check` exit 0 with the specified Node `24.21.0`, npm `11.19.0`, and the dedicated `TEST_DATABASE_URL`. Format, lint, and type checks, app **27 pass / 0 fail / 0 skip** (including the 2 DB integration tests), worker **34 pass / 0 fail / 0 skip**, and frontend/backend builds all passed. Log: ignored `.local/agent-workflow/jobs/17/post-review-check.log`. Because only docs were added, no new app test code was added.
 
-### 최신 main 충돌 해결 및 병합 요청 — 2026-10-16
+### Latest main conflict resolution and merge request — 2026-10-16
 
-- 사용자가 이번 PR의 충돌 해결과 에이전트 병합을 명시적으로 요청했다. 이 요청은 PR #40에 대한 병합 승인으로 적용하며 다른 PR에는 확대하지 않는다.
-- 최신 `origin/main` (`af45c3885d5a884e631391733419db6243454069`)을 작업 브랜치에 통합했다. 유일한 충돌인 `frontend/src/main.tsx`에서 main의 공통 `seoulDate()`와 #17의 UTC 달력 연산·최신 조회 응답 보호를 함께 유지했다. main의 세트 메모와 소수 둘째 자리 표기도 보존했다.
-- UI 테스트의 모듈 어댑터가 실제 `frontend/src/date.ts`를 격리된 VM에서 읽도록 연결했다. main의 메모 UI에서 생략된 자식 요소가 루트 탐색을 다시 시작하는 검사기 재귀 문제도 처리했다. 기존 assertion·테스트는 삭제하거나 약화하지 않았다. UI 회귀 테스트 21 pass / 0 fail / 0 skip.
-- 첫 전체 검사는 포맷 차이로 중단됐다. 포맷 정리 후 검사에서 UI 탐색기 재귀 오류를 재현했고, 수정 후 UI 검사와 최종 전체 검사를 다시 실행했다. 중간 실패를 최종 성공으로 숨기지 않는다.
-- 최종 호스트 `npm run check`: 지정 Node 24.21.0 / npm 11.19.0과 전용 DB에서 exit 0. 앱 **109 pass / 0 fail / 0 skip**, 워커 **86 pass / 0 fail / 0 skip**, 포맷·lint·타입·frontend/backend 빌드 통과. main에서 가져온 테스트 증가분도 포함한다. 로그: ignored `.local/agent-workflow/jobs/17/merge-check.log`.
-- 새 통합 빌드의 `node .local/agent-workflow/browser-check-17.mjs`: exit 0. PC·모바일 에뮬레이션의 다섯 기간·통계·그래프·화면 폭 및 모바일 수정·새로고침·삭제·빈 상태가 재통과했다. 실제 모바일 기기 검증은 포함하지 않는다.
+- The user explicitly requested conflict resolution and an agent merge for this PR. This request applies as merge approval for PR #40 and is not extended to other PRs.
+- Integrated the latest `origin/main` (`af45c3885d5a884e631391733419db6243454069`) into the working branch. In `frontend/src/main.tsx`, the only conflict, kept together main's shared `seoulDate()` and #17's UTC calendar arithmetic and latest-query-response protection. Also preserved main's set memo and two-decimal-place display.
+- Connected the UI tests' module adapter so it reads the real `frontend/src/date.ts` in the isolated VM. Also handled a checker recursion problem where a child element omitted in main's memo UI restarted the root traversal. Did not delete or weaken any existing assertion or test. UI regression tests 21 pass / 0 fail / 0 skip.
+- The first full check stopped on a formatting difference. After the formatting cleanup, the check reproduced the UI traverser recursion error, and after the fix the UI check and the final full check were run again. The intermediate failures are not hidden behind the final success.
+- Final host `npm run check`: exit 0 with the specified Node 24.21.0 / npm 11.19.0 and the dedicated DB. App **109 pass / 0 fail / 0 skip**, worker **86 pass / 0 fail / 0 skip**, and format, lint, type, and frontend/backend builds passed. This also includes the increase in tests brought in from main. Log: ignored `.local/agent-workflow/jobs/17/merge-check.log`.
+- `node .local/agent-workflow/browser-check-17.mjs` on the new integrated build: exit 0. The five periods, statistics, graph, and screen width for PC and mobile emulation, and mobile edit, reload, delete, and empty state passed again. Verification on a real mobile device is not included.

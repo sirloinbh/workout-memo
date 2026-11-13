@@ -1,55 +1,55 @@
-# #8 로컬 다중 에이전트 작업 자동화
+# #8 Local multi-agent work automation
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/8
-- 브랜치: feat/8-local-agent-workflow
+- Issue: https://github.com/sirloinbh/workout-memo/issues/8
+- Branch: feat/8-local-agent-workflow
 
-## 작업 커밋: feat: 로컬 에이전트 개발 워커 구축 (#8)
+## Work commit: feat: 로컬 에이전트 개발 워커 구축 (#8) (build the local agent development worker)
 
-사용자는 주 대화에서 요구사항을 계속 논의하고, PC의 백그라운드 워커가 확정된 이슈를 테스트 → 구현 → 독립 검토 → 실제 검사 → 커밋·푸시·PR·CI 확인 순서로 처리하는 시스템을 요청했다.
+The user asked for a system in which they keep discussing requirements in the main conversation, while a background worker on the PC handles confirmed issues in this order: test, implementation, independent review, real checks, then commit, push, PR, and CI check.
 
-## 변경
+## Changes
 
-- 의존성 추가 없이 Node 스크립트로 이슈 큐·원자적 상태 저장·PID 잠금·중단 후 재개·요구사항 스냅샷을 구현했다. 큐 등록 시 이슈별 main 기준 브랜치와 worktree를 준비한다.
-- 테스트·구현·검토를 별도 Codex 실행으로 분리하고 JSON 결과와 파일을 인계한다. 검토는 읽기 전용이며, 구현자가 테스트 담당의 테스트를 바꾸면 중단한다.
-- 호스트에서 실제 check를 실행하고 파일 fingerprint를 게시 단계와 연결했다. 커밋 의도를 미리 저장해 커밋 직후 중단도 식별한다. 검토·CI 수정은 두 번째 실패까지 제한하며 CI 완료 전 draft PR을 유지한다. 사용자 전용 병합 규칙을 유지했다.
-- PowerShell의 시작·중지·상태·등록·재시도·요구사항 갱신·취소 명령, 운영 문서와 AGENTS 지침을 추가했다. 테스트는 npm run test:agents 및 npm run check, Linux/Windows CI에 연결했다.
-- 별도 검토 에이전트가 발견한 검증 후 변경·중단된 커밋·잠금 회수 경쟁·CI 타이머·스테이징 검증·등록 중 큐 조회 경쟁을 수정했다.
+- Without adding dependencies, implemented with Node scripts an issue queue, atomic state saving, a PID lock, resuming after an interruption, and a requirements snapshot. When an issue is queued, a main-based branch and a worktree are prepared for it.
+- Separated the test, implementation, and review steps into separate Codex runs, and hand over JSON results and files. The review is read-only, and the run stops if the implementer changes the tests of the test owner.
+- The host runs the real check, and the file fingerprint is linked to the publish step. The commit intent is saved beforehand so an interruption right after a commit can be identified. Review and CI fixes are limited to a second failure, and the PR stays draft until CI completes. The user-only merge rule is kept.
+- Added PowerShell commands for start, stop, status, register, retry, requirement update, and cancel, plus an operations doc and AGENTS instructions. The tests are connected to npm run test:agents, npm run check, and Linux/Windows CI.
+- Fixed the problems found by a separate review agent: changes after verification, an interrupted commit, a lock reclaim race, the CI timer, staging verification, and a queue lookup race during registration.
 
-## 실제 검증
+## Actual verification
 
-- 최종 npm run check 통과: 앱 빌드·DB 통합 포함 앱 테스트 4개 및 자동화 테스트 34개, 모두 pass, skip 0. 자동화 테스트는 상태 전이, 이슈 범위와 변경 감지, 리뷰·CI 재시도, 검사 실패 시 게시 중단, 잠금·저장·타임아웃·리터럴 인자 전달·fingerprint·큐 등록 중 조회·취소·중단 후 재개를 검증한다.
-- 고정된 로컬 Node 24.21.0·npm 11.19.0에서 앱 빌드와 테스트 4개(pass 4, skip 0) 통과. 기존 전용 workout_test_4 DB를 사용했다.
-- scripts/agents.ps1 doctor 성공: 프로젝트 GitHub 계정 sirloinbh와 origin 확인.
-- scripts/agents.ps1 smoke 성공: 실제 모델의 읽기 전용 호출 및 JSON Schema 결과 파일 인계를 확인했다. PATH의 Codex 0.144.4는 모델/캐시 호환 문제로 실패했고, 기존 IDE의 Codex 0.162.0-alpha.17.2를 무시되는 로컬 config에 지정해 통과했다. 전역 Codex 설정·인증·모델은 변경하지 않았다.
-- 숨겨진 워커 시작, PID 잠금 확인, 상태 조회, 중지와 잠금 해제 성공.
-- 설정 이슈 #8을 실제로 등록해 feat/8-agent-task 브랜치와 독립 worktree 생성을 확인했다. 현재 구현과 중복 자동 작업을 피하려고 해당 큐 항목은 cancel 처리했고, 파일·기록은 보존했다.
-- 실제 문서 이슈 #9를 큐에 넣어 테스트 담당의 예상 실패와 구현 담당의 문서 작성·앱 검사 통과를 확인했다. Git 소유권 제한으로 blocked가 되어, 전역 설정 변경 없이 작업 디렉터리에 대한 git -c safe.directory 사용을 역할 지침에 추가하고 구현 단계부터 재개했다.
-- 변경 파일의 Prettier 검사와 git diff --check 통과.
+- The final npm run check passed: 4 app tests including the app build and DB integration, and 34 automation tests, all pass, skip 0. The automation tests verify state transitions, issue scope and change detection, review and CI retries, stopping the publish when a check fails, locks, storage, timeouts, literal argument pass-through, fingerprints, lookups during queue registration, cancel, and resuming after an interruption.
+- With the pinned local Node 24.21.0 and npm 11.19.0, the app build and 4 tests (pass 4, skip 0) passed. The existing dedicated workout_test_4 DB was used.
+- scripts/agents.ps1 doctor succeeded: confirmed the project GitHub account sirloinbh and origin.
+- scripts/agents.ps1 smoke succeeded: confirmed a real read-only model call and the handover of the JSON Schema result file. Codex 0.144.4 on the PATH failed because of a model/cache compatibility problem, and the existing IDE's Codex 0.162.0-alpha.17.2, specified in an ignored local config, passed. The global Codex settings, authentication, and model were not changed.
+- Starting the hidden worker, checking the PID lock, querying the status, stopping, and releasing the lock succeeded.
+- Actually registered the setup issue #8 and confirmed that the feat/8-agent-task branch and an independent worktree were created. To avoid duplicate automatic work against the current implementation, that queue entry was cancelled, and the files and records were preserved.
+- Put the real docs issue #9 in the queue and confirmed the test owner's expected failure and the implementation owner's docs writing and app check pass. It became blocked because of a Git ownership restriction, so without changing global settings, using git -c safe.directory for the working directory was added to the role instructions, and the run resumed from the implementation step.
+- The Prettier check of the changed files and git diff --check passed.
 
-## 제한
+## Limits
 
-- 전체 실행 검증은 문서 작업으로 수행했다. 실제 기능별 테스트 설계와 구현 품질은 각 이슈의 완료 기준과 독립 검토에서 확인한다.
-- 시작프로그램·서비스는 설치하지 않았다. 재부팅 후 start가 필요하며 PC 절전·네트워크·사용량 제한·샌드박스 권한 문제는 blocked 상태 또는 워커 오류 로그로 확인한다.
-- 요구사항은 이슈로 명시적으로 인계한다. 채팅 자동 수집과 채팅으로의 무인 완료 알림은 구현하지 않았다. 사용자 문의 시 주 에이전트가 상태를 조회한다.
-- 화면 기능과 스킬 본문 변경은 없으며 별도 브라우저 테스트·스킬 검증기는 추가하지 않았다.
+- The full run was verified with a docs task. The design of tests for real features and the implementation quality are checked in each issue's done criteria and the independent review.
+- No startup program or service was installed. A start is needed after a reboot, and PC sleep, network, usage limits, and sandbox permission problems are checked through the blocked state or the worker error log.
+- Requirements are handed over explicitly as issues. Automatic collection from chat and unattended completion notices back to chat were not implemented. When the user asks, the main agent queries the status.
+- There is no screen feature or skill body change, so no separate browser test or skill validator was added.
 
-## 작업 커밋: docs: 실제 에이전트 실행 결과 기록 (#8)
+## Work commit: docs: 실제 에이전트 실행 결과 기록 (#8) (record the real agent run result)
 
-- 실제 문서 이슈 https://github.com/sirloinbh/workout-memo/issues/9가 테스트 → 구현 → 독립 검토 → 호스트 검증 → 커밋·푸시·PR → CI를 완료했다. 워커가 https://github.com/sirloinbh/workout-memo/pull/11을 생성하고 모든 검사 통과 후 draft를 해제했다. 로컬 상태는 done이다. PR 병합은 수행하지 않았다.
-- Git 소유권 제한으로 첫 구현 실행이 blocked가 되었고, 파일을 보존해 재시도한 뒤 성공했다. 역할별 Codex 스레드 ID와 검증 결과가 로컬 상태 파일에 저장됨을 확인했다.
-- 구축 PR #10의 앱 검증·Windows 인증·Linux/Windows 자동화 검사도 모두 통과했다. 기록 갱신은 문서만 변경하므로 앱 테스트는 반복하지 않고 변경 문서의 Prettier 검사와 git diff --check로 검증했다.
-- 워커는 백그라운드에서 다음 큐 작업을 기다리는 상태로 남겨둔다. 재부팅 후에는 start로 다시 실행한다.
+- The real docs issue https://github.com/sirloinbh/workout-memo/issues/9 completed test, implementation, independent review, host verification, commit, push, PR, and CI. The worker created https://github.com/sirloinbh/workout-memo/pull/11 and took it out of draft after all checks passed. The local state is done. The PR was not merged.
+- The first implementation run became blocked because of a Git ownership restriction, and succeeded after the files were preserved and the run retried. Confirmed that the per-role Codex thread IDs and the verification results are saved in the local state file.
+- The app verification, the Windows authentication check, and the Linux/Windows automation checks of the build PR #10 also all passed. Updating the record changes only docs, so the app tests were not repeated, and it was verified with the Prettier check of the changed docs and git diff --check.
+- The worker is left running in the background waiting for the next queued task. After a reboot, run it again with start.
 
-## 작업 커밋: fix: 최신 개발 기준과 PR 충돌 해결 (#8)
+## Work commit: fix: 최신 개발 기준과 PR 충돌 해결 (#8) (resolve conflicts with the latest development baseline and PR)
 
-- PR #5가 main에 병합되어 package.json의 scripts·개발 의존성에서 PR #10과 충돌했다. 최신 origin/main을 작업 브랜치에 반영하고 main의 고정 Node/npm·설치 스크립트 정책·정적 검사 도구를 보존했다.
-- npm run check에 포맷 → lint → 타입 → 앱 테스트 → 에이전트 테스트 → 빌드를 모두 포함했다. README의 개발 기준과 로컬 워커 안내도 함께 유지했다.
-- 개발 기준 문서의 명령 표에 에이전트 테스트와 통합된 검사 순서를 반영했다.
-- 새 ESLint의 preserve-caught-error 규칙으로 발견한 잠금 오류 두 곳에 원래 예외를 cause로 연결했다. 기존 잠금·실패 동작 테스트를 유지하며 별도 중복 테스트는 추가하지 않았다.
-- 고정 Node 24.21.0·npm 11.19.0 환경에서 npm ci 및 npm run check 통과. 포맷·lint·타입·앱 테스트 4개·자동화 테스트 34개·프론트/백엔드 빌드 성공, skip 0. DB 검증은 기존 전용 workout_test_4를 사용했다.
+- PR #5 was merged into main and conflicted with PR #10 in the scripts and dev dependencies of package.json. The latest origin/main was merged into the work branch, and main's pinned Node/npm, install script policy, and static check tools were preserved.
+- npm run check now includes format, lint, types, app tests, agent tests, and build, in that order. The development baseline and the local worker guide in the README were kept as well.
+- The command table in the development baseline doc now has the agent tests and the combined check order.
+- At two lock error sites found by the new ESLint preserve-caught-error rule, the original exception is now linked as the cause. The existing lock and failure behavior tests were kept, and no separate duplicate test was added.
+- npm ci and npm run check passed in the pinned Node 24.21.0 and npm 11.19.0 environment. Format, lint, types, 4 app tests, 34 automation tests, and frontend/backend builds succeeded, skip 0. DB verification used the existing dedicated workout_test_4.
 
-## 작업 커밋: fix: 새 main 문서와 통합 CI 포맷 정리 (#8)
+## Work commit: fix: 새 main 문서와 통합 CI 포맷 정리 (#8) (clean up the format of the new main docs and the integration CI)
 
-- 최초 충돌 해결 후 PR #11이 main에 추가 병합되어, 브랜치 push 검사는 성공했지만 PR 통합 검사의 Prettier가 새 문서 두 개에서 실패했다.
-- 최신 main을 다시 반영하고 docs/agent-issue-template.md와 docs/changes/9-agent-task.md를 기존 Prettier 기준으로 포맷했다. 문서 내용과 검증 기준을 유지했다.
-- 최신 main 포함 npm run check 재실행 통과: 포맷·lint·타입·앱 테스트 4개·자동화 테스트 34개·빌드, skip 0. 포맷된 템플릿의 복사 가능한 코드 블록과 상대 링크 4개도 확인했다. 작업 기록에 남은 과거 검증 명령은 당시 실행 내용으로 보존했다.
+- After the first conflict resolution, PR #11 was also merged into main, so the branch push check succeeded, but Prettier in the PR integration check failed on two new docs.
+- Merged the latest main again and formatted docs/agent-issue-template.md and docs/changes/9-agent-task.md to the existing Prettier standard. The doc content and verification baseline were kept.
+- Re-ran npm run check with the latest main and it passed: format, lint, types, 4 app tests, 34 automation tests, and build, skip 0. Also confirmed the copyable code blocks of the formatted template and the 4 relative links. Past verification commands left in the work log are kept as what was run at the time.

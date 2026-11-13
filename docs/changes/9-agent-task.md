@@ -1,51 +1,51 @@
-# #9 docs: 로컬 에이전트 요구사항 이슈 템플릿
+# #9 docs: local agent requirements issue template
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/9
-- 브랜치: feat/9-agent-task
+- Issue: https://github.com/sirloinbh/workout-memo/issues/9
+- Branch: feat/9-agent-task
 
-## 변경 및 검증
+## Changes and verification
 
-`docs/agent-issue-template.md`를 추가했다. 아래 단계별 기록에 실제 변경·검증 결과를 남긴다.
+Added `docs/agent-issue-template.md`. The step-by-step records below hold the real changes and verification results.
 
-## 테스트 단계: 구현 전 문서 검증
+## Test step: docs verification before implementation
 
-- 목적: 이슈 #9의 완료 기준에 맞춰 문서 산출물을 검증한다. 문서 전용 작업이므로 앱 테스트와 구현 파일은 추가·수정하지 않았다.
-- 적용 지침: `AGENTS.md`, `skills/workout-implementation/SKILL.md`, `skills/workout-testing/SKILL.md`. 이슈·브랜치·커밋·PR 작업은 코디네이터에게 맡긴다.
-- 실제 명령: `Test-Path docs/agent-issue-template.md` → `False`; `Test-Path docs/changes/9-agent-task.md` → `True`.
-- 실제 구현 전 검사 명령:
+- Purpose: verify the docs deliverable against the done criteria of issue #9. This is docs-only work, so no app tests or implementation files were added or changed.
+- Instructions applied: `AGENTS.md`, `skills/workout-implementation/SKILL.md`, `skills/workout-testing/SKILL.md`. Issue, branch, commit, and PR work is left to the coordinator.
+- Real commands: `Test-Path docs/agent-issue-template.md` gave `False`; `Test-Path docs/changes/9-agent-task.md` gave `True`.
+- The real check command before implementation:
 
   ```powershell
   if (Test-Path docs/agent-issue-template.md) { Write-Output 'PASS: issue template exists'; exit 0 } else { Write-Output 'FAIL (expected before implementation): docs/agent-issue-template.md is missing'; exit 1 }
   ```
 
-  결과: **예상 실패**, 종료 코드 1. 템플릿 문서가 아직 없으므로 본문·내부 링크 검증은 구현 후 수행해야 한다. 앱 테스트 실패를 재현한 결과가 아니다.
+  Result: **expected failure**, exit code 1. The template doc does not exist yet, so the verification of its body and internal links has to be done after implementation. This is not a reproduction of an app test failure.
 
-- 실제 명령: `git status --short` → `fatal: detected dubious ownership`로 실패. 저장소 소유자와 샌드박스 실행 사용자가 달라 Git 상태·변경 범위 확인이 제한되었다. `safe.directory`나 전역 설정을 변경하지 않았다.
-- `npm run check`는 이 단계에서 실행하지 않았다. 이슈에 따라 호스트가 회귀 검사하며, 이 단계는 문서 산출물 검증만 담당한다. DB에 접근하지 않았다.
-- 스킬 파일을 변경하지 않았으므로 `quick_validate.py`의 변경 스킬 검증 대상은 없다.
-- 기록 자체 검증: `Get-Content -Raw -Encoding UTF8 docs/changes/9-agent-task.md`로 읽고 `.Contains()`로 테스트 단계 제목, 예상 실패, 종료 코드 1, 후속 완료 기준 제목, `npm run check`의 존재를 확인했다. 결과: PASS, 종료 코드 0.
+- Real command: `git status --short` failed with `fatal: detected dubious ownership`. The repository owner differs from the sandbox user, so checking the Git status and the change scope was limited. `safe.directory` and the global settings were not changed.
+- `npm run check` was not run in this step. By the issue, the host does the regression check, and this step covers only the docs deliverable verification. The DB was not accessed.
+- No skill file was changed, so there is no changed skill for `quick_validate.py` to check.
+- Self-verification of this record: read `docs/changes/9-agent-task.md` with `Get-Content -Raw -Encoding UTF8` and used `.Contains()` to confirm the presence of the test step heading, the expected failure, exit code 1, the follow-up done criteria heading, and `npm run check`. Result: PASS, exit code 0.
 
-### 구현 후 확인할 완료 기준
+### Done criteria to check after implementation
 
-- `docs/agent-issue-template.md`에 한국어로 복사 가능한 GitHub 이슈 본문 예시가 있다.
-- 사용자 요구, 범위, `완료 기준`, 검증 방법, 제외 범위, 요구사항 변경 처리 예시를 포함한다.
-- 완료 기준은 파일 생성·표시 결과 등 관찰 가능한 결과로 작성한다.
-- 예시의 이슈 번호나 특정 실제 기능의 구현 완료를 지어내지 않는다.
-- PC 로컬 작업과 단계별 검증, 사용자의 최종 PR 병합을 설명한다.
-- 상대 경로 링크를 문서 위치 기준으로 확인하고, 링크 대상 파일 및 필요한 앵커가 존재하는지 검토한다.
-- 실제 변경과 최종 검증 결과를 이 기록에 추가한다. 최종 변경 범위가 문서로 한정되는지 코디네이터가 확인하고 호스트의 `npm run check` 결과를 별도로 기록한다.
+- `docs/agent-issue-template.md` has a copyable example of a GitHub issue body in Korean.
+- It includes examples of the user requirement, the scope, the `완료 기준` (done criteria), the verification method, the out-of-scope items, and handling of requirement changes.
+- The done criteria are written as observable results, such as a file being created or displayed.
+- It does not invent an issue number or claim the implementation of a specific real feature.
+- It explains the PC-local work, the per-step verification, and the user's final PR merge.
+- Check relative path links against the doc's location, and review that the link target files and any needed anchors exist.
+- Add the real changes and the final verification results to this record. The coordinator confirms that the final change scope is limited to docs and records the host's `npm run check` result separately.
 
-## 구현 단계: 요구사항 이슈 본문 예시 작성
+## Implementation step: write the requirements issue body example
 
-- 변경: `docs/agent-issue-template.md`에 복사 가능한 한국어 GitHub 이슈 본문을 추가했다. 사용자 요구, 범위, 체크리스트 형태의 완료 기준, 검증 방법, 제외 범위, 요구사항 변경 처리 예시를 포함한다.
-- 완료 기준은 문서 파일·제목·실행 디렉터리 표시·README 링크처럼 관찰 가능한 결과로 작성했다. 예시의 경로와 실제 이슈 번호는 교체할 자리표시자로 두었고, 실제 기능의 구현 완료를 주장하지 않는다.
-- PC 로컬 작업 트리에서 테스트·구현·검증·리뷰를 거쳐 코디네이터가 커밋·PR을 담당하고 사용자가 최종 병합하는 흐름을 설명했다. 검증 실패와 미실행은 성공과 구분하도록 안내했다.
-- 전달된 이전 단계 결과는 구현 전 문서 부재에 따른 예상 실패다. 별도 리뷰 지적은 전달되지 않았다. 문서를 추가해 부재를 해소했다.
-- 앱 코드·설정·기존 테스트·assertion은 수정하지 않았다. 문서 전용 작업이므로 새 앱 테스트를 추가하지 않았다. 스킬 변경도 없어 `quick_validate.py`의 변경 스킬 검증 대상은 없다.
+- Change: added a copyable Korean GitHub issue body to `docs/agent-issue-template.md`. It includes examples of the user requirement, the scope, done criteria in checklist form, the verification method, the out-of-scope items, and handling of requirement changes.
+- The done criteria are written as observable results such as a doc file, a title, the displayed working directory, and a README link. The paths and real issue numbers in the example are left as placeholders to replace, and it does not claim that any real feature is implemented.
+- It explains the flow in which the test, implementation, verification, and review run in the PC-local working tree, the coordinator handles the commit and PR, and the user does the final merge. It tells the reader to distinguish verification failures and non-runs from success.
+- The result handed over from the earlier step is the expected failure from the doc not existing before implementation. No separate review finding was handed over. Adding the doc resolved the absence.
+- App code, settings, existing tests, and assertions were not changed. This is docs-only work, so no new app tests were added. No skill changed either, so there is no changed skill for `quick_validate.py` to check.
 
-### 실제 검증 명령과 결과
+### Real verification commands and results
 
-작업 디렉터리는 이슈 전용 작업 트리 루트다. 다음 PowerShell 검사를 실행했다.
+The working directory is the root of the issue-specific working tree. The following PowerShell check was run. The Korean strings in the required list are the section headings of the Korean template, which the check matches on, so they are kept as they were: `사용자 요구` (user requirement), `범위` (scope), `완료 기준` (done criteria), `검증 방법` (verification method), `제외 범위` (out of scope), `요구사항 변경 처리` (handling requirement changes), `로컬 작업 및 인계` (local work and handover), `사용자가 PR` (the user ... PR), and `<실제 이슈번호>` (real issue number).
 
 `````powershell
 $ErrorActionPreference = 'Stop'
@@ -59,23 +59,23 @@ foreach ($link in $links) { $target = Join-Path (Split-Path $docPath) $link.Grou
 Write-Output "PASS: required content, copyable body, $($links.Count) relative file links"
 `````
 
-- 결과: PASS, 종료 코드 0。필수 내용·복사 가능한 본문·상대 파일 링크 4개를 확인했다. 링크에 앵커는 사용하지 않았다. 본문을 검토해 관찰 가능한 완료 기준, 변경 요청 예시, 사용자의 최종 병합 설명을 확인했다.
-- `npm run check`: PASS, 종료 코드 0. frontend TypeScript·Vite 빌드와 backend TypeScript 빌드 성공. 기존 backend 테스트 4개 통과, 실패 0, skip 0. 단위 테스트 3개 및 PostgreSQL CRUD·날짜 범위·롤백·목표 판정·연쇄 삭제 통합 테스트 1개가 실행됐다. 기존 통합 테스트는 제공된 `TEST_DATABASE_URL`만 사용하며 연결값은 열람·출력·기록하지 않았다.
-- `Get-Content -Encoding UTF8 backend/test/*.test.ts`: 기존 검증 내용과 전용 DB 환경변수 사용을 확인했다. 테스트는 변경하지 않았다.
-- `git status --short`: FAIL, 종료 코드 128(Git 자체). 저장소 소유자와 샌드박스 실행 사용자가 달라 `fatal: detected dubious ownership`가 발생했다. `safe.directory` 설정이나 권한을 변경하지 않았다. Git을 통한 최종 diff·변경 범위 검증은 권한 제한으로 차단됐다.
+- Result: PASS, exit code 0. Confirmed the required content, the copyable body, and 4 relative file links. No anchors are used in the links. Reviewed the body and confirmed the observable done criteria, the change request example, and the explanation of the user's final merge.
+- `npm run check`: PASS, exit code 0. The frontend TypeScript and Vite build and the backend TypeScript build succeeded. The 4 existing backend tests passed, 0 failed, 0 skipped. 3 unit tests and 1 PostgreSQL integration test (CRUD, date range, rollback, goal judgment, cascade delete) ran. The existing integration test uses only the provided `TEST_DATABASE_URL`, and the connection value was not read, printed, or recorded.
+- `Get-Content -Encoding UTF8 backend/test/*.test.ts`: confirmed the existing verification content and the use of the dedicated DB environment variable. The tests were not changed.
+- `git status --short`: FAIL, exit code 128 (from Git itself). `fatal: detected dubious ownership` occurred because the repository owner differs from the sandbox user. The `safe.directory` setting and permissions were not changed. The final diff and change scope verification through Git was blocked by the permission limit.
 
-### 인계와 제한
+### Handover and limits
 
-- 구현·문서 검증·기존 회귀 검사는 완료했다. 이 에이전트가 편집한 파일은 템플릿과 이 작업 기록 두 개다.
-- 코디네이터는 정상 권한의 호스트에서 Git 상태와 최종 diff를 확인해 변경 범위가 문서로 한정되는지 검토해야 한다. 자동 리뷰와 최종 승인은 아직 수행하지 않았다.
-- 사용자 지시에 따라 이슈 생성, 브랜치 전환, stage, 커밋, 푸시, PR 생성·승인·병합과 추가 에이전트 실행은 수행하지 않았다. 변경은 커밋하지 않은 상태로 인계한다.
+- Implementation, docs verification, and the existing regression check are done. The files this agent edited are two: the template and this work record.
+- The coordinator must check the Git status and the final diff on a host with normal permissions and review that the change scope is limited to docs. The automatic review and final approval have not been done yet.
+- As the user instructed, issue creation, branch switching, staging, commit, push, PR creation, approval, and merge, and running extra agents were not done. The changes are handed over uncommitted.
 
-## 구현 단계 재확인 (2026-10-14)
+## Implementation step re-check (2026-10-14)
 
-- 현재 작업 트리에 이미 작성된 템플릿을 읽고 보존했다. 복사 가능한 한국어 본문, 필수 제목 7개, 관찰 가능한 완료 기준 5개, 요구사항 변경 처리 예시, PC 로컬 단계별 검증과 사용자의 최종 PR 병합을 확인했다. 미발급 이슈 번호나 실제 기능 구현 완료 주장은 없다. 별도 리뷰 지적은 전달되지 않았다.
-- Node의 `fs.readFileSync(file, 'utf8')`로 템플릿을 읽고 `node:assert/strict`로 코드 블록, 필수 제목·내용, 체크리스트 5개 및 상대 링크 4개의 실제 파일 존재를 검사했다. 실행은 PowerShell here-string을 `node`에 전달했다. 최초 실행은 한글 파이프 인코딩으로 검사 문자열이 변환되어 assertion 실패(종료 코드 1)했다. `$OutputEncoding = [System.Text.UTF8Encoding]::new($false)`를 설정한 뒤 같은 assertion으로 재실행해 PASS(종료 코드 0)했다. 출력: `PASS: copyable Korean issue body, 7 sections, 5 acceptance criteria, 4 relative links`.
-- `npm run check`: PASS, 종료 코드 0. frontend TypeScript·Vite 및 backend TypeScript 빌드 성공. 기존 테스트 4개 통과, 실패 0, skip 0. PostgreSQL 통합 테스트도 통과했다. 연결값은 열람·출력하지 않았다.
-- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/9 status --short`: PASS, 종료 코드 0. 미추적 파일은 템플릿과 이 작업 기록 두 개다. 사용자 홈의 Git ignore 읽기 권한 경고가 있었지만 상태 조회는 성공했다. 전역 설정은 변경하지 않았다. 이전 기록의 Git 소유권 차단은 지정 명령으로 해소됐다.
-- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/9 diff --check`: PASS, 종료 코드 0. 두 문서는 미추적 상태이므로 이 명령의 diff 검사 대상에는 포함되지 않는다. 문서 내용과 링크는 Node 검사 및 직접 읽기로 확인했다.
-- 작업 기록 추가를 위한 첫 Node here-string 명령은 중첩된 종료 구문으로 PowerShell 파싱에 실패했고 파일을 쓰지 않았다. `apply_patch`로 이 재확인 기록을 추가했다.
-- 앱 코드·설정·기존 테스트·assertion 및 스킬은 수정하지 않았다. 문서 전용이므로 앱 테스트 추가 및 변경 스킬용 `quick_validate.py` 실행 대상은 없다. 이슈·브랜치·stage·커밋·푸시·PR·승인·병합·추가 에이전트 작업 없이, 미커밋 문서 두 개를 코디네이터의 최종 리뷰로 인계한다.
+- Read and preserved the template already written in the current working tree. Confirmed the copyable Korean body, the 7 required headings, 5 observable done criteria, the change handling example, the PC-local per-step verification, and the user's final PR merge. There is no unissued issue number or claim that a real feature is implemented. No separate review finding was handed over.
+- Read the template with Node's `fs.readFileSync(file, 'utf8')` and used `node:assert/strict` to check the code block, the required headings and content, 5 checklist items, and that the 4 relative links point to real files. The run passed a PowerShell here-string to `node`. The first run failed an assertion (exit code 1) because the check strings were converted by the Korean pipe encoding. After setting `$OutputEncoding = [System.Text.UTF8Encoding]::new($false)`, the same assertions were re-run and passed (exit code 0). Output: `PASS: copyable Korean issue body, 7 sections, 5 acceptance criteria, 4 relative links`.
+- `npm run check`: PASS, exit code 0. The frontend TypeScript and Vite and the backend TypeScript builds succeeded. The 4 existing tests passed, 0 failed, 0 skipped. The PostgreSQL integration test also passed. The connection value was not read or printed.
+- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/9 status --short`: PASS, exit code 0. The untracked files are the template and this work record. There was a warning about read permission for the Git ignore in the user's home, but the status query succeeded. The global settings were not changed. The earlier record's Git ownership block was resolved with the specified command.
+- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/9 diff --check`: PASS, exit code 0. The two docs are untracked, so they are not covered by this diff check. The doc content and links were confirmed with the Node check and by reading directly.
+- The first Node here-string command for adding to the work record failed to parse in PowerShell because of a nested terminator, and wrote no file. This re-check record was added with `apply_patch`.
+- App code, settings, existing tests, assertions, and skills were not changed. It is docs-only, so there is no app test to add and no changed skill for `quick_validate.py`. Without any issue, branch, stage, commit, push, PR, approval, merge, or extra agent work, the two uncommitted docs are handed to the coordinator's final review.

@@ -63,14 +63,14 @@ Existing test change:
 
 Run results (Node 24.21.0, dedicated test DB, local Chrome):
 
-| Check                                           | Result                         |
-| ----------------------------------------------- | ------------------------------ |
-| `npm run check` (including `contract:check`)    | **EXIT=0**                     |
-| Backend node:test (with DB)                     | **275 pass / 0 fail / 0 skip** |
-| Frontend Vitest                                 | **85 pass / 0 fail**           |
-| Contract sync test                              | 2 pass                         |
-| `npm run test:e2e`                              | **2 passed**                   |
-| `docker build ./frontend`, `./backend`          | Both succeed                   |
+| Check                                        | Result                         |
+| -------------------------------------------- | ------------------------------ |
+| `npm run check` (including `contract:check`) | **EXIT=0**                     |
+| Backend node:test (with DB)                  | **275 pass / 0 fail / 0 skip** |
+| Frontend Vitest                              | **85 pass / 0 fail**           |
+| Contract sync test                           | 2 pass                         |
+| `npm run test:e2e`                           | **2 passed**                   |
+| `docker build ./frontend`, `./backend`       | Both succeed                   |
 
 ## Limits and follow-up
 

@@ -42,7 +42,7 @@ Run results (Node 24.21.0, dedicated test DB):
 | --------------------------- | ------------------------------ |
 | `npm run check`             | **EXIT=0**                     |
 | Backend node:test (with DB) | **279 pass / 0 fail / 0 skip** |
-| Frontend Vitest             | 89 pass / 0 fail              |
+| Frontend Vitest             | 89 pass / 0 fail               |
 | `docker build ./backend`    | Success                        |
 
 There is no screen change, so I did not run e2e again (2 passed as of the earlier PR #67).

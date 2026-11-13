@@ -51,15 +51,15 @@ The deployment account is the personal account (327230665171). The notification 
 
 ## Verification (local)
 
-| Check                                                                                          | Result                                                                          |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `terraform fmt -check`, `terraform validate`                                                   | Pass                                                                            |
-| `bash -n deploy/remote-deploy.sh`, and `user-data.sh` with the variables substituted           | Pass (LF confirmed)                                                             |
-| Trying the server procedure in a separate Compose project (`IMAGE_TAG=deploytest`, web 8099, DB 55499) | `docker compose config` passes, and the image build and tags are confirmed |
-| `node dist/migrate.js` inside the API image on an empty volume                                 | 9 baseline records, and "적용할 마이그레이션이 없습니다." (no migrations to apply) on a re-run |
-| `/api/health` (through the web proxy)                                                          | `{"status":"ok"}`                                                               |
-| Save 1 journal → `pg_dump \| gzip` → restore into a separate DB                               | The restore succeeded, and the journal and 9 `schema_migrations` rows are confirmed |
-| Cleaning up the test stack                                                                     | `down -v`, and the test images deleted                                          |
+| Check                                                                                                  | Result                                                                                         |
+| ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `terraform fmt -check`, `terraform validate`                                                           | Pass                                                                                           |
+| `bash -n deploy/remote-deploy.sh`, and `user-data.sh` with the variables substituted                   | Pass (LF confirmed)                                                                            |
+| Trying the server procedure in a separate Compose project (`IMAGE_TAG=deploytest`, web 8099, DB 55499) | `docker compose config` passes, and the image build and tags are confirmed                     |
+| `node dist/migrate.js` inside the API image on an empty volume                                         | 9 baseline records, and "적용할 마이그레이션이 없습니다." (no migrations to apply) on a re-run |
+| `/api/health` (through the web proxy)                                                                  | `{"status":"ok"}`                                                                              |
+| Save 1 journal → `pg_dump \| gzip` → restore into a separate DB                                        | The restore succeeded, and the journal and 9 `schema_migrations` rows are confirmed            |
+| Cleaning up the test stack                                                                             | `down -v`, and the test images deleted                                                         |
 
 `npm run check`: **EXIT=0** (backend 279, frontend 89, workers 212, skills 4, all pass, with 0 fail and 0 skip).
 
@@ -75,17 +75,17 @@ The user set up the personal account profile `workout-personal`. I proceeded aft
   - **remote-deploy.sh**: when there was no image to delete, the exit code 1 of `grep` was treated as a failure because of `pipefail`. The deployment itself had passed the health check and even recorded `.deployed`. I fixed it with `{ grep … || true; }`. I also hid the curl messages that appear during health retries.
 - **Server verification**
 
-| Check                                                | Result                                                                                                                  |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Server initialization                                | Docker 29.1.3, Compose 2.40.3, 2GB swap, `.env` with 600 permission, the backup cron, and the Asia/Seoul time zone      |
-| Firewall (`get-instance-port-states`)                | Only 22 and 80 open to `1.215.143.251/32`, no IPv6 rule, `ipAddressType=ipv4`                                           |
-| Automatic snapshot add-on                            | Enabled, 18:00 UTC (Seoul 03:00)                                                                                        |
-| First deployment `db2385dd8e29`                      | After initializing the empty volume, 9 migration baseline records, health `{"status":"ok"}`                             |
-| Access from the allowed IP (this PC)                 | `/api/health` 200, `/` 200, direct access to `/journal` 200                                                             |
-| Playwright against the server (temporary config, not committed) | **2 passed**: journal CRUD and reload and back button. 0 journals after it finished                         |
-| Manual backup `workout-backup`                       | A dump was created, exit 0                                                                                              |
-| Second deployment `7be918e12d36`                     | A pre-deployment dump created, migrations "nothing to apply", `.previous=db2385dd8e29`, only 2 images kept              |
-| Manual rollback                                      | Switched to `db2385dd8e29` without rebuilding, health ok, `.deployed` and `.previous` swapped                           |
+| Check                                                           | Result                                                                                                             |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Server initialization                                           | Docker 29.1.3, Compose 2.40.3, 2GB swap, `.env` with 600 permission, the backup cron, and the Asia/Seoul time zone |
+| Firewall (`get-instance-port-states`)                           | Only 22 and 80 open to `1.215.143.251/32`, no IPv6 rule, `ipAddressType=ipv4`                                      |
+| Automatic snapshot add-on                                       | Enabled, 18:00 UTC (Seoul 03:00)                                                                                   |
+| First deployment `db2385dd8e29`                                 | After initializing the empty volume, 9 migration baseline records, health `{"status":"ok"}`                        |
+| Access from the allowed IP (this PC)                            | `/api/health` 200, `/` 200, direct access to `/journal` 200                                                        |
+| Playwright against the server (temporary config, not committed) | **2 passed**: journal CRUD and reload and back button. 0 journals after it finished                                |
+| Manual backup `workout-backup`                                  | A dump was created, exit 0                                                                                         |
+| Second deployment `7be918e12d36`                                | A pre-deployment dump created, migrations "nothing to apply", `.previous=db2385dd8e29`, only 2 images kept         |
+| Manual rollback                                                 | Switched to `db2385dd8e29` without rebuilding, health ok, `.deployed` and `.previous` swapped                      |
 
 ## Not confirmed yet
 

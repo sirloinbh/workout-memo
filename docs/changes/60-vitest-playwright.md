@@ -22,10 +22,10 @@ Selection criteria:
 - The newest version published at least 14 days ago. Many of the newest releases at that time were published 1 to 9 days earlier, so I excluded them.
 - Peer compatibility: React 19.3.0 and Vite 6.4.4
 
-| Location      | Packages                                                                                                                                                                       |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| frontend(dev) | vitest 5.0.3, jsdom 30.1.2, @testing-library/react 16.3.3, @testing-library/dom 10.4.2, @testing-library/user-event 14.6.7, @testing-library/jest-dom 7.0.1                    |
-| root(dev)     | @playwright/test 1.63.0. It does not download a browser and uses the installed Chrome (`channel: 'chrome'`)                                                                    |
+| Location      | Packages                                                                                                                                                    |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| frontend(dev) | vitest 5.0.3, jsdom 30.1.2, @testing-library/react 16.3.3, @testing-library/dom 10.4.2, @testing-library/user-event 14.6.7, @testing-library/jest-dom 7.0.1 |
+| root(dev)     | @playwright/test 1.63.0. It does not download a browser and uses the installed Chrome (`channel: 'chrome'`)                                                 |
 
 Checks after the install:
 

@@ -54,14 +54,14 @@ I installed them after the user's explicit approval that they are aware of the s
 
 Run results (Node 24.21.0, dedicated test DB, local Chrome):
 
-| Check                       | Result                                        |
-| --------------------------- | --------------------------------------------- |
-| `npm run check`             | **EXIT=0**                                    |
-| Backend node:test (with DB) | **272 pass / 0 fail / 0 skip**                |
-| Frontend Vitest             | **10 files, 82 pass / 0 fail**                |
-| Workers / skills            | 212 pass / 4 pass                             |
-| `npm run test:e2e`          | **2 passed** (journal CRUD, URL persistence)  |
-| `docker build ./frontend`   | Success                                       |
+| Check                       | Result                                       |
+| --------------------------- | -------------------------------------------- |
+| `npm run check`             | **EXIT=0**                                   |
+| Backend node:test (with DB) | **272 pass / 0 fail / 0 skip**               |
+| Frontend Vitest             | **10 files, 82 pass / 0 fail**               |
+| Workers / skills            | 212 pass / 4 pass                            |
+| `npm run test:e2e`          | **2 passed** (journal CRUD, URL persistence) |
+| `docker build ./frontend`   | Success                                      |
 
 ## Limits and follow-up
 

@@ -28,10 +28,10 @@ I reverted the changes of PR #48 with `git revert -m 1 541b6d5`.
 
 ## Checks
 
-| Check                                                                                                                                                         | Result                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `npm run test:agents`                                                                                                                                         | **162 pass / 0 fail / 0 skip** (the same count as before #48) |
-| Searching code and docs for leftover references (`conversation.mjs`, `decision-schema`, `awaiting_user`, `respond -Issue`, `Codex 채팅` (Codex chat), `#43`, excluding past records) | 0 hits                                                    |
+| Check                                                                                                                                                                                | Result                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `npm run test:agents`                                                                                                                                                                | **162 pass / 0 fail / 0 skip** (the same count as before #48) |
+| Searching code and docs for leftover references (`conversation.mjs`, `decision-schema`, `awaiting_user`, `respond -Issue`, `Codex 채팅` (Codex chat), `#43`, excluding past records) | 0 hits                                                        |
 
 `npm run check`: **EXIT=0**. Result: backend 279, frontend 89, workers 162, skills 4, all pass, with 0 fail and 0 skip.
 

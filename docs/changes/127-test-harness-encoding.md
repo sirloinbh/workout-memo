@@ -1,59 +1,59 @@
-# #127 비-ASCII 경로에서 project-github-auth 테스트 하네스 인코딩 실패
+# #127 Test harness encoding failure for project-github-auth on non-ASCII paths
 
-- 이슈: [#127](https://github.com/sirloinbh/workout-memo/issues/127)
-- 브랜치: `fix/127-test-harness-encoding`
+- Issue: [#127](https://github.com/sirloinbh/workout-memo/issues/127)
+- Branch: `fix/127-test-harness-encoding`
 
-## 목적
+## Purpose
 
-저장소가 `...\OneDrive\문서\...`처럼 비-ASCII 문자가 든 경로에 있으면 `scripts/test/project-github-auth.test.mjs`의 6건이 실패했다. 임시 하네스(`.ps1`·`.cmd`)에 저장소 스크립트의 절대 경로를 문자열로 박아 넣었는데, Windows PowerShell 5.1은 BOM 없는 `.ps1`을 시스템 ANSI 코드페이지(CP949)로 읽어 `문서`가 `???`로 깨졌다.
+When the repository is in a path with non-ASCII characters such as `...\OneDrive\문서\...` ("문서" means "Documents"), 6 tests in `scripts/test/project-github-auth.test.mjs` failed. The temporary harnesses (`.ps1` and `.cmd`) had the absolute path of the repository scripts written into them as a string, and Windows PowerShell 5.1 reads a `.ps1` without a BOM in the system ANSI code page (CP949), so `문서` became `???`.
 
-## 변경 — 2026-10-22
+## Change — 2026-10-22
 
-- 이슈 본문의 BOM 기록 방식 대신 경로를 하네스 파일에 쓰지 않는 방식으로 고쳤다.
-  - `cmd.exe`는 UTF-8 BOM을 건너뛰지 않고 명령으로 해석한다. 그래서 BOM으로는 `.cmd` 하네스(`launcher preserves another project ...`)를 고칠 수 없다.
-  - 하네스 본문을 파일 상단의 `harnesses` 상수로 모으고 ASCII만 쓴다. 경로는 `TEST_WRAPPER`·`TEST_TERMINAL_INIT`·`TEST_LAUNCHER`·`TEST_OTHER_PROJECT` 환경변수로 전달한다. 환경변수는 UTF-16으로 끝까지 전달되므로 코드페이지 영향을 받지 않는다.
-- 회귀 테스트 `harness scripts stay ASCII-only so a non-ASCII checkout path still runs them`을 추가했다. 모든 하네스가 ASCII 전용인지, 저장소 경로를 포함하지 않는지, 경로를 환경변수에서 읽는지 검사한다. ASCII 경로 머신에서도 `harnesses` 상수의 회귀를 잡는다.
-- 제품 코드(`scripts/gh-project.ps1`, `scripts/project-terminal.ps1`)는 바꾸지 않았다.
+- Instead of the BOM approach in the issue body, I fixed it by not writing the path into the harness files.
+  - `cmd.exe` does not skip a UTF-8 BOM and treats it as a command. So a BOM cannot fix the `.cmd` harness (`launcher preserves another project ...`).
+  - The harness bodies are collected into a `harnesses` constant at the top of the file and use only ASCII. The paths are passed through the environment variables `TEST_WRAPPER`, `TEST_TERMINAL_INIT`, `TEST_LAUNCHER`, and `TEST_OTHER_PROJECT`. Environment variables are passed as UTF-16 all the way, so the code page does not affect them.
+- I added the regression test `harness scripts stay ASCII-only so a non-ASCII checkout path still runs them`. It checks that every harness is ASCII-only, does not contain the repository path, and reads the paths from environment variables. It also catches a regression of the `harnesses` constant on a machine with an ASCII path.
+- The product code (`scripts/gh-project.ps1`, `scripts/project-terminal.ps1`) was not changed.
 
-## 검증
+## Verification
 
-로컬(Windows 11, 저장소 경로 `C:\Users\kimbh\OneDrive\문서\github\workout-memo`).
+Local (Windows 11, repository path `C:\Users\kimbh\OneDrive\문서\github\workout-memo`).
 
-- `node --test scripts/test/project-github-auth.test.mjs`: 18 pass, 0 fail, 0 skip(기존 17건 + 회귀 1건). 수정 전에는 6건이 실패했다.
-- 회귀 확인: `restore` 하네스에 저장소 절대 경로를 다시 넣자 회귀 테스트가 `restore harness must stay ASCII-only`로 실패했다. 원복 후 통과.
-- `origin/main`(#130 병합 `5875ad3`)으로 fast-forward한 뒤 다시 실행했다. #130의 새 devDependency 때문에 `npm ci --ignore-scripts`로 의존성을 맞췄다.
-- `npm run check`(DB 없음)
-  - format·lint·contract·typecheck 통과
-  - 백엔드 206 pass / 35 skip(DB 통합 미실행), 프론트 121 pass
-  - `test:agents` 165 pass / 2 fail. 실패 2건(`#24 ... crosses the PowerShell and Node boundary`)은 이 PC의 PowerShell 실행 정책 때문이며 이 변경과 무관하다(#130 기록과 동일).
-  - 프로세스 한정 `PSExecutionPolicyPreference=Bypass`로 `test:agents`를 다시 실행해 167 pass를 확인했다. 이어서 `test:skills` 4 pass, `test:docs` 3 pass, `build` 성공.
+- `node --test scripts/test/project-github-auth.test.mjs`: 18 pass, 0 fail, 0 skip (17 existing + 1 regression). Before the fix, 6 failed.
+- Regression check: when I put the absolute repository path back into the `restore` harness, the regression test failed with `restore harness must stay ASCII-only`. It passed after I reverted.
+- After fast-forwarding to `origin/main` (#130 merge `5875ad3`), I ran it again. Because of the new devDependency in #130, I synced the dependencies with `npm ci --ignore-scripts`.
+- `npm run check` (no DB)
+  - format, lint, contract, typecheck passed
+  - backend 206 pass / 35 skip (DB integration not run), frontend 121 pass
+  - `test:agents` 165 pass / 2 fail. The 2 failures (`#24 ... crosses the PowerShell and Node boundary`) are caused by the PowerShell execution policy of this PC and have nothing to do with this change (same as the #130 record).
+  - I ran `test:agents` again with the process-only `PSExecutionPolicyPreference=Bypass` and confirmed 167 pass. Then `test:skills` 4 pass, `test:docs` 3 pass, `build` succeeded.
 
-## 자동 리뷰 1차 — 2026-10-22
+## First automatic review — 2026-10-22
 
-별도 읽기 전용 리뷰 에이전트가 PR #132 전체 diff를 검토했다. 정확성 결함은 없었다. 비-ASCII 경로에서 18 pass를 재확인했다.
+A separate read-only review agent reviewed the whole diff of PR #132. There was no correctness defect. It confirmed 18 pass again on a non-ASCII path.
 
-1. **minor**: 회귀 테스트가 `harnesses` 상수만 검사하므로, 테스트 본문에 인라인 템플릿으로 하네스를 다시 쓰면 잡지 못한다. 문서의 "ASCII 경로 머신에서도 회귀를 잡는다"도 범위가 넓었다.
-   - 반영: 회귀 테스트가 이 테스트 파일 소스의 모든 `writeFileSync(harness, ...)` 인자가 `harnesses.<이름>`인지 확인한다. 문서 표현을 좁혔다.
-2. **nit**: 환경변수 검사 정규식이 경로와 무관한 `TEST_EXIT`에도 맞을 수 있었다. 반영: `TEST_(WRAPPER|TERMINAL_INIT|LAUNCHER|OTHER_PROJECT)`로 좁혔다.
-3. **nit(범위 밖)**: fixture의 `gh.cmd`·`code.cmd`가 `process.execPath`를 박아 넣는다. Node가 비-ASCII 폴더에 설치되면 같은 종류의 문제가 생길 수 있다. checkout 경로와 무관해 #127 완료 기준 밖이며, 현재 재현 환경이 없어 이슈로 분리하지 않고 기록만 남긴다.
+1. **minor**: The regression test checks only the `harnesses` constant, so it cannot catch a harness written again as an inline template in the test body. The statement in the document, "it also catches the regression on an ASCII path machine", was also too broad.
+   - Applied: the regression test checks that the argument of every `writeFileSync(harness, ...)` in the source of this test file is `harnesses.<name>`. I narrowed the wording in the document.
+2. **nit**: The regular expression for the environment variable check could also match `TEST_EXIT`, which has nothing to do with paths. Applied: narrowed to `TEST_(WRAPPER|TERMINAL_INIT|LAUNCHER|OTHER_PROJECT)`.
+3. **nit (out of scope)**: `gh.cmd` and `code.cmd` in the fixtures have `process.execPath` written in. If Node is installed in a non-ASCII folder, the same kind of problem could happen. It has nothing to do with the checkout path and is outside the #127 completion criteria; there is no environment to reproduce it now, so I did not split it into an issue and only record it.
 
-### 1차 보완 검증
+### First fix verification
 
 - `node --test scripts/test/project-github-auth.test.mjs`: 18 pass / 0 fail / 0 skip
-- 회귀 확인: `restore` 테스트의 `writeFileSync(harness, harnesses.restore)`를 인라인 템플릿으로 바꾸면 `harness content must come from harnesses`로 실패했다. 원복 후 통과.
-- `prettier --check`·`eslint`: 변경 파일 통과
+- Regression check: when I changed `writeFileSync(harness, harnesses.restore)` in the `restore` test to an inline template, it failed with `harness content must come from harnesses`. It passed after I reverted.
+- `prettier --check` and `eslint`: passed for the changed files
 
-## 자동 리뷰 2차 — 2026-10-22
+## Second automatic review — 2026-10-22
 
-별도 읽기 전용 리뷰 에이전트가 1차 반영(`85d75d9`)과 최종 전체 diff를 검토했다. 지적 2·3은 적절히 처리됐다. 지적 1은 일부만 반영됐다.
+A separate read-only review agent reviewed the first fix (`85d75d9`) and the final whole diff. Comments 2 and 3 were handled properly. Comment 1 was only partly applied.
 
-- **minor**: 소스 검사 정규식이 `writeFileSync(harness, `가 한 줄에 있어야 맞았다. prettier는 긴 인라인 하네스를 `writeFileSync(\n  harness,\n  ...\n);`로 나누므로 실제 커밋될 형태를 놓쳤다. 1차 "회귀 확인"도 prettier가 거부하는 한 줄 형태로만 검증했다.
-  - 반영: 공백·줄바꿈을 허용하는 `/writeFileSync\(\s*harness\s*,\s*([\s\S]*?)\s*,?\s*\);/g`로 바꿨다.
-- 남은 한계: `harness`가 아닌 이름의 변수로 하네스를 쓰면 이 검사에서 빠진다. 기록으로 남긴다.
-- 리뷰는 최대 2회이므로 이 보완 뒤 추가 리뷰는 하지 않는다.
+- **minor**: The source check regular expression only matched when `writeFileSync(harness, ` was on one line. Prettier splits a long inline harness into `writeFileSync(\n  harness,\n  ...\n);`, so the form that would really be committed was missed. The "regression check" of the first review also verified only the one-line form that prettier rejects.
+  - Applied: changed to `/writeFileSync\(\s*harness\s*,\s*([\s\S]*?)\s*,?\s*\);/g`, which allows spaces and line breaks.
+- Remaining limit: if a harness is written with a variable that is not named `harness`, this check misses it. I leave it on record.
+- Reviews are at most 2, so there is no further review after this fix.
 
-### 2차 보완 검증
+### Second fix verification
 
-- 회귀 확인: `restore` 테스트를 저장소 경로를 넣은 여러 줄 인라인 템플릿으로 바꾸고 `prettier --write`로 여러 줄 형태가 되게 했다. 회귀 테스트가 `harness content must come from harnesses`로 실패했다. 원복 후 통과.
+- Regression check: I changed the `restore` test to a multi-line inline template that contains the repository path and ran `prettier --write` so that it became the multi-line form. The regression test failed with `harness content must come from harnesses`. It passed after I reverted.
 - `node --test scripts/test/project-github-auth.test.mjs`: 18 pass / 0 fail / 0 skip
-- 변경 파일 prettier·eslint 통과
+- prettier and eslint on the changed files passed

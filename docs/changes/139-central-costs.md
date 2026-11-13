@@ -1,27 +1,27 @@
-# #139 비용 문서 링크를 중앙 docs/costs.md로 바꾸기
+# #139 Point the cost document links to the central docs/costs.md
 
-- 이슈: [#139](https://github.com/sirloinbh/workout-memo/issues/139)
-- 브랜치: `feat/139-central-costs`
-- 선행: project-standards#41(비용 문서 중앙 이전, 병합됨)
+- Issue: [#139](https://github.com/sirloinbh/workout-memo/issues/139)
+- Branch: `feat/139-central-costs`
+- Depends on: project-standards#41 (cost document moved to the central repo, merged)
 
-## 목적
+## Purpose
 
-앱 8개가 함께 쓰는 서버 비용 문서가 이 리포 `docs/shared-hosting-costs.md`에 있었습니다. 갱신된 내용(ECR 제외, 도메인 비용·앱별 배분 추가)이 중앙 리포 [`docs/costs.md`](https://github.com/sirloinbh/project-standards/blob/main/docs/costs.md)로 옮겨져, 두 곳에 같은 문서가 있으면 금액이 바뀔 때 한쪽만 고쳐질 수 있습니다.
+The server cost document shared by the 8 apps was in `docs/shared-hosting-costs.md` of this repo. The updated content (ECR excluded, domain cost and per-app allocation added) was moved to the central repo [`docs/costs.md`](https://github.com/sirloinbh/project-standards/blob/main/docs/costs.md), and if the same document exists in two places, only one of them may be fixed when an amount changes.
 
-## 변경 — docs: 중앙 비용 문서로 연결
+## Change — docs: link to the central cost document
 
-- `README.md`: 공유 호스팅 비용 문서 링크를 중앙 `docs/costs.md`로 바꿨습니다.
-- `docs/ai-agent-project-setup.md`: "상세 비용 계산" 링크를 중앙 문서로 바꾸고, 이 리포 문서 목록에서 `docs/shared-hosting-costs.md`를 뺐습니다.
-- `docs/shared-hosting-costs.md`: 지웠습니다. 내용은 중앙 문서에 있고, 지난 내용은 Git 이력에 남습니다.
-- `docs/changes/`의 과거 기록은 당시 기록이라 고치지 않았습니다.
-- `docs/deployment.md`의 이 앱 배포 비용(약 $7~8)은 이 앱 서버 기준이라 그대로 두었습니다.
+- `README.md`: changed the link of the shared hosting cost document to the central `docs/costs.md`.
+- `docs/ai-agent-project-setup.md`: changed the "detailed cost calculation" link to the central document, and removed `docs/shared-hosting-costs.md` from the document list of this repo.
+- `docs/shared-hosting-costs.md`: deleted. The content is in the central document, and the old content stays in the Git history.
+- The past records in `docs/changes/` show the state at that time, so they were not changed.
+- The deployment cost of this app in `docs/deployment.md` (about $7 to $8) is based on this app's server, so it was left as it is.
 
-## 리뷰
+## Review
 
-- 1차: 필수 지적 없음. 지운 문서에만 있던 "현재 Terraform 범위"는 #141에서 인프라를 없앤 뒤 낡은 내용이고, `localhost:8101` 바인딩은 중앙 문서에 "SSH 터널·사설 접속 전제"로 들어 있어 옮길 것이 없음을 확인했습니다. 반영: 위 "같은 내용" 표현과 테스트 문장을 바로잡았습니다.
+- First: no required comments. I confirmed that the "current Terraform scope" that was only in the deleted document is outdated after the infrastructure was removed in #141, and that the `localhost:8101` binding is in the central document as "assumes an SSH tunnel or private access", so there is nothing to move. Applied: I corrected the "same content" wording above and the sentence in the tests.
 
-## 테스트
+## Tests
 
-- `git grep shared-hosting-costs`: 결과가 `docs/changes/` 안에서만 나옵니다(#21·#136·#139·#141 기록).
-- 중앙 `docs/costs.md`가 있는지 GitHub API로 확인했습니다.
-- prettier(바꾼 파일), `npm run test:docs`: 통과
+- `git grep shared-hosting-costs`: results appear only inside `docs/changes/` (the records of #21, #136, #139, and #141).
+- I checked with the GitHub API that the central `docs/costs.md` exists.
+- prettier (changed files), `npm run test:docs`: passed

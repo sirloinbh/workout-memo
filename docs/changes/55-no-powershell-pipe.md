@@ -1,42 +1,42 @@
-# #55 PowerShell 파이프 마이그레이션·백업의 한글 손상 방지
+# #55 Prevent Korean text corruption in PowerShell pipe migrations and backups
 
-- 이슈: [#55](https://github.com/sirloinbh/workout-memo/issues/55)
-- 브랜치: `fix/55-no-powershell-pipe`
+- Issue: [#55](https://github.com/sirloinbh/workout-memo/issues/55)
+- Branch: `fix/55-no-powershell-pipe`
 
-## 문제
+## Problem
 
-Windows PowerShell 5.1은 외부 프로그램과 파이프로 텍스트를 주고받을 때 인코딩을 바꾼다.
+Windows PowerShell 5.1 changes the encoding when it sends text to or receives text from an external program through a pipe.
 
-- **보낼 때**: `$OutputEncoding`(기본 ASCII)으로 변환한다. `database/README.md`의 `Get-Content … | docker compose exec … psql` 안내대로 001을 적용하면 `'기타'`가 `'??'` 브랜드로 추가된다(2026-10-19 재현).
-- **받을 때**: 콘솔 코드 페이지(한국어 Windows 기본 CP949)로 해석한다. 이번에 추가로 발견했다. `scripts/backup.ps1`은 `pg_dump` 출력을 변수로 받으므로, CP949 콘솔에서는 `기타`가 `湲고?`로 깨진 채 백업 파일에 저장된다. 테스트 DB로 재현했다(UTF-8 콘솔에서는 정상이라 지금까지 드러나지 않았다).
+- **When sending**: it converts with `$OutputEncoding` (ASCII by default). If you apply 001 as `database/README.md` says with `Get-Content … | docker compose exec … psql`, `'기타'` (Etc) is added as a `'??'` brand (reproduced on 2026-10-19).
+- **When receiving**: it interprets with the console code page (CP949, the default on Korean Windows). This was found additionally this time. `scripts/backup.ps1` receives the `pg_dump` output into a variable, so on a CP949 console `기타` is saved into the backup file garbled as `湲고?`. I reproduced it with the test DB (on a UTF-8 console it is normal, so it had not shown up until now).
 
-## 변경 — 2026-10-20
+## Change — 2026-10-20
 
 - `scripts/backup.ps1`
-  - `pg_dump -f /tmp/workout-backup.sql`로 컨테이너 안에 쓴 뒤 `docker compose cp`로 바이트 그대로 꺼낸다. 임시 파일은 `finally`에서 지운다.
-  - 스크립트는 ASCII로 유지한다. PowerShell 5.1은 BOM 없는 `.ps1`을 ANSI로 읽기 때문이다.
+  - It writes inside the container with `pg_dump -f /tmp/workout-backup.sql` and then takes the file out byte for byte with `docker compose cp`. The temp file is deleted in `finally`.
+  - The script stays ASCII, because PowerShell 5.1 reads a `.ps1` without a BOM as ANSI.
 - `database/README.md`
-  - 파일별 마이그레이션 명령 6개를 compose가 마운트한 파일을 실행하는 방식(`psql -f /docker-entrypoint-initdb.d/<파일>`)으로 바꿨다.
-  - 백업 복원은 `createdb` → `docker compose cp` → `psql -f` → 임시 파일 삭제 순서로 바꿨다.
-  - "PowerShell 파이프를 쓰지 않는 이유" 절을 추가했다. 원인, 권장 방식(`npm run db:migrate`, `backup.ps1`), 깨진 행 조회(brands, official_machine_weights의 `?` 포함 행, 조회만 함)를 담았다.
-- `scripts/test/docs-commands.test.mjs`(신규)와 `npm run test:docs`(`npm run check`에 포함)
-  - 저장소 Markdown의 `powershell`·`ps1`·`pwsh` 코드 블록에서 `| docker`, `| psql`, `| pg_restore`, `Get-Content … | docker/psql` 패턴을 찾는다. 과거 기록인 `docs/changes`, `docs/daily`는 제외한다.
-  - 판정 함수 자체도 시험한다: 옛 패턴은 잡고, `-f`·`cp`, PowerShell 내부 파이프(`| Select-Object`), bash 블록은 허용한다.
-  - `backup.ps1`이 변수로 받지 않고 `-f`와 `cp`를 쓰는지, ASCII인지 검사한다.
+  - I changed the 6 per-file migration commands to run the file that compose mounts (`psql -f /docker-entrypoint-initdb.d/<file>`).
+  - I changed the backup restore to the order `createdb` → `docker compose cp` → `psql -f` → delete the temp file.
+  - I added the section "PowerShell 파이프를 쓰지 않는 이유" (why we do not use PowerShell pipes). It covers the cause, the recommended ways (`npm run db:migrate`, `backup.ps1`), and the query for broken rows (rows in brands and official_machine_weights that contain `?`, query only).
+- `scripts/test/docs-commands.test.mjs` (new) and `npm run test:docs` (included in `npm run check`)
+  - It looks in the `powershell`, `ps1`, and `pwsh` code blocks of the repo's Markdown for the patterns `| docker`, `| psql`, `| pg_restore`, and `Get-Content … | docker/psql`. It excludes the past records `docs/changes` and `docs/daily`.
+  - It also tests the judging function itself: it catches the old pattern and allows `-f`, `cp`, PowerShell-internal pipes (`| Select-Object`), and bash blocks.
+  - It checks that `backup.ps1` uses `-f` and `cp` instead of receiving into a variable, and that it is ASCII.
 
-## 검증
+## Checks
 
-| 검사                                                                       | 결과                                                                                                                                |
-| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| CP949 콘솔에서 옛 방식 재현(테스트 DB)                                     | `기타` → `湲고?`                                                                                                                    |
-| CP949 콘솔에서 새 `backup.ps1` 실행(로컬 DB를 읽기만 함, 시험 파일은 삭제) | 덤프에 `기타` 보존, `湲고` 없음                                                                                                     |
-| 별도 compose 프로젝트에서 README 명령 실행                                 | 001·009 `-f` 재적용 후 중복 없음(브랜드 5개, `기타` 포함), 깨진 행 조회 0건, `cp`→`-f` 복원 후 `기타`와 한글 공식 참고 행 39개 보존 |
-| `npm run test:docs`                                                        | 3 pass. 고치기 전 README로 되돌리면 1 fail(회귀 감지 확인)                                                                          |
-| 사용자 로컬 DB 깨진 행 조회(읽기만)                                        | brands 0건. `official_machine_weights` 테이블은 없음(009 미적용, `npm run db:migrate` 필요)                                         |
+| Check                                                                                                      | Result                                                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reproducing the old way on a CP949 console (test DB)                                                       | `기타` → `湲고?`                                                                                                                                                    |
+| Running the new `backup.ps1` on a CP949 console (only reads the local DB, the test file is deleted)        | `기타` is kept in the dump, and there is no `湲고`                                                                                                                  |
+| Running the README commands in a separate compose project                                                  | No duplicates after re-applying 001 and 009 with `-f` (5 brands, including `기타`), 0 broken rows found, and after the `cp`→`-f` restore, `기타` and 39 Korean official reference rows are kept |
+| `npm run test:docs`                                                                                        | 3 pass. Reverting to the README before the fix gives 1 fail (regression detection confirmed)                                                                        |
+| Broken rows query on the user's local DB (read only)                                                       | brands 0 rows. The `official_machine_weights` table does not exist (009 not applied, `npm run db:migrate` needed)                                                   |
 
-`npm run check`(`test:docs` 포함): **EXIT=0**. 결과: 백엔드 279, 프론트 89, 워커 212, 스킬 4, 문서 3 모두 pass, fail·skip 0.
+`npm run check` (including `test:docs`): **EXIT=0**. Result: backend 279, frontend 89, workers 212, skills 4, docs 3, all pass, with 0 fail and 0 skip.
 
-## 경계
+## Boundaries
 
-- 운영·로컬 DB의 데이터를 바꾸거나 지우지 않았다.
-- 서버의 `deploy/`·`docs/deployment.md`에 있는 bash 파이프는 Linux bash라 영향이 없다. 검사 대상에서도 제외된다(bash 블록).
+- I did not change or delete any data in the production or local DB.
+- The bash pipes in the server's `deploy/` and `docs/deployment.md` run in Linux bash, so they are not affected. They are also excluded from the check (bash blocks).

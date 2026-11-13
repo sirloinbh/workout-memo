@@ -1,66 +1,66 @@
-# Workout Memo 고유 지침
+# Workout Memo Project Instructions
 
-이 파일은 workout-memo에만 해당하는 규칙이다. 공통 지침은 [AGENTS.md](AGENTS.md)이며, 중앙 표준(`sirloinbh/project-standards`) 동기화 후에는 중앙 관리 파일이 된다. 두 파일이 다르면 이 파일이 우선한다.
+These rules apply only to workout-memo. The shared instructions are in [AGENTS.md](AGENTS.md), which becomes a centrally managed file after syncing with the central standards (`sirloinbh/project-standards`). If the two files differ, this file wins.
 
-## 서비스 규칙
+## Service rules
 
-- 서비스 이름: FORM · 나의 운동 기록.
-- 운동 날짜는 `YYYY-MM-DD`, 서비스 시간대는 `Asia/Seoul`. 중량은 머신 기본중량을 포함한 총중량 kg이다. 확인하지 못한 머신 기본중량은 NULL로 보관한다.
-- 한 주는 월요일에 시작한다. 중앙 공통 규칙(일요일 시작, project-standards `docs/conventions/domain.md`)의 예외다. 달력 주를 쓰는 곳(주간 집계·부위별 통계·1주 기간 탭)이 모두 월요일 기준이고, 바꾸면 지난 기록의 주간 값이 달라지기 때문이다(#140). 목표 종료일 기본값은 조회 기간의 끝이라 1주 기간에서는 그 주 일요일이다. 루틴의 N주차는 달력 주가 아니라 시작일부터 센 7일이다.
-- 입력 검증과 목표 판정은 서버에서도 수행한다. 일지 및 세트 수정은 트랜잭션으로 처리한다.
+- Service name: FORM · 나의 운동 기록 (FORM · My Workout Log).
+- A workout date is `YYYY-MM-DD` and the service time zone is `Asia/Seoul`. Weight is the total weight in kg, including the machine's base weight. A machine base weight that has not been confirmed is stored as NULL.
+- A week starts on Monday. This is an exception to the central shared rule (weeks start on Sunday, project-standards `docs/conventions/domain.md`). Every place that uses a calendar week (weekly totals, per-body-part statistics, the 1-week period tab) is Monday-based, and changing it would change the weekly values of past records (#140). The default goal end date is the end of the queried period, so for a 1-week period it is that week's Sunday. Week N of a routine is not a calendar week; it is a block of 7 days counted from the start date.
+- Input validation and goal evaluation are also done on the server. Editing a log and its sets is done in a transaction.
 
-## 작업 절차 (공통 절차에 더해)
+## Work procedure (in addition to the shared procedure)
 
-- PR을 올린 뒤 **자동 코드 리뷰를 최대 2회** 거친다. 보완점이 나오면 추가 커밋으로 반영한다. 1차 보완 뒤에는 2차 리뷰를 한 번 더 받고, 2차 보완 커밋 뒤에는 더 리뷰하지 않는다. 보완점이 없으면 바로 다음 단계로 간다. 이 PR에서 고치기에 큰 수정은 새 이슈카드로 분리한다.
-- **최종 head의 필수 CI 검사가 모두 통과하면 에이전트가 사용자 확인 없이 PR을 병합한다**(`--merge --match-head-commit <검증한 SHA>`). main 병합은 곧 운영 배포이므로 병합 후 배포 결과를 확인한다. 연속 PR은 순서대로 병합하며, 앞 PR 병합 후 다음 브랜치에 `origin/main`을 merge해 충돌을 해결하고 테스트·CI를 다시 통과시킨 뒤 병합한다. 실패·진행 중 검사 상태 병합, `--admin` 등 보호 규칙 우회, 자기 PR 승인, main 직접 푸시, force push는 하지 않는다.
+- After opening a PR, go through **automatic code review at most 2 times**. If the review finds improvements, apply them in an additional commit. After the first round of fixes, get one more review; after the second round of fix commits, do not review again. If there are no improvements, go straight to the next step. Split a fix that is too large for this PR into a new issue card.
+- **When every required CI check on the final head passes, the agent merges the PR without asking the user** (`--merge --match-head-commit <the SHA you verified>`). Merging to main is a production deploy, so check the deploy result after merging. Merge consecutive PRs in order: after the earlier PR is merged, merge `origin/main` into the next branch, resolve conflicts, get the tests and CI passing again, and then merge. Do not merge while a check is failing or running, bypass protection rules (for example `--admin`), approve your own PR, push directly to main, or force-push.
 
-## 계정과 도구
+## Accounts and tools
 
-- GitHub 개인 작업은 `ghp`를 우선 사용하며, 함수가 없는 비대화형 워커·Git helper는 `scripts/gh-project.ps1`을 명시적으로 호출한다. 개인 설정은 `%USERPROFILE%/.config/gh-personal`, 기대 계정은 `sirloinbh`이다. 기본 `gh`는 회사 계정용으로 유지하며 프로젝트 원격 변경에 사용하지 않는다.
-- Codex는 `CODEX_HOME=%LOCALAPPDATA%/Codex-Account-B`로 기존 개인 계정B 프로필을 선택한다. 실행 중인 회사 계정 대화의 자동 전환을 전제하지 않는다. 인증 및 실행기 적용 절차는 [인증 문서](docs/project-github-auth.md)를 따른다.
-- 개인 인증 설정은 `%USERPROFILE%/.config/gh-personal`을 재사용하며, 도구 설치 위치 `%LOCALAPPDATA%/sirloinbh-tools`(중앙 `docs/tools.md`)와 구분한다.
+- Use `ghp` first for personal GitHub work. For a non-interactive worker or Git helper where the function does not exist, call `scripts/gh-project.ps1` explicitly. The personal config is `%USERPROFILE%/.config/gh-personal` and the expected account is `sirloinbh`. The default `gh` stays for the company account and is not used for remote changes to this project.
+- Codex selects the existing personal account B profile with `CODEX_HOME=%LOCALAPPDATA%/Codex-Account-B`. Do not assume that a running company-account conversation switches automatically. For authentication and for applying it to the runner, follow the [authentication doc](docs/project-github-auth.md).
+- The personal authentication settings reuse `%USERPROFILE%/.config/gh-personal`, which is separate from the tool install location `%LOCALAPPDATA%/sirloinbh-tools` (central `docs/tools.md`).
 
-## 현재 구현
+## Current implementation
 
-- React + Vite + TypeScript(React Router 페이지 URL, TanStack Query 서버 조회, React Hook Form, Tailwind CSS 4, 공통 디자인 토큰·shadcn/ui 공통 컴포넌트·`AppShell`), Express + pg + Zod, PostgreSQL 17, npm workspaces, Docker Compose, GitHub Actions.
+- React + Vite + TypeScript (React Router page URLs, TanStack Query server queries, React Hook Form, Tailwind CSS 4, shared design tokens, shadcn/ui shared components, `AppShell`), Express + pg + Zod, PostgreSQL 17, npm workspaces, Docker Compose, GitHub Actions.
 
-## 고유 스킬과 문서
+## Project-specific skills and docs
 
-- 사용자 설명 언어: 중앙 공통 스킬 [std-communication](skills/std-communication/SKILL.md)을 따른다(sirloinbh/project-standards#313).
-- 구현·수정 테스트: [workout-testing](skills/workout-testing/SKILL.md). 새 기능은 관련 테스트, 버그 수정은 회귀 테스트를 함께 작성한다.
-- 작업 절차: [workout-implementation](skills/workout-implementation/SKILL.md).
-- 개발 기반 구축·정리: [workout-foundation](skills/workout-foundation/SKILL.md). 적용 시 위 구현 절차도 함께 따른다.
-- 기술 추천과 적용 순서: [stack.md](skills/workout-foundation/references/stack.md). 추천 목록은 설치 완료 목록이 아니다.
-- 화면 디자인: [디자인 시스템](docs/design-system.md). 새 요소는 `frontend/src/components/ui`(중앙 관리)를 먼저 쓰고 색은 공통 토큰 이름만 쓴다. 기존 `style.css` 화면을 공통 컴포넌트로 옮길 때는 전후 화면을 비교한다.
+- Language for explanations to the user: follow the central shared skill [std-communication](skills/std-communication/SKILL.md) (sirloinbh/project-standards#313).
+- Tests for implementation and fixes: [workout-testing](skills/workout-testing/SKILL.md). Write related tests with a new feature and a regression test with a bug fix.
+- Work procedure: [workout-implementation](skills/workout-implementation/SKILL.md).
+- Building and tidying the development foundation: [workout-foundation](skills/workout-foundation/SKILL.md). When you apply it, also follow the implementation procedure above.
+- Technology recommendations and the order to adopt them: [stack.md](skills/workout-foundation/references/stack.md). The recommendation list is not a list of what is installed.
+- Screen design: [design system](docs/design-system.md). For a new element, use `frontend/src/components/ui` (centrally managed) first and use only the shared token names for colors. When you move an existing `style.css` screen to the shared components, compare the screen before and after.
 
-## 고유 검증 명령
+## Project-specific verification commands
 
-- 단위 테스트: `npm test`. 백엔드는 node:test(`backend/test`), 화면은 Vitest·jsdom·React Testing Library(`frontend/src/*.test.tsx`, `npm run test -w frontend`)로 실행한다.
-- 브라우저 검증: `npm run test:e2e`(Playwright, 설치된 Chrome 사용). `db:migrate`로 준비한 테스트 DB를 `E2E_DATABASE_URL`(없으면 `TEST_DATABASE_URL`)로 지정한다. API 3201·화면 5301 포트를 띄우며 개인 DB를 지정하지 않는다. CI의 `e2e` 작업이 PR마다 실행한다. 모든 화면의 반응형·axe 접근성 검사를 포함하며, 시각 회귀(`toHaveScreenshot`)는 CI 고정 Playwright 컨테이너(`E2E_VISUAL=1`)에서만 비교한다. 기준선 갱신은 [workout-testing](skills/workout-testing/SKILL.md)을 따른다.
-- 입력 스키마 변경: 일지·세트·머신·목표·신체 기록 스키마의 원본은 `shared/contract.ts`이다. 수정 후 `npm run contract:sync`로 `backend/src/contract.ts`·`frontend/src/contract.ts`를 갱신하고 복제본은 직접 수정하지 않는다. `npm run check`의 `contract:check`가 불일치를 실패로 처리한다. 화면 폼은 React Hook Form + `zodResolver` 또는 저장 전 `safeParse`로 같은 스키마를 사용한다.
-- API 라우트 변경: `backend/src/routes/`의 기능 모듈과 [REST API 계약](docs/api.md)을 함께 고친다. `api-contract.test.ts`가 둘의 불일치를 실패로 처리한다. `backend/src/openapi.ts`의 `operations`를 맞추고 `npm run openapi`로 `docs/openapi.json`을 다시 생성한다(`openapi.test.ts`가 오래된 파일을 실패 처리).
-- 인프라 변경: Terraform 원본은 `sirloinbh/shared-aws-infrastructure`이며 그 리포의 AGENTS.md·운영 문서(`docs/operations.md`)를 따른다. 이 리포에서는 서버 배포 스크립트(`deploy/*.sh`)만 관리하고 `bash -n`으로 검사한다. 앱 배포·롤백은 [배포·운영](docs/deployment.md)을 따른다. main에 병합된 커밋은 서버 timer가 CI 통과 후 자동 배포하므로(#75), main 병합은 곧 운영 배포다.
-- npm 패키지 도입은 사용자 위험 인지 확인 후 [검증된 반복 절차](skills/workout-foundation/references/procedures.md)의 고정 버전·14일 경과·`--ignore-scripts`·subtree lockfile 재생성·Docker 빌드 확인을 따른다.
+- Unit tests: `npm test`. The backend runs on node:test (`backend/test`), and the screens run on Vitest, jsdom and React Testing Library (`frontend/src/*.test.tsx`, `npm run test -w frontend`).
+- Browser verification: `npm run test:e2e` (Playwright, using the installed Chrome). Point `E2E_DATABASE_URL` (or `TEST_DATABASE_URL` if it is not set) at a test DB prepared with `db:migrate`. It starts the API on port 3201 and the screen on port 5301, and you must not point it at a personal DB. The `e2e` job in CI runs it on every PR. It includes responsive and axe accessibility checks for every screen, and visual regression (`toHaveScreenshot`) is compared only in the CI-pinned Playwright container (`E2E_VISUAL=1`). Update the baselines as [workout-testing](skills/workout-testing/SKILL.md) says.
+- Input schema changes: the source of the log, set, machine, goal and body record schemas is `shared/contract.ts`. After editing it, run `npm run contract:sync` to update `backend/src/contract.ts` and `frontend/src/contract.ts`, and do not edit the copies directly. `contract:check` in `npm run check` fails on a mismatch. Screen forms use the same schema through React Hook Form + `zodResolver` or `safeParse` before saving.
+- API route changes: change the feature modules in `backend/src/routes/` and the [REST API contract](docs/api.md) together. `api-contract.test.ts` fails on a mismatch between the two. Match `operations` in `backend/src/openapi.ts` and regenerate `docs/openapi.json` with `npm run openapi` (`openapi.test.ts` fails on a stale file).
+- Infrastructure changes: the Terraform source is `sirloinbh/shared-aws-infrastructure`; follow that repo's AGENTS.md and operations doc (`docs/operations.md`). This repo manages only the server deploy scripts (`deploy/*.sh`) and checks them with `bash -n`. For app deploys and rollbacks, follow [deployment and operations](docs/deployment.md). The server timer deploys commits merged to main automatically after CI passes (#75), so merging to main is a production deploy.
+- Introducing an npm package: after the user confirms they understand the risk, follow the [proven repeatable procedure](skills/workout-foundation/references/procedures.md): pinned version, 14 days old, `--ignore-scripts`, regenerating the subtree lockfile, and confirming the Docker build.
 
-## 로컬 에이전트 작업
+## Local agent work
 
-- 사용자가 요청한 다중 에이전트 작업은 [운영 문서](docs/local-agent-workflow.md)에 따라 확정한 이슈를 중앙 실행기로 등록한다(`agents.ps1 -Root . enqueue -Issue <번호>`, 실행기 위치는 운영 문서). 이 대화가 요구사항 및 진행 확인 창구다. 주 에이전트는 큐 등록 뒤 계속 요구사항 대화를 진행할 수 있다.
-- 로컬 워커가 실행 중일 때 새로운 개발 요청을 받으면 주 에이전트가 요구사항·완료 기준·이슈를 준비하고 큐에 등록한다. 같은 이슈를 주 에이전트가 동시에 직접 구현하지 않는다. 사용자와의 소통 및 blocked 원인 해소를 담당한다.
-- 워커는 이슈별 worktree에서 테스트 → 구현 → 독립 검토를 별도 Codex 실행으로 처리한다. 이미 등록한 이슈와 준비한 브랜치를 재사용하며 하위 에이전트가 이슈·브랜치를 중복 생성하지 않는다.
-- 워커가 지시한 테스트·구현 역할은 파일 변경과 검증 기록만 수행한다. 검토 역할은 읽기 전용이다. 커밋·푸시·PR·CI 통과 후 병합은 워커가 담당한다. 워커가 자동으로 풀지 못한 main 충돌은 blocked(`merge-conflict`)로 남기고, 주 에이전트가 worktree에서 merge 커밋으로 해결한 뒤 `retry`한다.
-- 워커 코드의 원본은 중앙 리포 `sirloinbh/project-standards`의 `tools/agents/`다. 워커 변경은 중앙 리포에서 하고 그 리포의 `npm run test:agents`로 검증한다. 이 리포에는 고유 설정 `.agents.json`(DB 사전검사 테이블)만 둔다.
-- 워커 모델은 중앙 `tools/agents/models.mjs`에서 역할별로 고정하고 모든 `codex exec`에 모델·추론 수준을 명시한다. 사용자 명시 요청 전 모델 변경 및 임의 fallback을 금지한다. 접근 실패는 blocked로 기록한다. 현재 채팅이나 사용자/전역 Codex 설정은 변경하지 않는다.
+- For multi-agent work the user requested, register the confirmed issue with the central runner as the [operations doc](docs/local-agent-workflow.md) says (`agents.ps1 -Root . enqueue -Issue <number>`; the runner location is in the operations doc). This conversation is the channel for requirements and progress checks. The main agent can keep going with the requirements conversation after enqueueing.
+- When a new development request arrives while a local worker is running, the main agent prepares the requirements, completion criteria and issue, and enqueues it. The main agent does not implement the same issue directly at the same time. The main agent handles communication with the user and clearing the cause of a blocked job.
+- The worker handles test → implementation → independent review for each issue in its own worktree, as separate Codex runs. It reuses the issue that is already registered and the branch that is already prepared, and sub-agents do not create duplicate issues or branches.
+- The test and implementation roles the worker assigns only change files and record verification. The review role is read-only. The worker handles commit, push, PR, and merge after CI passes. A main conflict the worker cannot resolve automatically stays as blocked (`merge-conflict`); the main agent resolves it in the worktree with a merge commit and then runs `retry`.
+- The source of the worker code is `tools/agents/` in the central repo `sirloinbh/project-standards`. Change the worker in the central repo and verify it with that repo's `npm run test:agents`. This repo keeps only its own setting, `.agents.json` (the DB precheck table).
+- The worker model is pinned per role in the central `tools/agents/models.mjs`, and every `codex exec` states the model and reasoning level explicitly. Do not change the model or fall back arbitrarily before the user explicitly asks. Record an access failure as blocked. Do not change the current chat or the user or global Codex settings.
 
-| 역할                                | 모델        | reasoning effort |
+| Role                                | Model       | reasoning effort |
 | ----------------------------------- | ----------- | ---------------- |
 | planning, debugging, highRiskReview | gpt-6-astra | high             |
 | tests, implementation, review       | gpt-6.1-sol | medium           |
 | research, documentation             | gpt-6-luna  | medium           |
 
-- 테스트 복잡도는 `-TestComplexity simple|complex`로 enqueue/configure 시 명시한다. 단순 정상·오류 입력 테스트만 `simple`로 지정하면 tests 역할은 gpt-6-luna medium을 사용한다. 미지정 기존 job과 트랜잭션·동시성·복잡한 경계 테스트(`complex`)는 Sol을 유지한다. 기존 실행 중 job을 자동 재분류하지 않는다.
-- 필수 DB/브라우저 검증은 `-RequireDatabase true -RequireBrowser true`로 명시한다. 모델 호출 전 도구·잠금·worktree·의존성 및 필수 환경을 검사하며 실패 시 모델 호출 없이 환경 차단을 기록한다. 브라우저 필수 작업에는 로컬 config의 `browserExecutable`, `browserCheckArgs`가 필요하다. 자동 설치·ACL 변경·샌드박스 해제는 하지 않는다.
-- 역할 문맥은 완료 기준·base SHA·변경 경로·최근 검사 요약·미해결 지적만 전달한다. 전체 로그·해시·감사 기록은 로컬에 보존한다. 한도 초과 중요 지적은 조용히 자르지 않고 인계 전 중단한다. 검토 증거가 동일한 환경 복구는 통과한 코드 단계를 재사용하고, 변경 시 재검토한다. 보호 테스트 수정은 워커 종료 후 `handoff-tests -Issue <번호>`로 테스트 역할에 정식 재인계한다.
+- State test complexity with `-TestComplexity simple|complex` when you enqueue or configure. Only mark simple valid and invalid input tests as `simple`; then the tests role uses gpt-6-luna medium. Existing jobs with no setting, and transaction, concurrency and complex boundary tests (`complex`), stay on Sol. Running jobs are not reclassified automatically.
+- State required DB and browser verification with `-RequireDatabase true -RequireBrowser true`. Before any model call, the worker checks the tools, locks, worktree, dependencies and required environment, and if that fails it records an environment block without calling the model. A job that requires a browser needs `browserExecutable` and `browserCheckArgs` in the local config. The worker does not auto-install, change ACLs or disable the sandbox.
+- The context for a role carries only the completion criteria, base SHA, changed paths, a summary of recent checks and unresolved findings. Full logs, hashes and audit records are kept locally. A critical finding that exceeds the limit is not silently cut; the worker stops before handoff. When an environment recovery leaves the review evidence identical, the code stages that already passed are reused, and a change triggers a new review. To change a protected test, formally hand off to the tests role again with `handoff-tests -Issue <number>` after the worker has exited.
 
-- 일반 작업은 Sol이며 문서 구현은 `enqueue -Issue <번호> -TaskKind documentation`, 고위험 검토는 `-ReviewRole highRiskReview`로 명시한다. 제목/본문으로 자동 분류하지 않는다. 기존 #21 변경은 워커 종료 후 `configure -Issue 21 -TaskKind documentation`을 사용한다.
-- 어려운 디버깅은 `agents.ps1 -Root . diagnose -Issue <번호>`를 사용한다. Astra 진단은 읽기 전용이며 별도 잠금·스키마·결과를 ignored `.local/agent-workflow/diagnostics/`에 기록한다. 동시 구현 중에는 시점 스냅샷이며 stale 여부를 확인한다. 자동 escalation은 없다. Astra high와 반복 smoke/진단은 사용량을 소비하므로 명시적 필요가 있을 때만 호출한다. 상세 절차는 [운영 문서](docs/local-agent-workflow.md)를 따른다.
-- 큐·로그·로컬 실행 설정은 무시되는 `.local/agent-workflow/`에 저장한다. 진행 확인은 `agents.ps1 -Root . status`, 중지는 `agents.ps1 -Root . stop`이다. 채팅 메시지가 없을 때 워커 상태를 이 대화에 자동으로 보내는 기능은 없다.
+- Ordinary work uses Sol. State documentation work with `enqueue -Issue <number> -TaskKind documentation` and high-risk review with `-ReviewRole highRiskReview`. Work is not classified automatically from the title or body. For the existing #21 change, use `configure -Issue 21 -TaskKind documentation` after the worker has exited.
+- For hard debugging, use `agents.ps1 -Root . diagnose -Issue <number>`. An Astra diagnosis is read-only and records its own lock, schema and result in the ignored `.local/agent-workflow/diagnostics/`. During concurrent implementation it is a point-in-time snapshot, so check whether it is stale. There is no automatic escalation. Astra high and repeated smoke runs or diagnoses use up quota, so call them only when there is an explicit need. For the detailed procedure, follow the [operations doc](docs/local-agent-workflow.md).
+- The queue, logs and local run settings are stored in the ignored `.local/agent-workflow/`. Check progress with `agents.ps1 -Root . status` and stop with `agents.ps1 -Root . stop`. There is no feature that sends the worker status to this conversation automatically when there is no chat message.

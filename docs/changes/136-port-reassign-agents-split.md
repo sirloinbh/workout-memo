@@ -10,14 +10,14 @@
 
 ## Change
 
-| Kind    | Before                  | After                 | Files changed                                                                                                                                      |
-| ------- | ----------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Web     | 8088                    | 8101                  | `compose.yaml`, `README.md`, `docs/api.md`, `docs/deployment.md`, `docs/shared-hosting-costs.md`                                                   |
-| API     | 3001                    | 3101                  | `compose.yaml`, `backend/src/server.ts`, `backend/Dockerfile`, `frontend/nginx.conf`, `frontend/vite.config.ts`, `.env.example`, 2 README files   |
-| Vite    | 5173 (not specified)    | 5201 (`strictPort`)   | `frontend/vite.config.ts`, `README.md`                                                                                                             |
-| Host DB | 55432                   | 15401                 | `compose.yaml`, `.env.example`, `database/README.md`, `docs/deployment.md`                                                                         |
-| e2e API | 3101                    | 3201                  | `playwright.config.ts`, `AGENTS.project.md`                                                                                                        |
-| e2e web | 5174                    | 5301                  | `playwright.config.ts`, `AGENTS.project.md`                                                                                                        |
+| Kind    | Before               | After               | Files changed                                                                                                                                   |
+| ------- | -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web     | 8088                 | 8101                | `compose.yaml`, `README.md`, `docs/api.md`, `docs/deployment.md`, `docs/shared-hosting-costs.md`                                                |
+| API     | 3001                 | 3101                | `compose.yaml`, `backend/src/server.ts`, `backend/Dockerfile`, `frontend/nginx.conf`, `frontend/vite.config.ts`, `.env.example`, 2 README files |
+| Vite    | 5173 (not specified) | 5201 (`strictPort`) | `frontend/vite.config.ts`, `README.md`                                                                                                          |
+| Host DB | 55432                | 15401               | `compose.yaml`, `.env.example`, `database/README.md`, `docs/deployment.md`                                                                      |
+| e2e API | 3101                 | 3201                | `playwright.config.ts`, `AGENTS.project.md`                                                                                                     |
+| e2e web | 5174                 | 5301                | `playwright.config.ts`, `AGENTS.project.md`                                                                                                     |
 
 - The port examples in `docs/ai-agent-project-setup.md` were changed to the new values and the central slot formula.
 - The past records in `docs/changes/`, `docs/daily/`, `docs/ux-audit/`, and `docs/next-steps/` show the state at that time, so they were not changed.

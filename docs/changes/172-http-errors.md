@@ -25,20 +25,20 @@ Align error responses with the centrally managed file `backend/src/standard/http
 
 ## Responses that change
 
-| Case                                                      | Before                                                                                     | After                                                                                |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| A path under `/api` that does not exist                   | 404 HTML                                                                                   | 404 `{ "error": "요청한 API를 찾을 수 없습니다" }` (the requested API was not found)  |
-| An ID like `1e3`, `%207%20` with spaces around, or `07`   | Accepted (turned into a number) or a Zod message                                           | 400 `{ "error": "<target> ID가 올바르지 않습니다" }` (the <target> ID is not valid)  |
-| Deleting a goal that does not exist                       | 404 `{ "ok": false }`                                                                      | 404 `{ "error": "목표를 찾을 수 없습니다" }` (goal not found)                         |
-| A broken JSON body                                        | 400 "요청 형식을 확인하세요" (check the request format)                                    | 400 "요청 본문의 JSON 형식이 올바르지 않습니다" (the JSON format of the request body is not valid) |
-| A server error (DB connection and so on)                  | 500 "저장소에 연결할 수 없습니다. 서버 상태를 확인하세요." (cannot connect to the storage; check the server status) | 500 "서버 오류가 발생했습니다" (a server error occurred) |
+| Case                                                    | Before                                                                                                              | After                                                                                              |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| A path under `/api` that does not exist                 | 404 HTML                                                                                                            | 404 `{ "error": "요청한 API를 찾을 수 없습니다" }` (the requested API was not found)               |
+| An ID like `1e3`, `%207%20` with spaces around, or `07` | Accepted (turned into a number) or a Zod message                                                                    | 400 `{ "error": "<target> ID가 올바르지 않습니다" }` (the <target> ID is not valid)                |
+| Deleting a goal that does not exist                     | 404 `{ "ok": false }`                                                                                               | 404 `{ "error": "목표를 찾을 수 없습니다" }` (goal not found)                                      |
+| A broken JSON body                                      | 400 "요청 형식을 확인하세요" (check the request format)                                                             | 400 "요청 본문의 JSON 형식이 올바르지 않습니다" (the JSON format of the request body is not valid) |
+| A server error (DB connection and so on)                | 500 "저장소에 연결할 수 없습니다. 서버 상태를 확인하세요." (cannot connect to the storage; check the server status) | 500 "서버 오류가 발생했습니다" (a server error occurred)                                           |
 
 ## Effect on the screens
 
 - The `shared/` contract was not changed. The screen code was not changed either.
 - `api()` of the screen (`frontend/src/app.tsx`) shows the `error` of the response as it is when a request fails. So there are two places that change.
   - My goals screen: deleting a goal that was already deleted shows "목표를 찾을 수 없습니다" (goal not found) instead of "요청에 실패했습니다" (the request failed).
-  - All screens: the text shown on a server error becomes "서버 오류가 발생했습니다".
+  - All screens: the text shown on a server error becomes "서버 오류가 발생했습니다" (a server error occurred).
 - There were no screen tests that check these texts.
 
 ## Tests

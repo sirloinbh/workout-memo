@@ -65,6 +65,6 @@ I put in as they are the files taken from the sync preview (`sync.mjs --dry-run 
 
 The screen comparison baselines are light mode only, so I took the dark mode ones by attaching a fake API to the production build (the data differs from the baseline images).
 
-| 1440px dark                                                  | 390px dark                                                 | 390px menu                                          |
-| ------------------------------------------------------------ | ---------------------------------------------------------- | --------------------------------------------------- |
-| ![1440 dark](159-design-system/dashboard-1440-dark.png)      | ![390 dark](159-design-system/dashboard-390-dark.png)      | ![390 menu](159-design-system/menu-390-light.png)   |
+| 1440px dark                                             | 390px dark                                            | 390px menu                                        |
+| ------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- |
+| ![1440 dark](159-design-system/dashboard-1440-dark.png) | ![390 dark](159-design-system/dashboard-390-dark.png) | ![390 menu](159-design-system/menu-390-light.png) |

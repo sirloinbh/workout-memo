@@ -27,7 +27,7 @@ Local Windows 11, installed Chrome. There is no test DB or Docker, so, as in #13
 - Checks where I broke it on purpose (temporary change, then reverted)
   - added `#123456 on #ffffff`, which is not used in `backup` → failed with `backup: 허용 목록에 있지만 390·1280px 어디에도 나타나지 않은 조합 ...` (backup: pair in the allowlist that appears at neither 390 nor 1280px ...) and `#123456 on #ffffff`
   - added a screen `old-screen` that does not exist → the list screen name test failed with `old-screen`
-  - ran only `--grep "journal 화면"` → 1 passed (no false failure)
+  - ran only `--grep "journal 화면" (journal screen)` → 1 passed (no false failure)
   - deleted one pair that is in use in `backup` → failed with a `color-contrast` violation as before
 - `tsc -p e2e/tsconfig.json`, `eslint e2e/ui-a11y.spec.ts`, `prettier --check e2e skills .claude/skills`: passed
 - `npm run test:skills` 4 pass, `quick_validate.py skills/workout-testing` (`PYTHONUTF8=1`): valid

@@ -26,14 +26,14 @@ This is step 1 of the central `sirloinbh/project-standards#386`. I move the code
 
 I compared the schema before the move (zod 3.25.76) and after the move with 12,489 inputs. After the move, I ran two: `zod/v4` (3.25.76) and `node_modules/knip/node_modules/zod` (4.6.7). The inputs put wrong values, empty values, large values, Infinity, and the `constructor` key (null, number, object) into every field.
 
-| Category                                                           | 3.25.76 `zod/v4` | 4.6.7 |
-| ------------------------------------------------------------------ | ---------------: | ----: |
-| Pass/fail, parsed value, and message are all the same              |            3,434 | 3,453 |
-| Only the default English zod text differs                          |            8,774 | 8,902 |
-| Only the number of times the same message repeats differs          |               22 |    22 |
-| The first message is the same and the later messages are fewer     |               10 |    10 |
-| The English text differs and the cross-check messages also differ  |              236 |    86 |
-| Pass/fail differs                                                  |               13 |    16 |
+| Category                                                          | 3.25.76 `zod/v4` | 4.6.7 |
+| ----------------------------------------------------------------- | ---------------: | ----: |
+| Pass/fail, parsed value, and message are all the same             |            3,434 | 3,453 |
+| Only the default English zod text differs                         |            8,774 | 8,902 |
+| Only the number of times the same message repeats differs         |               22 |    22 |
+| The first message is the same and the later messages are fewer    |               10 |    10 |
+| The English text differs and the cross-check messages also differ |              236 |    86 |
+| Pass/fail differs                                                 |               13 |    16 |
 
 There is no difference in the parsed value of an input that passed in either version. If a value changes, the fingerprint of the retry key also changes, so I checked this item separately. For every input the schema did not throw an exception.
 

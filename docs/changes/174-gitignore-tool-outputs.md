@@ -6,13 +6,13 @@
 
 I added the items below to the `# --- project ---` section of `.gitignore`. The shared part is a centrally managed file, so I did not touch it, and applying it to the central template is handled in project-standards#323.
 
-| Item                          | Reason                                                                                                                                                                                                                                                   |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `blob-report/`                | Playwright blob reporter output                                                                                                                                                                                                                          |
-| `coverage/`                   | Vitest coverage output                                                                                                                                                                                                                                   |
-| `*.tsbuildinfo`               | TypeScript incremental build cache                                                                                                                                                                                                                       |
-| `*.tfvars`                    | Terraform variable files. They may contain secrets. After `infrastructure/` was moved out of the repo in #141, the `infrastructure/terraform.tfvars` left locally was showing up as a candidate to be tracked                                          |
-| `.claude/settings.local.json` | Personal Claude Code permission settings. The shared settings `.claude/settings.json` are still tracked                                                                                                                                                  |
+| Item                          | Reason                                                                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `blob-report/`                | Playwright blob reporter output                                                                                                                                                                               |
+| `coverage/`                   | Vitest coverage output                                                                                                                                                                                        |
+| `*.tsbuildinfo`               | TypeScript incremental build cache                                                                                                                                                                            |
+| `*.tfvars`                    | Terraform variable files. They may contain secrets. After `infrastructure/` was moved out of the repo in #141, the `infrastructure/terraform.tfvars` left locally was showing up as a candidate to be tracked |
+| `.claude/settings.local.json` | Personal Claude Code permission settings. The shared settings `.claude/settings.json` are still tracked                                                                                                       |
 
 ## Verification
 

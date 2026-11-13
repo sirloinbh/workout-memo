@@ -1,89 +1,89 @@
-# #114 유산소 운동 데이터 모델·API·공유 계약
+# #114 Cardio data model, API, and shared contract
 
-- 이슈: [#114](https://github.com/sirloinbh/workout-memo/issues/114)
-- 브랜치: `feat/114-cardio-model`
+- Issue: [#114](https://github.com/sirloinbh/workout-memo/issues/114)
+- Branch: `feat/114-cardio-model`
 
-## 목적
+## Purpose
 
-유산소 목표·루틴·기록 화면(#115)과 외부 기록 가져오기(#118)가 함께 쓸 데이터 기반을 만듭니다. 이 PR은 DB·API·공유 계약·백업·CSV까지이며 화면은 만들지 않습니다. 설계는 이슈의 2026-11-08 결정(A~H)을 따릅니다.
+Build the data foundation that the cardio goals, routines, and records screens (#115) and the import of external records (#118) will share. This PR covers the DB, API, shared contract, backup, and CSV, and builds no screens. The design follows the issue's decisions A to H of 2026-11-08.
 
-## 변경 — feat: 유산소 기록 모델과 API
+## Change — feat: cardio record model and API
 
-- `database/migrations/015_cardio_sessions.sql`(새 파일, 재실행 안전)
-  - `cardio_sessions`: 날짜, 시작 시각(`TIME`, 서울 시각), 종류 9가지, 시간(정수 초), 거리(`NUMERIC(8,3)` km), 평균·최대 심박, 칼로리, 누적 상승 고도, 케이던스, 체감 강도, 근력 일지 연결, 출처, 외부 ID, 메모.
-  - API와 같은 범위를 CHECK로도 막습니다. "오늘 이후 날짜 금지"만은 CHECK가 현재 날짜에 기대면 안 되므로 API에서만 검사합니다.
-  - `workout_id`는 `workouts`를 참조하고 일지를 지우면 연결만 풀립니다(`ON DELETE SET NULL`).
-  - `(source, external_id)`는 `external_id`가 있을 때만 고유한 부분 고유 인덱스입니다. `manual`은 외부 ID를 가질 수 없습니다(CHECK).
-  - 날짜·연결 일지 인덱스를 둡니다. 구간(랩)·GPS 경로는 만들지 않았습니다(결정 C·D).
-- `shared/contract.ts` → `npm run contract:sync`로 `backend/src/contract.ts`·`frontend/src/contract.ts`에 복제
-  - `cardioKinds`(9가지), `cardioSources`(`manual`·`garmin`·`nike`·`file`), `cardioSessionObject`(필드 규칙), `checkCardioSession`(교차 필드 규칙), `cardioSessionSchema`, `cardioSessionSchemaFor(today)`(오늘 이후 날짜 금지), `CardioSessionInput`.
-  - 체감 강도는 #83의 `feedbackLevels`(`hard`·`medium`·`easy`)를 그대로 씁니다.
-- `backend/src/routes/cardio.ts`(새 파일), `backend/src/app.ts`에 등록
-  - `GET /api/cardio-sessions?from&to[&kind]`, `GET/PUT/DELETE /api/cardio-sessions/:id`, `POST /api/cardio-sessions`.
-  - 수정은 트랜잭션입니다. `BEGIN` → `SELECT … FOR UPDATE`로 행을 잠그고 → 전체 교체 `UPDATE` → `COMMIT`. 대상이 없거나 오류가 나면 `ROLLBACK`합니다.
-  - "오늘"은 `createApp(pool, { today })`로 주입한 값을 씁니다(루틴과 같음). 테스트가 날짜를 고정할 수 있습니다.
-  - 경로 ID는 `parseId(req.params.id, '유산소 기록')`, 없는 기록은 `sendError(res, 404, '유산소 기록을 찾을 수 없습니다')`입니다(#172 방식).
-  - 페이스 `pace_sec_per_km`(초/km, 소수 1자리)와 속도 `speed_kmh`(km/h, 소수 2자리)는 저장하지 않고 조회할 때 SQL로 계산합니다. 거리가 없으면 둘 다 `null`입니다(결정 B).
-- `backend/src/routes/shared.ts`의 `appErrors`에 메시지 2개를 더했습니다.
-  - 외부 ID 중복(`23505`, `cardio_sessions_source_external_id_key`): 409 "같은 출처와 외부 ID의 유산소 기록이 이미 있습니다"
-  - 없는 일지 연결(`23503`, `cardio_sessions_workout_id_fkey`): 400 "연결할 근력 일지가 존재하지 않습니다"
+- `database/migrations/015_cardio_sessions.sql` (new file, safe to re-run)
+  - `cardio_sessions`: date, start time (`TIME`, Seoul time), 9 kinds, duration (integer seconds), distance (`NUMERIC(8,3)` km), average and max heart rate, calories, cumulative elevation gain, cadence, perceived intensity, link to a strength journal, source, external ID, and memo.
+  - The same ranges as the API are also enforced with CHECK. Only "no date after today" is checked only in the API, because a CHECK must not depend on the current date.
+  - `workout_id` references `workouts`, and deleting the journal only removes the link (`ON DELETE SET NULL`).
+  - `(source, external_id)` is a partial unique index that is unique only when `external_id` exists. `manual` cannot have an external ID (CHECK).
+  - There are indexes on the date and the linked journal. Laps and GPS routes were not built (decisions C and D).
+- `shared/contract.ts`, copied with `npm run contract:sync` to `backend/src/contract.ts` and `frontend/src/contract.ts`
+  - `cardioKinds` (9 kinds), `cardioSources` (`manual`, `garmin`, `nike`, `file`), `cardioSessionObject` (field rules), `checkCardioSession` (cross-field rules), `cardioSessionSchema`, `cardioSessionSchemaFor(today)` (no date after today), and `CardioSessionInput`.
+  - Perceived intensity uses the `feedbackLevels` of #83 (`hard`, `medium`, `easy`) as they are.
+- `backend/src/routes/cardio.ts` (new file), registered in `backend/src/app.ts`
+  - `GET /api/cardio-sessions?from&to[&kind]`, `GET/PUT/DELETE /api/cardio-sessions/:id`, and `POST /api/cardio-sessions`.
+  - An update is a transaction. `BEGIN`, lock the row with `SELECT ... FOR UPDATE`, a full-replace `UPDATE`, then `COMMIT`. If the target is missing or an error occurs, it does `ROLLBACK`.
+  - "Today" uses the value injected with `createApp(pool, { today })` (the same as routines). Tests can fix the date.
+  - The path ID uses `parseId(req.params.id, '유산소 기록')` ("cardio record"), and a missing record is `sendError(res, 404, '유산소 기록을 찾을 수 없습니다')` ("cardio record not found") (the #172 way).
+  - The pace `pace_sec_per_km` (sec/km, 1 decimal) and the speed `speed_kmh` (km/h, 2 decimals) are not stored and are computed in SQL when read. If there is no distance, both are `null` (decision B).
+- Added 2 messages to `appErrors` in `backend/src/routes/shared.ts`.
+  - Duplicate external ID (`23505`, `cardio_sessions_source_external_id_key`): 409 "같은 출처와 외부 ID의 유산소 기록이 이미 있습니다" ("a cardio record with the same source and external ID already exists")
+  - Link to a missing journal (`23503`, `cardio_sessions_workout_id_fkey`): 400 "연결할 근력 일지가 존재하지 않습니다" ("the strength journal to link does not exist")
 
-## 변경 — feat: 백업 v2와 유산소 CSV
+## Change — feat: backup v2 and cardio CSV
 
 - `backend/src/backup.ts`
-  - 백업 형식 버전을 2로 올리고 `data.cardio_sessions`를 넣었습니다. v2 파일에는 이 목록이 꼭 있어야 합니다(비어 있어도 됨). v1 파일은 유산소 없는 백업으로 그대로 복원합니다. 지원하지 않는 버전 메시지는 "지원 버전: v1, v2"입니다.
-  - 복원 전 검증을 넓혔습니다: 유산소 값 범위(API와 같은 규칙, 오늘 이후 검사 제외), id 중복, 백업에 없는 일지 연결, 같은 출처·외부 ID 중복.
-  - 추가만(`merge`): 외부 ID가 있으면 출처+외부 ID로 기존 행과 비교합니다. 내용이 같으면 건너뛰고, 다르면 기존 값을 유지하고 충돌로 보고합니다. 외부 ID가 없으면 일지처럼 같은 내용의 기존 행을 1개씩 건너뜁니다. 일지 연결은 비교에 쓰지 않고, 복원한 기록은 복원한(또는 같은 내용이라 건너뛴 기존) 일지에 연결합니다. 이를 위해 `Seen`이 흡수한 기존 행의 id를 돌려주도록 바꿨습니다.
-  - 전체 교체(`replace`): 유산소 기록도 지우고 삭제 수를 셉니다. 잠금 목록과 요약 표(`tables.cardio_sessions`)에도 넣었습니다. 검증 후 복원, 한 트랜잭션의 전부 아니면 전무 동작은 그대로입니다.
-  - `GET /api/export/cardio.csv`(새 엔드포인트): 근력 CSV는 그대로 두고 유산소를 따로 내보냅니다. 같은 `toCsv`를 써서 BOM·따옴표·수식 실행 방지(`=`·`+`·`-`·`@`·탭·CR 앞에 `'`)가 같습니다.
-- `frontend/src/backup.tsx`: 복원 요약에 "유산소" 줄을 더했습니다. 요약에 그 표가 없으면(이전 서버) 줄을 건너뜁니다.
-- `docs/api.md`(엔드포인트 6줄, 필드 규칙, 오류 표), `database/README.md`(마이그레이션, 유산소 CSV, 백업 v2 형식·복원 규칙), `backend/src/openapi.ts`(작업 6개, `cardioQuery`) → `npm run openapi`로 `docs/openapi.json` 재생성(27 paths).
+  - Raised the backup format version to 2 and added `data.cardio_sessions`. A v2 file must have this list (it may be empty). A v1 file is restored as it is, as a backup without cardio. The unsupported version message is "지원 버전: v1, v2" ("supported versions: v1, v2").
+  - Widened the validation before restore: cardio value ranges (the same rules as the API, excluding the after-today check), duplicate ids, links to journals that are not in the backup, and duplicate same source and external ID.
+  - Add only (`merge`): if there is an external ID, compare with an existing row by source + external ID. If the content is the same, skip it. If it differs, keep the existing value and report a conflict. If there is no external ID, skip one existing row of the same content at a time, like journals. The journal link is not used for comparison, and a restored record is linked to the restored journal (or to the existing journal that was skipped because the content was the same). For this, `Seen` was changed to return the id of the existing row it absorbed.
+  - Replace all (`replace`): cardio records are deleted too and the deleted count is counted. It was also added to the lock list and the summary table (`tables.cardio_sessions`). Restoring after validation and the all-or-nothing behavior of one transaction are unchanged.
+  - `GET /api/export/cardio.csv` (new endpoint): the strength CSV is left as it is and cardio is exported separately. It uses the same `toCsv`, so the BOM, quoting, and formula injection protection (a `'` before `=`, `+`, `-`, `@`, tab, and CR) are the same.
+- `frontend/src/backup.tsx`: added a "유산소" ("cardio") line to the restore summary. If the summary has no such table (an older server), the line is skipped.
+- `docs/api.md` (6 endpoint lines, field rules, error table), `database/README.md` (migration, cardio CSV, backup v2 format and restore rules), `backend/src/openapi.ts` (6 operations, `cardioQuery`), then `docs/openapi.json` was regenerated with `npm run openapi` (27 paths).
 
-## 결정 외에 정한 값
+## Values set beyond the decisions
 
-| 항목                       | 값                                                                 |
-| -------------------------- | ------------------------------------------------------------------ |
-| 시간 `duration_sec`        | 1~86400(24시간)의 정수 초                                          |
-| 거리 `distance_km`         | 0 초과 1000 이하, 소수점 셋째 자리까지(넘으면 반올림하지 않고 400) |
-| 심박 `avg_/max_heart_rate` | 30~250 bpm 정수, 둘 다 있으면 최대 ≥ 평균                          |
-| `calories_kcal`            | 0~20000 정수                                                       |
-| `elevation_gain_m`         | 0~10000 m 정수                                                     |
-| `avg_cadence`              | 1~300 정수(걸음/분 또는 회전/분)                                   |
-| `external_id`              | 공백 제거 후 1~200자. `file` 출처는 외부 ID 없이도 저장 가능       |
-| `memo`                     | 2000자 이하(머신 메모와 같음)                                      |
-| 목록 정렬                  | 날짜 → 시작 시각(없으면 뒤) → id, 모두 최근 순                     |
-| PUT에서 생략한 선택 값     | `null`(메모 `""`, 출처 `manual`) — 신체 기록과 같은 전체 교체      |
+| Item                             | Value                                                                                              |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Duration `duration_sec`          | Integer seconds from 1 to 86400 (24 hours)                                                         |
+| Distance `distance_km`           | Above 0 and up to 1000, to the third decimal place (more than that is 400, not rounded)            |
+| Heart rate `avg_/max_heart_rate` | Integer 30 to 250 bpm, and if both exist, max >= average                                           |
+| `calories_kcal`                  | Integer 0 to 20000                                                                                 |
+| `elevation_gain_m`               | Integer 0 to 10000 m                                                                               |
+| `avg_cadence`                    | Integer 1 to 300 (steps per minute or rotations per minute)                                        |
+| `external_id`                    | 1 to 200 characters after trimming whitespace. A `file` source can be saved without an external ID |
+| `memo`                           | 2000 characters or fewer (the same as the machine memo)                                            |
+| List order                       | Date, then start time (last if missing), then id, all most recent first                            |
+| Optional values omitted in PUT   | `null` (memo `""`, source `manual`), a full replace like body records                              |
 
-## 테스트
+## Tests
 
-- 추가: `backend/test/cardio.test.ts` 12개(DB 없음). 스키마 검증(0·음수·소수·24시간 초과 시간, 주입한 오늘 기준 미래 날짜, 9가지 종류·4가지 출처, 심박 범위와 최대 ≥ 평균, 거리 소수 자리, 시작 시각 형식, `manual`의 외부 ID 금지)과 가짜 pool 라우트 검사(검증 실패·잘못된 ID는 조회 전 400, 등록·종류 필터·조회·삭제·404, 409·400 메시지, 수정 트랜잭션의 `BEGIN`→`SELECT FOR UPDATE`→`UPDATE`→`COMMIT`과 404·오류 때 `ROLLBACK`, 연결 반환).
-- 추가: `backend/test/cardio.integration.test.ts` 4개(PostgreSQL, 테스트마다 별도 스키마). 등록·계산값·기간/종류 필터·조회·삭제, 외부 ID 중복 409와 다른 출처·`manual` 중복 허용, DB CHECK·고유 인덱스 직접 검사, 전체 교체와 409 때 롤백, 일지 연결 400과 일지 삭제 시 `workout_id` NULL.
-- 수정: `backend/test/backup.test.ts`(v2 형식, v1 호환, v2 목록 누락, 유산소 참조·중복·값 검증 2개 추가), `backend/test/backup.integration.test.ts`(시드에 유산소 2개, 왕복·재복원 건너뜀·일지 연결 확인, 테이블 목록, 3개 추가: v1 복원, 같은 외부 ID 충돌 유지와 전체 교체, 유산소 CSV), `frontend/src/backup.test.tsx`(요약 "유산소" 줄, 버전 메시지 예시).
+- Added: 12 tests in `backend/test/cardio.test.ts` (no DB). Schema validation (0, negative, decimal, and over-24-hour duration, a future date based on the injected today, 9 kinds and 4 sources, heart rate range and max >= average, distance decimal places, start time format, no external ID for `manual`) and fake pool route checks (validation failures and wrong IDs get 400 before any query, create, kind filter, read, delete, 404, 409 and 400 messages, `BEGIN`, `SELECT FOR UPDATE`, `UPDATE`, `COMMIT` of the update transaction and `ROLLBACK` on 404 or error, releasing the connection).
+- Added: 4 tests in `backend/test/cardio.integration.test.ts` (PostgreSQL, a separate schema per test). Create, computed values, period and kind filters, read, delete, duplicate external ID 409 and allowing duplicates across different sources and `manual`, direct checks of the DB CHECK and unique index, rollback on full replace and 409, 400 for a journal link, and `workout_id` becoming NULL when a journal is deleted.
+- Changed: `backend/test/backup.test.ts` (v2 format, v1 compatibility, missing v2 list, 2 added for cardio references, duplicates, and value validation), `backend/test/backup.integration.test.ts` (2 cardio records in the seed, checks of round trip, skipping on re-restore, and journal links, table list, 3 added: v1 restore, keeping on same external ID conflict and replace all, cardio CSV), `frontend/src/backup.test.tsx` (the "유산소" ("cardio") line of the summary, the version message example).
 - `cd backend && ../node_modules/.bin/tsx --test test/cardio.test.ts test/api-contract.test.ts test/openapi.test.ts test/backup.test.ts test/http-errors.test.ts test/contract.test.ts test/period-api.test.ts test/migrations.test.ts test/zod4-syntax.test.ts`: 54 pass, 0 fail
 - `cd frontend && ../node_modules/.bin/vitest run src/backup.test.tsx`: 6 pass
-- `npm run contract:sync`, `npm run contract:check`, `npm run openapi`, `npm run typecheck -w backend`, `npm run typecheck -w frontend`, 바뀐 파일의 eslint·prettier: 통과
-- `cd backend && ../node_modules/.bin/tsx --test test/cardio.integration.test.ts test/backup.integration.test.ts`: 17 fail. 모두 `ECONNREFUSED 127.0.0.1:5432`입니다. 이 PC에 `TEST_DATABASE_URL`은 있지만 PostgreSQL이 떠 있지 않아 DB 통합 테스트를 로컬에서 돌리지 못했습니다. PostgreSQL 서비스가 있는 CI `verify`로 확인합니다.
-- 로컬 전체 `npm test`·`npm run check`·e2e는 메모리 부족 이력이 있어 실행하지 않았습니다.
+- `npm run contract:sync`, `npm run contract:check`, `npm run openapi`, `npm run typecheck -w backend`, `npm run typecheck -w frontend`, eslint and prettier of changed files: pass
+- `cd backend && ../node_modules/.bin/tsx --test test/cardio.integration.test.ts test/backup.integration.test.ts`: 17 fail. All are `ECONNREFUSED 127.0.0.1:5432`. This PC has `TEST_DATABASE_URL` but no PostgreSQL running, so the DB integration tests could not be run locally. They are checked by CI `verify`, which has a PostgreSQL service.
+- The full local `npm test`, `npm run check`, and e2e were not run because there is a history of running out of memory.
 
-## 한계와 남은 일
+## Limits and remaining work
 
-- 화면(목록·입력·분석)은 #115, 외부 기록 가져오기는 #118입니다. 구간(랩)은 #118 조사 뒤에 정합니다.
-- 유산소 기록에는 일지 같은 `version`(낙관적 잠금)과 재시도 키가 없습니다. 같은 기록을 두 기기에서 고치면 나중 저장이 이깁니다.
-- 연결할 일지가 같은 날짜인지는 검사하지 않습니다(존재만 검사).
-- 복원(전체 잠금) 중에 근력 일지를 연결한 유산소 기록을 저장하면 잠금 순서가 엇갈려 PostgreSQL이 교착을 감지하고 한쪽을 실패시킬 수 있습니다. 복원은 전체 취소되거나 저장이 500으로 끝나며 데이터는 깨지지 않습니다.
-- 수정(`PUT`)은 전체 교체라 빠진 선택 항목은 기본값이 됩니다. `source`가 빠지면 `manual`로, `external_id`가 빠지면 `null`로 바뀝니다. 가져온 기록을 화면(#115)에서 고칠 때는 `source`·`external_id`를 그대로 다시 보내야 중복 판정 키가 남습니다.
-- 마이그레이션 번호 015는 이 브랜치를 만든 시점의 다음 번호입니다. 병합 전에 다른 PR이 015를 먼저 쓰면 번호를 바꿔야 합니다(`readMigrations`가 번호 중복을 막습니다).
-- 이 PR은 구현을 하위 에이전트에 맡기고, 주 에이전트가 diff를 읽은 뒤 대상 테스트(`cardio`·`api-contract`·`openapi`·`backup`·`http-errors`·`contract`·`migrations`: 44 pass), `contract:check`, prettier, eslint, `test:docs`를 다시 돌려 확인했습니다.
+- The screens (list, input, analysis) are #115, and importing external records is #118. Laps are decided after the #118 research.
+- A cardio record has no `version` (optimistic locking) or retry key like a journal. If the same record is edited on two devices, the later save wins.
+- It is not checked whether the journal to link is on the same date (only that it exists).
+- If a cardio record linked to a strength journal is saved during a restore (which locks everything), the lock order can cross, and PostgreSQL can detect a deadlock and fail one side. Either the restore is cancelled entirely or the save ends with 500, and the data is not corrupted.
+- An update (`PUT`) is a full replace, so omitted optional items become defaults. If `source` is missing it becomes `manual`, and if `external_id` is missing it becomes `null`. When editing an imported record on the screen (#115), `source` and `external_id` must be sent again as they are so the duplicate-detection key remains.
+- Migration number 015 is the next number at the time this branch was made. If another PR uses 015 first before merging, the number must be changed (`readMigrations` prevents duplicate numbers).
+- This PR left the implementation to a sub-agent, and the main agent read the diff and re-ran the target tests (`cardio`, `api-contract`, `openapi`, `backup`, `http-errors`, `contract`, `migrations`: 44 pass), `contract:check`, prettier, eslint, and `test:docs` to check it.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-- (필수) `backend/test/cardio.integration.test.ts`의 `isolated()`가 서버를 먼저 띄운 뒤 마이그레이션 15개를 기다리고 나서야 `listening` 이벤트를 기다렸습니다. 그 이벤트는 이미 지나가 Promise가 끝나지 않아, CI `verify`가 시간 제한까지 멈출 상태였습니다(이 PC는 DB가 꺼져 있어 첫 쿼리에서 실패하므로 드러나지 않았습니다). 마이그레이션 뒤에 서버를 띄우고 곧바로 `listening`·`error`를 기다리게 바꿨습니다. 다른 통합 테스트와 같은 방식입니다.
-- (선택) v1 백업 파일에 `cardio_sessions` 키가 있으면 버리는 값인데도 검증해서, 잘못된 값이 있으면 v1 복원이 400으로 실패했습니다. v1이면 검증 전에 이 키를 지웁니다. `backup.test.ts`에 잘못된 유산소 목록이 든 v1 파일도 복원되는지 확인을 넣었습니다.
-- (선택) `database/README.md`의 전체 교체 설명에 "유산소가 없는 v1 백업으로 전체 교체하면 지금 있는 유산소 기록도 지워진다"를 적었습니다.
-- `tsx --test test/backup.test.ts test/cardio.test.ts`: 23 pass. `npm run typecheck -w backend`, eslint, prettier 통과. DB 통합 테스트는 여전히 CI에서 처음 실행됩니다.
+- (Required) `isolated()` in `backend/test/cardio.integration.test.ts` started the server first, waited for 15 migrations, and only then waited for the `listening` event. That event had already passed, so the Promise never finished, and CI `verify` would have hung until the time limit (this did not show on this PC because the DB is off and it fails at the first query). Changed it to start the server after the migrations and wait for `listening` and `error` right away. This is the same way as the other integration tests.
+- (Optional) If a v1 backup file had a `cardio_sessions` key, it was validated even though the value is discarded, so a wrong value made the v1 restore fail with 400. For v1 this key is removed before validation. Added a check to `backup.test.ts` that a v1 file holding a wrong cardio list is also restored.
+- (Optional) Wrote in the replace-all explanation of `database/README.md` that "replacing all with a v1 backup, which has no cardio, also deletes the cardio records that exist now".
+- `tsx --test test/backup.test.ts test/cardio.test.ts`: 23 pass. `npm run typecheck -w backend`, eslint, and prettier pass. The DB integration tests are still run for the first time in CI.
 
-## main 병합
+## Merge main
 
-- #242(#222 페이지 머리글) 병합 뒤 `origin/main`을 merge했습니다(`ba79e40`). 충돌은 없었고 바뀐 파일은 이 PR의 20개 그대로입니다. 이 merge 커밋의 CI는 전체 통과했습니다.
-- 이어서 #245(#198 터치 검사, `e2e/`·`docs/`만 변경)가 들어왔습니다. 겹치는 파일은 없지만 `e2e/**` 변경이라 바로 병합 조건에 맞지 않아 다시 merge했습니다. 충돌은 없었습니다. 병합 뒤 `tsc -p e2e/tsconfig.json` 통과, `tsx --test test/cardio.test.ts test/backup.test.ts test/api-contract.test.ts test/openapi.test.ts` 통과
-- 작업 중 사고: #242 병합에 쓴 임시 worktree에 이 워크트리의 `node_modules`를 정션으로 연결한 상태로 `git worktree remove`를 실행했습니다. 이 때문에 이 워크트리의 `backend/`·`frontend/` 작업 파일과 `node_modules`가 지워졌습니다. index와 커밋은 그대로여서 `git restore -- backend frontend`로 추적 파일을 되살리고 `npm ci`로 의존성을 다시 설치했습니다. 이 PR의 커밋 내용에는 영향이 없습니다.
+- After #242 (#222 page header) was merged, `origin/main` was merged (`ba79e40`). There were no conflicts and the changed files are still this PR's 20. CI for this merge commit all passed.
+- Then #245 (#198 touch check, changes only `e2e/` and `docs/`) came in. There are no overlapping files, but it changes `e2e/**`, so it did not meet the condition to merge right away and was merged again. There were no conflicts. After the merge, `tsc -p e2e/tsconfig.json` passes and `tsx --test test/cardio.test.ts test/backup.test.ts test/api-contract.test.ts test/openapi.test.ts` passes
+- Accident during the work: `git worktree remove` was run on the temporary worktree used for the #242 merge while this worktree's `node_modules` was linked into it with a junction. Because of this, the `backend/` and `frontend/` working files and the `node_modules` of this worktree were deleted. The index and commits were intact, so the tracked files were restored with `git restore -- backend frontend` and the dependencies were reinstalled with `npm ci`. It does not affect the commit content of this PR.

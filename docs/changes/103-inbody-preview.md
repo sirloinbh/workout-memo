@@ -1,38 +1,38 @@
-# #103 인바디 가져오기와 미리보기 표를 공통 컴포넌트로 교체 (5단계)
+# #103 Replace InBody import and the preview table with shared components (step 5)
 
-- 이슈: [#103](https://github.com/sirloinbh/workout-memo/issues/103)
-- 브랜치: `feat/103-inbody-preview`
+- Issue: [#103](https://github.com/sirloinbh/workout-memo/issues/103)
+- Branch: `feat/103-inbody-preview`
 
-## 목적
+## Purpose
 
-#103을 요소마다 나눠 옮기는 다섯 번째 PR입니다. 4단계(신체 기록 화면, #235)에 이어 신체 기록 화면의 "인바디 가져오기" 패널과 미리보기 표를 옮깁니다. 패널을 여는 버튼은 페이지 머리글(#222)이라 그대로입니다. 남은 단계는 `style.css` 정리(6단계)입니다.
+This is the fifth PR in moving #103 over one element at a time. After step 4 (body records screen, #235), move the "인바디 가져오기" ("import InBody") panel and the preview table of the body records screen. The button that opens the panel is in the page header (#222), so it is unchanged. The remaining step is the `style.css` cleanup (step 6).
 
-## 변경 — feat: 인바디 가져오기 교체
+## Change — feat: replace InBody import
 
 - `frontend/src/inbody-import.tsx`
-  - 패널: `section.card.inbody-import`를 `Card`(`role="region"`, 이름 "인바디 가져오기", 제목 h2)로 바꿨습니다. 테스트가 찾는 영역 이름은 그대로입니다.
-  - 안내·파일 선택: `.form-hint`는 회색 상자 유틸리티, 파일 선택은 공통 `Label`과 `Input`(터치 16px 유지)입니다.
-  - 오류: `.error`를 #223의 `AlertBanner`로, 저장 결과 문구를 공통 `Notice`로 바꿨습니다.
-  - 열 고르기: `fieldset.form-grid`를 유틸리티 두 칸 배치로, 범례·라벨을 유틸리티와 `Label`로 바꿨습니다. 열 선택은 머신 폼과 같은 모양의 기본 `select`입니다.
-  - 사진에서 읽은 글자: `details`/`pre`에 유틸리티를 줬습니다.
-  - 미리보기 표: `.table-scroll`을 가로 스크롤 영역(`role="region"`, 이름 "인바디 미리보기", `tabIndex=0`)으로 바꿔 키보드로도 옆으로 넘길 수 있게 했습니다(#101의 12주 표와 같은 방식). 머리글 칸에 `scope="col"`을 붙였습니다. 행의 저장 체크박스는 공통 `Checkbox`이고, 머신 폼처럼 터치 화면에서 상자 16px·누름 영역 44px을 유지하는 className을 붙였습니다(중앙 수정 뒤 덮어쓰기 제거: sirloinbh/project-standards#415). 값 칸은 공통 `Input`이고, 숫자 칸 폭은 기존 90px 제한 대신 `w-24`(96px)입니다.
-  - "선택한 N건 저장"은 공통 `Button`입니다.
-- `frontend/src/style.css`: `.inbody-import`, `.inbody-import label`, `.inbody-import pre`, `.table-scroll`, `.inbody-preview input[type='number']`와 터치 화면의 `.inbody-preview input[type='checkbox']`를 지웠습니다. `.heading-actions`는 페이지 머리글(#222)이 아직 써서 남기고, 주석을 실제 용도에 맞게 고쳤습니다. 터치 규칙 `.legacy label:has(> input[type='checkbox'])`는 루틴짜기의 휴식 요일이 아직 써서 남깁니다.
-- 화면 차이: 패널이 공통 카드 모양이 되고, 표에 테두리와 머리글 바탕이 생깁니다. 오류가 테두리 있는 경고 상자로 보입니다.
+  - Panel: replaced `section.card.inbody-import` with a `Card` (`role="region"`, name "인바디 가져오기" ("import InBody"), title h2). The region name that tests look for is unchanged.
+  - Hint and file picker: `.form-hint` is a gray box utility, and the file picker is the shared `Label` and `Input` (touch 16px kept).
+  - Errors: replaced `.error` with #223's `AlertBanner` and the save result text with the shared `Notice`.
+  - Column choice: replaced `fieldset.form-grid` with a utility two-cell layout, and the legend and labels with utilities and `Label`. The column choice is a default `select` with the same look as the machine form.
+  - Text read from a photo: gave `details` and `pre` utilities.
+  - Preview table: replaced `.table-scroll` with a horizontal scroll area (`role="region"`, name "인바디 미리보기" ("InBody preview"), `tabIndex=0`) so the keyboard can scroll it sideways too (the same way as the 12-week table in #101). Added `scope="col"` to header cells. The save checkbox of a row is the shared `Checkbox`, with the className that keeps the box at 16px and the press area at 44px on touch screens, as in the machine form (override to be removed after the central fix: sirloinbh/project-standards#415). The value cells are the shared `Input`, and the width of number cells is `w-24` (96px) instead of the old 90px limit.
+  - "선택한 N건 저장" ("save the N selected") is the shared `Button`.
+- `frontend/src/style.css`: removed `.inbody-import`, `.inbody-import label`, `.inbody-import pre`, `.table-scroll`, `.inbody-preview input[type='number']`, and the touch-screen `.inbody-preview input[type='checkbox']`. `.heading-actions` stays because the page header (#222) still uses it, and its comment was fixed to match its real use. The touch rule `.legacy label:has(> input[type='checkbox'])` stays because the rest days in the Routine planner still use it.
+- Screen difference: the panel gets the shared card look, and the table gets a border and a header background. An error shows as a bordered alert box.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/inbody-import.test.tsx`에 2개.
-  - 미리보기: 패널 제목(h2), 표가 이름 있는 스크롤 영역 안에 있고 `tabindex=0`인지, 머리글 칸 순서, 행 저장 `checkbox`를 끄면 "선택한 0건 저장"이 비활성되고 다시 켜면 저장되는지, 저장 결과가 `status`로 알려지고 행에 "저장함"이 남는지 확인합니다.
-  - 오류: 측정값 줄이 없는 CSV를 고르면 패널 안에 `alert`가 뜨고 표가 생기지 않는지 확인합니다.
-- 기존 3개는 라벨 이름(`getByLabelText`)이 같아 그대로 통과합니다. 공통 `Checkbox`도 `aria-label`로 찾고 `toBeChecked`·`toBeDisabled`가 그대로 동작합니다.
-- `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx`: 교체 직후 11 pass, 테스트 추가 뒤 `inbody-import.test.tsx` 5 pass
-- `npm run typecheck -w frontend`, eslint(바뀐 파일), prettier: 통과
-- 한계: e2e 고정 화면은 인바디 패널을 열지 않아, 이 패널은 시각 기준선·터치·axe 검사 대상이 아닙니다. 화면 테스트로만 확인합니다. 로컬 전체 `npm run check`와 e2e는 메모리 부족 이력이 있어 실행하지 않았습니다.
+- Added: 2 tests in `frontend/src/inbody-import.test.tsx`.
+  - Preview: check the panel title (h2), that the table is inside a named scroll area with `tabindex=0`, the order of header cells, that turning off a row's save `checkbox` disables "선택한 0건 저장" ("save 0 selected") and turning it on again saves, and that the save result is announced as `status` and the row keeps "저장함" ("saved").
+  - Error: check that choosing a CSV with no measurement line shows an `alert` inside the panel and no table appears.
+- The existing 3 tests pass as they are because the label names (`getByLabelText`) are the same. The shared `Checkbox` is also found by `aria-label`, and `toBeChecked` and `toBeDisabled` still work.
+- `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx`: 11 pass right after the replacement, and `inbody-import.test.tsx` 5 pass after the tests were added
+- `npm run typecheck -w frontend`, eslint (changed files), prettier: pass
+- Limitation: the e2e fixed screen does not open the InBody panel, so this panel is not covered by the visual baseline, touch, or axe checks. It is checked only with the screen tests. The full local `npm run check` and e2e were not run because there is a history of running out of memory.
 
-## 변경 — 1차 리뷰와 main 병합
+## Change — first review and merge main
 
-- 1차 리뷰는 필수 보완점이 없었습니다. 선택 2건은 6단계(`style.css` 정리)로 넘깁니다. 열 선택 `select`의 비활성 모양은 select 상수를 합칠 때, 일부 행 저장 실패 문구를 `AlertBanner`로 보이게 하는 일은 백업 화면 `AlertBanner` 교체와 함께 합니다. 코드 보완이 없어 2차 리뷰는 하지 않습니다.
-- `9e7836a`의 CI는 모두 통과했고 시각 기준선 변화도 없었습니다.
-- 병합 직전 main에 #232(#105 세트 카드)가 들어왔습니다. 겹치는 파일은 없지만 공용 부품(`components/number-input.tsx`)과 e2e 변경이 있어 바로 병합 조건에 맞지 않아 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx` 13 pass, `npm run typecheck -w frontend` 통과
-- 이어서 #233(#102 루틴짜기)이 main에 들어와 `style.css`가 겹쳐 `origin/main`을 다시 merge했습니다. 충돌은 없었습니다(main은 루틴짜기 규칙을, 이 브랜치는 인바디 규칙을 지움). 병합 뒤 `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx src/routines.test.tsx` 21 pass, `npm run typecheck -w frontend`, prettier 통과
+- The first review had no required follow-ups. The 2 optional ones are passed to step 6 (`style.css` cleanup). The disabled look of the column choice `select` is done when the select constants are merged, and showing the failure text of a partial row save as an `AlertBanner` is done together with the `AlertBanner` replacement of the backup screen. There was no code follow-up, so there is no second review.
+- CI for `9e7836a` all passed, and there was no visual baseline change.
+- Just before the merge, #232 (#105 set cards) entered main. There are no overlapping files, but there are a shared part (`components/number-input.tsx`) and e2e changes, so it did not meet the condition to merge right away and `origin/main` was merged. There were no conflicts. After the merge, `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx` gave 13 pass and `npm run typecheck -w frontend` passed.
+- Then #233 (#102 Routine planner) entered main and `style.css` overlapped, so `origin/main` was merged again. There were no conflicts (main removed the Routine planner rules and this branch removed the InBody rules). After the merge, `npm run test -w frontend -- src/inbody-import.test.tsx src/body.test.tsx src/routines.test.tsx` gave 21 pass, and `npm run typecheck -w frontend` and prettier passed.

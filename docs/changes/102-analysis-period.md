@@ -1,42 +1,42 @@
-# #102 종목 분석의 기간 줄과 오류 배너를 공통 컴포넌트로 교체 (5단계)
+# #102 Replace the period row and error banner on the exercise analysis screen with shared components (step 5)
 
-- 이슈: [#102](https://github.com/sirloinbh/workout-memo/issues/102)
-- 브랜치: `feat/102-analysis-period`
-- 앞 단계: 1단계 [#227](https://github.com/sirloinbh/workout-memo/pull/227), 2단계 [#228](https://github.com/sirloinbh/workout-memo/pull/228), 3단계 [#233](https://github.com/sirloinbh/workout-memo/pull/233), 4단계 [#238](https://github.com/sirloinbh/workout-memo/pull/238)
+- Issue: [#102](https://github.com/sirloinbh/workout-memo/issues/102)
+- Branch: `feat/102-analysis-period`
+- Earlier steps: step 1 [#227](https://github.com/sirloinbh/workout-memo/pull/227), step 2 [#228](https://github.com/sirloinbh/workout-memo/pull/228), step 3 [#233](https://github.com/sirloinbh/workout-memo/pull/233), step 4 [#238](https://github.com/sirloinbh/workout-memo/pull/238)
 
-## 목적
+## Purpose
 
-2단계에서 미뤄 둔 종목 분석 화면의 기간 줄과 불러오기 오류 배너를 #224의 `DateStepper`·`RangeSummary`, #223의 `AlertBanner`로 옮기고, 이 화면만 쓰던 `.period-bar`·`.date-control`·`.range-label` 규칙을 지웁니다. #102의 마지막 단계입니다.
+Move the period row and the load-error banner of the exercise analysis screen, which step 2 postponed, to `DateStepper` and `RangeSummary` from #224 and `AlertBanner` from #223. Delete the `.period-bar`, `.date-control`, and `.range-label` rules that only this screen used. This is the last step of #102.
 
-## 변경 — feat: 기간 줄과 오류 배너 교체
+## Change — feat: replace the period row and error banner
 
 - `frontend/src/analysis.tsx`
-  - 기간 줄: 대시보드와 같은 배치(`flex flex-wrap justify-between`)에 기존 `SegmentedControl`(1·4·12주)과 `DateStepper`(이름 "분석 기준 날짜")를 둡니다. 이전처럼 이전·다음 이동 버튼 없이 날짜 입력만 있습니다(`onMove` 없음). 좁은 화면에서는 날짜가 탭 아래로 줄바꿈됩니다.
-  - 기간 표시: `.range-label` 대신 `RangeSummary`입니다. 글자는 10px에서 12px로 커집니다.
-  - 날짜 입력: 이전에는 테두리 없는 11px 입력이었고, 이제 대시보드와 같은 테두리 있는 공통 `Input`(높이 36px, 터치 44px)입니다.
-  - 불러오기 오류: `.error` 대신 `AlertBanner`(`role="alert"`)이고 "다시 연결"은 `outline`·`sm` 버튼입니다. 대시보드의 연결 오류와 같은 모양입니다.
-- `frontend/src/style.css`: `.period-bar`, `.date-control`(입력 포함), `.range-label`(`span` 포함)과 760px 이하의 같은 규칙을 지웠습니다. `.error`는 다른 화면이 모두 옮긴 뒤 #103 마지막 정리에서 지웁니다(조율 결정).
+  - Period row: the same layout as the dashboard (`flex flex-wrap justify-between`) holds the existing `SegmentedControl` (1, 4, and 12 weeks) and a `DateStepper` (name "분석 기준 날짜", "analysis reference date"). As before, there are no previous and next buttons, only the date input (no `onMove`). On a narrow screen the date wraps below the tabs.
+  - Period display: `RangeSummary` replaces `.range-label`. The text grows from 10px to 12px.
+  - Date input: it used to be a borderless 11px input. It is now the shared `Input` with a border (height 36px, 44px on touch), the same as the dashboard.
+  - Load error: `AlertBanner` (`role="alert"`) replaces `.error`, and "다시 연결" ("reconnect") is an `outline`, `sm` button. It looks like the connection error on the dashboard.
+- `frontend/src/style.css`: removed `.period-bar`, `.date-control` (including the input), `.range-label` (including `span`), and the same rules at 760px and below. `.error` is removed in the final cleanup of #103, after every other screen has moved (coordination decision).
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/analysis.test.tsx`에 1개. 불러오기가 실패하면 `AlertBanner`에 오류가 보이고 "다시 연결"로 다시 요청해 배너가 사라지는지, 기간 줄이 `DateStepper`·`RangeSummary`인지 확인합니다.
-- 기존: 1·4·12주 탭과 기준 날짜 변경 테스트는 수정 없이 통과합니다(입력 이름 "분석 기준 날짜" 유지).
+- Added: 1 test in `frontend/src/analysis.test.tsx`. If loading fails, the error shows in `AlertBanner`, "다시 연결" ("reconnect") requests again and the banner disappears, and the period row is a `DateStepper` and a `RangeSummary`.
+- Existing: the 1, 4, and 12 week tab tests and the reference date change test pass without edits (the input name "분석 기준 날짜" is kept).
 - `npm run test -w frontend -- src/analysis.test.tsx`: 6 pass
-- `npm run typecheck -w frontend`, eslint·prettier(바꾼 파일): 통과
-- 시각 기준선과 e2e는 PR CI로 확인합니다. PC 메모리가 부족해 로컬 전체 `npm run check`와 e2e는 돌리지 않았습니다.
+- `npm run typecheck -w frontend`, eslint and prettier (changed files): pass
+- Visual baselines and e2e are checked by the PR CI. The PC ran low on memory, so the full local `npm run check` and e2e were not run.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-- 위 "변경"에 날짜 입력 모양이 바뀐다는 점을 더했습니다. 기간 표시 글자와 날짜 입력이 바뀌어 analysis 시각 기준선 4장(360·390·768·1280)이 바뀔 것으로 봅니다. CI `e2e-visual` 이미지를 확인한 뒤 `visual-baselines` 아티팩트로 갱신합니다.
-- "다시 연결" 버튼에 대시보드와 같이 `type="button"`을 붙였습니다.
-- 반영하지 않음: 새 테스트가 `data-slot`으로 공통 부품 사용을 확인한다는 nit. 이 단계의 목적이 공통 부품으로 바꾸는 것이라 그 사실을 확인하는 검사로 남겼습니다.
+- Added to "Change" above that the date input look changes. Because the period text and the date input change, the 4 analysis visual baselines (360, 390, 768, 1280) are expected to change. After checking the CI `e2e-visual` images, update them with the `visual-baselines` artifact.
+- Added `type="button"` to the "다시 연결" ("reconnect") button, as on the dashboard.
+- Not applied: the nit that the new test uses `data-slot` to check that shared parts are used. The goal of this step is to switch to shared parts, so the check stays as a check of that fact.
 
-## 2차 리뷰
+## Second review
 
-- 보완점 없음. 1차 보완(버튼 `type`, 화면 변경 기록)이 맞게 들어갔음을 확인했습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- No follow-ups. Confirmed that the first follow-up (button `type`, screen change record) went in correctly. Two reviews are done, so there is no third review.
 
-## 변경 — test: main 병합과 시각 기준선 갱신
+## Change — test: merge main and update visual baselines
 
-- 리뷰 중 main에 #238(4단계, `1efa141`)이 병합됐습니다. 둘 다 `style.css`를 바꿔 병합 규칙대로 `origin/main`을 병합했습니다. 충돌은 없었고, 결과의 `style.css`는 main과 비교해 기간 줄 규칙 삭제만 다릅니다. 병합 뒤 `npm run typecheck -w frontend` 통과, `npm run test -w frontend -- src/analysis.test.tsx` 6 pass.
-- `9b1c304`의 CI `e2e-visual`에서 `analysis-360·390·768·1280` 4장만 실패했고 나머지 80건은 통과했습니다.
-- 1280px·360px 이미지를 이전 기준선과 나란히 보았습니다. 날짜 입력이 테두리 있는 공통 입력으로, 기간 표시 글자가 조금 커진 것 외에 차이가 없고, 360px에서도 기간 탭과 날짜가 한 줄에 들어가 넘치지 않아 `visual-baselines` 아티팩트로 4장을 갱신했습니다.
+- During the review, #238 (step 4, `1efa141`) was merged to main. Both change `style.css`, so `origin/main` was merged by the merge rule. There was no conflict, and the resulting `style.css` differs from main only by the deletion of the period row rules. After the merge, `npm run typecheck -w frontend` passed and `npm run test -w frontend -- src/analysis.test.tsx` gave 6 pass.
+- In CI `e2e-visual` for `9b1c304`, only the 4 images `analysis-360·390·768·1280` failed and the other 80 passed.
+- The 1280px and 360px images were compared side by side with the old baselines. The only differences are that the date input is now the shared bordered input and the period text is a little larger. At 360px the period tabs and the date still fit on one line without overflow, so the 4 images were updated with the `visual-baselines` artifact.

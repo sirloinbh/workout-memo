@@ -1,72 +1,72 @@
-# #105 모바일 입력 흐름 최적화 1단계: 세트 카드·증감 버튼·큰 완료 버튼
+# #105 Mobile input flow, step 1: set cards, increment buttons, big complete button
 
-- 이슈: [#105](https://github.com/sirloinbh/workout-memo/issues/105)
-- 브랜치: `feat/105-set-cards`
+- Issue: [#105](https://github.com/sirloinbh/workout-memo/issues/105)
+- Branch: `feat/105-set-cards`
 
-## 목적
+## Purpose
 
-운동 중 한 손으로 빠르게 기록하도록 일지 편집의 세트 입력을 바꿉니다. #105는 범위가 커서 요소마다 PR을 나눕니다.
+Change the set input of journal edit so that the user can record quickly with one hand during a workout. #105 is large, so it is split into one PR per element.
 
-1. 이번 PR: 세트 카드, 중량·횟수 증감 버튼과 숫자 키패드(`inputmode`), 큰 세트 완료 버튼
-2. 저장 버튼 하단 고정, 모바일 하단 시트·전체 화면 모달, 키보드 가림
-3. 휴식 타이머 상단 고정, 진동 알림
-4. 390px e2e 흐름("새 일지 → 세트 3개 입력·완료 → 저장")과 탭 수·소요 시간 비교 기록
+1. This PR: set cards, the weight and reps increment buttons and the number keypad (`inputmode`), and the big set complete button
+2. Save button fixed at the bottom, mobile bottom sheet and full-screen modal, keyboard covering
+3. Rest timer fixed at the top, vibration alert
+4. The 390px e2e flow ("new journal, enter and complete 3 sets, save") and a record comparing the number of taps and the time taken
 
-루틴짜기 단계별 입력은 #102 ③단계가 루틴 폼을 교체 중이라 이번 묶음에서 뺐습니다.
+Step-by-step input in the Routine planner was left out of this group because #102 step 3 is replacing the routine form.
 
-## 변경 — feat: 세트 카드와 증감 버튼
+## Change — feat: set cards and increment buttons
 
 - `frontend/src/app.tsx`
-  - 세트 한 줄(`data-slot="set-row"`)을 모든 폭에서 테두리 카드로 바꿨습니다. 맨 위에 "N세트"와 삭제 버튼이 있고, 운동명·머신(`md`부터 2열), 총중량·횟수(2열), 세트 메모, 참고 기록, 완료 버튼 순서입니다. 완료한 세트는 카드 테두리가 진해집니다.
-  - 총중량과 횟수를 앱 고유 `NumberInput`(#99, − / + 버튼)으로 바꿨습니다. 총중량은 5 kg씩(소수 키패드 `inputmode="decimal"`), 횟수는 1회씩(숫자 키패드 `numeric`) 움직입니다. 0~99999 kg, 1~1000회 한도에서 버튼이 멈춥니다. 검증은 공통 스키마가 합니다. 이전 `step="0.25"`처럼 브라우저가 0.25 kg 단위를 막지는 않습니다(1차 리뷰 보완 참고).
-  - 세트 완료 버튼을 카드 너비 전체, 높이 48px 이상(`min-h-12`), 16px 글자로 키웠습니다. 접근 이름 "N세트 완료"와 `aria-pressed`는 그대로입니다.
-  - 증감 단위는 사용자 결정으로 5 kg입니다(처음에는 원판 한 쌍 1.25 kg × 2 기준 2.5 kg). 바꾸려면 `weightStep` 하나만 고칩니다. 직접 입력은 그대로 0.25 kg 단위까지 됩니다.
+  - Changed a set row (`data-slot="set-row"`) to a bordered card at every width. At the top are "N세트" ("set N") and the delete button, followed in order by the exercise name and machine (2 columns from `md`), total weight and reps (2 columns), the set memo, the reference record, and the complete button. A completed set gets a darker card border.
+  - Changed total weight and reps to the app-specific `NumberInput` (#99, - / + buttons). Total weight moves by 5 kg (decimal keypad `inputmode="decimal"`) and reps by 1 (number keypad `numeric`). The buttons stop at the limits of 0 to 99999 kg and 1 to 1000 reps. The shared schema does the validation. Unlike the old `step="0.25"`, the browser no longer blocks units of 0.25 kg (see the first review follow-up).
+  - Enlarged the set complete button to the full card width, 48px or more in height (`min-h-12`), with 16px text. The accessible name "N세트 완료" ("set N complete") and `aria-pressed` are unchanged.
+  - The increment unit is 5 kg by the user's decision (at first it was 2.5 kg, based on one pair of plates, 1.25 kg x 2). To change it, edit only `weightStep`. Direct input still allows units down to 0.25 kg.
 - `frontend/src/components/number-input.tsx`
-  - 새 `NumberValueInput`: 편집 상태가 숫자인 칸(세트의 중량·횟수)용 `NumberInput`입니다. 입력한 글자가 저장된 숫자와 같게 읽히는 동안은 그대로 두어 "12."이나 지운 칸이 입력 중에 바뀌지 않습니다. 버튼이나 초안 복구처럼 밖에서 바뀐 숫자는 바로 보입니다.
-  - `NumberInput`의 묶음(`role="group"`)에 붙어 있던 같은 이름(`aria-label`)을 뺐습니다. 이름이 입력과 묶음 두 곳에 있어 라벨로 찾을 때 두 요소가 잡혔습니다. 버튼 이름("총중량 kg 늘리기")에 칸 이름이 들어 있습니다. 이 부품은 지금까지 쓰는 화면이 없었습니다(main과 진행 중인 원격 브랜치 확인).
-- 화면 차이: 세트가 카드로 나뉘고 카드마다 "N세트" 머리줄이 생깁니다. 중량·횟수 칸 양옆에 − / + 버튼이 생기고 칸이 넓어집니다. 완료 버튼이 카드 너비로 커집니다. 편집 창이 전체적으로 길어집니다.
+  - New `NumberValueInput`: a `NumberInput` for fields whose edit state is a number (the weight and reps of a set). While the typed text reads the same as the saved number, it is left as is so "12." or a cleared field does not change while typing. A number changed from outside, such as by a button or draft recovery, shows right away.
+  - Removed the same name (`aria-label`) that was on the group (`role="group"`) of `NumberInput`. The name was in two places, the input and the group, so two elements were found when looking up by label. The button names ("총중량 kg 늘리기", "increase total weight kg") contain the field name. No screen has used this part until now (checked on main and on the remote branches in progress).
+- Screen difference: sets are split into cards, and each card gets an "N세트" header row. The weight and reps fields get - / + buttons on both sides and the fields get wider. The complete button grows to the card width. The edit window becomes longer overall.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/components/number-input.test.tsx` 3개. 숫자 칸이 "12."과 빈 칸을 입력한 그대로 두는지, 밖에서 바뀐 값을 보여 주고 그 값에서 증감하는지, 칸 이름으로 찾으면 입력 하나만 잡히는지 확인합니다.
-- 추가: `frontend/src/workout-draft.test.tsx` 1개. 세트 카드의 총중량이 "늘리기"로 5 kg 오르고 횟수가 "줄이기"로 1 내려가는지, 키패드 종류, "1세트" 머리줄, 증감한 값이 로컬 초안에 남는지 확인합니다.
-- 고친 것(같은 의미): 입력이 `type="number"`에서 `type="text"`+`inputmode`로 바뀌어 `input[step="0.25"]`·`input[type="number"]`로 찾던 `workout-draft`·`set-completion`·`period` 테스트를 역할과 이름(`textbox` "총중량 kg")으로 찾게 바꿨고, 값 비교를 문자열로 바꿨습니다. `routine-progress` 테스트의 칸 찾기는 `label` 안에 입력이 없으면 `htmlFor`로 찾습니다. e2e `workout-crud`·`new-workout-defaults`는 버튼 이름("총중량 kg 늘리기")과 겹치지 않게 `getByLabel(..., { exact: true })`로 바꿨습니다.
-- `npm run test -w frontend -- --maxWorkers=1`: 227 pass, 4 skip (메모리 부족으로 워커 1개)
-- `npm run typecheck -w frontend`, 바뀐 파일 eslint(`--max-warnings 0`)·prettier: 통과
-- 실행하지 않은 것: e2e와 로컬 `npm run check`는 메모리 부족으로 돌리지 않았습니다. 시각 기준선·axe·반응형·터치 44px는 PR CI로 확인합니다.
+- Added: 3 tests in `frontend/src/components/number-input.test.tsx`. They check that the number field leaves "12." and an empty field as typed, that it shows a value changed from outside and increments from that value, and that looking up by field name finds only one input.
+- Added: 1 test in `frontend/src/workout-draft.test.tsx`. It checks that the total weight of a set card goes up by 5 kg with "늘리기" ("increase") and the reps go down by 1 with "줄이기" ("decrease"), the keypad type, the "1세트" ("set 1") header row, and that the incremented values stay in the local draft.
+- Fixed (same meaning): the input changed from `type="number"` to `type="text"` + `inputmode`, so the `workout-draft`, `set-completion`, and `period` tests that looked up `input[step="0.25"]` and `input[type="number"]` now look up by role and name (`textbox` "총중량 kg", "total weight kg"), and the value comparison became a string comparison. The field lookup of the `routine-progress` test uses `htmlFor` when there is no input inside the `label`. The e2e `workout-crud` and `new-workout-defaults` use `getByLabel(..., { exact: true })` so they do not overlap with the button name ("총중량 kg 늘리기").
+- `npm run test -w frontend -- --maxWorkers=1`: 227 pass, 4 skip (1 worker because of low memory)
+- `npm run typecheck -w frontend`, eslint of changed files (`--max-warnings 0`) and prettier: pass
+- Not run: e2e and the local `npm run check` were not run because of low memory. Visual baselines, axe, responsive, and touch 44px are checked by the PR CI.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-1차 리뷰는 필수 3건, 권장 4건이었습니다.
+The first review had 3 required and 4 recommended items.
 
-- 필수 1: 360·390px 터치 화면에서 총중량·횟수를 나란히 두면 44px 버튼 두 개를 빼고 입력칸이 약 25~40px만 남아 숫자가 보이지 않았습니다. 480px 미만에서는 두 칸을 위아래로 쌓습니다(`grid min-[480px]:grid-cols-2`).
-- 필수 2: 새 `Label`에 legacy `.modal label` 규칙(아래 17px 여백, 세로 flex)이 남아 라벨과 입력 사이가 벌어지고 글자가 가운데로 갔습니다. 같은 카드의 다른 칸처럼 `<label htmlFor … className="mb-0 text-meta">`로 바꿨습니다.
-- 필수 3: 텍스트 칸이라 "1..", "-", 영문 같은 입력이 `Number()`에서 NaN이 되어 상태에 들어갔습니다. NaN은 초안 JSON에 `null`로 저장되고, 다음에 열 때 손상된 초안으로 판정되어 초안 전체가 버려질 수 있었습니다. `NumberValueInput`은 쉼표 소수점을 점으로 읽고, 숫자로 읽히지 않는 글자는 받지 않습니다. 그래서 상태는 항상 유한한 숫자입니다.
-- 권장 4: 0.25 kg 단위는 이전에는 브라우저 `step`만 막고 있었고, 이제는 막지 않습니다. 위 기록을 고쳤습니다. 공통 스키마에 단위 검사를 넣는 일은 계약 변경이라 [#234](https://github.com/sirloinbh/workout-memo/issues/234)로 분리했습니다.
-- 권장 5(남김): 세트 `key`가 순번이라, 세트를 지운 뒤 같은 숫자로 읽히는 다른 글자(예: 빈 칸과 0)가 남을 수 있습니다. 저장 값에는 영향이 없고 보이는 모양만 다르므로 그대로 둡니다.
-- 권장 6: 낡은 테스트 주석을 고쳤습니다.
-- 권장 7(변경 없음): md 2열에서 오류가 반 칸만 차지한다는 지적은 `.field-error`에 `grid-column: 1 / -1`이 있어 해당하지 않았습니다.
-- 추가 테스트: `number-input.test.tsx`에 쉼표·읽을 수 없는 글자 1개, `workout-draft.test.tsx`에 잘못된 중량 글자가 초안에 들어가지 않는지 1개
-- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/number-input.test.tsx src/workout-draft.test.tsx src/routine-progress.test.tsx src/forms.test.tsx src/new-workout-defaults.test.tsx` 49 pass, typecheck·eslint·prettier 통과
+- Required 1: on 360 and 390px touch screens, with total weight and reps side by side, after the two 44px buttons the input fields had only about 25 to 40px left and the numbers were not visible. Below 480px the two fields are stacked vertically (`grid min-[480px]:grid-cols-2`).
+- Required 2: the new `Label` still had the legacy `.modal label` rule (17px bottom margin, vertical flex), so the gap between the label and the input widened and the text moved to the center. Changed it to `<label htmlFor ... className="mb-0 text-meta">`, like the other fields in the same card.
+- Required 3: it is a text field, so input such as "1..", "-", or letters became NaN in `Number()` and entered the state. NaN is saved as `null` in the draft JSON, and the next time it is opened it is judged a corrupted draft and the whole draft could be discarded. `NumberValueInput` reads a comma decimal point as a dot and does not accept text that does not read as a number. So the state is always a finite number.
+- Recommended 4: the 0.25 kg unit used to be blocked only by the browser `step`, and now it is not blocked. Fixed the record above. Putting a unit check in the shared schema is a contract change, so it was split out to [#234](https://github.com/sirloinbh/workout-memo/issues/234).
+- Recommended 5 (left): the set `key` is the order number, so after deleting a set, different text that reads as the same number (for example an empty field and 0) can remain. It does not affect the saved value and only the visible shape differs, so it is left as is.
+- Recommended 6: fixed an outdated test comment.
+- Recommended 7 (no change): the remark that an error takes only half a cell in the md 2 columns did not apply because `.field-error` has `grid-column: 1 / -1`.
+- Added tests: 1 in `number-input.test.tsx` for the comma and unreadable text, and 1 in `workout-draft.test.tsx` that a wrong weight text does not enter the draft
+- After the follow-up: `npm run test -w frontend -- --maxWorkers=1 src/components/number-input.test.tsx src/workout-draft.test.tsx src/routine-progress.test.tsx src/forms.test.tsx src/new-workout-defaults.test.tsx` 49 pass, typecheck, eslint, and prettier pass
 
-## 변경 — fix: 2차 리뷰 보완
+## Change — fix: second review follow-up
 
-2차 리뷰는 필수 지적 없이 권장 2건이었고 둘 다 반영했습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+The second review had 2 recommended items with no required ones, and both were applied. Two reviews are done, so there is no third review.
 
-- 총중량·횟수의 라벨과 입력 사이가 4px로 운동명·머신(`.modal label`의 8px)과 달랐습니다. `gap-2`로 맞췄습니다.
-- 숫자 칸이 `Number()`로 읽히는 글자를 모두 받아 붙여 넣은 "0x10"이 16, "1e3"이 1000이 되고, "."으로 시작하는 ".5"는 칠 수 없었습니다. 이제 숫자와 소수점 하나만 받고(`/^\d*\.?\d*$/`), "."만 친 동안은 0으로 봅니다. 쉼표를 소수점으로 읽으므로 붙여 넣은 "1,000"은 1이 됩니다. 쉼표 소수점 키패드를 받기 위한 선택입니다.
-- 추가 테스트: `number-input.test.tsx`에 "."으로 시작하는 입력 1개, 거절 목록에 "0x10"·"1e3"·" 5" 추가
-- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/number-input.test.tsx src/workout-draft.test.tsx src/routine-progress.test.tsx src/set-completion.test.tsx src/period.test.tsx` 78 pass, typecheck·eslint·prettier 통과
+- The gap between the label and the input of total weight and reps was 4px, different from the exercise name and machine (8px of `.modal label`). Matched it with `gap-2`.
+- The number field accepted all text that reads through `Number()`, so a pasted "0x10" became 16 and "1e3" became 1000, and ".5" starting with "." could not be typed. Now it accepts only digits and one decimal point (`/^\d*\.?\d*$/`), and while only "." is typed it is treated as 0. A comma is read as a decimal point, so a pasted "1,000" becomes 1. This is a choice to accept the comma decimal point keypad.
+- Added tests: 1 in `number-input.test.tsx` for input starting with ".", and "0x10", "1e3", and " 5" added to the rejection list
+- After the follow-up: `npm run test -w frontend -- --maxWorkers=1 src/components/number-input.test.tsx src/workout-draft.test.tsx src/routine-progress.test.tsx src/set-completion.test.tsx src/period.test.tsx` 78 pass, typecheck, eslint, and prettier pass
 
-## 변경 — fix: 중량 증감 단위 5 kg
+## Change — fix: weight increment unit 5 kg
 
-- 사용자 결정으로 `weightStep`을 2.5에서 5로 바꿨습니다. − / + 버튼만 5 kg씩 움직이고, 직접 입력은 0.25 kg 단위까지 그대로 받습니다.
-- 고친 테스트: `workout-draft.test.tsx`의 세트 카드 테스트가 "늘리기"로 100.25 → 105.25 kg을 기대합니다.
-- 사용자 결정 반영이라 3차 리뷰는 하지 않습니다.
-- `NumberInput`은 단위가 정수면 숫자 키패드(`numeric`)를 고릅니다. 5 kg로 바꾸면 중량 칸에서 소수점을 칠 수 없게 되어, 중량 칸에 `inputMode="decimal"`을 직접 줬습니다. 기존 테스트의 `inputmode="decimal"` 확인이 이를 잡았습니다.
-- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/workout-draft.test.tsx src/components/number-input.test.tsx src/set-completion.test.tsx` 44 pass, typecheck·eslint·prettier 통과
+- By the user's decision, `weightStep` was changed from 2.5 to 5. Only the - / + buttons move by 5 kg, and direct input still accepts units down to 0.25 kg.
+- Fixed test: the set card test in `workout-draft.test.tsx` now expects 100.25 to 105.25 kg with "늘리기" ("increase").
+- It applies the user's decision, so there is no third review.
+- `NumberInput` picks the number keypad (`numeric`) when the unit is an integer. With 5 kg, the weight field could no longer type a decimal point, so `inputMode="decimal"` was given directly to the weight field. The `inputmode="decimal"` check in the existing test caught this.
+- After the follow-up: `npm run test -w frontend -- --maxWorkers=1 src/workout-draft.test.tsx src/components/number-input.test.tsx src/set-completion.test.tsx` 44 pass, typecheck, eslint, and prettier pass
 
-## 시각 기준선
+## Visual baselines
 
-- origin/main을 합친 head `afc9c74`의 CI(run 42428096115)에서 `e2e-visual`이 `768px › workout-editor 모달` 1장만 실패했습니다(80 pass). diff 이미지에서 차이는 세트 영역(한 줄 → "1세트" 카드, 증감 버튼)뿐이었습니다.
-- 같은 실행의 `visual-baselines` 아티팩트로 `e2e/__screenshots__/ui-visual.spec.ts/workout-editor-768.png` 1장을 갱신했습니다. 다른 화면은 바뀌지 않았습니다(360·390px 편집 창은 세트 영역이 화면 밖이라 차이가 없습니다).
+- In CI (run 42428096115) for head `afc9c74`, with origin/main merged, `e2e-visual` failed only 1 image, `768px › workout-editor modal` (80 pass). In the diff image the only difference was the set area (one line to a "1세트" ("set 1") card, increment buttons).
+- Updated 1 image, `e2e/__screenshots__/ui-visual.spec.ts/workout-editor-768.png`, with the `visual-baselines` artifact of the same run. Other screens did not change (in the 360 and 390px edit window the set area is off screen, so there is no difference).

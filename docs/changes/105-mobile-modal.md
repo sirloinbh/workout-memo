@@ -1,69 +1,69 @@
-# #105 모바일 입력 흐름 최적화 2단계: 모바일 모달·저장 버튼 하단 고정·키보드 가림
+# #105 Mobile input flow, step 2: mobile modal, save button fixed at the bottom, keyboard covering
 
-- 이슈: [#105](https://github.com/sirloinbh/workout-memo/issues/105)
-- 브랜치: `feat/105-mobile-modal`
-- 앞 단계: [1단계 세트 카드](105-set-cards.md)(#232)
+- Issue: [#105](https://github.com/sirloinbh/workout-memo/issues/105)
+- Branch: `feat/105-mobile-modal`
+- Earlier step: [step 1 set cards](105-set-cards.md) (#232)
 
-## 목적
+## Purpose
 
-휴대폰에서 일지를 쓸 때 저장 버튼을 찾으러 긴 폼 끝까지 내려가지 않게 하고, 화면 키보드가 입력 중인 칸과 저장 버튼을 가리지 않게 합니다.
+When writing a journal on a phone, the user should not have to scroll to the end of a long form to find the save button, and the on-screen keyboard should not cover the field being typed in or the save button.
 
-## 변경 — feat: 모바일 모달과 저장 버튼 하단 고정
+## Change — feat: mobile modal and save button fixed at the bottom
 
 - `frontend/src/components/modal.tsx`
-  - `Modal`에 `layout`을 추가했습니다. 640px(`sm`) 미만에서만 모양이 바뀌고, 그 이상은 지금처럼 가운데 카드입니다.
-    - `sheet`(기본): 화면 아래에 붙는 하단 시트입니다. 위쪽 모서리만 둥글고 너비는 화면 전체입니다. 목표·머신 폼처럼 짧은 폼에 씁니다.
-    - `full`: 화면 전체를 채웁니다. 일지 편집에 씁니다.
-  - 두 모양 모두 아래 끝이 `--keyboard-inset`(화면 키보드가 덮는 높이)에서 멈춥니다. `visualViewport`의 `resize`·`scroll`을 받아 이 값을 바꾸고, 키보드가 올라와 모달이 짧아지면 입력 중인 칸을 `scrollIntoView({ block: 'nearest' })`로 다시 보이게 합니다. iOS와 Android Chrome 모두 키보드가 뜨면 화면 전체(layout viewport)는 그대로 두고 보이는 영역(visual viewport)만 줄이므로, 그 차이를 키보드 높이로 봅니다.
-  - 모달 스크롤 영역에 `scroll-padding-bottom`(96px)을 줘서 브라우저가 칸을 스크롤해 보여 줄 때 하단 저장 버튼 뒤에 숨지 않게 했습니다.
-  - 새 `ModalFooter`: 모달 아래 끝에 붙어 있는(`sticky bottom-0`) 영역입니다. 위쪽 경계선과 배경이 있어 폼이 그 뒤로 지나갑니다. 아이폰 홈 표시줄 영역(`safe-area-inset-bottom`)만큼 아래 여백을 둡니다.
-  - 공통 `components/ui/dialog.tsx`는 중앙 관리 파일이라 고치지 않고, `Modal`이 넘기는 클래스로만 바꿨습니다.
-- `frontend/src/components/keyboard-inset.ts`: 키보드 높이 계산 `keyboardInset(innerHeight, visualViewport)`. 보이는 영역 아래로 가려진 높이만 셉니다(보이는 영역이 위로 밀린 `offsetTop`은 빼고, 음수는 0).
-- `frontend/src/app.tsx`: 일지 편집 모달을 `layout="full"`로 열고, "기록 저장하기" 버튼을 `ModalFooter`에 넣었습니다.
-- 화면 차이: 640px 미만에서 일지 편집은 전체 화면, 목표·머신 폼은 하단 시트가 됩니다. 일지 편집의 저장 버튼은 폼을 스크롤하는 동안 화면 아래에 계속 보입니다. 768px 이상은 모달 모양이 그대로이고, 일지 편집만 저장 버튼이 모달 아래에 붙습니다(1차 리뷰 보완 참고).
+  - Added `layout` to `Modal`. The look changes only below 640px (`sm`); above that it is the centered card as now.
+    - `sheet` (default): a bottom sheet attached to the bottom of the screen. Only the top corners are rounded and the width is the full screen. It is used for short forms such as the goal and machine forms.
+    - `full`: fills the whole screen. It is used for journal edit.
+  - In both looks the bottom edge stops at `--keyboard-inset` (the height the on-screen keyboard covers). It listens to `resize` and `scroll` of `visualViewport` to change this value, and when the keyboard comes up and the modal gets shorter, it makes the field being typed in visible again with `scrollIntoView({ block: 'nearest' })`. On both iOS and Android Chrome, when the keyboard appears the whole screen (layout viewport) stays the same and only the visible area (visual viewport) shrinks, so that difference is treated as the keyboard height.
+  - Gave the modal scroll area a `scroll-padding-bottom` (96px) so that when the browser scrolls a field into view it does not hide behind the save button at the bottom.
+  - New `ModalFooter`: an area stuck to the bottom of the modal (`sticky bottom-0`). It has a top border and a background so the form passes behind it. It leaves bottom padding for the iPhone home indicator area (`safe-area-inset-bottom`).
+  - The shared `components/ui/dialog.tsx` is a centrally managed file, so it was not edited, and only the classes that `Modal` passes were changed.
+- `frontend/src/components/keyboard-inset.ts`: the keyboard height calculation `keyboardInset(innerHeight, visualViewport)`. It counts only the height hidden below the visible area (it subtracts the `offsetTop` by which the visible area is pushed up, and negative values become 0).
+- `frontend/src/app.tsx`: the journal edit modal opens with `layout="full"`, and the "기록 저장하기" ("save record") button is in `ModalFooter`.
+- Screen difference: below 640px, journal edit becomes full screen and the goal and machine forms become bottom sheets. The save button of journal edit stays visible at the bottom of the screen while the form scrolls. At 768px and wider the modal look is unchanged, and only the journal edit save button is attached below the modal (see the first review follow-up).
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/components/modal.test.tsx` 3개
-  - `keyboardInset`이 키보드 없음·키보드 336px·보이는 영역이 위로 밀린 경우·음수에서 맞는 값을 내는지
-  - `visualViewport`가 줄면 모달의 `--keyboard-inset`이 바뀌고 입력 중인 칸을 다시 보여 주는지, 닫으면 이벤트를 떼는지
-  - 기본 모양이 `sheet`이고 `ModalFooter`가 대화상자 안에 있는지
-- 추가: `e2e/ui-responsive.spec.ts`의 "390px 모바일 모달" 2개. 일지 편집이 390×844 전체를 채우고 저장 버튼이 처음·가운데·맨 위로 스크롤한 상태 모두에서 화면 아래 80px 안에 보이는지, 목표 폼이 화면 아래에 붙은 전체 너비 시트인지 확인합니다. CI에서 실행합니다.
+- Added: 3 tests in `frontend/src/components/modal.test.tsx`
+  - That `keyboardInset` gives the right values for no keyboard, a 336px keyboard, the visible area pushed up, and negative values
+  - That when `visualViewport` shrinks, the `--keyboard-inset` of the modal changes and the field being typed in is shown again, and that closing removes the events
+  - That the default look is `sheet` and `ModalFooter` is inside the dialog
+- Added: 2 "390px mobile modal" tests in `e2e/ui-responsive.spec.ts`. They check that journal edit fills the whole 390x844 and that the save button is visible within the bottom 80px of the screen at the start, in the middle, and scrolled to the top, and that the goal form is a full-width sheet attached to the bottom of the screen. They run in CI.
 - `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx src/set-completion.test.tsx src/forms.test.tsx`: 39 pass
-- `npm run typecheck -w frontend`, 바뀐 파일 eslint(`--max-warnings 0`)·prettier: 통과
-- 실행하지 않은 것: e2e와 로컬 `npm run check`는 메모리 부족으로 돌리지 않았습니다. 시각 기준선·axe·반응형·터치는 PR CI로 확인합니다. 실제 휴대폰 키보드로는 확인하지 못했습니다(Playwright는 화면 키보드를 띄우지 않습니다). 키보드 동작은 위 단위 테스트의 `visualViewport` 흉내로만 검증했습니다.
-- 예상 기준선 변화: 1차 리뷰 보완에서 고쳤습니다.
+- `npm run typecheck -w frontend`, eslint of changed files (`--max-warnings 0`) and prettier: pass
+- Not run: e2e and the local `npm run check` were not run because of low memory. Visual baselines, axe, responsive, and touch are checked by the PR CI. It was not checked with a real phone keyboard (Playwright does not bring up the on-screen keyboard). The keyboard behavior was verified only by the `visualViewport` imitation in the unit tests above.
+- Expected baseline change: fixed in the first review follow-up.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-1차 리뷰는 필수 1건, 권장 3건이었고 모두 반영했습니다.
+The first review had 1 required and 3 recommended items, and all were applied.
 
-- 필수 1: `ModalFooter`는 화면 폭과 관계없이 적용되는데, 기록에는 "768px 이상은 바뀌지 않는다", 예상 기준선은 6장이라고 적었습니다. 768·1280px에서도 일지 편집 폼이 모달보다 길어서 저장 버튼이 모달 아래에 붙습니다. 데스크톱에서도 끝까지 내려가지 않고 저장할 수 있어 의도한 동작으로 두고, 기록을 고쳤습니다. 예상 기준선 변화는 8장입니다: 360·390px의 `workout-editor`·`goal-editor`·`machine-editor` 6장과 768·1280px의 `workout-editor` 2장.
-- 권장 2: 핀치 확대도 보이는 영역을 줄이고, 확대한 채 화면을 옮기면 `offsetTop`이 바뀝니다. 그래서 확대만 해도 키보드로 오인해 모달 높이가 흔들리고 `scrollIntoView`가 되풀이됐습니다. `visualViewport.scale`이 1.01을 넘으면 키보드 높이를 0으로 봅니다.
-- 권장 3: 단위 테스트가 `scroll` 리스너 해제도 확인합니다.
-- 권장 4: e2e 좌표 비교를 모두 `toBeCloseTo(…, 0)`로 바꿔 소수 픽셀에 흔들리지 않게 했습니다.
-- 추가 테스트: `keyboardInset`에 확대(`scale: 2`) 1건
-- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck·eslint·prettier 통과
+- Required 1: `ModalFooter` applies regardless of screen width, but the record said "768px and wider does not change" and that 6 baselines were expected. At 768 and 1280px the journal edit form is also longer than the modal, so the save button sticks below the modal. On desktop too the user can save without scrolling to the end, which is the intended behavior, so the record was corrected. The expected baseline change is 8 images: 6 for `workout-editor`, `goal-editor`, and `machine-editor` at 360 and 390px, and 2 for `workout-editor` at 768 and 1280px.
+- Recommended 2: pinch zoom also shrinks the visible area, and moving the screen while zoomed changes `offsetTop`. So just zooming was mistaken for a keyboard, which made the modal height jitter and `scrollIntoView` repeat. When `visualViewport.scale` is above 1.01, the keyboard height is treated as 0.
+- Recommended 3: the unit test also checks that the `scroll` listener is removed.
+- Recommended 4: changed all the e2e coordinate comparisons to `toBeCloseTo(..., 0)` so they do not wobble on fractional pixels.
+- Added test: 1 case of zoom (`scale: 2`) for `keyboardInset`
+- After the follow-up: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck, eslint, and prettier pass
 
-## 변경 — fix: 2차 리뷰 보완
+## Change — fix: second review follow-up
 
-2차 리뷰는 1차 지적 4건이 모두 반영됐다고 확인했고, 필수 1건·권장 2건을 냈습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+The second review confirmed that all 4 first review remarks were applied, and raised 1 required and 2 recommended items. Two reviews are done, so there is no third review.
 
-- 필수(해당 없음, 변경 없음): "모달 입력칸이 `.modal label`의 11px을 물려받아 iOS가 포커스 때 자동 확대하고, 그러면 `scale > 1.01`이라 키보드 대응이 꺼진다"는 지적입니다. 터치 화면(`pointer: coarse`)에서는 `style.css`의 #104 규칙이 `.legacy` 안의 입력·선택·여러 줄 칸을 16px로 맞춥니다. 모달은 `legacy` 클래스를 달고 있으므로 휴대폰에서는 자동 확대가 일어나지 않습니다. 사용자가 직접 확대한 채 키보드를 열면 키보드 대응이 꺼지는 것은 의도한 한계입니다(확대 중에는 키보드와 확대를 구분할 수 없음).
-- 권장 1: 키보드가 열린 동안 `visualViewport`의 `scroll`마다 입력 중인 칸으로 되돌리던 것을, 키보드 높이가 늘었을 때만 하도록 바꿨습니다. 사용자의 스크롤을 끌어당기지 않습니다. 단위 테스트에 키보드가 열린 뒤 `scroll` 이벤트에 다시 스크롤하지 않는지 확인을 더했습니다.
-- 권장 2: 기준선 갱신은 CI 결과를 보고 합니다(아래 시각 기준선).
-- 보완 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck·eslint·prettier 통과
+- Required (not applicable, no change): the remark that "modal input fields inherit the 11px of `.modal label`, so iOS auto-zooms on focus, and then `scale > 1.01` turns the keyboard handling off". On touch screens (`pointer: coarse`), the #104 rule in `style.css` sets inputs, selects, and multi-line fields inside `.legacy` to 16px. The modal carries the `legacy` class, so no auto-zoom happens on phones. That keyboard handling turns off when the user zooms by hand and then opens the keyboard is an intended limit (while zoomed, the keyboard and the zoom cannot be told apart).
+- Recommended 1: what used to scroll back to the field being typed in on every `scroll` of `visualViewport` while the keyboard is open now happens only when the keyboard height grows. It does not pull against the user's scrolling. Added a check to the unit test that it does not scroll again on a `scroll` event after the keyboard opens.
+- Recommended 2: updating the baselines is done after seeing the CI result (see the visual baselines below).
+- After the follow-up: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck, eslint, and prettier pass
 
-## 시각 기준선
+## Visual baselines
 
-- head `2c7a2ef`의 CI(run 42432279662)에서 `e2e-visual`이 예상한 8장만 실패했습니다: 360·390px의 `workout-editor`·`goal-editor`·`machine-editor`, 768·1280px의 `workout-editor`. 새 e2e "390px 모바일 모달" 2개와 반응형·가로 넘침 검사는 통과했습니다.
-- 실제 이미지를 확인했습니다. 390px 일지 편집은 화면 전체를 채우고 저장 버튼이 아래에 붙어 있습니다. 목표 폼은 화면 아래에 붙은 전체 너비 시트입니다. 768·1280px 일지 편집은 모달 모양이 그대로이고, 저장 버튼만 모달 아래에 붙었습니다.
-- 같은 실행의 `visual-baselines` 아티팩트로 이 8장을 갱신했습니다.
-- 아티팩트에는 `routines-*` 4장도 다르게 들어 있었습니다. PR CI는 최신 main을 합친 상태로 돌기 때문에, 그사이 main에 들어온 #233(루틴 폼)의 화면이 찍힌 것입니다. 이 PR의 변경이 아니므로 넣지 않았고, 이어서 origin/main을 합쳐 main의 기준선을 받습니다.
+- In CI for head `2c7a2ef` (run 42432279662), `e2e-visual` failed only the 8 images that were expected: `workout-editor`, `goal-editor`, and `machine-editor` at 360 and 390px, and `workout-editor` at 768 and 1280px. The 2 new e2e "390px mobile modal" tests and the responsive and horizontal overflow checks passed.
+- The actual images were checked. At 390px journal edit fills the whole screen and the save button is attached at the bottom. The goal form is a full-width sheet attached to the bottom of the screen. At 768 and 1280px journal edit keeps the modal look and only the save button is attached below the modal.
+- These 8 images were updated with the `visual-baselines` artifact of the same run.
+- The artifact also held 4 different `routines-*` images. The PR CI runs with the latest main merged in, so what was captured is the screen of #233 (routine form), which entered main in the meantime. It is not a change of this PR, so it was not included, and origin/main was merged next to receive main's baselines.
 
-## main 병합
+## Merge main
 
-- main에 #233(루틴 폼)·#236(인바디 미리보기)이 들어와 `style.css`·`e2e/**`가 바뀌어, 병합 규칙에 따라 origin/main을 합쳤습니다. 충돌은 없었습니다. 두 변경 모두 `Modal`을 쓰지 않습니다.
-- 병합 후: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx src/routines.test.tsx` 35 pass, typecheck 통과
-- 두 번째 병합: CI 통과 뒤 main에 #238(루틴 계획 보기)·#239(종목 분석 기간 줄)이 들어와 `style.css`·`e2e/**`가 바뀌어 다시 합쳤습니다. 충돌은 없었고 두 변경 모두 `Modal`을 쓰지 않습니다. 병합 후 `src/components/modal.test.tsx src/workout-draft.test.tsx` 27 pass, typecheck 통과
-- 세 번째 병합: main에 #240(쓰지 않는 스타일 정리)·#241(종목 분석 목록·상세)이 들어왔습니다. `app.tsx`가 겹치고 `style.css`·`components/**`가 바뀌어 다시 합쳤습니다. 충돌은 없었습니다. 2차 리뷰 판단의 근거인 터치 화면 입력칸 16px 규칙(`@media (pointer: coarse)`)이 그대로 남아 있음을 확인했습니다. 병합 후 `src/components/modal.test.tsx src/workout-draft.test.tsx src/set-completion.test.tsx` 36 pass, typecheck·eslint 통과
+- #233 (routine form) and #236 (InBody preview) entered main and changed `style.css` and `e2e/**`, so origin/main was merged by the merge rule. There were no conflicts. Neither change uses `Modal`.
+- After the merge: `npm run test -w frontend -- --maxWorkers=1 src/components/modal.test.tsx src/workout-draft.test.tsx src/routines.test.tsx` 35 pass, typecheck passes
+- Second merge: after CI passed, #238 (routine plan view) and #239 (exercise analysis period row) entered main and changed `style.css` and `e2e/**`, so it was merged again. There were no conflicts and neither change uses `Modal`. After the merge `src/components/modal.test.tsx src/workout-draft.test.tsx` gave 27 pass and typecheck passed
+- Third merge: #240 (cleanup of unused styles) and #241 (exercise analysis list and detail) entered main. `app.tsx` overlapped and `style.css` and `components/**` changed, so it was merged again. There were no conflicts. Confirmed that the touch screen input 16px rule (`@media (pointer: coarse)`), which is the basis of the second review judgment, is still there. After the merge `src/components/modal.test.tsx src/workout-draft.test.tsx src/set-completion.test.tsx` gave 36 pass, and typecheck and eslint passed

@@ -1,70 +1,70 @@
-# #159 공통 디자인 시스템으로 화면 전환
+# #159 Switch the screens to the shared design system
 
-- 이슈: [#159](https://github.com/sirloinbh/workout-memo/issues/159) (중앙 추적 이슈 sirloinbh/project-standards#126)
-- 브랜치: `feat/159-design-system`
+- Issue: [#159](https://github.com/sirloinbh/workout-memo/issues/159) (central tracking issue sirloinbh/project-standards#126)
+- Branch: `feat/159-design-system`
 
-## 목적
+## Purpose
 
-8개 앱이 같은 토큰·컴포넌트·레이아웃·PWA 설정을 쓰기로 했다(중앙 ADR-0007, ADR-0008). workout-memo가 첫 적용 앱이다.
+The 8 apps decided to use the same tokens, components, layout, and PWA settings (central ADR-0007, ADR-0008). workout-memo is the first app to apply them.
 
-## 변경 — 2026-10-26
+## Change — 2026-10-26
 
-### 패키지
+### Packages
 
-#126 범위로 사용자가 사전 승인한 패키지를 사용자가 직접 설치했다(중앙 ADR-0007 표의 고정 버전, 게시 14일 경과, `--ignore-scripts`). 설치 전에 `npm view`로 게시일과 설치 스크립트가 없음을 확인했다.
+The user installed the packages that the user had approved in advance for the scope of #126 directly (the fixed versions in the central ADR-0007 table, published more than 14 days ago, `--ignore-scripts`). Before installing, I checked the publish dates and that there are no install scripts with `npm view`.
 
-- 추가: `radix-ui` 1.7.0(하위 `@radix-ui/*` 60개), `sonner` 2.0.8, `vaul` 1.1.2, `tw-animate-css` 1.4.0, `@sirloinbh/design-tokens` 1.0.0
-- 변경: `lucide-react` 0.468.0 → 1.52.0. 쓰던 아이콘 이름은 그대로 동작한다.
-- lockfile 두 개(루트, `frontend/`)에서 지워지거나 바뀐 다른 패키지는 없다. 새 항목은 모두 `registry.npmjs.org` 또는 `npm.pkg.github.com`에서 오고 무결성 값이 있으며 설치 스크립트가 없다. `ioc-scan`: 의심 항목 없음.
+- Added: `radix-ui` 1.7.0 (60 sub-packages `@radix-ui/*`), `sonner` 2.0.8, `vaul` 1.1.2, `tw-animate-css` 1.4.0, `@sirloinbh/design-tokens` 1.0.0
+- Changed: `lucide-react` 0.468.0 → 1.52.0. The icon names in use still work.
+- No other package was removed or changed in the two lockfiles (root and `frontend/`). All new entries come from `registry.npmjs.org` or `npm.pkg.github.com`, have integrity values, and have no install scripts. `ioc-scan`: no suspicious item.
 
-### 공통 파일 (중앙 관리)
+### Shared files (centrally managed)
 
-중앙에서 workout-memo의 `features.ui`를 켠 동기화 미리보기(`sync.mjs --dry-run --local`)에서 뽑은 파일을 그대로 넣었다. 이후 동기화 PR과 내용이 같다.
+I put in as they are the files taken from the sync preview (`sync.mjs --dry-run --local`) with `features.ui` of workout-memo turned on in the central repo. They have the same content as the later sync PR.
 
-- `frontend/src/components/ui/` 공통 컴포넌트 15개와 테스트(기존 `button.tsx`·`dialog.tsx`는 공통 컴포넌트로 바뀜)
-- `frontend/src/components/layout/`(`AppShell`, 화면 모드 메뉴), `frontend/src/lib/utils.ts`·`theme.ts`, `frontend/public/theme-init.js`
+- 15 shared components in `frontend/src/components/ui/` and their tests (the existing `button.tsx` and `dialog.tsx` became shared components)
+- `frontend/src/components/layout/` (`AppShell`, the screen mode menu), `frontend/src/lib/utils.ts` and `theme.ts`, `frontend/public/theme-init.js`
 
-### 앱 코드
+### App code
 
-- **셸:** 자체 사이드바·헤더·footer를 `AppShell`로 바꿨다. 메뉴 이름은 '주 메뉴'다. 768px 미만에서는 상단 바의 "메뉴 열기"가 왼쪽 Sheet로 메뉴를 연다. 기간을 공유하는 페이지(대시보드·일지·신체 기록)의 메뉴 링크는 지금 고른 기간 주소를 유지한다(#85).
-- **모달:** `components/modal.tsx`의 `Modal`이 공통 Dialog를 연다. 모달이 열려 있으면 뒤쪽 화면은 화면 읽기 프로그램과 클릭에서 모두 막힌다. 일지 저장 중에는 원래부터 모달을 닫을 수 없으므로(`setEditor`), 저장 중에 기간을 바꾸는 경쟁은 이제 삭제에서만 생긴다. `period.test.tsx`를 이에 맞게 나눴다.
-- **버튼:** `Button` 6곳을 공통 `Button` 변형(`default`, `secondary`, `ghost`, `w-full`)으로 바꿨다. 나머지 `<button>`은 기존 클래스 그대로다.
-- `components/ui/field.tsx` → `components/field.tsx`(중앙 관리 폴더 밖으로), `lib/cn.ts` 삭제(`lib/utils.ts`의 `cn`).
+- **Shell:** replaced the own sidebar, header, and footer with `AppShell`. The menu name is '주 메뉴' (main menu). Below 768px, "메뉴 열기" (open menu) in the top bar opens the menu in a left Sheet. The menu links of the pages that share the range (dashboard, log, body records) keep the URL of the currently chosen range (#85).
+- **Modal:** `Modal` in `components/modal.tsx` opens the shared Dialog. While a modal is open, the screen behind it is blocked from both screen readers and clicks. A log modal cannot be closed while saving to begin with (`setEditor`), so the race of changing the range while saving now happens only with delete. I split `period.test.tsx` to match this.
+- **Button:** replaced 6 `Button` places with the shared `Button` variants (`default`, `secondary`, `ghost`, `w-full`). The other `<button>` elements keep their existing classes.
+- `components/ui/field.tsx` → `components/field.tsx` (out of the centrally managed folder), `lib/cn.ts` deleted (`cn` in `lib/utils.ts`).
 
-### 스타일
+### Styles
 
-- `theme.css`를 지우고 `index.css`에서 Tailwind CSS 4(Preflight 포함), `tw-animate-css`, 공통 토큰을 불러온다. 글꼴은 Google Fonts(DM Sans, Noto Sans KR) 대신 토큰의 Pretendard다.
-- `style.css`(1,500줄 → 약 1,230줄)는 `components` 레이어로 불러온다. 일회성 변환 스크립트로 다음을 했다.
-  - 셸 규칙(사이드바, 헤더, 로고, 프로필, footer, 모달 배경·틀)을 지웠다.
-  - 요소 규칙(`button`, `p`, `h1` 등)은 `:where(.legacy)` 안에서만 적용되게 했다. 페이지 본문과 모달 내용이 `.legacy`다.
-  - 예전 토큰 변수는 중앙 `docs/design-tokens.md` 대응표대로 새 토큰으로, 직접 쓴 초록 계열 색 88곳은 속성과 밝기에 따라 `--foreground`·`--muted-foreground`·`--muted`·`--card`·`--border`·`--primary`로 바꿨다. 목표 배지는 `--warning`·`--success`를 쓴다.
-- 회색 바탕(`--muted`) 위 흐린 글자는 라이트 모드에서 4.35:1이라, 그런 바탕 11곳의 글자는 전경색을 더 섞었다(`style.css` 끝).
+- Deleted `theme.css`, and `index.css` loads Tailwind CSS 4 (including Preflight), `tw-animate-css`, and the shared tokens. The font is Pretendard from the tokens instead of Google Fonts (DM Sans, Noto Sans KR).
+- `style.css` (1,500 lines → about 1,230 lines) is loaded in the `components` layer. With a one-off conversion script I did the following.
+  - Deleted the shell rules (sidebar, header, logo, profile, footer, modal background and frame).
+  - Made element rules (`button`, `p`, `h1`, and so on) apply only inside `:where(.legacy)`. The page body and the modal content are `.legacy`.
+  - Old token variables were changed to the new tokens as in the central `docs/design-tokens.md` mapping table, and the 88 places with directly written green colors were changed to `--foreground`, `--muted-foreground`, `--muted`, `--card`, `--border`, and `--primary` depending on the property and brightness. The goal badge uses `--warning` and `--success`.
+- Faint text on a gray background (`--muted`) is 4.35:1 in light mode, so for the text on those 11 backgrounds I mixed in more of the foreground color (end of `style.css`).
 
 ### PWA
 
-- 아이콘 4개(중앙 `scripts/pwa-icons.mjs`, 공통 임시 아이콘), `index.html`의 manifest·아이콘·라이트/다크 `theme-color`·`viewport-fit=cover`, 깜빡임 방지 스크립트
-- `main.tsx`가 운영 빌드에서만 서비스 워커(`/sw.js`, 이미 중앙 동기화됨)를 등록한다.
+- 4 icons (central `scripts/pwa-icons.mjs`, shared temporary icons), manifest, icons, light/dark `theme-color`, and `viewport-fit=cover` in `index.html`, and a script that prevents flicker
+- `main.tsx` registers the service worker (`/sw.js`, already synced from the central repo) only in the production build.
 
-### 테스트
+### Tests
 
-- 메뉴 이름 '주요 메뉴' → '주 메뉴'(단위 테스트 2곳, e2e 3곳). e2e `layout.spec.ts`는 휴대폰 폭에서 메뉴를 열고 링크를 확인한다.
-- `a11y-known-contrast.json`: 예전 초록 계열 색 조합이 모두 사라져 비웠다.
-- 화면 비교 기준 이미지 44장(`e2e/__screenshots__/ui-visual.spec.ts/`)은 CI(e2e-visual)가 만든 후보(`visual-baselines`)를 확인한 뒤 교체했다. 같은 고정 데이터라 전후 비교가 된다.
-- `support/ui-fixtures.ts`의 `settle`은 끝이 있는 애니메이션이 모두 끝날 때까지 기다린다. 모달이 반투명하게 나타나는 중간에 axe가 뒤 화면 색을 섞어 읽어 대비가 4.28:1로 잘못 나왔다.
+- Menu name '주요 메뉴' → '주 메뉴' (2 places in unit tests, 3 places in e2e). e2e `layout.spec.ts` opens the menu at phone width and checks the links.
+- `a11y-known-contrast.json`: emptied because all the old green color pairs disappeared.
+- The 44 screen comparison baseline images (`e2e/__screenshots__/ui-visual.spec.ts/`) were replaced after checking the candidates (`visual-baselines`) that CI (e2e-visual) made. They use the same fixed data, so before and after can be compared.
+- `settle` in `support/ui-fixtures.ts` waits until all animations that have an end are finished. While a modal was appearing semi-transparently, axe read the colors of the screen behind it mixed in, and the contrast came out wrongly as 4.28:1.
 
-## 검증
+## Verification
 
-- 프론트엔드 단위 테스트: 35개 파일, 155개 통과. `tsc`(전체·빌드 설정), `vite build`, Prettier 통과
-- 실제 Chrome(운영 빌드, 가짜 API)에서 확인:
-  - 390·1440px, 라이트·다크 화면. 390px 가로 넘침 없음, 메뉴 Sheet와 모달 동작
-  - 텍스트 대비(WCAG AA): 8개 페이지와 모달 3개 × 390·1280px × 라이트·다크에서 기준 미달 0건
-- CI: `verify`(형식·린트·계약·타입·단위 테스트·문서·빌드), `docker-build`, `e2e-visual`(e2e 26개, 화면 비교 44장)
-  - 처음 실행에서 화면 비교 외에 실패한 것: 휴대폰 폭 메뉴 링크 위치(Sheet가 미끄러져 들어오는 중에 측정), 목표 달성 배지 대비 4.01:1, 목표 모달 대비(위 애니메이션 문제). 모두 고쳤다.
+- Frontend unit tests: 35 files, 155 passed. `tsc` (whole and build config), `vite build`, and Prettier passed
+- Checked in real Chrome (production build, fake API):
+  - 390 and 1440px, light and dark screens. No horizontal overflow at 390px, and the menu Sheet and the modal work
+  - Text contrast (WCAG AA): on 8 pages and 3 modals × 390 and 1280px × light and dark, 0 below the criterion
+- CI: `verify` (format, lint, contract, type, unit tests, docs, build), `docker-build`, `e2e-visual` (26 e2e tests, 44 screen comparisons)
+  - Failures other than the screen comparison in the first run: the position of the menu link at phone width (measured while the Sheet was sliding in), the goal achievement badge contrast 4.01:1, and the goal modal contrast (the animation problem above). All were fixed.
 
-## 다크 모드 화면
+## Dark mode screens
 
-화면 비교 기준 이미지는 라이트 모드뿐이라, 다크 모드는 운영 빌드에 가짜 API를 붙여 찍었다(데이터가 기준 이미지와 다르다).
+The screen comparison baselines are light mode only, so I took the dark mode ones by attaching a fake API to the production build (the data differs from the baseline images).
 
-| 1440px 다크                                             | 390px 다크                                            | 390px 메뉴                                        |
+| 1440px dark                                             | 390px dark                                            | 390px menu                                        |
 | ------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- |
-| ![1440 다크](159-design-system/dashboard-1440-dark.png) | ![390 다크](159-design-system/dashboard-390-dark.png) | ![390 메뉴](159-design-system/menu-390-light.png) |
+| ![1440 dark](159-design-system/dashboard-1440-dark.png) | ![390 dark](159-design-system/dashboard-390-dark.png) | ![390 menu](159-design-system/menu-390-light.png) |

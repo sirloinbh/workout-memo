@@ -1,78 +1,78 @@
-# #116 유산소 목표(주간·월간 누적, 기록 목표)와 달성 판정
+# #116 Cardio goals (weekly and monthly totals, record goals) and achievement checks
 
-- 이슈: [#116](https://github.com/sirloinbh/workout-memo/issues/116)
-- 브랜치: `feat/116-cardio-goals`
-- 선행: #114(유산소 기록 모델·API, 9ecca13)
-- 설계: 2026-11-08 사용자 결정 D1~D6([#116 댓글](https://github.com/sirloinbh/workout-memo/issues/116#issuecomment-6720061395))
+- Issue: [#116](https://github.com/sirloinbh/workout-memo/issues/116)
+- Branch: `feat/116-cardio-goals`
+- Depends on: #114 (cardio record model and API, 9ecca13)
+- Design: user decisions D1 to D6 on 2026-11-08 ([#116 comment](https://github.com/sirloinbh/workout-memo/issues/116#issuecomment-6720061395))
 
-## 목적
+## Purpose
 
-유산소 운동 목표를 세우고 서버가 달성을 판정하게 합니다. 나의 목표 화면에 근력 목표와 함께 보여 줍니다.
+Let the user set cardio goals and have the server judge whether they are achieved. The My goals screen shows them next to the strength goals.
 
-## 변경 — feat: 저장과 서버 판정
+## Change — feat: storage and server-side judging
 
-- `database/migrations/016_cardio_goals.sql`(새 파일, 재실행 안전): `cardio_goals`(목표 종류·운동 종류·기간 단위·목표 거리/시간/횟수·시작일·종료일). 종류마다 필요한 목표값만 있도록 CHECK(`cardio_goals_shape`)로 막습니다. 근력 `goals`는 바꾸지 않았습니다.
-- `shared/contract.ts` → `npm run contract:sync`: `cardioGoalTypes`, `cardioGoalPeriods`, `cardioGoalSchema`. 범위: 거리 0 초과 10000 km 이하·소수점 셋째 자리, 시간 1~2678400초(31일), 횟수 1~1000, 목표 기간 5년(1826일) 이하(DB CHECK도 같음). 종류에 쓰지 않는 목표값은 `null`이어야 합니다.
-- `backend/src/cardio-goals.ts`(새 파일): DB 없이 시험할 수 있는 판정 함수 `judgeCardioGoal`.
-  - 기간 누적(D2·D3): 주(월~일)·달력 월마다 그 주기 안, 목표 기간 안, 오늘(서울) 이전의 기록만 셉니다. 걸친 주기도 목표값은 그대로입니다. `achieved`는 오늘이 든 주기의 달성 여부이고, 시작 전·종료 후에는 그 주기가 없어 `false`입니다.
-  - 기록 목표(D5): `record_time`은 한 기록이 목표 거리 이상이고 그 기록의 전체 시간이 목표 시간 이하일 때, `longest_distance`는 가장 긴 한 기록이 목표 거리 이상일 때 달성입니다. 페이스로 추정하지 않습니다.
-  - 운동 종류(D4): 목표의 `kind`가 있으면 그 종류만, `null`이면 모두 셉니다. 거리 없는 기록은 거리 목표에서만 빠집니다.
-- `backend/src/routes/cardio-goals.ts`(새 파일): `GET /api/cardio-goals`(판정 포함, 종료일 순), `POST`(201), `DELETE /:id`(없으면 404 "유산소 목표를 찾을 수 없습니다"). 목록은 가장 이른 시작일부터 오늘까지의 기록을 한 번만 읽어 모든 목표를 판정합니다.
-- `docs/api.md`(엔드포인트 3줄, 목표 종류 표와 판정 규칙), `backend/src/openapi.ts` → `npm run openapi`.
+- `database/migrations/016_cardio_goals.sql` (new file, safe to re-run): `cardio_goals` (goal type, exercise kind, period unit, target distance/time/count, start date, end date). A CHECK (`cardio_goals_shape`) makes sure each type has only the target values it needs. The strength `goals` table is unchanged.
+- `shared/contract.ts` → `npm run contract:sync`: `cardioGoalTypes`, `cardioGoalPeriods`, `cardioGoalSchema`. Ranges: distance above 0 and up to 10000 km with at most three decimals, time 1 to 2678400 seconds (31 days), count 1 to 1000, goal period at most 5 years (1826 days; the DB CHECK is the same). Target values a type does not use must be `null`.
+- `backend/src/cardio-goals.ts` (new file): the judging function `judgeCardioGoal`, which can be tested without a DB.
+  - Period totals (D2, D3): for each week (Monday to Sunday) and calendar month, only records inside that period, inside the goal period, and on or before today (Seoul time) are counted. A period that is cut by the goal period keeps the same target value. `achieved` tells whether the period that contains today is achieved; before the start and after the end there is no such period, so it is `false`.
+  - Record goals (D5): `record_time` is achieved when one record is at least the target distance and its total time is at most the target time. `longest_distance` is achieved when the longest single record is at least the target distance. Nothing is estimated from pace.
+  - Exercise kind (D4): if the goal has a `kind`, only that kind is counted; if it is `null`, all kinds are counted. A record without a distance is left out only for distance goals.
+- `backend/src/routes/cardio-goals.ts` (new file): `GET /api/cardio-goals` (with judging, ordered by end date), `POST` (201), `DELETE /:id` (404 "유산소 목표를 찾을 수 없습니다" (cardio goal not found) when missing). The list reads the records from the earliest start date up to today only once and judges every goal from them.
+- `docs/api.md` (3 endpoint lines, the goal type table, and the judging rules), `backend/src/openapi.ts` → `npm run openapi`.
 
-## 변경 — feat: 나의 목표 화면
+## Change — feat: My goals screen
 
-- `frontend/src/cardio-goals.tsx`(새 파일): 근력 목표 아래 "유산소 목표" 영역.
-  - 카드: 상태(달성 완료·도전 중·시작 전·기간 종료), 제목(예: "주간 러닝 15 km", "러닝 5 km 30:00 이내"), 기간 누적은 이번 주(달) 값/목표값과 진행 막대, "달성한 주 n / 전체 m주". 기록 목표는 가장 빠른 기록·가장 긴 거리.
-  - "유산소 목표 추가" 창: 목표 종류·운동 종류·기간 단위와 그 종류의 목표값만 보입니다. 시간은 분·초 두 칸입니다. 저장 전에 공유 스키마로 검사해 칸마다 오류를 보여 줍니다.
-  - 처음 불러오는 동안 #173과 같은 자리 표시(`aria-busy` 영역), 불러오기 실패는 "다시 연결" 배너입니다.
-- `frontend/src/app.tsx`: 나의 목표 화면에 `CardioGoals`를 붙이고 머리글 설명에 유산소를 넣었습니다(두 곳).
-- 운동 종류 이름과 시간 형식(`28:30`)은 #115의 `frontend/src/cardio/format.ts`(agent2, 아직 병합 전)와 같은 값을 이 파일 안에 따로 두었습니다. #115가 병합되면 그쪽으로 합칩니다. `frontend/src/cardio/*`와 운동 일지 화면은 건드리지 않았습니다.
-- 운동 종류·목표 종류 선택은 루틴 폼과 같은 이유로 브라우저 기본 `select`입니다.
+- `frontend/src/cardio-goals.tsx` (new file): a "유산소 목표" (cardio goals) section below the strength goals.
+  - Card: status (달성 완료 achieved, 도전 중 in progress, 시작 전 not started, 기간 종료 period ended), a title (for example "주간 러닝 15 km" (weekly running 15 km), "러닝 5 km 30:00 이내" (running 5 km within 30:00)), for period totals the value and target of this week (month) with a progress bar, and "달성한 주 n / 전체 m주" (achieved weeks n of m weeks). A record goal shows the fastest record and the longest distance.
+  - "유산소 목표 추가" (add a cardio goal) dialog: shows only the goal type, exercise kind, period unit, and the target values of that type. Time is two fields, minutes and seconds. Before saving, the form is checked with the shared schema and errors are shown per field.
+  - While loading for the first time, it uses the same placeholder as #173 (an `aria-busy` region); a load failure shows the "다시 연결" (reconnect) banner.
+- `frontend/src/app.tsx`: `CardioGoals` is attached to the My goals screen, and the header description now mentions cardio (two places).
+- The exercise kind names and the time format (`28:30`) are kept in this file with the same values as `frontend/src/cardio/format.ts` of #115 (agent2, not merged yet). They will be merged into that file once #115 is merged. `frontend/src/cardio/*` and the workout log screen were not touched.
+- The exercise kind and goal type pickers are native browser `select` elements, for the same reason as the routine form.
 
-## 1차 리뷰
+## First review
 
-- 필수 지적 없음. 판정(주·월 경계, 걸친 주기, 오늘·종료일), 스키마와 DB CHECK 일치, 응답 형태를 확인했습니다.
-- 반영(선택):
-  - 분·초가 음수·소수·60초 이상이어도 초로 합쳐져 저장됐습니다. 분은 0 이상 정수, 초는 0~59 정수인지 먼저 검사합니다. 오류 표시(`aria-invalid`)는 초 칸에도 붙입니다.
-  - 목표 종류를 바꾸면 숨겨진 칸의 이전 오류가 남았습니다. 종류를 바꿀 때 오류를 지웁니다.
-  - 종료일 상한이 없어 9999년 주간 목표면 조회마다 주기 약 41만 개를 만들었습니다. 목표 기간을 5년 이하로 막았습니다(스키마·DB).
-  - `docs/api.md`의 "종료일은 시작일 이후"를 "같거나 이후"로 고쳤습니다.
-- 테스트: 5년 경계(스키마), 초 90 입력 막기와 초 칸 `aria-invalid`(화면)를 더했습니다.
+- No required comments. I checked the judging (week and month borders, cut periods, today and end date), that the schema matches the DB CHECK, and the response shape.
+- Applied (optional):
+  - Minutes and seconds were combined into seconds and saved even when they were negative, fractional, or 60 seconds or more. The form now checks first that minutes are an integer of 0 or more and seconds are an integer from 0 to 59. The error mark (`aria-invalid`) is also set on the seconds field.
+  - After changing the goal type, an old error stayed on a hidden field. Errors are cleared when the type changes.
+  - Without an end date limit, a weekly goal ending in the year 9999 would create about 410,000 periods on every request. The goal period is now limited to 5 years or less (schema and DB).
+  - In `docs/api.md`, "the end date is after the start date" was changed to "the same as or after".
+- Tests: added the 5-year border (schema) and rejecting 90 seconds with `aria-invalid` on the seconds field (screen).
 
-## 범위 밖
+## Out of scope
 
-- 다음 목표 제안(D6): #251로 나눴습니다.
-- 백업·복원에 유산소 목표 넣기: [#253](https://github.com/sirloinbh/workout-memo/issues/253)으로 나눴습니다. 지금 백업 파일에는 유산소 목표가 없습니다.
-- 심박존 2 누적 시간(D1): 세션 평균 심박만 있어 계산할 수 없습니다.
+- Suggesting the next goal (D6): split into #251.
+- Adding cardio goals to backup and restore: split into [#253](https://github.com/sirloinbh/workout-memo/issues/253). Backup files do not have cardio goals now.
+- Accumulated time in heart rate zone 2 (D1): cannot be calculated because only the session average heart rate exists.
 
-## 테스트
+## Tests
 
-- 추가: `backend/test/cardio-goals.test.ts` 9개(DB 없음): 주·월 주기, 미달·정확히 달성·초과(소수 합 1 m 단위), 일요일/월요일 경계, 기록 없음, 걸친 주와 종료 후, 미래·다른 종류·거리 없는 기록 제외, 기록 시간(D5)·최장 거리, 스키마의 종류별 목표값 규칙과 한국어 조사.
-- 추가: `backend/test/cardio-goals.integration.test.ts` 2개(PostgreSQL): 등록·저장 값·저장된 기록으로 판정·종료일 순·삭제·404·잘못된 ID 400, 잘못된 모양 400과 DB CHECK.
-- 추가: `frontend/src/cardio-goals.test.tsx` 3개: 카드의 상태·진행률·달성 주기·기록, 종류별 목표값만 보내기(종류 없는 기록 목표는 화면에서 막음, 분·초 → 초), 삭제.
-- `e2e/support/ui-fixtures.ts`(공통 e2e 도우미): `/api/cardio-goals` 고정 데이터를 실제 판정 함수로 만들어 더했습니다. 없으면 나의 목표 화면이 404 오류를 보입니다.
-- 통과: 판정 단위 테스트 9건, api-contract·openapi·contract·migrations 테스트, frontend 관련 6개 파일, `typecheck`(backend·frontend·e2e), eslint·prettier(바꾼 파일). 통합 테스트는 이 PC에 PostgreSQL이 없어 CI에서 확인합니다. 로컬 전체 `npm run check`·e2e는 메모리 부족으로 돌리지 않았습니다.
-- 시각 기준선: 나의 목표(goals) 4장이 바뀝니다. CI 이미지를 확인한 뒤 갱신합니다.
+- Added: `backend/test/cardio-goals.test.ts`, 9 tests (no DB): week and month periods, short of the goal, exactly achieved, exceeded (decimal sums in 1 m units), Sunday/Monday border, no records, cut weeks and after the end, leaving out future records, other kinds, and records without distance, record time (D5) and longest distance, per-type target value rules of the schema, and Korean particles.
+- Added: `backend/test/cardio-goals.integration.test.ts`, 2 tests (PostgreSQL): create, stored values, judging from stored records, end date order, delete, 404, 400 for an invalid ID, 400 for a wrong shape, and the DB CHECK.
+- Added: `frontend/src/cardio-goals.test.tsx`, 3 tests: card status, progress, achieved periods, and records; sending only the target values of each type (a record goal without a kind is blocked on screen, minutes and seconds → seconds); delete.
+- `e2e/support/ui-fixtures.ts` (shared e2e helper): added fixed data for `/api/cardio-goals`, built with the real judging function. Without it the My goals screen shows a 404 error.
+- Passed: 9 judging unit tests, the api-contract, openapi, contract, and migrations tests, 6 related frontend files, `typecheck` (backend, frontend, e2e), eslint and prettier (changed files). The integration tests need PostgreSQL, which this PC does not have, so they are checked in CI. The full local `npm run check` and e2e were not run because of low memory.
+- Visual baselines: 4 My goals (goals) images change. They will be updated after checking the CI images.
 
-## 변경 — test: 시각 기준선 갱신
+## Change — test: update visual baselines
 
-- `b5146de`의 CI `e2e-visual`에서 goals 4장과 goal-editor 4장만 실패했고 나머지 82건(터치·반응형·axe 포함)은 통과했습니다.
-- 390px·1280px 이미지를 확인했습니다. 근력 목표 아래 "유산소 목표" 영역에 진행 중 주간 거리(이번 주 5.2 km / 15 km, 진행 막대, 달성한 주 1 / 전체 3주), 달성한 5 km 기록(가장 빠른 기록 29:10), 기간이 끝난 주간 횟수 목표가 보이고 넘침은 없습니다. goal-editor는 뒤 배경의 머리글 설명 문구만 바뀌었습니다. `visual-baselines` 아티팩트로 8장을 갱신했습니다.
+- In the CI `e2e-visual` of `b5146de`, only 4 goals images and 4 goal-editor images failed; the other 82 (including touch, responsive, and axe) passed.
+- I checked the 390px and 1280px images. The "유산소 목표" section below the strength goals shows a weekly distance in progress (this week 5.2 km / 15 km, progress bar, achieved weeks 1 / total 3), an achieved 5 km record (fastest record 29:10), and a weekly count goal whose period ended; nothing overflows. In goal-editor only the header description in the background changed. I updated 8 images from the `visual-baselines` artifact.
 
-## 변경 — refactor: #115 표시 함수로 합치기 (병합 후 후속)
+## Change — refactor: merge into the #115 display functions (follow-up after merge)
 
-- #115(#252)가 병합되어 `frontend/src/cardio/format.ts`가 main에 들어왔습니다. `cardio-goals.tsx`에 따로 두었던 운동 종류 이름과 시간 형식(`28:30`)을 지우고 `cardioKindLabels`, `formatDuration`을 씁니다.
-- 거리도 `formatDistance`를 써서, 운동 종류가 정해진 목표는 유산소 기록 화면과 같이 표시합니다(수영은 m). 종류가 "전체"인 목표는 km 그대로입니다.
-- `cardio/*` 파일은 바꾸지 않았습니다.
-- 리뷰 반영: 수영은 m로 보이지만 입력은 km라, 수영을 고르면 거리 칸 이름이 "목표 거리 (km, 1,500 m는 1.5)"가 됩니다.
-- 테스트: 수영 목표가 "수영 한 번에 1,500 m", "가장 긴 거리 1,200 m"로 보이는지 확인하는 화면 테스트 1개를 더했습니다(`cardio-goals.test.tsx` 4건 통과). 고정 데이터는 러닝·전체 목표라 시각 기준선은 바뀌지 않을 것으로 봅니다.
+- #115 (#252) was merged, so `frontend/src/cardio/format.ts` is now on main. The exercise kind names and the time format (`28:30`) that were kept separately in `cardio-goals.tsx` are removed, and `cardioKindLabels` and `formatDuration` are used.
+- Distance also uses `formatDistance`, so a goal with a set exercise kind is shown the same way as on the cardio record screen (swimming in m). A goal whose kind is "전체" (all) stays in km.
+- The `cardio/*` files were not changed.
+- Review fix: swimming is shown in m but entered in km, so when swimming is chosen the distance field is named "목표 거리 (km, 1,500 m는 1.5)" (target distance (km, 1,500 m is 1.5)).
+- Tests: added 1 screen test that checks that a swimming goal shows as "수영 한 번에 1,500 m" (1,500 m in one swim) and "가장 긴 거리 1,200 m" (longest distance 1,200 m) (4 pass in `cardio-goals.test.tsx`). The fixed data are running and all-kind goals, so I expect the visual baselines not to change.
 
-## 변경 — feat: 수영 목표 거리를 m로 입력 (후속)
+## Change — feat: enter the swimming goal distance in m (follow-up)
 
-- 2026-11-08 사용자 결정: 수영 거리는 m로 입력받고 저장할 때 km로 바꿉니다(#252 기록 폼과 같음). 목표 폼도 운동 종류가 수영이면 거리 칸이 "목표 거리 (m)"가 되고, 저장할 때 1000으로 나눠 km로 보냅니다. 다른 종류와 "전체 유산소"는 km입니다.
-- 운동 종류를 바꾸면 입력한 거리를 같은 거리로 바꿔 둡니다(러닝 "1.5" ↔ 수영 "1500"). 읽을 수 없는 글자는 그대로 둡니다. #252와 같은 규칙이며, 변환은 `cardio/format.ts`의 `kmToMetres`·`metresToKm`·`optionalNumber`를 씁니다. `cardio/*` 파일은 바꾸지 않았습니다.
-- 수영 목표 거리는 1~10,000,000 m 정수만 받습니다(저장 단위 1 m, 목표 상한 10000 km).
-- 숫자 읽기를 `cardio/format.ts`의 `optionalNumber`로 바꿔, 목표 폼의 거리·횟수·시간 칸도 #252 기록 폼처럼 쉼표 소수(`1,5`)를 받지 않고 "숫자로 입력하세요"로 막습니다. 이전에는 쉼표를 점으로 바꿔 받았습니다.
-- 앞서 넣은 거리 칸 안내 "목표 거리 (km, 1,500 m는 1.5)"는 지웠습니다.
-- 테스트: 종류 전환 시 값 변환(km → m → km), 소수 m 막기, 1500 m → `target_distance_km: 1.5` 저장(`cardio-goals.test.tsx` 5 pass).
+- User decision on 2026-11-08: swimming distance is entered in m and converted to km when saved (same as the #252 record form). In the goal form too, when the exercise kind is swimming the distance field becomes "목표 거리 (m)" (target distance (m)), and on save it is divided by 1000 and sent in km. Other kinds and "전체 유산소" (all cardio) use km.
+- When the exercise kind changes, the entered distance is converted to the same distance (running "1.5" ↔ swimming "1500"). Text that cannot be read is left as it is. This is the same rule as #252, and the conversion uses `kmToMetres`, `metresToKm`, and `optionalNumber` from `cardio/format.ts`. The `cardio/*` files were not changed.
+- A swimming goal distance accepts only integers from 1 to 10,000,000 m (storage unit 1 m, goal limit 10000 km).
+- Number reading now uses `optionalNumber` from `cardio/format.ts`, so the distance, count, and time fields of the goal form also reject comma decimals (`1,5`) with "숫자로 입력하세요" (enter a number), like the #252 record form. Before, the comma was turned into a dot and accepted.
+- The distance field hint "목표 거리 (km, 1,500 m는 1.5)" added earlier was removed.
+- Tests: value conversion when switching kinds (km → m → km), blocking decimal m, saving 1500 m as `target_distance_km: 1.5` (5 pass in `cardio-goals.test.tsx`).

@@ -1,39 +1,39 @@
-# #173 불러오는 중 표시를 공통 Skeleton·Spinner로 바꾸기
+# #173 Switch the loading display to the shared Skeleton and Spinner
 
-- 이슈: [#173](https://github.com/sirloinbh/workout-memo/issues/173)
-- 브랜치: `feat/173-loading-skeleton`
-- 규칙: sirloinbh/project-standards `docs/ui-components.md` "불러오는 중 화면"(project-standards#312)
+- Issue: [#173](https://github.com/sirloinbh/workout-memo/issues/173)
+- Branch: `feat/173-loading-skeleton`
+- Rule: sirloinbh/project-standards `docs/ui-components.md` "불러오는 중 화면" (loading screen) (project-standards#312)
 
-## 목적
+## Purpose
 
-기능 화면은 "불러오는 중…" 글자만 보여 줬고, 공통 `Skeleton`·`Spinner`를 쓰는 곳이 없었습니다. 처음 불러오는 목록·카드는 실제 모양의 자리 표시로, 저장을 기다리는 버튼은 작은 스피너로 바꿉니다.
+The feature screens showed only the text "불러오는 중…" (loading…), and nowhere used the shared `Skeleton` and `Spinner`. Lists and cards loaded for the first time are changed to placeholders with the real shape, and buttons waiting for a save are changed to a small spinner.
 
-## 변경 — feat: 자리 표시와 저장 스피너
+## Change — feat: placeholders and save spinners
 
-- 처음 불러오는 동안(`aria-busy="true"` 영역):
-  - 종목 분석: 카드 2장 모양(`SkeletonCard`). 기간을 바꿔 다시 불러올 때는 이미 있는 카드를 그대로 두고, 기간 줄 아래에 작은 스피너와 "분석 불러오는 중…"을 보여 줍니다.
-  - 신체 기록 목록: 목록 줄 모양(`SkeletonList`). 기록이 있는 채로 다시 불러올 때(기간 변경·저장·삭제 뒤)는 목록을 그대로 두고 상태 문장을 화면 낭독기용으로만 냅니다.
-  - 루틴짜기 저장된 루틴: 목록 줄 2개(`SkeletonList rows={2}`). 저장 뒤 다시 불러올 때는 불러오는 중 표시가 없습니다(원래 동작).
-  - 세 곳 모두 자리 표시 영역에 이름(`aria-label`: 종목 분석, 신체 기록 목록, 저장된 루틴)을 달고, "…불러오는 중…" 문장은 그 안에 화면 낭독기용(`sr-only`, `role="status"`)으로 둡니다. 자리 표시는 `aria-hidden`입니다.
-- 저장을 기다리는 버튼(이미 `disabled`): `Spinner size="sm"`을 글자 앞에 둡니다. 버튼 이름은 글자 그대로라 스피너는 `aria-hidden`입니다.
-  - 신체 기록 저장, 루틴 저장하기, 종목 분석 부위 저장, 목표 저장하기, 머신 저장하기, 다음 목표 제안의 증량 단위 저장, 백업 복원 실행
-- 공통 부품(`components/ui/**`)은 바꾸지 않았습니다.
+- While loading for the first time (`aria-busy="true"` region):
+  - Exercise analysis: a shape of 2 cards (`SkeletonCard`). When it is loaded again after a range change, the cards that already exist are left as they are, and a small spinner and "분석 불러오는 중…" (loading analysis…) are shown below the range line.
+  - Body records list: a list row shape (`SkeletonList`). When it is loaded again while it has records (after a range change, save, or delete), the list is left as it is and the status sentence is given only for screen readers.
+  - Saved routines in the routine builder: 2 list rows (`SkeletonList rows={2}`). When it is loaded again after a save, there is no loading display (the original behavior).
+  - In all three places, the placeholder region gets a name (`aria-label`: exercise analysis, body records list, saved routines), and the "…불러오는 중…" sentence is put inside it for screen readers only (`sr-only`, `role="status"`). The placeholder is `aria-hidden`.
+- Buttons waiting for a save (already `disabled`): `Spinner size="sm"` is placed before the text. The button name stays the text, so the spinner is `aria-hidden`.
+  - Save body record, save routine, save body part of exercise analysis, save goal, save machine, save the increment unit of the next goal suggestion, and run backup restore
+- The shared parts (`components/ui/**`) were not changed.
 
-## 남은 곳 (이 PR 범위 밖)
+## What is left (out of the scope of this PR)
 
-- 운동 일지·대시보드의 운동 기록 목록 "기록을 불러오는 중…"(`app.tsx`), 운동 일지의 루틴 목표 카드 "루틴 목표를 불러오는 중…"(`progress.tsx`), 루틴 목표 휴식 확정 "처리 중…" 버튼(`progress.tsx`), 운동 기록 편집 창의 "저장 중…" 버튼·저장 상태 줄(`app.tsx`). 일지 화면과 편집 창은 #105에서 작업 중이라 그 뒤에 바꿉니다.
-- 백업 복원·확인 상태 줄과 인바디 사진 읽기 상태 줄 자체는 처음 불러오기가 아니라 작업 진행 안내라 글자 상태 줄로 두었습니다.
+- The workout record list "기록을 불러오는 중…" (loading records…) of the workout log and the dashboard (`app.tsx`), the routine goal card "루틴 목표를 불러오는 중…" (loading routine goals…) of the workout log (`progress.tsx`), the routine goal rest confirm "처리 중…" (processing…) button (`progress.tsx`), and the "저장 중…" (saving…) button and the save status line of the workout record edit dialog (`app.tsx`). The log screen and the edit dialog are being worked on in #105, so I change them after that.
+- The backup restore and check status lines and the InBody photo reading status line themselves are not first loads but progress notes of an operation, so I left them as text status lines.
 
-## 1차 리뷰
+## First review
 
-- 필수: 자리 표시 영역에 이름이 없었습니다(규칙은 `aria-busy`와 `aria-label`). 세 영역에 이름을 달고, 루틴짜기 상태 문장을 영역 안으로 옮겼습니다.
-- 반영(선택): 신체 기록은 다시 불러올 때 목록이 자리 표시로 바뀌어 깜빡이고 포커스를 잃었습니다. 처음에만 자리 표시를 씁니다. 종목 분석은 다시 불러오는 동안 눈에 보이는 표시가 없어져 스피너와 문장을 보이게 했습니다. 증량 단위 저장·복원 실행 버튼에도 스피너를 넣었습니다. 테스트가 `aria-hidden="true"`와 영역 이름을 확인합니다. 루틴 다시 불러오기 설명을 실제 동작으로 고쳤습니다.
+- Required: the placeholder regions had no name (the rule is `aria-busy` and `aria-label`). I gave the three regions names and moved the routine builder status sentence into the region.
+- Applied (optional): in body records, when it was loaded again the list changed to a placeholder, which flickered and lost focus. The placeholder is now used only the first time. In exercise analysis, no visible indicator was left while it was loaded again, so I made a spinner and a sentence visible. I also put a spinner in the increment unit save and restore run buttons. The tests check `aria-hidden="true"` and the region names. I corrected the description of loading the routines again to the real behavior.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/loading-placeholders.test.tsx`
-  - 종목 분석·신체 기록·루틴짜기: 첫 응답을 붙잡아 둔 동안 `aria-busy` 영역에 자리 표시가 있고, 상태 문장은 `sr-only`, 자리 표시는 `aria-hidden`이며, 응답 뒤 모두 사라지는지(3개)
-  - 신체 기록 저장을 붙잡아 둔 동안 버튼이 "저장 중…"으로 꺼져 있고 스피너가 있는지(1개)
-- `npm run test -w frontend` 관련 8개 파일 42건, 새 파일 4건 통과. 1차 리뷰 반영 뒤 새 파일 포함 9개 파일 47건 통과. `npm run typecheck -w frontend`, eslint·prettier(바꾼 파일) 통과.
-- 시각 기준선은 불러온 뒤 화면이라 바뀌지 않을 것으로 봅니다. 루틴짜기의 상태 문장은 불러오는 동안만 그려집니다.
-- PC 메모리가 부족해 로컬 전체 `npm run check`와 e2e는 돌리지 않았고 CI로 확인합니다.
+- Added: `frontend/src/loading-placeholders.test.tsx`
+  - Exercise analysis, body records, routine builder: while the first response is held, the `aria-busy` region has a placeholder, the status sentence is `sr-only`, the placeholder is `aria-hidden`, and all of them disappear after the response (3 tests)
+  - While the body record save is held, the button is off as "저장 중…" (saving…) and has a spinner (1 test)
+- `npm run test -w frontend`: 42 tests in the 8 related files, and 4 in the new file passed. After the first review fixes, 47 tests in 9 files including the new file passed. `npm run typecheck -w frontend`, eslint and prettier (changed files) passed.
+- The visual baselines are screens after loading, so I expect them not to change. The status sentence of the routine builder is drawn only while loading.
+- The PC is low on memory, so I did not run the full local `npm run check` and e2e; they are confirmed with CI.

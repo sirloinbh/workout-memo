@@ -1,63 +1,63 @@
-# #125 종목 분석 모바일 정보 구조 — 운동 목록·한 종목 상세·빈 부위 접기
+# #125 Exercise analysis mobile layout — exercise list, one-exercise detail, and collapsed empty body parts
 
-- 이슈: [#125](https://github.com/sirloinbh/workout-memo/issues/125)
-- 브랜치: `feat/125-analysis-mobile`
-- 선행: #102(종목 분석 화면을 공통 컴포넌트로 교체, 닫힘)
+- Issue: [#125](https://github.com/sirloinbh/workout-memo/issues/125)
+- Branch: `feat/125-analysis-mobile`
+- Depends on: #102 (replace the exercise analysis screen with shared components, closed)
 
-## 목적
+## Purpose
 
-종목 분석 화면은 390px에서 운동마다 PR 표와 그래프가 모두 펼쳐져 세로로 매우 길었습니다(#112 UX 점검 U-11, 4,462px). 부위별 주간 표는 대부분 `0세트 0kg`였습니다. 운동 목록에 요약 한 줄만 두고 한 종목씩 자세히 보게 하고, 기록 없는 부위는 접습니다.
+At 390px, the exercise analysis screen showed the PR table and chart of every exercise fully open, so it was very long (#112 UX audit U-11, 4,462px). Most of the weekly body part table was `0세트 0kg` (0 sets 0 kg). I put only a one-line summary in the exercise list, let the user look at one exercise at a time, and collapsed body parts without records.
 
-## 변경 — feat: 운동 목록과 한 종목 상세
+## Change — feat: exercise list and one-exercise detail
 
 - `frontend/src/analysis.tsx`
-  - 종목별 PR 카드를 부위별 주간 운동량 카드보다 위로 올렸습니다.
-  - 운동 목록(`ul`, 이름 "운동 목록"): 운동마다 버튼 하나에 이름과 요약 한 줄(최고 중량 · 추정 1RM · 최근 날짜)을 둡니다. 중량 기록이 없으면 "중량 기록 없음", 추정 1RM이 없으면 그 항목을 뺍니다. 순서는 서버가 주는 최근 날짜순입니다.
-  - 상세: 고른 운동 하나만 그립니다(PR 표, 동률·제외 안내, 추이 그래프, 부위 지정). 부위 지정은 상세 안에 있습니다. 고르기 전에는 첫 운동을 보여 줍니다(768px 이상에서는 목록에서 그 운동을 강조).
-  - 휴대폰(768px 미만): 처음에는 목록만 보이고, 운동을 누르면 목록이 숨고 그 운동의 상세가 보입니다. 상세 제목으로 포커스와 스크롤이 옮겨 갑니다. 상세 위 "운동 목록" 버튼으로 돌아가면 그 운동의 목록 버튼에 포커스가 갑니다. 운동 1종 상세까지 한 번 누르면 됩니다.
-  - 768px 이상: 목록(최대 15rem)과 상세를 나란히 둡니다. "운동 목록" 버튼은 숨깁니다.
-  - 기간·기준 날짜를 바꿔 다시 불러와도 고른 운동은 유지합니다. 다른 운동을 고르면 열려 있던 부위 지정은 닫힙니다.
-  - 부위별 주간 운동량: 주마다 세트가 있는 부위만 표로 보이고, 세트가 없는 부위는 접힌 `details`("기록 없는 부위 N개 · 부위 이름들") 안에 둡니다.
-  - 화면 맨 위의 긴 기준 설명 두 문단은 접힌 "분석 기준 안내" 안으로 옮겼습니다. 첫 화면에 운동 목록이 들어오게 하려는 것입니다. "같은 값은 동률로 표시합니다"는 상세 아래로 옮겼습니다.
-- 새로 만들거나 바꾼 공통 부품(`components/**`)은 없습니다. 접기는 #102 12주 미리보기와 같은 기본 `details`입니다.
-- `style.css` 변경 없음.
+  - The PR card for each exercise was moved above the weekly volume card by body part.
+  - Exercise list (`ul`, named "운동 목록" (exercise list)): each exercise has one button with its name and a one-line summary (best weight · estimated 1RM · latest date). If there is no weight record it shows "중량 기록 없음" (no weight record), and if there is no estimated 1RM that item is left out. The order is latest date first, as the server returns it.
+  - Detail: only the chosen exercise is drawn (PR table, tie and exclusion notes, trend chart, body part setting). The body part setting is inside the detail. Before choosing, the first exercise is shown (at 768px and wider, that exercise is highlighted in the list).
+  - Phone (under 768px): at first only the list is shown; tapping an exercise hides the list and shows the detail of that exercise. Focus and scroll move to the detail heading. Going back with the "운동 목록" button above the detail moves focus to the list button of that exercise. It takes one tap to reach the detail of one exercise.
+  - 768px and wider: the list (up to 15rem) and the detail are placed side by side. The "운동 목록" button is hidden.
+  - The chosen exercise is kept when the range or the base date changes and the data is loaded again. Choosing another exercise closes the body part setting that was open.
+  - Weekly volume by body part: only body parts with sets in a week are shown in the table, and body parts without sets are put in a collapsed `details` ("기록 없는 부위 N개 · 부위 이름들" (N body parts without records · body part names)).
+  - The two long paragraphs explaining the criteria at the top of the screen were moved into a collapsed "분석 기준 안내" (analysis criteria guide). This is so that the exercise list fits in the first screen. "같은 값은 동률로 표시합니다" (equal values are shown as ties) was moved below the detail.
+- No shared component (`components/**`) was created or changed. The collapse is the same basic `details` as the #102 12-week preview.
+- No change to `style.css`.
 
-## 테스트
+## Tests
 
-- 수정: `frontend/src/analysis.test.tsx`의 도우미 `exercise(name)`가 그 운동이 상세에 없으면 목록에서 골라 보여 줍니다. 부위 지정 버튼을 누르기 전에 그 운동을 고르도록 두 곳에 호출을 넣었습니다. PR·1RM·동률·제외·부위 판정 검증 내용은 그대로입니다.
-- 추가: 같은 파일에 2개
-  - 목록의 요약 줄(최근 날짜순, 중량 없음·추정 1RM 없음 처리), 처음 첫 운동만 상세에 있는지, 다른 운동을 누르면 그 상세 하나만 남는지, 요청이 GET뿐인지 확인합니다. 포커스와 `aria-current` 확인은 아래 1차 보완에서 바뀐 동작 기준입니다.
-  - 기록 없는 부위가 닫힌 `details`에 들어가고 보이는 표에는 세트가 있는 부위만 남는지 확인합니다.
+- Changed: the helper `exercise(name)` in `frontend/src/analysis.test.tsx` picks the exercise from the list and shows it if it is not in the detail. I added the call in two places so that the exercise is chosen before the body part setting button is pressed. What the PR, 1RM, tie, exclusion, and body part judging checks verify is the same.
+- Added: 2 tests in the same file
+  - They check the summary lines of the list (latest date order, handling of no weight and no estimated 1RM), that only the first exercise is in the detail at first, that tapping another exercise leaves only the detail of that one, and that the only requests are GET. The focus and `aria-current` checks are based on the behavior changed in the first fix below.
+  - They check that body parts without records go into the closed `details` and only body parts with sets remain in the visible table.
 - `e2e/ui-touch.spec.ts`
-  - 부위 지정 칩 검사가 목록에서 운동을 먼저 고른 뒤 부위 지정을 엽니다.
-  - 추가: 390px 터치 화면에서 첫 목록 버튼이 첫 화면 안에 보이고, 한 번 눌러 상세 제목이 화면에 보이며 포커스를 받고, 목록이 숨고, "운동 목록"으로 돌아오는지 확인합니다.
+  - The body part chip check first picks an exercise from the list and then opens the body part setting.
+  - Added: on a 390px touch screen, it checks that the first list button is visible in the first screen, that one tap shows the detail heading on screen and gives it focus, that the list is hidden, and that "운동 목록" goes back.
 - `npm run test -w frontend -- src/analysis.test.tsx`: 8 pass
-- `npm run typecheck`(e2e 포함), eslint·prettier(바꾼 파일): 통과
-- 시각 기준선과 e2e는 PR CI로 확인합니다. PC 메모리가 부족해 로컬 전체 `npm run check`와 e2e는 돌리지 않았습니다.
+- `npm run typecheck` (including e2e), eslint and prettier (changed files): passed
+- Visual baselines and e2e are checked with the PR CI. The local full `npm run check` and e2e were not run because the PC is low on memory.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review fixes
 
-- 휴대폰에서 "운동 목록"으로 돌아가면 누른 버튼이 상세와 함께 숨어 포커스가 화면 처음으로 떨어졌습니다. 직전에 고른 운동의 목록 버튼으로 포커스를 돌려줍니다.
-- 768px 이상에서도 고를 때마다 포커스와 스크롤이 상세 제목으로 옮겨 가 목록을 벗어났습니다. 목록과 상세가 서로 바뀌는 768px 미만(`matchMedia('(max-width: 767px)')`)에서만 옮기고, 넓은 화면에서는 포커스가 목록에 남습니다.
-- 고르기 전에도 첫 버튼에 `aria-current`가 붙어, 휴대폰에서 상세가 숨어 있는데 "현재 항목"으로 읽혔습니다. `aria-current`는 실제로 고른 운동에만 붙이고, 넓은 화면에서 보이는 첫 운동의 강조는 `data-shown`으로 합니다.
-- 이미 고른 운동을 다시 누르면 아무것도 하지 않습니다.
-- 시각 기준선: analysis 4장(360·390·768·1280)이 바뀝니다. CI `e2e-visual` 이미지를 확인한 뒤 `visual-baselines` 아티팩트로 갱신합니다.
-- 테스트: 목록 테스트가 넓은 화면(테스트 기본값)에서 고른 뒤 포커스가 목록에 남는지, 고르기 전 `aria-current`가 없는지 봅니다. 휴대폰 너비(`matchMedia`를 바꿔)에서 고르면 상세 제목, "운동 목록"을 누르면 그 운동 버튼으로 포커스가 가는지 확인하는 테스트를 더했습니다.
-- 1차 보완 후: `npm run test -w frontend -- src/analysis.test.tsx` 9 pass, eslint(바꾼 파일)·`npm run typecheck -w frontend` 통과.
+- On a phone, going back to "운동 목록" hid the pressed button together with the detail, so focus fell to the start of the screen. Focus now goes back to the list button of the exercise chosen just before.
+- At 768px and wider too, every choice moved focus and scroll to the detail heading and left the list. They are moved only below 768px (`matchMedia('(max-width: 767px)')`), where the list and the detail swap; on a wide screen focus stays in the list.
+- Before choosing, the first button already had `aria-current`, so on a phone, where the detail is hidden, it was read as the "current item". `aria-current` is now set only on the exercise that was really chosen, and the highlight of the first exercise shown on a wide screen uses `data-shown`.
+- Pressing an exercise that is already chosen does nothing.
+- Visual baselines: 4 analysis images (360, 390, 768, 1280) change. After checking the CI `e2e-visual` images, I update them with the `visual-baselines` artifact.
+- Tests: the list test checks that after choosing on a wide screen (the test default) focus stays in the list, and that there is no `aria-current` before choosing. I added a test that checks, at phone width (by changing `matchMedia`), that choosing moves focus to the detail heading and pressing "운동 목록" moves focus to the button of that exercise.
+- After the first fix: `npm run test -w frontend -- src/analysis.test.tsx` 9 pass, eslint (changed files) and `npm run typecheck -w frontend` passed.
 
-## 2차 리뷰
+## Second review
 
-- 결함 없음. 1차 보완이 맞게 들어갔음을 확인했습니다.
-- 반영: 첫 운동 강조(`data-shown`)가 휴대폰에도 적용돼, 고르기 전 목록이나 "운동 목록"으로 돌아온 뒤 강조와 포커스가 서로 다른 항목에 있었습니다. 강조를 `md:` 이상에만 둡니다.
-- 반영: 위 테스트 설명이 1차 보완 전 동작으로 적혀 있던 것을 고쳤습니다.
-- 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다. 시각 기준선은 이 커밋의 CI 이미지로 갱신합니다.
+- No defects. I confirmed that the first fix was applied correctly.
+- Applied: the highlight of the first exercise (`data-shown`) also applied on phones, so before choosing, or after returning with "운동 목록", the highlight and focus were on different items. The highlight is now only at `md:` and wider.
+- Applied: the description of the test above was written for the behavior before the first fix, and I corrected it.
+- Two reviews are done, so there is no third review. The visual baselines are updated with the CI images of this commit.
 
-## main 병합
+## Merge of main
 
-- 2차 리뷰 뒤 main에 #240(style.css 정리, #103)이 병합됐습니다. 겹치는 파일은 없지만 `style.css`와 `components/form-styles.ts`가 바뀌어 병합 규칙대로 `origin/main`을 병합했습니다. 충돌은 없었습니다. 병합 뒤 `npm run typecheck -w frontend` 통과, `npm run test -w frontend -- src/analysis.test.tsx` 9 pass. 시각 기준선은 병합한 커밋의 CI 이미지로 갱신합니다.
+- After the second review, #240 (`style.css` cleanup, #103) was merged to main. No files overlap, but `style.css` and `components/form-styles.ts` changed, so I merged `origin/main` as the merge rule says. There were no conflicts. After the merge, `npm run typecheck -w frontend` passed and `npm run test -w frontend -- src/analysis.test.tsx` had 9 pass. The visual baselines are updated with the CI images of the merged commit.
 
-## 변경 — test: 시각 기준선 갱신
+## Change — test: update visual baselines
 
-- `01a5e0f`의 CI `e2e-visual`에서 `analysis-360·390·768·1280` 4장만 실패했고, 새 모바일 정보 구조 검사를 포함한 나머지 81건은 통과했습니다.
-- 390px·1280px 이미지를 이전 기준선과 비교했습니다. 390px에서는 첫 화면 안에 운동 목록 4개가 요약 한 줄씩 보이고, 1280px에서는 목록과 첫 운동의 상세가 나란히 있으며, 부위 표에는 세트가 있는 4개 부위만 보이고 나머지 6개는 접혀 있습니다. 넘침이 없어 `visual-baselines` 아티팩트로 4장을 갱신했습니다.
-- 고정 데이터 기준 세로 길이(전체 페이지 이미지): 360px 2,767→1,146px, 390px 2,679→1,090px, 768px 2,343→1,540px, 1280px 2,291→1,140px.
+- In the CI `e2e-visual` of `01a5e0f`, only the 4 images `analysis-360·390·768·1280` failed, and the other 81 checks, including the new mobile layout check, passed.
+- I compared the 390px and 1280px images with the previous baselines. At 390px, 4 exercises of the list are visible in the first screen with one summary line each; at 1280px, the list and the detail of the first exercise are side by side; in the body part table only the 4 body parts with sets are visible and the other 6 are collapsed. Nothing overflows, so I updated the 4 images with the `visual-baselines` artifact.
+- Page height with the fixed data (full-page image): 360px 2,767 → 1,146px, 390px 2,679 → 1,090px, 768px 2,343 → 1,540px, 1280px 2,291 → 1,140px.

@@ -1,45 +1,45 @@
-# #253 백업·복원에 유산소 목표 넣기 (백업 v3)
+# #253 Put cardio goals in backup and restore (backup v3)
 
-- 이슈: [#253](https://github.com/sirloinbh/workout-memo/issues/253)
-- 브랜치: `feat/253-backup-cardio-goals`
-- 선행: #116(유산소 목표, `cardio_goals`), #114(백업 v2)
-- 설계: 2026-11-08 사용자 결정 B1·B2([#253 댓글](https://github.com/sirloinbh/workout-memo/issues/253#issuecomment-6720765474))
+- Issue: [#253](https://github.com/sirloinbh/workout-memo/issues/253)
+- Branch: `feat/253-backup-cardio-goals`
+- Depends on: #116 (cardio goals, `cardio_goals`), #114 (backup v2)
+- Design: user decisions B1 and B2 on 2026-11-08 ([#253 comment](https://github.com/sirloinbh/workout-memo/issues/253#issuecomment-6720765474))
 
-## 목적
+## Purpose
 
-#116에서 만든 유산소 목표가 백업 파일에 없어, 백업 파일로 복원하면 유산소 목표가 사라졌습니다.
+The cardio goals made in #116 were not in the backup file, so restoring from a backup file made the cardio goals disappear.
 
-## 변경 — feat: 백업 v3
+## Change — feat: backup v3
 
 - `backend/src/backup.ts`
-  - 형식 버전을 3으로 올리고 `data.cardio_goals`를 넣었습니다(B1). v3 파일에는 이 목록이 꼭 있어야 합니다(비어 있어도 됨). v1·v2 파일은 유산소 목표 없는 백업으로 복원하고, 그 파일에 섞여 있는 `cardio_goals`는 검사하지 않고 무시합니다(#114의 v1 처리와 같음).
-  - 복원 전 검증: `POST /api/cardio-goals`와 같은 규칙(종류별 목표값, 기록 목표의 운동 종류, 목표 기간 5년 이하)과 id 중복을 봅니다.
-  - 추가만(merge): 모든 값이 같은 목표가 있으면 건너뛰고, 아니면 추가합니다(근력 목표와 같음).
-  - 전체 교체(replace, B2): 유산소 목표도 지우고 파일 내용으로 바꿉니다. 목표 목록이 없는 v1·v2 파일로 전체 교체하면 유산소 목표는 0개가 됩니다. 삭제 수는 미리보기 요약에 나옵니다. 잠금 목록에도 넣었습니다.
-  - 내보내기 `GET /api/backup`에 `cardio_goals`(거리는 JSON 숫자)를 넣었습니다.
-- `shared/contract.ts` → `contract:sync`: 백업이 `id`를 더할 수 있게 `cardioGoalSchema`를 필드 규칙 `cardioGoalObject`와 교차 규칙 `checkCardioGoal`로 나눴습니다(유산소 기록과 같은 방식). API 동작은 같습니다.
-- `frontend/src/backup.tsx`: 복원 요약에 "유산소 목표" 줄을 더하고, 백업 설명에 유산소 기록·유산소 목표를 넣었습니다. 요약에 그 표가 없으면(이전 서버) 줄을 건너뜁니다.
-- `database/README.md`: 파일 예시, v3 설명, 지원 버전, 복원 규칙. **v3 파일은 이전 버전의 앱으로 되돌려 배포하면 복원할 수 없다**는 점과 대처를 적었습니다(사용자 요청).
+  - I raised the format version to 3 and added `data.cardio_goals` (B1). A v3 file must have this list (it may be empty). v1 and v2 files are restored as backups without cardio goals, and a `cardio_goals` mixed into such a file is ignored without being checked (same as the v1 handling in #114).
+  - Check before restore: the same rules as `POST /api/cardio-goals` (target values per type, the exercise kind of a record goal, goal period of 5 years or less) and duplicate ids.
+  - Add only (merge): if there is a goal with all the same values, it is skipped; otherwise it is added (same as strength goals).
+  - Full replace (replace, B2): cardio goals are also deleted and replaced with the contents of the file. If a full replace is done with a v1 or v2 file that has no goal list, there will be 0 cardio goals. The number deleted appears in the preview summary. I also put it in the lock list.
+  - I put `cardio_goals` (distance as a JSON number) in the export `GET /api/backup`.
+- `shared/contract.ts` → `contract:sync`: so that a backup can add `id`, I split `cardioGoalSchema` into the field rules `cardioGoalObject` and the cross rule `checkCardioGoal` (the same way as the cardio records). The API behavior is the same.
+- `frontend/src/backup.tsx`: I added a "유산소 목표" (cardio goals) line to the restore summary and put cardio records and cardio goals in the backup description. If the summary does not have that table (an older server), the line is skipped.
+- `database/README.md`: the file example, the v3 description, the supported versions, and the restore rules. I wrote that **a v3 file cannot be restored if the app is rolled back to an older version for deployment**, and what to do about it (the user's request).
 
-## 테스트
+## Tests
 
-- `backend/test/backup.test.ts`(DB 없음)
-  - 수정: 예시 백업에 유산소 목표를 넣었습니다. v2 시험은 `version: 2`를 명시했고, 지원하지 않는 버전 시험을 v4로 바꿨습니다. v2·v3 모두 `cardio_sessions` 목록이 꼭 있어야 하는지 확인합니다.
-  - 추가 2개: v3 목록 필수와 빈 목록 허용, v1·v2의 목표 무시(깨진 목록 포함). 유산소 목표 검증(기록 목표의 종류, 기간 단위, 다른 종류의 목표값, 5년 상한, id 중복).
+- `backend/test/backup.test.ts` (no DB)
+  - Changed: I put cardio goals in the example backup. The v2 test states `version: 2` explicitly, and the unsupported version test was changed to v4. It checks that both v2 and v3 must have the `cardio_sessions` list.
+  - Added 2: the v3 list is required and an empty list is allowed, goals in v1 and v2 are ignored (including a broken list). Cardio goal validation (the kind of a record goal, the period unit, target values of another type, the 5-year limit, duplicate ids).
   - 13 pass
-- `backend/test/backup.integration.test.ts`(PostgreSQL)
-  - 내보낸 파일의 버전 확인을 3으로 바꿨습니다(첫 CI에서 2로 남아 실패). 시드에 유산소 목표 2개를 넣고, 정규화·행 수·추가만 재실행(건너뜀 2)·내보낸 키 목록에 넣었습니다. v1 복원 시험은 유산소 목표도 0개인지 봅니다.
-  - 추가 1개: v3 왕복(추가 2, 값 일치, 판정 API 응답)과, v2 파일로 전체 교체하면 삭제 2·남은 목표 0개.
-- `frontend/src/backup.test.tsx`: 복원 요약에 "유산소 목표 · 추가 1 · 건너뜀 1" 줄. 6 pass
-- `typecheck -w backend`, eslint·prettier(바꾼 파일): 통과. 통합 테스트는 이 PC에 PostgreSQL이 없어 CI에서 확인합니다. 로컬 전체 `npm run check`·e2e는 메모리 부족으로 돌리지 않았습니다.
-- 시각 기준선: 백업 화면 설명 문구가 길어져 backup 4장이 바뀔 수 있습니다. CI 이미지를 확인한 뒤 갱신합니다.
+- `backend/test/backup.integration.test.ts` (PostgreSQL)
+  - I changed the version check of the exported file to 3 (it stayed at 2 and failed in the first CI). I put 2 cardio goals in the seed, and added them to the normalization, the row counts, the add-only rerun (skipped 2), and the exported key list. The v1 restore test also checks that there are 0 cardio goals.
+  - Added 1: the v3 round trip (added 2, values match, the judging API response), and a full replace with a v2 file gives 2 deleted and 0 goals left.
+- `frontend/src/backup.test.tsx`: the line "유산소 목표 · 추가 1 · 건너뜀 1" (cardio goals · added 1 · skipped 1) in the restore summary. 6 pass
+- `typecheck -w backend`, eslint and prettier (changed files): passed. The integration tests are confirmed in CI because this PC has no PostgreSQL. I did not run the local full `npm run check` and e2e because of low memory.
+- Visual baselines: the description text of the backup screen became longer, so 4 backup images may change. I update them after checking the CI images.
 
-## 1차 리뷰
+## First review
 
-- 필수 지적 없음. 버전별 처리, 잠금·삭제 순서, 추가만의 같은 값 판단(DB 값과 백업 값의 형식), 계약 분리 후 API·OpenAPI가 같음을 확인했습니다.
-- 반영(선택): v3 파일에 두 목록이 다 없으면 첫 오류만 보였습니다. 빠진 목록을 한 메시지로 모아 보여 주고 시험을 더했습니다. 유산소 목표의 `created_at`은 근력 목표처럼 백업에 넣지 않아 복원한 시각이 된다는 점을 `database/README.md`에 적었습니다.
+- No required comments. I confirmed the handling per version, the order of lock and delete, the judgment of the same values in add only (the formats of the DB value and the backup value), and that the API and OpenAPI are the same after the contract split.
+- Applied (optional): when a v3 file lacked both lists, only the first error was shown. I now collect the missing lists into one message and added a test. I wrote in `database/README.md` that `created_at` of a cardio goal is not put in the backup, like strength goals, so it becomes the restore time.
 
-## 변경 — test: 시각 기준선 갱신
+## Change — test: update visual baselines
 
-- `05e3e4a`의 CI `e2e-visual`에서 backup 4장만 실패했고 나머지 86건은 통과했습니다.
-- 390px·1280px 이미지를 확인했습니다. "복원용 백업 (JSON)" 설명에 유산소 기록·유산소 목표가 들어가 한 줄 길어진 것 말고는 같고, 넘침은 없습니다. `visual-baselines` 아티팩트로 4장을 갱신했습니다.
+- In the CI `e2e-visual` of `05e3e4a`, only 4 backup images failed, and the other 86 passed.
+- I checked the 390px and 1280px images. Other than the description of "복원용 백업 (JSON)" (backup for restore (JSON)) becoming one line longer because cardio records and cardio goals were added, they are the same, and nothing overflows. I updated 4 images with the `visual-baselines` artifact.

@@ -1,34 +1,34 @@
-# #136 포트를 중앙 표준(슬롯 01)으로 바꾸고 AGENTS 고유 규칙 분리
+# #136 Change ports to the central standard (slot 01) and split the AGENTS project-specific rules
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/136
-- 중앙 추적 이슈: https://github.com/sirloinbh/project-standards/issues/95
+- Issue: https://github.com/sirloinbh/workout-memo/issues/136
+- Central tracking issue: https://github.com/sirloinbh/project-standards/issues/95
 
-## 목적
+## Purpose
 
-- 8개 앱의 포트가 서로 겹치지 않도록 중앙 레지스트리가 다시 배정한 포트(슬롯 01)를 적용한다. 지금은 Vite 기본 포트 5173이 health-log와, e2e 웹 포트 5174가 life-journal Vite와 겹친다.
-- 중앙 표준 첫 동기화가 AGENTS.md를 공통 지침으로 바꾸기 전에, 이 프로젝트만의 규칙을 AGENTS.project.md로 옮겨 보존한다.
+- Apply the ports (slot 01) that the central registry assigned again so that the ports of the 8 apps do not overlap. Now the Vite default port 5173 overlaps with health-log, and the e2e web port 5174 overlaps with the life-journal Vite.
+- Before the first central standards sync turns AGENTS.md into the shared instructions, move the rules that are specific to this project into AGENTS.project.md to keep them.
 
-## 변경
+## Change
 
-| 종류      | 이전              | 이후                | 바꾼 파일                                                                                                                                   |
-| --------- | ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| 웹        | 8088              | 8101                | `compose.yaml`, `README.md`, `docs/api.md`, `docs/deployment.md`, `docs/shared-hosting-costs.md`                                            |
-| API       | 3001              | 3101                | `compose.yaml`, `backend/src/server.ts`, `backend/Dockerfile`, `frontend/nginx.conf`, `frontend/vite.config.ts`, `.env.example`, README 2개 |
-| Vite      | 5173 (지정 안 함) | 5201 (`strictPort`) | `frontend/vite.config.ts`, `README.md`                                                                                                      |
-| 호스트 DB | 55432             | 15401               | `compose.yaml`, `.env.example`, `database/README.md`, `docs/deployment.md`                                                                  |
-| e2e API   | 3101              | 3201                | `playwright.config.ts`, `AGENTS.project.md`                                                                                                 |
-| e2e 웹    | 5174              | 5301                | `playwright.config.ts`, `AGENTS.project.md`                                                                                                 |
+| Kind    | Before               | After               | Files changed                                                                                                                                   |
+| ------- | -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web     | 8088                 | 8101                | `compose.yaml`, `README.md`, `docs/api.md`, `docs/deployment.md`, `docs/shared-hosting-costs.md`                                                |
+| API     | 3001                 | 3101                | `compose.yaml`, `backend/src/server.ts`, `backend/Dockerfile`, `frontend/nginx.conf`, `frontend/vite.config.ts`, `.env.example`, 2 README files |
+| Vite    | 5173 (not specified) | 5201 (`strictPort`) | `frontend/vite.config.ts`, `README.md`                                                                                                          |
+| Host DB | 55432                | 15401               | `compose.yaml`, `.env.example`, `database/README.md`, `docs/deployment.md`                                                                      |
+| e2e API | 3101                 | 3201                | `playwright.config.ts`, `AGENTS.project.md`                                                                                                     |
+| e2e web | 5174                 | 5301                | `playwright.config.ts`, `AGENTS.project.md`                                                                                                     |
 
-- `docs/ai-agent-project-setup.md`의 포트 예시를 새 값과 중앙 슬롯 공식으로 바꿨다.
-- `docs/changes/`, `docs/daily/`, `docs/ux-audit/`, `docs/next-steps/`의 과거 기록은 당시 상태라서 고치지 않았다.
-- **AGENTS 분리:** 서비스 규칙(중량·NULL), PR 자동 리뷰·병합 규칙, 계정·도구, 현재 구현, 고유 스킬·디자인, 고유 검증 명령, 로컬 에이전트 작업을 `AGENTS.project.md`로 옮겼다. 문장은 바꾸지 않았고, 옮긴 e2e 포트만 새 값으로 바꿨다. `AGENTS.md`에는 공통 내용만 남기고 `AGENTS.project.md`를 반드시 읽게 했다.
+- The port examples in `docs/ai-agent-project-setup.md` were changed to the new values and the central slot formula.
+- The past records in `docs/changes/`, `docs/daily/`, `docs/ux-audit/`, and `docs/next-steps/` show the state at that time, so they were not changed.
+- **AGENTS split:** I moved the service rules (weight, NULL), the PR automatic review and merge rules, accounts and tools, the current implementation, project-specific skills and design, project-specific verification commands, and local agent work into `AGENTS.project.md`. The sentences were not changed, and only the moved e2e ports were changed to the new values. `AGENTS.md` keeps only the shared content and requires reading `AGENTS.project.md`.
 
-## 사용자가 할 일
+## What the user has to do
 
-- 로컬 `.env`의 `DATABASE_URL` 포트를 `55432`에서 `15401`로 바꾼다. `.env`는 커밋하지 않으므로 이 PR이 바꾸지 않는다.
-- 운영 서버는 `.env`의 `WEB_BIND`·`WEB_PORT`로 웹 포트를 정하므로 영향이 없다. API 내부 포트(3101)는 compose·nginx·Dockerfile이 함께 바뀐다.
+- Change the port of `DATABASE_URL` in the local `.env` from `55432` to `15401`. `.env` is not committed, so this PR does not change it.
+- The production server sets the web port with `WEB_BIND` and `WEB_PORT` in `.env`, so it is not affected. The internal API port (3101) is changed together in compose, nginx, and the Dockerfile.
 
-## 검증
+## Verification
 
-- `npm run check` 결과는 아래 PR 본문에 적는다.
-- e2e(포트 3201·5301)는 PR CI에서 확인한다. 로컬에는 테스트 DB가 없어서 실행하지 않았다.
+- The `npm run check` result is written in the PR body below.
+- e2e (ports 3201 and 5301) is checked in the PR CI. There is no test DB locally, so it was not run.

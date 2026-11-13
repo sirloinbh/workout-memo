@@ -1,35 +1,35 @@
-# #173 남은 곳의 불러오는 중 표시를 공통 Skeleton·Spinner로
+# #173 Use the shared Skeleton and Spinner for the loading display in the remaining places
 
-#250에서 종목 분석, 신체 기록, 루틴 목록, 저장 버튼 일부를 바꿨습니다. 이번에는 남은 곳을 바꿉니다.
+#250 changed the exercise analysis, body records, the routine list, and some save buttons. This time I change the remaining places.
 
-## 변경
+## Change
 
-- 대시보드·운동 일지 운동 기록 목록(`app.tsx`)
-  - 불러오는 동안 "기록을 불러오는 중…" 글자 대신 `SkeletonList`를 보여 줍니다.
-  - `aria-busy`와 이름 "운동 기록 목록"이 있는 영역 안에 둡니다. 화면 낭독기용 상태 줄은 `sr-only`로 남깁니다.
-- 루틴 목표 카드(`progress.tsx`): 불러오는 동안 `SkeletonText`를 보여 줍니다. 영역 이름은 "루틴 목표 내용"이고, 상태 줄은 위와 같이 둡니다.
-- 휴식 확정 버튼(`progress.tsx`): 처리를 기다리는 동안 `Spinner size="sm"`을 보여 줍니다. 버튼은 원래대로 비활성화됩니다.
-- 운동 기록 편집 창(`app.tsx`)
-  - 저장 버튼에 `Spinner`를 보여 줍니다.
-  - "저장 중…" 상태 줄 앞에도 같은 `Spinner`를 둡니다. 상태 줄은 원래 `Notice`(role="status") 그대로입니다.
-- 스피너는 모두 `aria-hidden`입니다. 낭독기는 버튼 이름과 상태 줄로 알립니다.
+- Workout record list of the dashboard and the workout log (`app.tsx`)
+  - While loading, it shows a `SkeletonList` instead of the text "기록을 불러오는 중…" (loading records…).
+  - It is placed inside a region that has `aria-busy` and the name "운동 기록 목록" (workout record list). The status line for screen readers is kept as `sr-only`.
+- Routine goal card (`progress.tsx`): while loading, it shows a `SkeletonText`. The region name is "루틴 목표 내용" (routine goal content), and the status line is the same as above.
+- Rest confirm button (`progress.tsx`): while waiting for the processing, it shows `Spinner size="sm"`. The button is disabled as before.
+- Workout record edit dialog (`app.tsx`)
+  - The save button shows a `Spinner`.
+  - The same `Spinner` is also placed before the "저장 중…" (saving…) status line. The status line is still a `Notice` (role="status") as before.
+- All spinners are `aria-hidden`. Screen readers announce through the button name and the status line.
 
-## 리뷰
+## Review
 
-- 1차 반영(필수): 저장 중일 때만 상태 줄을 다른 감싸개로 옮기면 `role="status"` 줄이 새로 만들어집니다. 그러면 화면 낭독기가 바뀐 문구를 놓칠 수 있습니다. 그래서 감싸개를 늘 두고 스피너만 넣고 빼게 고쳤습니다.
-- 1차 반영(선택): 루틴 목표를 처음 불러오다 실패하면 오류 배너 옆에 끝나지 않는 자리 표시가 남았습니다(main의 "불러오는 중…" 글자와 같은 문제). 실패하면 오류 배너만 보이게 했고, 실패 테스트에 확인을 더했습니다.
-- 확인만: 기간을 바꿔 다시 불러올 때도 목록이 자리 표시로 바뀝니다. main에서도 같은 때 글자를 보여 줬으므로 동작은 같습니다.
+- First review applied (required): if the status line were moved to another wrapper only while saving, a new `role="status"` line would be created. Then a screen reader could miss the changed text. So I changed it to always keep the wrapper and only add or remove the spinner.
+- First review applied (optional): if the first load of the routine goals failed, a placeholder that never ends stayed next to the error banner (the same problem as the "불러오는 중…" (loading…) text on main). When it fails, only the error banner is shown, and I added a check to the failure test.
+- Check only: when the range is changed and the data is loaded again, the list also changes to a placeholder. On main the text was shown at the same time, so the behavior is the same.
 
-## 범위 밖
+## Out of scope
 
-- 루틴짜기 화면 폼(`routines.tsx` 저장 버튼)은 agent3 작업과 겹쳐 손대지 않았습니다.
-- 유산소 화면(`cardio/*`, `cardio-goals.tsx`)은 다른 작업 범위라 손대지 않았습니다.
+- The form of the routine builder screen (the `routines.tsx` save button) overlaps with agent3's work, so I did not touch it.
+- The cardio screens (`cardio/*`, `cardio-goals.tsx`) are in the scope of other work, so I did not touch them.
 
-## 검사
+## Checks
 
-- `npm run test -w frontend -- src/loading-placeholders src/routine-progress src/set-completion src/forms src/new-workout-defaults src/period`: 통과(6파일 59개)
-  - 불러오는 중 검사에 운동 일지 목록과 루틴 목표 카드를 더했습니다.
-  - 일지 저장 버튼과 상태 줄의 스피너 검사를 더했습니다.
-  - 휴식 확정 버튼의 스피너 검사를 더했습니다.
-- `npm run test -w frontend` 전체: 57/58 파일 통과. `routines.test.tsx`의 긴 테스트 1개가 전체 실행 중 15초 제한에 걸렸습니다. 따로 실행하면 통과합니다(10/10). 이번 변경과 관계없는 파일입니다.
-- 타입 검사, ESLint, Prettier: 통과
+- `npm run test -w frontend -- src/loading-placeholders src/routine-progress src/set-completion src/forms src/new-workout-defaults src/period`: passed (6 files, 59 tests)
+  - I added the workout log list and the routine goal card to the loading checks.
+  - I added a check of the spinner on the log save button and the status line.
+  - I added a check of the spinner on the rest confirm button.
+- The whole `npm run test -w frontend`: 57 of 58 files passed. One long test in `routines.test.tsx` hit the 15-second limit during the full run. It passes when run alone (10/10). It is a file that has nothing to do with this change.
+- Type check, ESLint, Prettier: passed

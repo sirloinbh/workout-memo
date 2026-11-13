@@ -1,60 +1,60 @@
-# #124 운동명 자동완성(일지·목표)과 비슷한 이름 안내
+# #124 Exercise name autocomplete (log and goals) and similar-name hint
 
-## 문제
+## Problem
 
-운동명을 매번 직접 입력해야 했습니다. 이름이 조금만 달라도(예: `벤치 프레스`/`벤치프레스`) 목표 판정·분석·증량 단위에서 다른 운동으로 집계됩니다. 일지 세트 입력의 `<datalist>` 후보는 오늘 루틴 목표·목표·머신 이름뿐이었고, 실제로 기록한 운동명은 없었습니다.
+Exercise names had to be typed in by hand every time. Even a small difference in the name (for example `벤치 프레스` / `벤치프레스`, both "bench press") makes goal judging, analysis, and increment units count them as different exercises. The `<datalist>` suggestions for the workout log set input were only the goals of today's routine, goals, and machine names; the exercise names actually logged were not there.
 
-## 사용자 결정 (2026-11-10)
+## User decisions (2026-11-10)
 
-1. 앱 전용 Combobox(WAI-ARIA, 새 패키지 없음, 터치 44px). 중앙 공통 Combobox가 생기면 바꿉니다(project-standards#437).
-2. 새 API `GET /api/exercise-names`(세트·목표·루틴·머신, 최근 → 자주 순 최대 50개).
-3. 비슷한 이름은 안내와 [바꾸기] 버튼만 보여 주고 자동으로 바꾸지 않습니다.
+1. An app-only Combobox (WAI-ARIA, no new package, 44px touch targets). When a shared central Combobox exists, switch to it (project-standards#437).
+2. A new API `GET /api/exercise-names` (sets, goals, routines, machines; most recent first, then most frequent; up to 50).
+3. For similar names, only show a hint and a [바꾸기] (Replace) button; do not replace automatically.
 
-범위: 이번 PR은 일지 세트와 목표 입력입니다. 루틴 입력은 agent3의 루틴 단계별 입력 PR 뒤에, 종목 분석 부위 지정은 별도 PR로 합니다.
+Scope: this PR covers the workout log sets and the goal input. The routine input comes after agent3's step-by-step routine input PR, and setting body parts in the exercise analysis is a separate PR.
 
-## 변경
+## Change
 
-- 서버: `backend/src/routes/exercise-names.ts`
-  - 일지 세트·목표·루틴 계획·머신 이름을 목표 판정과 같은 정규화 이름(`lower(trim())`)으로 묶습니다. 가장 최근 표기를 `name`으로 돌려줍니다.
-  - `uses`는 그 이름을 쓴 일지·목표·루틴 수입니다. 한 일지의 여러 세트는 1번으로 셉니다.
-  - `last_used`는 일지 날짜·목표 시작일·루틴 만든 날(서울) 중 가장 늦은 날입니다. 머신 이름만 있으면 `uses` 0, `last_used` `null`입니다.
-  - 정렬은 `last_used` 늦은 순 → `uses` 많은 순이고, 최대 50개입니다.
-  - `docs/api.md`, `docs/openapi.json`을 갱신했습니다.
-- 화면
-  - `components/combobox.tsx`: APG "list autocomplete with manual selection" 패턴입니다.
-    - 키보드: ↓·↑ 이동, Enter 선택(폼 제출 안 함), Esc는 목록만 닫음.
-    - 편집 창(Radix Dialog)이 Esc를 document 캡처 단계에서 받기 때문에, 목록이 열렸을 때만 window 캡처 단계에서 먼저 막습니다.
-    - 터치 화면에서 후보 행은 44px 이상이고, 후보를 눌러도 입력 칸의 포커스가 유지됩니다.
-  - 필터(`components/combobox-filter.ts`): 공백·대소문자를 무시한 부분 일치로 최대 8개를 보여 줍니다.
-  - 일지 세트 운동명과 목표 운동명이 `<datalist>`·일반 입력 대신 Combobox를 씁니다.
-    - 후보는 API 목록 뒤에 화면이 이미 아는 이름(오늘 루틴 목표·목표·머신)을 중복 없이 붙입니다.
-    - API가 실패하면 화면이 아는 이름만 씁니다.
-  - `SimilarNameHint`: 입력이 기존 이름과 공백·대소문자만 다르면 "기존 이름 'X'로 바꿀까요?"와 [바꾸기]를 보여 줍니다.
-    - 입력란 아래, label 밖에 둡니다(입력란 이름에 섞이지 않게).
-    - `role="status"` 대신 `aria-live="polite"`라 편집 창의 저장 상태 줄과 겹치지 않습니다.
-- 다음 세트 추가는 원래대로 앞 세트의 운동명·머신을 이어받습니다(확인만, 변경 없음).
+- Server: `backend/src/routes/exercise-names.ts`
+  - Groups the workout log sets, goals, routine plans, and machine names by the same normalized name used in goal judging (`lower(trim())`). The most recent spelling is returned as `name`.
+  - `uses` is the number of logs, goals, and routines that used the name. Many sets of one log count as 1.
+  - `last_used` is the latest of the log date, goal start date, and routine creation date (Seoul). A name that only exists as a machine name has `uses` 0 and `last_used` `null`.
+  - Sorting is by latest `last_used`, then larger `uses`, up to 50.
+  - Updated `docs/api.md` and `docs/openapi.json`.
+- Screen
+  - `components/combobox.tsx`: the APG "list autocomplete with manual selection" pattern.
+    - Keyboard: ↓ and ↑ to move, Enter to select (does not submit the form), Esc closes only the list.
+    - The edit dialog (Radix Dialog) receives Esc in the document capture phase, so only while the list is open it is intercepted first in the window capture phase.
+    - On touch screens the suggestion rows are at least 44px, and tapping a suggestion keeps focus in the input.
+  - Filter (`components/combobox-filter.ts`): partial match that ignores spaces and case, showing up to 8.
+  - The workout log set exercise name and the goal exercise name use the Combobox instead of `<datalist>` or a plain input.
+    - Suggestions are the API list followed by the names the screen already knows (today's routine goals, goals, machines), without duplicates.
+    - If the API fails, only the names the screen knows are used.
+  - `SimilarNameHint`: if the input differs from an existing name only in spaces or case, it shows "기존 이름 'X'로 바꿀까요?" (Replace it with the existing name 'X'?) and [바꾸기].
+    - It is placed below the input, outside the label (so it does not mix into the input name).
+    - It uses `aria-live="polite"` instead of `role="status"`, so it does not collide with the save status line of the edit dialog.
+- Adding the next set still inherits the exercise name and machine from the previous set as before (checked only, no change).
 
-## 리뷰
+## Review
 
-1차 리뷰에서 나온 문제를 모두 고쳤습니다.
+All problems from the first review were fixed.
 
-- **e2e가 깨질 문제:** 후보 목록 이름 "운동명 후보"에 입력란 이름 "운동명"이 들어 있었습니다. Playwright `getByLabel('운동명')`은 부분 일치로 찾기 때문에 두 요소가 잡혀 strict mode 오류가 납니다(`workout-crud`, `new-workout-defaults` 시나리오). 목록 이름을 "이전에 쓴 이름"으로 바꿨습니다.
-- **후보를 눌러도 목록이 다시 열림:** 목록이 입력란의 `<label>` 안에 있어, 클릭이 입력란으로 넘어가 목록을 다시 열었습니다. 후보 클릭에서 기본 동작을 막았고, 회귀 테스트를 더했습니다.
-- **데스크톱 레이아웃:** 비슷한 이름 안내가 세트 카드 격자에서 칸 하나를 차지해 "머신"이 다음 줄로 밀렸습니다. 운동명과 같은 칸에 넣었습니다.
-- **낭독기:** 안내 영역이 비어 있을 때 `display:none`이면 나중에 생긴 문구를 읽지 않을 수 있습니다. 비어 있을 때는 `sr-only`로 두어 늘 렌더링되게 했고, 테스트를 더했습니다.
-- **통합 테스트:** "자주 사용" 정렬을 실제로 검사하도록 기록 수를 다르게 했습니다(이름 순과 반대).
-- **선택 제안도 반영:**
-  - 한글 조합 중 키는 목록 키로 쓰지 않습니다(`isComposing`).
-  - 목록 여백·스크롤 막대를 눌러도 입력란 포커스가 유지됩니다.
-  - [바꾸기] 버튼은 터치 화면에서 44px입니다.
+- **A problem that would break e2e:** the name of the suggestion list, "운동명 후보" (exercise name suggestions), contained the input name "운동명" (exercise name). Playwright `getByLabel('운동명')` matches partially, so it finds two elements and fails in strict mode (the `workout-crud` and `new-workout-defaults` scenarios). I renamed the list to "이전에 쓴 이름" (names used before).
+- **The list reopened after tapping a suggestion:** the list was inside the input's `<label>`, so the click passed to the input and opened the list again. I prevented the default action on suggestion clicks and added a regression test.
+- **Desktop layout:** the similar-name hint took one cell of the set card grid and pushed "머신" (machine) to the next row. I put it in the same cell as the exercise name.
+- **Screen readers:** when the hint area is empty, `display:none` may stop a later text from being read. When empty, it is kept as `sr-only` so it is always rendered, and I added a test.
+- **Integration test:** the usage counts are now different so that the "자주 사용" (frequently used) sort is really checked (opposite to name order).
+- **Optional suggestions also applied:**
+  - Keys pressed during Korean composition are not used as list keys (`isComposing`).
+  - Clicking the list padding or scrollbar keeps focus in the input.
+  - The [바꾸기] button is 44px on touch screens.
 
-## 검사
+## Checks
 
-- `frontend/src/exercise-names.test.tsx`(8개): 필터, 후보 합치기, 비슷한 이름 판정, Combobox 키보드·Esc·자유 입력·터치 선택, 일지 후보 선택과 [바꾸기], 목표 후보 선택 후 저장 본문
+- `frontend/src/exercise-names.test.tsx` (8 tests): filter, merging suggestions, similar-name detection, Combobox keyboard, Esc, free input, touch selection, choosing a log suggestion and [바꾸기], and the saved body after choosing a goal suggestion
 - `backend/test/exercise-names.integration.test.ts`
-  - 롤백하는 트랜잭션 안에서 표기 묶기, 일지 1회 세기, 서울 날짜, 최근 → 자주 정렬, 머신 이름을 검사합니다. 경로 200도 확인합니다.
-  - 이 PC에는 이 앱의 테스트 DB가 없어 CI에서 실행합니다.
-- `npm run test -w frontend`: 58/59 파일 통과
-  - `routines.test.tsx`의 긴 테스트 1개가 전체 실행 중 15초 제한에 걸렸습니다. 따로 실행하면 통과합니다(10/10). #270 때와 같은 현상입니다.
-  - 일지 입력 선택자를 `input[list="exercise-names"]`에서 `input[role="combobox"][id$="-exercise"]`로 바꿨습니다(3개 테스트 파일).
-- openapi·api-contract 테스트, 타입 검사, ESLint, Prettier: 통과
+  - Inside a transaction that rolls back, it checks spelling grouping, counting a log once, Seoul date, recent-then-frequent sort, and machine names. It also checks that the route returns 200.
+  - This PC has no test DB for this app, so it runs in CI.
+- `npm run test -w frontend`: 58 of 59 files passed
+  - One long test in `routines.test.tsx` hit the 15-second limit during the full run. It passes when run alone (10/10). The same thing happened with #270.
+  - The log input selector was changed from `input[list="exercise-names"]` to `input[role="combobox"][id$="-exercise"]` (3 test files).
+- openapi and api-contract tests, type check, ESLint, Prettier: passed

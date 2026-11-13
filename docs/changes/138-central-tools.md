@@ -1,19 +1,19 @@
-# #138 개인 계정 도구 복사본 정리
+# #138 Clean up the personal account tool copies
 
-## 변경
+## Change
 
-- `scripts/project-terminal.ps1`, `scripts/open-vscode-account-b.cmd` 삭제. 원본은 중앙 `sirloinbh/project-standards`의 `tools/`이고 `%LOCALAPPDATA%\sirloinbh-tools`에 설치된다(중앙 #19, #21).
-- `scripts/test/project-github-auth.test.mjs`: 지운 두 파일과 `gh-workout-memo` 설치 위치, 예전 `.vscode/settings.json` 프로필(`Workout Memo PowerShell`)을 검사하던 테스트 9건을 지웠다. 남은 9건은 `scripts/gh-project.ps1`(중앙 동기화 관리 파일) 래퍼 검사다.
-- `docs/project-github-auth.md`: 중앙 `docs/tools.md` 안내와 이 프로젝트의 사용 방식만 남겼다.
-- `AGENTS.project.md`: 설치 위치를 `%LOCALAPPDATA%/sirloinbh-tools`로 고쳤다.
+- Deleted `scripts/project-terminal.ps1` and `scripts/open-vscode-account-b.cmd`. The originals are in `tools/` of the central `sirloinbh/project-standards` and are installed in `%LOCALAPPDATA%\sirloinbh-tools` (central #19, #21).
+- `scripts/test/project-github-auth.test.mjs`: deleted 9 tests that checked the two deleted files, the `gh-workout-memo` install location, and the old `.vscode/settings.json` profile (`Workout Memo PowerShell`). The remaining 9 are wrapper tests for `scripts/gh-project.ps1` (a file managed by the central sync).
+- `docs/project-github-auth.md`: kept only the guide to the central `docs/tools.md` and how this project uses it.
+- `AGENTS.project.md`: changed the install location to `%LOCALAPPDATA%/sirloinbh-tools`.
 
-## 이유
+## Reason
 
-중앙 첫 동기화 PR(#143)이 `.vscode/settings.json`을 중앙 템플릿(`sirloinbh PowerShell` 프로필, `sirloinbh-tools` 경로)으로 바꾸면서, 예전 경로를 확인하던 `VS Code terminal settings select company gh and personal Codex` 테스트가 `windows-auth`에서 실패했다. 이 PR을 먼저 병합하면 #143의 `windows-auth`가 통과한다.
+The first central sync PR (#143) changes `.vscode/settings.json` to the central template (the `sirloinbh PowerShell` profile and the `sirloinbh-tools` path), so the test `VS Code terminal settings select company gh and personal Codex`, which checked the old path, failed in `windows-auth`. If this PR is merged first, `windows-auth` of #143 passes.
 
-`.vscode/settings.json`은 #143이 바꾸므로 이 PR에서는 건드리지 않았다. 그래서 `gh-workout-memo` 경로는 #143 병합 전까지 이 파일에 남는다.
+`.vscode/settings.json` is changed by #143, so this PR did not touch it. So the `gh-workout-memo` path stays in that file until #143 is merged.
 
-## 검증
+## Verification
 
-- `node --test scripts/test/project-github-auth.test.mjs`(Windows): 9 pass, 0 fail.
-- `prettier --check`(변경 파일 4개): 통과.
+- `node --test scripts/test/project-github-auth.test.mjs` (Windows): 9 pass, 0 fail.
+- `prettier --check` (4 changed files): passed.

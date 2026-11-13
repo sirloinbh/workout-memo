@@ -24,7 +24,7 @@ jobs:
         image: postgres:17-alpine
         env: { POSTGRES_USER: app, POSTGRES_PASSWORD: test, POSTGRES_DB: 'workout_test' }
         ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+        options: --health-cmd "pg_isready -h 127.0.0.1 -U app" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -101,7 +101,7 @@ jobs:
         image: postgres:17-alpine
         env: { POSTGRES_USER: app, POSTGRES_PASSWORD: test, POSTGRES_DB: 'workout_test' }
         ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+        options: --health-cmd "pg_isready -h 127.0.0.1 -U app" --health-interval 5s --health-timeout 5s --health-retries 10
     env: { CI: 'true' }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -143,7 +143,7 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env: { POSTGRES_USER: app, POSTGRES_PASSWORD: test, POSTGRES_DB: 'workout_test' }
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+        options: --health-cmd "pg_isready -h 127.0.0.1 -U app" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       CI: 'true'
       E2E_VISUAL: '1'

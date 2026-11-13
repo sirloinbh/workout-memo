@@ -1,110 +1,110 @@
-# #27 feat: 분할·운동 부위 선택 기반 12주 루틴과 주차별 증가·디로딩 계획
+# #27 feat: 12-week routine based on split and body-part selection, with weekly increase and deload plan
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/27
-- 브랜치: feat/27-agent-task
+- Issue: https://github.com/sirloinbh/workout-memo/issues/27
+- Branch: feat/27-agent-task
 
-## 변경 및 검증
+## Changes and verification
 
-작업 에이전트가 실제 변경·검증 결과를 기록한다.
+The worker agent records the actual changes and verification results.
 
-## 테스트 단계 — 2026-10-19 (Asia/Seoul)
+## Test phase — 2026-10-19 (Asia/Seoul)
 
-- 역할: tests. 기존 이슈 #27, 기존 브랜치와 worktree를 재사용했다. 구현 파일, 커밋, 원격 저장소는 변경하지 않았다.
-- 기준 SHA: `c827abbe3a29d404ab42faa60a6a8f0c72ba9817`.
-- 적용 지침: `AGENTS.md`, `skills/workout-implementation/SKILL.md`, `skills/workout-testing/SKILL.md`. 워커 지시에 따라 테스트·기록만 작성했다.
+- Role: tests. Reused existing issue #27 and the existing branch and worktree. Did not change implementation files, commits, or the remote repository.
+- Base SHA: `c827abbe3a29d404ab42faa60a6a8f0c72ba9817`.
+- Instructions applied: `AGENTS.md`, `skills/workout-implementation/SKILL.md`, `skills/workout-testing/SKILL.md`. As the worker instructions said, only tests and records were written.
 
-### 추가한 테스트와 검증 의도
+### Added tests and what they verify
 
-- `backend/test/routine-fixture.ts`: 명시적으로 입력한 시작일·빈도·휴식일, 운동별 세트·총중량·반복 수, 12주 수동 목표의 공용 예제다. 사용자 규칙을 자동 계산으로 대체하지 않는다.
-- `backend/test/routines.test.ts`: 다섯 분할, 일곱 부위의 단일/다중/동일 분할 내 중복 및 분할 간 중복 보존, 사용자 지정 디로딩 감소 대상·감소량을 검사한다. API의 잘못된 분할·부위·날짜·휴식일·빈도·주차·목표 수치·운동 기준값·4주 주기 위반 46건은 저장소 접근 전에 400과 오류 메시지로 거부되어야 한다.
-- `backend/test/routines.integration.test.ts`: 다섯 분할의 생성→목록→상세→새 서버/새 DB 연결의 재조회, 순서·중복·수동 목표 보존을 전용 DB로 검사한다. 윤일이자 휴식일인 2024-02-29부터 84일 동안 월/수/금 총 36회만 배치하고, 운동일마다 분할을 순환하며 주 경계에서 순환을 초기화하지 않는지 검사한다. 디로딩은 4·8·12주차이며 5주차 수동 증가량 7.25 kg를 자동 재설정하지 않는다. 루틴 저장이 실제 일지 세트나 기존 #18 목표를 만들지 않는지도 확인한다.
-- `backend/test/routines-ui.test.ts`: 기존 `period-ui.test.ts`와 같은 설치된 TypeScript/Node 기반 렌더링 어댑터로 실제 프런트엔드 진입점을 실행한다. 루틴 조회 요청, 1~12주차와 각 디로딩 표시, 기준 총중량과 수동 증가량, 부위 중복 표시, 새 마운트 후 서버 재조회, 조회 시 변경 요청이 없는지를 검사한다. 어댑터는 상대경로의 새 컴포넌트 모듈도 불러올 수 있다.
+- `backend/test/routine-fixture.ts`: a shared example with an explicitly entered start date, frequency, and rest days, sets, total weight, and reps per exercise, and manual 12-week targets. It does not replace user rules with automatic calculation.
+- `backend/test/routines.test.ts`: checks five splits, seven body parts with single, multiple, same-split duplicate, and cross-split duplicate preservation, and the user-specified deload reduction target and amount. 46 API violations (invalid split, body part, date, rest day, frequency, week, target number, exercise baseline value, or 4-week cycle) must be rejected with 400 and an error message before the repository is accessed.
+- `backend/test/routines.integration.test.ts`: with a dedicated DB, checks create → list → detail → re-read through a new server and a new DB connection for the five splits, and preservation of order, duplicates, and manual targets. From 2024-02-29, which is both a leap day and a rest day, it schedules only 36 workouts (Mon/Wed/Fri) over 84 days, and checks that the split rotates on each workout day and the rotation is not reset at week boundaries. Deloads are weeks 4, 8, and 12, and the week 5 manual increase of 7.25 kg is not automatically reset. It also checks that saving a routine creates no real log sets and no existing #18 goals.
+- `backend/test/routines-ui.test.ts`: runs the real frontend entry point with the same installed TypeScript/Node-based rendering adapter as the existing `period-ui.test.ts`. It checks the routine fetch request, weeks 1 to 12 and each deload marker, baseline total weight and manual increase, duplicate body-part display, re-fetch from the server after a new mount, and that viewing sends no mutating request. The adapter can also load new component modules by relative path.
 
-### 구현 단계에 전달할 테스트용 인터페이스 제안
+### Proposed test interface for the implementation phase
 
-아직 루틴 API가 없으므로 아래 이름은 테스트가 사용하는 인터페이스 제안이다. 제품 요구사항에 없는 별도 사용자 정책이 아니다. 구현에서 다른 형태가 필요하면 동작 검증을 유지하면서 fixture/어댑터를 함께 조정한다.
+There is no routine API yet, so the names below are an interface proposal that the tests use. It is not a separate user policy beyond the product requirements. If the implementation needs a different shape, adjust the fixture and adapter together while keeping the behavior checks.
 
-- 서버 입력 스키마: 기존 `backend/src/domain.ts`의 다른 스키마와 함께 `routineSchema`를 제공한다.
-- `POST /api/routines`: 입력을 저장하고 201 및 `{ id }`를 반환한다. `GET /api/routines`는 ID를 포함한 목록, `GET /api/routines/:id`는 전체 계획을 반환한다.
-- 입력: `name`, `start_date` (YYYY-MM-DD), `split_count` (1~5), `weekly_workouts`, `rest_days` (일요일=0~토요일=6), `splits`, `weeks`.
-- 분할: `{ name, body_parts: string[], exercises: [{ exercise, sets, weight, reps }] }`. 부위 배열의 순서와 중복을 보존한다. `weight`는 머신 기본중량을 포함한 총중량 kg이며 0 kg도 허용한다.
-- 주차: `{ week, kind, amount, deload_metric }`. 일반 주차의 `kind`는 `increase_weight` 또는 `increase_reps`, `deload_metric`은 null이다. 4·8·12주차는 `kind: deload`이고 `deload_metric`은 사용자가 지정한 `weight`, `sets`, `reps` 중 하나다. `amount`는 명시적인 양수 변화량이며 횟수/세트 변화량은 정수다. 자동 비율이나 디로딩 이후 자동 목표를 넣지 않는다.
-- 상세 응답은 위 입력과 `id`, `schedule: [{ date, week, split_index, is_deload }]`를 포함한다. `split_index`는 0부터 시작한다. 주차는 시작일부터 7일 단위이며 전체 범위는 시작일 포함 84일이다.
-- 통합 테스트 정리는 `routines` 테이블에서 테스트가 생성한 ID만 삭제한다. 스키마가 다르면 정리 구문도 함께 조정한다.
-- UI의 진입 버튼 이름은 `루틴짜기`이며, 목록에서 상세 화면을 여는 구조라면 `계획 보기` 버튼을 사용한다. 주차 표기는 `N주차`, 디로딩은 해당 주차 행/항목에서 구분한다.
+- Server input schema: provide `routineSchema` together with the other schemas in the existing `backend/src/domain.ts`.
+- `POST /api/routines`: stores the input and returns 201 and `{ id }`. `GET /api/routines` returns a list that includes IDs, and `GET /api/routines/:id` returns the full plan.
+- Input: `name`, `start_date` (YYYY-MM-DD), `split_count` (1 to 5), `weekly_workouts`, `rest_days` (Sunday=0 to Saturday=6), `splits`, `weeks`.
+- Split: `{ name, body_parts: string[], exercises: [{ exercise, sets, weight, reps }] }`. The order and duplicates of the body-part array are preserved. `weight` is the total weight in kg including the machine's official weight, and 0 kg is allowed.
+- Week: `{ week, kind, amount, deload_metric }`. For a normal week, `kind` is `increase_weight` or `increase_reps` and `deload_metric` is null. Weeks 4, 8, and 12 have `kind: deload`, and `deload_metric` is one of `weight`, `sets`, or `reps`, as specified by the user. `amount` is an explicit positive change, and a reps or sets change is an integer. No automatic ratio and no automatic target after a deload is added.
+- The detail response includes the input above plus `id` and `schedule: [{ date, week, split_index, is_deload }]`. `split_index` starts at 0. Weeks are 7-day units from the start date, and the whole range is 84 days including the start date.
+- Integration test cleanup deletes only the IDs the test created from the `routines` table. If the schema differs, adjust the cleanup statement too.
+- The UI entry button is named `루틴짜기` (Build routine); if the list opens a detail screen, use a `계획 보기` (View plan) button. Weeks are shown as `N주차` (Week N), and a deload is distinguished in that week's row or item.
 
-### 실제 실행 명령 및 결과
+### Commands actually run and results
 
-- `npx --no-install prettier --write backend/test/routine-fixture.ts backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts`: 성공. 테스트 보완 후 변경된 두 파일에도 다시 실행했다.
-- `node node_modules/tsx/dist/cli.mjs --test backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts`: 구현 전 기대 실패. 최초 실행 및 최종 테스트 보완 후 실행 모두 **56 tests / 0 pass / 56 fail / 0 skip**, 종료 코드 1. 하위 테스트와 실패한 상위 테스트를 함께 센 Node 출력이다. 원인은 `routineSchema` 부재, POST API의 404 (기대 400/201), `루틴짜기` 진입 버튼 부재다. 실패를 skip하거나 검증을 약화하지 않았다.
-- 최종 신규 테스트 실행은 Node `spawnSync(process.execPath, ['node_modules/tsx/dist/cli.mjs', '--test', ...세 테스트 경로], { encoding: 'utf8' })`로 같은 명령을 실행하고 TAP 집계만 출력했다.
-- 기존 테스트 회귀 검사: Node에서 `fs.readdirSync('backend/test').filter(name => name.endsWith('.test.ts') && !name.startsWith('routines')).map(name => 'backend/test/' + name)`으로 기존 파일을 선택한 뒤 위 `spawnSync` 방식으로 실행했다. **118 tests / 118 pass / 0 fail / 0 skip**, 종료 코드 0. 기존 테스트 파일은 수정하지 않았다.
-- `npm run typecheck -w backend`: 통과, 종료 코드 0.
-- 최종 `npx --no-install prettier --check backend/test/routine-fixture.ts backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts docs/changes/27-agent-task.md`: 전체 대상 통과, 종료 코드 0. 최종 백엔드 타입 검사도 다시 통과했다.
-- `npx --no-install eslint backend/test/routine-fixture.ts backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts --max-warnings 0`: 통과, 종료 코드 0.
-- 전용 DB 설정 여부만 출력하는 `node -e "console.log('Dedicated test DB configured:',Boolean(process.env.TEST_DATABASE_URL))"`: true. 연결 문자열은 출력하지 않았다.
-- PowerShell 단일 인용 here-string을 `node --input-type=module`로 전달하여 `new Pool({ connectionString: process.env.TEST_DATABASE_URL })`에서 `SELECT to_regclass('workouts') IS NOT NULL AS workouts_ready, to_regclass('goals') IS NOT NULL AS goals_ready` 실행: 두 값 모두 true. DB가 준비되어 있으며 신규 통합 테스트의 실패는 환경 차단이 아닌 미구현 API 때문이다. 앞선 `node -e` 형태의 동일 probe는 PowerShell 인용 처리로 SyntaxError가 발생했고, here-string으로 고쳐 성공했다.
+- `npx --no-install prettier --write backend/test/routine-fixture.ts backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts`: succeeded. Run again on the two files changed after the test fixes.
+- `node node_modules/tsx/dist/cli.mjs --test backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts`: expected failure before implementation. Both the first run and the run after the final test fixes gave **56 tests / 0 pass / 56 fail / 0 skip**, exit code 1. This is Node output that counts subtests and failed parent tests together. The causes are the missing `routineSchema`, 404 from the POST API (expected 400/201), and the missing `루틴짜기` (Build routine) entry button. No failure was skipped and no check was weakened.
+- The final run of the new tests ran the same command with Node `spawnSync(process.execPath, ['node_modules/tsx/dist/cli.mjs', '--test', ...three test paths], { encoding: 'utf8' })` and printed only the TAP summary.
+- Regression check of existing tests: in Node, selected the existing files with `fs.readdirSync('backend/test').filter(name => name.endsWith('.test.ts') && !name.startsWith('routines')).map(name => 'backend/test/' + name)` and ran them with the `spawnSync` method above. **118 tests / 118 pass / 0 fail / 0 skip**, exit code 0. The existing test files were not modified.
+- `npm run typecheck -w backend`: passed, exit code 0.
+- Final `npx --no-install prettier --check backend/test/routine-fixture.ts backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts docs/changes/27-agent-task.md`: all targets passed, exit code 0. The final backend type check passed again.
+- `npx --no-install eslint backend/test/routine-fixture.ts backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts --max-warnings 0`: passed, exit code 0.
+- `node -e "console.log('Dedicated test DB configured:',Boolean(process.env.TEST_DATABASE_URL))"`, which prints only whether the dedicated DB is configured: true. The connection string was not printed.
+- Passed a PowerShell single-quoted here-string to `node --input-type=module` and ran `SELECT to_regclass('workouts') IS NOT NULL AS workouts_ready, to_regclass('goals') IS NOT NULL AS goals_ready` with `new Pool({ connectionString: process.env.TEST_DATABASE_URL })`: both values are true. The DB is ready, and the failures of the new integration tests come from the unimplemented API, not from an environment block. The same probe in the earlier `node -e` form hit a SyntaxError from PowerShell quoting, and succeeded once fixed with a here-string.
 
-### 제한과 다음 단계
+### Limits and next steps
 
-- tests 역할의 완료는 구현 전 실패 재현까지다. 구현 후 위 신규 테스트와 `npm run check`를 실행하고 실제 결과를 추가해야 한다. 현재 새 기능이 통과했다고 보고하지 않는다.
-- 실제 브라우저에서 루틴 작성→분할/부위 중복 입력→운동 기준값/12주 목표/디로딩 입력→저장→페이지 재접속을 확인해야 한다. 현재 UI 자동 테스트는 서버에 저장된 계획의 조회·표시에 초점을 두며 작성 폼의 입력/저장 전체 흐름, 브라우저 레이아웃·포커스·네이티브 유효성 검사·React 스케줄링을 검증했다고 주장하지 않는다. 구현 단계에서 폼 구조에 맞는 입력·저장 테스트를 추가한다.
-- 실행 환경의 Node는 v22.17.0이다. 저장소가 지정한 Node 24.21.0/npm 11.19.0 환경의 최종 검사는 코디네이터가 확인해야 한다. 이번 명령에서 버전으로 인한 실행 차단은 없었다.
-- 테스트 및 문서는 미커밋 상태로 남겼다. 커밋·푸시·PR·CI 확인은 코디네이터, 병합은 사용자 담당이다.
+- The tests role is complete once the failure before implementation is reproduced. After implementation, run the new tests above and `npm run check` and add the actual results. Do not report that the new feature passes yet.
+- In a real browser, check: create a routine → enter split and body-part duplicates → enter exercise baselines, 12-week targets, and deloads → save → reload the page. The current UI automated tests focus on fetching and displaying the plan stored on the server. They do not claim to verify the full input and save flow of the creation form, browser layout, focus, native validation, or React scheduling. In the implementation phase, add input and save tests that fit the form structure.
+- The Node in the execution environment is v22.17.0. The coordinator must check the final checks on the Node 24.21.0 / npm 11.19.0 environment the repository specifies. No version-related execution block occurred in these commands.
+- Tests and docs were left uncommitted. The coordinator handles commit, push, PR, and CI checks, and the user handles merging.
 
-## 구현 단계 — 2026-10-19 (Asia/Seoul)
+## Implementation phase — 2026-10-19 (Asia/Seoul)
 
-- implementation 역할로 기존 이슈·브랜치·worktree를 재사용했다. 추가 에이전트, 이슈/브랜치 생성, 커밋, 푸시, PR 및 병합 작업은 수행하지 않았다. 별도로 전달된 이전 reviewer finding은 없었다.
-- 서버에 `routineSchema`와 84일 일정 생성 함수를 추가했다. 다섯 분할/일곱 부위, 동일 분할 내 중복과 순서, 직접 입력한 운동 기준값, 수동 주차별 변화량을 유지한다. 시작일부터 7일씩 주차를 구분하고 휴식 요일을 제외한 운동일마다 분할을 연속 순환한다. 4·8·12주차만 디로딩이며 감소 대상과 양수 감소량을 명시해야 한다. 횟수/세트는 정수로 검사한다.
-- `POST /api/routines`, `GET /api/routines`, `GET /api/routines/:id`를 추가했다. 유효성 검사 후 단일 JSONB 문서 INSERT로 원자적으로 저장한다. 목록과 상세는 DB에서 조회하며 계획과 일정을 반환한다. 실제 일지/기존 #18 목표를 생성하지 않는다.
-- `database/migrations/003_routines.sql`에 routines 테이블을 추가했다. 부위와 운동 배열의 순서·중복을 JSON 배열 그대로 보존한다. 기존 DB 적용 절차와 사용자 기능 설명을 database/README.md 및 README.md에 추가했다. CI는 기존 파일명 순서 마이그레이션 루프를 그대로 사용한다.
-- `frontend/src/routines.tsx`에 작성·목록·상세 화면을 추가하고 기존 메뉴에 루틴짜기를 연결했다. 부위 버튼을 반복해서 눌러 중복 추가하고 개별 항목을 삭제할 수 있다. 운동 기준값, 시작일, 빈도, 휴식 요일, 주차별 증가/감소량은 빈 입력에서 사용자가 지정한다. 디로딩 비율과 이후 증가량은 자동 계산하지 않는다. 저장 후 계획과 일정을 다시 조회한다. POST 실패는 입력을 보존하며 POST 성공 후 재조회 실패는 저장 성공을 표시하고 초안을 닫아 중복 저장을 방지한다.
-- 기존 테스트 assertion/skip은 보존했다. `period-ui.test.ts`의 모듈 로더만 실제 분리 컴포넌트를 읽도록 확장했다. `routines-ui.test.ts`에는 작성→중복 부위/운동 기준값/12주 수동 목표 입력→POST 본문 확인→GET 상세 확인, 다섯 분할 전환, 저장 실패 시 입력 보존, 저장 성공 후 조회 실패 시 중복 POST 방지를 추가했다. 새 오류 경로에서 드러난 어댑터의 undefined 자식 재귀 처리도 보완했다.
+- Reused the existing issue, branch, and worktree in the implementation role. Did not create additional agents, issues, or branches, and did not commit, push, open a PR, or merge. No earlier reviewer findings were passed separately.
+- Added `routineSchema` and an 84-day schedule generation function to the server. It keeps the five splits and seven body parts, same-split duplicates and order, directly entered exercise baselines, and manual weekly changes. Weeks are separated in 7-day units from the start date, and the split rotates continuously on every workout day excluding rest weekdays. Only weeks 4, 8, and 12 are deloads, and the reduction target and a positive reduction amount must be given. Reps and sets are checked as integers.
+- Added `POST /api/routines`, `GET /api/routines`, and `GET /api/routines/:id`. After validation, it stores atomically with a single JSONB document INSERT. The list and detail are read from the DB and return the plan and schedule. It does not create real log entries or existing #18 goals.
+- Added the routines table in `database/migrations/003_routines.sql`. The order and duplicates of the body-part and exercise arrays are preserved as JSON arrays. Added the procedure for applying it to an existing DB and the user feature description to database/README.md and README.md. CI keeps using the existing migration loop in file-name order.
+- Added the create, list, and detail screens in `frontend/src/routines.tsx` and connected 루틴짜기 (Build routine) to the existing menu. Pressing a body-part button repeatedly adds duplicates, and individual entries can be deleted. Exercise baselines, start date, frequency, rest weekdays, and weekly increase and decrease amounts are specified by the user starting from empty inputs. The deload ratio and later increases are not calculated automatically. After saving, the plan and schedule are fetched again. A POST failure keeps the input; if the re-fetch fails after a successful POST, it shows that the save succeeded and closes the draft to prevent a duplicate save.
+- Existing test assertions and skips were kept. Only the module loader of `period-ui.test.ts` was extended to read the actual split-out components. In `routines-ui.test.ts` I added: create → enter duplicate body parts, exercise baselines, and 12-week manual targets → check the POST body → check the GET detail; switching among five splits; keeping input on save failure; and preventing a duplicate POST when the fetch fails after a successful save. I also fixed the adapter's handling of recursion over undefined children, which the new error path exposed.
 
-### 실제 검증과 결과
+### Actual verification and results
 
-- 전용 `TEST_DATABASE_URL`만 사용했다. Node ESM here-string에서 pg Pool과 `fs.readFileSync(..., 'utf8')`로 `003_routines.sql`을 해당 DB에 적용: 성공. 연결 문자열은 출력하거나 기록하지 않았다.
-- `node node_modules/tsx/dist/cli.mjs --test backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts`: 초기 구현 후 56/56 pass, 0 fail, 0 skip. 실제 DB에서 다섯 분할 저장/목록/상세/새 서버·연결 재조회와 기존 일지/목표 미생성을 확인했다. 이후 UI 테스트 3건을 더 추가했다.
-- `node node_modules/tsx/dist/cli.mjs --test backend/test/routines-ui.test.ts`: 최종 4/4 pass, 0 fail, 0 skip. 실제 브라우저 대신 기존 TypeScript/Node 렌더링 어댑터로 이벤트와 요청·렌더링 결과를 검사했다.
-- `node node_modules/tsx/dist/cli.mjs --test backend/test/period-ui.test.ts`: 21/21 pass. 최초 전체 검사에서는 새 import를 처리하지 못해 이 21건이 실패했고, 로더 보완 중 CSS import를 먼저 처리하도록 수정한 뒤 전부 통과했다. 기간·통계·지연 응답 검증 조건은 그대로다.
-- `npm run typecheck` 및 `npm run lint`: 통과.
-- 최종 `npm run check`: format:check, lint, frontend/backend typecheck 통과. `npm test`는 **177 tests / 177 pass / 0 fail / 0 skip** (전용 DB 통합 포함), `npm run test:agents`는 **86 tests / 86 pass / 0 fail / 0 skip**. 마지막 frontend 기본 빌드에서 종료 코드 1. Vite 기본 esbuild 설정 로더가 허용된 worktree 밖 상위 디렉터리를 읽는 동안 `Access is denied` 오류가 발생했다. 기본 필수 검사 전체 통과로 보고하지 않는다.
-- 마지막 전체 검사는 Node `spawnSync('npm.cmd', ['run', 'check'], { encoding: 'utf8', shell: true })`로 실행해 집계/오류만 출력했다. 임시 로그는 삭제했다.
-- `npm run build -w backend`: 통과.
-- `npm run build -w frontend -- --configLoader runner`: 통과. 기존 설정 파일을 runner 로더로 읽어 1580 modules와 프로덕션 번들을 생성했다. 샌드박스 권한·보안 설정·프로젝트 빌드 스크립트는 변경하지 않았다. 이 대체 명령 통과는 기본 `npm run check` 실패와 구분한다.
-- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/27 diff --check`: 통과. 읽기 전용 Git 명령에서 사용자 전역 ignore 파일 접근 경고가 있었으나 저장소 diff 검사는 종료 코드 0이다.
-- 포맷 중 SQL 파일을 Prettier 대상에 명시한 첫 명령은 SQL parser 미설치로 실패했다. TS/TSX/CSS/Markdown 대상만 포맷했으며 SQL은 실제 PostgreSQL 적용과 통합 테스트로 검증했다. 중간 PowerShell 인용 오류는 Node here-string으로 수정했다. 문서 추가 시 파이프의 한글 인코딩 손실은 UTF-8 패치로 복구했다.
+- Used only the dedicated `TEST_DATABASE_URL`. Applied `003_routines.sql` to that DB with a pg Pool and `fs.readFileSync(..., 'utf8')` in a Node ESM here-string: succeeded. The connection string was not printed or recorded.
+- `node node_modules/tsx/dist/cli.mjs --test backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts`: after the initial implementation, 56/56 pass, 0 fail, 0 skip. On a real DB it confirmed storing, listing, detail, and re-reading through a new server and connection for the five splits, and that no existing log or goal was created. Three more UI tests were added afterward.
+- `node node_modules/tsx/dist/cli.mjs --test backend/test/routines-ui.test.ts`: final 4/4 pass, 0 fail, 0 skip. Instead of a real browser, events, requests, and rendering results were checked with the existing TypeScript/Node rendering adapter.
+- `node node_modules/tsx/dist/cli.mjs --test backend/test/period-ui.test.ts`: 21/21 pass. In the first full check these 21 failed because the new import was not handled; after I changed the loader to handle CSS imports first, all passed. The conditions that verify period, statistics, and delayed responses are unchanged.
+- `npm run typecheck` and `npm run lint`: passed.
+- Final `npm run check`: format:check, lint, and frontend/backend typecheck passed. `npm test` gave **177 tests / 177 pass / 0 fail / 0 skip** (including dedicated-DB integration), and `npm run test:agents` gave **86 tests / 86 pass / 0 fail / 0 skip**. The last default frontend build exited with code 1. While Vite's default esbuild config loader read a parent directory outside the allowed worktree, an `Access is denied` error occurred. This is not reported as the whole default required check passing.
+- The last full check was run with Node `spawnSync('npm.cmd', ['run', 'check'], { encoding: 'utf8', shell: true })`, printing only the summary and errors. The temporary log was deleted.
+- `npm run build -w backend`: passed.
+- `npm run build -w frontend -- --configLoader runner`: passed. It read the existing config file with the runner loader and produced 1580 modules and the production bundle. Sandbox permissions, security settings, and the project build scripts were not changed. This passing alternative command is kept separate from the failure of the default `npm run check`.
+- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/27 diff --check`: passed. A read-only Git command printed a warning about access to the user's global ignore file, but the repository diff check has exit code 0.
+- During formatting, the first command that named the SQL file as a Prettier target failed because the SQL parser is not installed. Only TS/TSX/CSS/Markdown targets were formatted, and the SQL was verified with a real PostgreSQL apply and the integration tests. An intermediate PowerShell quoting error was fixed with a Node here-string. Korean encoding loss through a pipe when adding docs was repaired with a UTF-8 patch.
 
-### 남은 확인 및 전달
+### Remaining checks and handoff
 
-- 기본 `npm run check`의 frontend 빌드는 샌드박스 상위 디렉터리 읽기 제한으로 차단되어 코디네이터/CI에서 재검증해야 한다. 대체 runner 빌드와 backend 빌드는 통과했다.
-- 실제 브라우저 도구 및 Playwright/Puppeteer 의존성이 이 환경에 없어 레이아웃·포커스·네이티브 required/min/step 검증과 실제 브라우저 재접속 증거는 미확인이다. 작성 폼의 자동 검증은 렌더링 어댑터 범위로 한정한다.
-- 실행 Node v22.17.0으로 검증했다. 지정 Node 24.21.0/npm 11.19.0 환경의 기본 검사와 CI 결과는 코디네이터가 확인해야 한다.
-- 최종 변경과 테스트는 미커밋 상태다. 독립 검토, 커밋·푸시·PR·CI는 코디네이터, 병합은 사용자 담당이다.
+- The frontend build in the default `npm run check` was blocked by the sandbox's parent-directory read restriction, so the coordinator or CI must re-verify it. The alternative runner build and the backend build passed.
+- No real browser tool or Playwright/Puppeteer dependency exists in this environment, so layout, focus, native required/min/step validation, and real-browser reconnect evidence are unconfirmed. Automated verification of the creation form is limited to the rendering adapter's scope.
+- Verified with the running Node v22.17.0. The coordinator must check the default checks and CI results on the specified Node 24.21.0 / npm 11.19.0 environment.
+- The final changes and tests are uncommitted. The coordinator handles independent review, commit, push, PR, and CI, and the user handles merging.
 
-## 코디네이터: 보호 테스트 정식 재인계 — 2026-10-19
+## Coordinator: formal re-handoff of protected tests — 2026-10-19
 
-워커는 구현 역할이 backend/test/routines-ui.test.ts를 변경한 것을 감지해 중단했다. 기존 구현·추가 테스트·로그를 보존하고 accept-requirements로 테스트 역할부터 정식 재검토한다. 이전 tests 인계 및 tests.log와 현재 diff를 비교해 원래 assertion의 삭제/약화 없이 로더·어댑터 보완과 신규 시나리오가 타당한지 확인한다. 테스트 담당만 정식 인계 해시를 생성하며 코디네이터가 해시를 수동 교체하지 않는다. 새 테스트 오류는 테스트 역할이 고치고 실패/통과 결과를 기록한다. 구현 역할은 인계 후 보호 테스트를 다시 수정하지 않는다. 원래 확정 규칙과 이슈·브랜치를 재사용하고 실제 브라우저 검증을 남긴다.
+The worker stopped after detecting that the implementation role changed backend/test/routines-ui.test.ts. The existing implementation, added tests, and logs are preserved, and accept-requirements formally re-reviews starting from the tests role. It compares the earlier tests handoff and tests.log with the current diff and checks that the loader and adapter fixes and the new scenarios are valid, with no deletion or weakening of the original assertions. Only the tests owner generates the formal handoff hash, and the coordinator does not replace the hash manually. The tests role fixes new test errors and records the failure and pass results. The implementation role does not modify protected tests again after the handoff. The original confirmed rules, issue, and branch are reused, and real-browser verification remains.
 
-## 테스트 정식 재인계 — 2026-10-19 (Asia/Seoul)
+## Formal test re-handoff — 2026-10-19 (Asia/Seoul)
 
-- tests 역할로 현재 구현과 추가 테스트를 검토했다. `AGENTS.md`, workout-implementation, workout-testing을 적용했으며 구현 파일과 Git 상태를 변경하는 작업은 하지 않았다.
-- `routine-fixture.ts`, `routines.test.ts`, `routines.integration.test.ts`의 SHA-256은 전달된 최초 tests 결과와 각각 일치한다. UI 파일은 구현 단계에서 변경되었으므로 최초 해시와 일치하지 않는다. 현재 UI 파일에서 최초 조회 시나리오의 12주 표시·디로딩 구분·부위 중복·GET 전용·새 마운트 검증이 유지되는 것을 확인했다. 이전 tests.log 자체는 이번 단계에서 읽지 않았으며, 최초 파일의 바이트 단위 비교를 완료했다고 주장하지 않는다.
-- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/27 diff -- backend/test/period-ui.test.ts`: 기존 assertion/시나리오 변경 없이 상대 모듈 로딩과 sandbox 공유만 추가된 것을 확인했다.
-- 구현자가 추가한 작성→저장, 저장 실패 입력 보존, POST 성공 후 재조회 실패 시 중복 저장 방지 테스트를 검토했다. 저장 실패 검사는 어댑터가 네이티브 유효성 검사를 실행하지 않는 서버 오류 처리 검사이며 실제 브라우저에서 빈 폼 제출이 가능하다는 뜻은 아니다.
-- UI 테스트를 보강했다. 저장 본문으로 새 화면 세션을 만들고 상세 GET을 다시 실행하여 사용자 이름·무분할·시작일·빈도·부위 순서/중복·5주차 수동 증가량·8주차 세트 감소·12주차 반복 감소를 확인한다. 다섯 분할 전환 검사는 maxLength 속성 개수 대신 사용자에게 보이는 분할 이름 입력 수를 확인한다. 새 계획의 모든 증가/감소량 및 디로딩 대상이 미입력 상태이며, 중복 부위 하나 삭제가 나머지 순서와 중복을 보존하는지도 추가했다.
-- 전용 DB 제공 여부만 확인: `node -e "console.log('Dedicated test DB configured:',Boolean(process.env.TEST_DATABASE_URL))"` → true. 연결 정보 및 금지 파일을 읽거나 출력하지 않았다.
-- `node node_modules/tsx/dist/cli.mjs --test backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts backend/test/period-ui.test.ts`: 첫 보강 후 **80 tests / 80 pass / 0 fail / 0 skip**. Node spawnSync로 같은 인자를 전달하고 TAP 집계만 출력했다. 구현 전 실패는 위 최초 테스트 단계의 56건 기록을 유지하며, 이미 구현된 파일을 되돌려 재현하지 않았다.
-- `npx --no-install prettier --write backend/test/routines-ui.test.ts`: 통과. 이후 새 수동 입력/개별 삭제 시나리오를 포함한 UI 테스트를 실행했다.
-- 첫 `npm run check`: 기존 코디네이터 추가 기록의 Markdown 포맷으로 format:check 단계에서 실패했다. 내용 보존 후 이 문서를 Prettier로 포맷하여 재검사한다.
-- 실제 브라우저 검증은 기존 환경에 도구가 없어 여전히 미실행이다. 이 단계의 UI 증거는 TypeScript/Node 어댑터 범위이며 DB 지속성은 별도 통합 테스트로 확인한다. 커밋·푸시·PR·독립 승인과 최종 인계 해시 수집은 코디네이터의 워커가 담당한다.
-- 최종 `node node_modules/tsx/dist/cli.mjs --test backend/test/routines-ui.test.ts`: **5 tests / 5 pass / 0 fail / 0 skip**.
-- `npx --no-install prettier --write docs/changes/27-agent-task.md` 후 최종 `npm run check`: format:check, lint, frontend/backend typecheck 통과. 앱 테스트 **178/178 pass, 0 fail, 0 skip** (전용 DB 포함), 워커 테스트 **86/86 pass, 0 fail, 0 skip**. frontend 기본 빌드는 Vite/esbuild의 worktree 밖 상위 경로 읽기에서 `Access is denied`로 실패했고 종료 코드 1이다. backend 빌드는 선행 frontend 실패로 이번 전체 명령에서 미실행이다. 샌드박스 우회나 구현 변경 없이 중단했으며 코디네이터/CI에서 기본 빌드를 재확인해야 한다.
-- 최종 `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/27 diff --check`: 통과. UI 테스트 인계 SHA-256: `9671122e633da4edeb57ede10d9559a2ca1c6d7f42364d0f4d5daefa9ec0f0c3`. 다른 세 보호 테스트의 최초 해시는 유지된다.
+- In the tests role, reviewed the current implementation and the added tests. Applied `AGENTS.md`, workout-implementation, and workout-testing, and did nothing that changes implementation files or Git state.
+- The SHA-256 of `routine-fixture.ts`, `routines.test.ts`, and `routines.integration.test.ts` each match the first tests result that was passed along. The UI file was changed in the implementation phase, so it does not match the first hash. In the current UI file, I confirmed that the first fetch scenario's checks are kept: 12-week display, deload distinction, body-part duplicates, GET-only, and new-mount. I did not read the earlier tests.log itself in this phase, and do not claim to have completed a byte-level comparison with the first file.
+- `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/27 diff -- backend/test/period-ui.test.ts`: confirmed that only relative module loading and sandbox sharing were added, with no change to existing assertions or scenarios.
+- Reviewed the tests the implementer added: create → save, keeping input on save failure, and preventing a duplicate save when the re-fetch fails after a successful POST. The save-failure check tests server-error handling in an adapter that does not run native validation; it does not mean an empty form can be submitted in a real browser.
+- Strengthened the UI tests. A new screen session is created from the saved body, and the detail GET is run again to check the user name, no split, start date, frequency, body-part order and duplicates, week 5 manual increase, week 8 sets reduction, and week 12 reps reduction. The five-split switch check counts the split-name inputs visible to the user instead of counting maxLength attributes. I also added checks that all increase and decrease amounts and deload targets of a new plan are empty, and that deleting one duplicate body part preserves the order and duplicates of the rest.
+- Checked only whether the dedicated DB is provided: `node -e "console.log('Dedicated test DB configured:',Boolean(process.env.TEST_DATABASE_URL))"` → true. Did not read or print connection information or forbidden files.
+- `node node_modules/tsx/dist/cli.mjs --test backend/test/routines.test.ts backend/test/routines.integration.test.ts backend/test/routines-ui.test.ts backend/test/period-ui.test.ts`: after the first strengthening, **80 tests / 80 pass / 0 fail / 0 skip**. Passed the same arguments with Node spawnSync and printed only the TAP summary. The failure before implementation keeps the 56-failure record from the first test phase above; I did not reproduce it by reverting the already implemented files.
+- `npx --no-install prettier --write backend/test/routines-ui.test.ts`: passed. Afterward I ran the UI tests including the new manual-input and individual-delete scenarios.
+- First `npm run check`: failed at the format:check step because of the Markdown formatting of the coordinator's earlier added records. After preserving the content, I format this document with Prettier and re-check.
+- Real-browser verification is still not run because the existing environment has no tool. The UI evidence in this phase is within the TypeScript/Node adapter's scope, and DB persistence is confirmed by separate integration tests. Commit, push, PR, independent approval, and collecting the final handoff hash are handled by the coordinator's worker.
+- Final `node node_modules/tsx/dist/cli.mjs --test backend/test/routines-ui.test.ts`: **5 tests / 5 pass / 0 fail / 0 skip**.
+- After `npx --no-install prettier --write docs/changes/27-agent-task.md`, final `npm run check`: format:check, lint, and frontend/backend typecheck passed. App tests **178/178 pass, 0 fail, 0 skip** (including the dedicated DB), worker tests **86/86 pass, 0 fail, 0 skip**. The default frontend build failed with `Access is denied` when Vite/esbuild read a parent path outside the worktree, exit code 1. The backend build was not run in this full command because the frontend failure came first. I stopped without a sandbox workaround or implementation change, and the coordinator or CI must re-check the default build.
+- Final `git -c safe.directory=C:/Users/byunghk/Documents/GitHub/workout-memo/.local/agent-workflow/worktrees/27 diff --check`: passed. UI test handoff SHA-256: `9671122e633da4edeb57ede10d9559a2ca1c6d7f42364d0f4d5daefa9ec0f0c3`. The first hashes of the other three protected tests are kept.
 
-## 코디네이터(Claude Code): 호스트 검증·독립 검토·마이그레이션 번호 — 2026-10-19
+## Coordinator (Claude Code): host verification, independent review, migration number — 2026-10-19
 
-- Codex 토큰 소진으로 중단된 작업을 Claude Code가 이어받았다. 테스트·구현 코드는 변경하지 않았다.
-- 호스트(Node 24.21.0 / npm 11.19.0, 전용 테스트 DB)에서 `npm run check`: **exit 0**. 앱·DB **178 pass / 0 fail / 0 skip**, 워커 **86 pass / 0 fail / 0 skip**, frontend/backend 빌드 통과.
-- 독립 검토(읽기 전용): 차단 지적 없음. 정확히 12주, 4·8·12주 디로딩 양방향 강제, 분할·부위 enum, 중복·순서 보존, 파라미터 쿼리, 단일 행 원자 저장을 확인했다. 참고(P3): 디로딩 감소량이 기준 중량·세트 수보다 커도 허용, 수정·삭제 API 없음(확정 범위 밖).
-- #34가 `003_workout_retries.sql`을 추가하므로 같은 번호 충돌을 피하려고 이 작업의 마이그레이션을 `004_routines.sql`로 변경하고 database/README.md 적용 명령을 갱신했다. CI·Docker 초기화는 파일명 순서로 모두 적용하며 두 마이그레이션은 서로 독립 테이블이다.
+- Claude Code took over the work that stopped when the Codex tokens ran out. Did not change the test or implementation code.
+- `npm run check` on the host (Node 24.21.0 / npm 11.19.0, dedicated test DB): **exit 0**. App and DB **178 pass / 0 fail / 0 skip**, worker **86 pass / 0 fail / 0 skip**, frontend and backend builds passed.
+- Independent review (read-only): no blocking findings. Confirmed exactly 12 weeks, two-way enforcement of deloads in weeks 4, 8, and 12, split and body-part enums, duplicate and order preservation, parameterized queries, and atomic single-row storage. Notes (P3): a deload reduction larger than the baseline weight or number of sets is allowed, and there are no edit or delete APIs (outside the confirmed scope).
+- Because #34 adds `003_workout_retries.sql`, I renamed this work's migration to `004_routines.sql` to avoid a number collision and updated the apply command in database/README.md. CI and Docker initialization apply all of them in file-name order, and the two migrations are independent tables.

@@ -1,70 +1,70 @@
-# #222 페이지 머리글과 주요 버튼을 공통 컴포넌트로 교체
+# #222 Replace the page header and main buttons with shared components
 
-- 이슈: [#222](https://github.com/sirloinbh/workout-memo/issues/222)
-- 브랜치: `feat/222-page-heading`
+- Issue: [#222](https://github.com/sirloinbh/workout-memo/issues/222)
+- Branch: `feat/222-page-heading`
 
-## 목적
+## Purpose
 
-#101(대시보드·일지)과 #102·#103(나의 목표·머신 라이브러리·신체 기록)에서 각 화면의 카드와 폼은 공통 컴포넌트로 옮겼지만, 페이지 머리글은 legacy 스타일로 남아 있었습니다. 대상은 eyebrow, `h1`, 끝의 점, 설명 문단과 오른쪽 위 주요 버튼입니다. 이 머리글을 공통 부품으로 바꾸고, 쓰는 곳이 없어진 `style.css` 규칙을 지웁니다.
+In #101 (dashboard and log) and #102 and #103 (My goals, machine library, body records), the cards and forms of each screen were moved to shared components, but the page header was left in the legacy style. The targets are the eyebrow, the `h1`, the dot at the end, the description paragraph, and the main button at the top right. I change this header to a shared part and delete the `style.css` rules that nothing uses any more.
 
-## 변경 — feat: 페이지 머리글 교체
+## Change — feat: replace the page header
 
-- `frontend/src/components/page-header.tsx`(새 파일): `PageHeader`는 `eyebrow`, `title`, `description`, `actions`를 받습니다.
-  - 제목 끝의 흐린 점은 `h1` 안에 그대로 두어, 화면 낭독기가 읽는 제목이 이전과 같습니다.
-  - 폰에서는 버튼이 글 아래로, `md`(768px)부터는 오른쪽으로 갑니다.
-  - 요소는 `div`입니다. `header`로 두면 테스트 환경에서 앱 셸의 머리글과 별개인 두 번째 `banner` 영역으로 읽혀, 화면 낭독기와 axe에서 헷갈릴 수 있습니다.
-  - `components/ui` 중앙 파일은 고치지 않았습니다.
-- `frontend/src/app.tsx`: 대시보드·운동 일지·나의 목표·머신 라이브러리의 `.page-heading`을 `PageHeader`로 바꿨습니다.
-  - 주요 버튼("운동 기록하기"·"목표 추가"·"머신 등록")은 `button.primary`에서 공통 `Button`(기본)이 됩니다.
-  - 로컬 초안이 있으면 대시보드·일지에서 버튼을 비활성화하는 동작은 그대로입니다.
-- `frontend/src/body.tsx`: 신체 기록 머리글도 `PageHeader`입니다.
-  - "인바디 가져오기"는 `.subtle-button`에서 `Button`(`secondary`)이 되고, 패널이 열렸는지 `aria-expanded`로 알립니다.
-  - "신체 기록 추가"는 `Button`이 되고, 다른 화면처럼 `+` 아이콘을 붙였습니다.
-- `frontend/src/style.css`: 아래 규칙을 지웠습니다.
-  - `.page-heading`(+`p`), `.eyebrow`, `:where(.legacy) h1`, `.heading-dot`, `.primary`(+`:hover`)
-  - 1100px 미디어 규칙 전체와 760px 미디어 규칙의 머리글 부분
-  - `.heading-actions`, 터치 규칙의 `.legacy a.primary`
-  - `.subtle-button`과 `.modal .subtle-button`은 일지 편집 창(#105 범위)이 아직 써서 남깁니다. 남은 `style.css` 클래스는 일지 편집 창의 `.modal …`, `.form-grid`, `.form-hint`, `.workout-fields`, `.subtle-button`과 `FieldError`의 `.field-error`, 그리고 `.legacy` 요소 규칙뿐입니다.
-- 화면 차이
-  - 주요 버튼이 공통 `Button` 크기(36px, 터치 44px)와 글자(14px)가 됩니다.
-  - 제목은 24px이고 `xl`(1280px)부터 28px입니다. 예전에는 1100px 이하에서 23px였습니다.
-  - 설명은 12px로, 760px 이하에서 11px로 줄던 규칙이 없어졌습니다.
-  - 머리글 아래 여백은 폰 24px, `md`부터 36px입니다.
+- `frontend/src/components/page-header.tsx` (new file): `PageHeader` takes `eyebrow`, `title`, `description`, and `actions`.
+  - The faint dot at the end of the title is left inside the `h1`, so the title that screen readers read is the same as before.
+  - On a phone the button goes below the text, and from `md` (768px) it goes to the right.
+  - The element is a `div`. If it were a `header`, in the test environment it would be read as a second `banner` region separate from the header of the app shell, which could confuse screen readers and axe.
+  - I did not edit the `components/ui` central files.
+- `frontend/src/app.tsx`: changed `.page-heading` of the dashboard, workout log, My goals, and machine library to `PageHeader`.
+  - The main buttons ("운동 기록하기" (log a workout), "목표 추가" (add a goal), "머신 등록" (register a machine)) change from `button.primary` to the shared `Button` (default).
+  - The behavior of disabling the button on the dashboard and the log when there is a local draft is the same as before.
+- `frontend/src/body.tsx`: the body records header is also a `PageHeader`.
+  - "인바디 가져오기" (import InBody) changes from `.subtle-button` to `Button` (`secondary`), and `aria-expanded` tells whether the panel is open.
+  - "신체 기록 추가" (add a body record) becomes a `Button`, and I added a `+` icon like the other screens.
+- `frontend/src/style.css`: deleted the rules below.
+  - `.page-heading` (+`p`), `.eyebrow`, `:where(.legacy) h1`, `.heading-dot`, `.primary` (+`:hover`)
+  - The whole 1100px media rule and the header part of the 760px media rule
+  - `.heading-actions`, and `.legacy a.primary` of the touch rules
+  - `.subtle-button` and `.modal .subtle-button` are left because the log edit dialog (scope of #105) still uses them. The `style.css` classes left are only `.modal …`, `.form-grid`, `.form-hint`, `.workout-fields`, and `.subtle-button` of the log edit dialog, `.field-error` of `FieldError`, and the `.legacy` element rules.
+- Differences on screen
+  - The main button gets the shared `Button` size (36px, touch 44px) and text (14px).
+  - The title is 24px and, from `xl` (1280px), 28px. Before, it was 23px at 1100px and below.
+  - The description is 12px, and the rule that made it 11px at 760px and below is gone.
+  - The margin below the header is 24px on a phone and 36px from `md`.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/components/page-header.test.tsx`에 2개를 넣었습니다.
-  - 표시: eyebrow·`h1`(끝의 점 포함)·설명·버튼이 나오는지, `banner` 영역이 생기지 않는지 확인합니다.
-  - 버튼 없음: `actions`가 없으면 빈 버튼 묶음을 그리지 않는지 확인합니다.
-- 수정: `frontend/src/workout-draft.test.tsx`의 초안 복구 테스트에서, 복구 전 머리글의 "운동 기록하기"가 비활성인지 확인합니다. 이 동작을 확인하는 테스트는 그동안 없었습니다. `frontend/src/inbody-import.test.tsx`에서는 "인바디 가져오기"를 누르면 `aria-expanded="true"`가 되는지 확인합니다.
+- Added: 2 tests in `frontend/src/components/page-header.test.tsx`.
+  - Display: checks that the eyebrow, the `h1` (including the dot at the end), the description, and the button appear, and that no `banner` region is created.
+  - No button: checks that it does not draw an empty button group when there is no `actions`.
+- Changed: in the draft recovery test of `frontend/src/workout-draft.test.tsx`, it checks that "운동 기록하기" in the header before the recovery is disabled. There had been no test that checks this behavior. In `frontend/src/inbody-import.test.tsx`, it checks that pressing "인바디 가져오기" makes `aria-expanded="true"`.
 - `npm run test -w frontend -- src/components/page-header.test.tsx src/workout-draft.test.tsx src/period.test.tsx src/body.test.tsx src/goal-list.test.tsx src/official-weights.test.tsx src/routing.test.tsx src/inbody-import.test.tsx`: 79 pass
-- `npm run typecheck -w frontend`, eslint(바뀐 파일), prettier: 통과
-- 로컬 전체 `npm run check`와 e2e는 메모리 부족 이력이 있어 실행하지 않았습니다. e2e(반응형·axe·터치·시각 기준선)는 PR CI로 확인합니다. 머리글이 있는 dashboard·journal·goals·machines·body 화면과 그 위에 뜨는 모달 이미지의 기준선이 바뀔 것으로 봅니다.
+- `npm run typecheck -w frontend`, eslint (changed files), prettier: passed
+- I did not run the local full `npm run check` and e2e because of a history of running out of memory. e2e (responsive, axe, touch, visual baselines) is confirmed with the PR CI. I expect the baselines of the dashboard, journal, goals, machines, and body screens that have the header, and of the modal images that appear over them, to change.
 
-## 변경 — 1차 리뷰 보완
+## Change — first review fixes
 
-- 1차 리뷰는 필수 보완점이 없었고 선택 4건을 반영했습니다.
-  - 설명 문단: `text-meta`가 줄 간격을 16px로 줄여 두 줄 이상인 설명(신체 기록)의 줄 사이가 좁아졌습니다. 예전 `1.7`을 `leading-[1.7]`로 유지합니다.
-  - 제목 글자 간격: `tracking-tight`가 예전 -1.2px보다 넓어 `tracking-[-1.2px]`로 맞췄습니다.
-  - `e2e/ui-touch.spec.ts`: 터치 크기 검사 대상에서 더는 아무것도 고르지 않는 `a.primary`를 뺐습니다.
-  - `frontend/src/workout-draft.test.tsx`: 복구한 뒤에는 머리글 버튼이 다시 활성인지도 확인합니다.
-- `docs/design-system.md`의 앱 고유 컴포넌트 설명에 `PageHeader`를 적었습니다.
-- `npm run test -w frontend -- src/workout-draft.test.tsx src/components/page-header.test.tsx`: 24 pass. prettier 통과
+- The first review had no required fixes, and I applied 4 optional ones.
+  - Description paragraph: `text-meta` reduced the line height to 16px, so the space between lines of a description with two or more lines (body records) got narrow. I keep the old `1.7` as `leading-[1.7]`.
+  - Title letter spacing: `tracking-tight` is wider than the old -1.2px, so I matched it with `tracking-[-1.2px]`.
+  - `e2e/ui-touch.spec.ts`: I removed `a.primary`, which no longer selects anything, from the targets of the touch size check.
+  - `frontend/src/workout-draft.test.tsx`: after the recovery, it also checks that the header button is active again.
+- I wrote `PageHeader` in the description of the app-specific components in `docs/design-system.md`.
+- `npm run test -w frontend -- src/workout-draft.test.tsx src/components/page-header.test.tsx`: 24 pass. prettier passed
 
-## 변경 — 2차 리뷰와 시각 기준선 갱신
+## Change — second review and visual baseline update
 
-- 2차 리뷰는 필수 보완점이 없었습니다. 선택 1건을 반영했습니다. 터치 크기 검사가 고르던 `a.primary`는 #103에서 백업 화면의 내려받기 링크가 `Button asChild`로 바뀐 뒤로 아무것도 고르지 않았습니다. 그래서 `e2e/ui-touch.spec.ts`의 대상에 `a[data-slot="button"]`을 넣어, 버튼 모양 링크도 44px 높이를 검사합니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
-- `deb9d57`의 CI `e2e-visual`에서 시각 비교 29건만 실패했습니다. axe·반응형·터치 검사는 통과했습니다.
-  - 바뀐 것: 머리글이 있는 `dashboard`·`journal`·`goals`·`machines`·`body` 4폭씩과, 뒤에 머리글이 보이는 `workout-editor`(390·768·1280)·`goal-editor`(4폭)·`machine-editor`(768·1280)입니다.
-  - 확인: `dashboard-1280`을 이전 기준선과 나란히 보고, `body-360`도 직접 봤습니다. 주요 버튼 글자가 12px에서 14px로 커지고 머리글 간격이 바뀐 것 외에는 차이가 없었습니다.
-  - 갱신: `visual-baselines` 아티팩트로 29장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
+- The second review had no required fixes. I applied 1 optional one. The `a.primary` that the touch size check selected has selected nothing since the download link of the backup screen became `Button asChild` in #103. So I put `a[data-slot="button"]` in the targets of `e2e/ui-touch.spec.ts`, so button-shaped links are also checked for 44px height. Two reviews are done, so there is no third review.
+- In the CI `e2e-visual` of `deb9d57`, only 29 visual comparisons failed. The axe, responsive, and touch checks passed.
+  - What changed: 4 widths each of `dashboard`, `journal`, `goals`, `machines`, and `body`, which have the header, and `workout-editor` (390, 768, 1280), `goal-editor` (4 widths), and `machine-editor` (768, 1280), which show the header behind them.
+  - Check: I looked at `dashboard-1280` side by side with the previous baseline, and I also looked at `body-360` directly. Other than the main button text growing from 12px to 14px and the header spacing changing, there was no difference.
+  - Update: I updated 29 images with the `visual-baselines` artifact. The other images were the same as the existing baselines byte for byte.
 
-## main 병합
+## Merge of main
 
-- 병합 직전 main에 #241(#125 종목 분석 모바일)이 들어와 `e2e/ui-touch.spec.ts`가 겹쳐 `origin/main`을 merge했습니다. 충돌은 없었고, 이 브랜치의 대상 선택자와 #241의 종목 분석 검사가 함께 남았습니다. 병합 뒤 `tsc -p e2e/tsconfig.json`, 관련 화면 테스트 통과
+- Just before the merge, #241 (#125 exercise analysis mobile) entered main and `e2e/ui-touch.spec.ts` overlapped, so I merged `origin/main`. There were no conflicts, and both the target selector of this branch and the exercise analysis check of #241 remain. After the merge, `tsc -p e2e/tsconfig.json` and the related screen tests passed.
 
-## #237 병합
+## Merge of #237
 
-- #237(#105 일지 편집 세트 카드)이 main에 들어와 `origin/main`을 merge했습니다. 코드 충돌은 없었습니다. 시각 기준선 5장(`goal-editor` 360·390, `workout-editor` 390·768·1280)이 양쪽에서 바뀌어 충돌했습니다. 두 변경이 모두 들어간 이미지는 어느 쪽에도 없어, 일단 main 쪽을 두고 이 merge 커밋의 CI 아티팩트로 다시 갱신합니다.
-- 병합 뒤 `npm run typecheck -w frontend`, `tsc -p e2e/tsconfig.json` 통과. `npm run test -w frontend -- src/components/page-header.test.tsx src/workout-draft.test.tsx src/body.test.tsx src/inbody-import.test.tsx src/period.test.tsx` 62 pass
-- `d807b68`의 CI `e2e-visual`에서 모달 기준선 6건만 실패했고, axe·반응형·터치 포함 81건은 통과했습니다. 실패한 기준선은 `goal-editor` 360·390, `machine-editor` 360·390, `workout-editor` 768·1280입니다. `machine-editor-390`·`workout-editor-1280`을 직접 보고, #237의 모달 배치와 이 PR의 머리글이 함께 보이는 것 외에 차이가 없음을 확인했습니다. 그 뒤 `visual-baselines` 아티팩트로 6장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
+- #237 (#105 log edit set card) entered main and I merged `origin/main`. There were no code conflicts. 5 visual baselines (`goal-editor` 360 and 390, `workout-editor` 390, 768, and 1280) were changed on both sides and conflicted. An image that has both changes is on neither side, so I kept the main side for now and update them again with the CI artifact of this merge commit.
+- After the merge, `npm run typecheck -w frontend` and `tsc -p e2e/tsconfig.json` passed. `npm run test -w frontend -- src/components/page-header.test.tsx src/workout-draft.test.tsx src/body.test.tsx src/inbody-import.test.tsx src/period.test.tsx`: 62 pass
+- In the CI `e2e-visual` of `d807b68`, only 6 modal baselines failed, and 81 checks including axe, responsive, and touch passed. The failed baselines are `goal-editor` 360 and 390, `machine-editor` 360 and 390, and `workout-editor` 768 and 1280. I looked directly at `machine-editor-390` and `workout-editor-1280` and confirmed that there was no difference other than the modal layout of #237 and the header of this PR showing together. After that I updated 6 images with the `visual-baselines` artifact. The other images were the same as the existing baselines byte for byte.

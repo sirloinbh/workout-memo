@@ -1,58 +1,58 @@
-# #224 기간 선택 줄의 날짜 이동과 직접 선택 폼을 공통 컴포넌트로 교체
+# #224 Replace the date stepper and the custom range form of the period selection line with shared components
 
-- 이슈: [#224](https://github.com/sirloinbh/workout-memo/issues/224)
-- 브랜치: `feat/224-period-controls`
-- 상위 이슈: #213 화면을 공통 UI 컴포넌트로 교체
+- Issue: [#224](https://github.com/sirloinbh/workout-memo/issues/224)
+- Branch: `feat/224-period-controls`
+- Parent issue: #213 Replace the screens with shared UI components
 
-## 목적
+## Purpose
 
-#101 1단계에서 기간 탭만 공통 `SegmentedControl`로 옮겼습니다. 대시보드·운동 일지·신체 기록이 함께 쓰는 기간 선택 줄의 나머지(날짜 이동, 직접 선택 폼, 기간 표시)는 legacy `style.css` 규칙이었습니다. 이를 공통 컴포넌트로 바꿉니다.
+In step 1 of #101, only the period tabs were moved to the shared `SegmentedControl`. The rest of the period selection line that the dashboard, the workout log, and body records share (the date stepper, the custom range form, and the period display) were legacy `style.css` rules. I change them to shared components.
 
-## 변경 — feat: 날짜 이동·직접 선택 폼·기간 표시 교체
+## Change — feat: replace the date stepper, the custom range form, and the period display
 
-- 새 부품 `frontend/src/components/date-stepper.tsx`
-  - `DateStepper`: 기준 날짜 입력(공통 `Input`, `type="date"`)과 선택적인 이전·다음 버튼(공통 `Button` `ghost`/`icon`, `type="button"`). `onMove`를 주지 않으면 날짜 입력만 보입니다. 입력을 비우면 이전처럼 현재 날짜를 유지합니다.
-  - `RangeSummary`: "시작일 — 종료일 설명" 한 줄을 유틸리티 문단(`p`)으로 보여 줍니다.
-  - 종목 분석 화면(`analysis.tsx`)의 기준 날짜와 기간 표시도 같은 부품으로 옮길 수 있습니다(`<DateStepper label="분석 기준 날짜" … />`, `onMove` 없이). 이 화면은 #102 범위라 이번에는 고치지 않았습니다.
+- New part `frontend/src/components/date-stepper.tsx`
+  - `DateStepper`: a base date input (shared `Input`, `type="date"`) and optional previous and next buttons (shared `Button` `ghost`/`icon`, `type="button"`). If `onMove` is not given, only the date input is shown. If the input is cleared, the current date is kept as before.
+  - `RangeSummary`: shows the one line "start date — end date description" as a utility paragraph (`p`).
+  - The base date and the period display of the exercise analysis screen (`analysis.tsx`) can also be moved to the same part (`<DateStepper label="분석 기준 날짜" … />`, without `onMove`). This screen is in the scope of #102, so I did not change it this time.
 - `frontend/src/app.tsx`
-  - `.period-bar`를 유틸리티 줄(`flex flex-wrap justify-between`)로 바꿨습니다. #71처럼 좁은 화면에서는 날짜 이동이 기간 탭 아래로 내려갑니다.
-  - `.date-control`을 `DateStepper`로 바꿨습니다. 접근 이름 "기준 날짜", "이전 기간", "다음 기간"은 그대로입니다.
-  - `form.custom-range`를 유틸리티 폼으로, 시작일·종료일을 공통 `Label` + `Input`(`id="range-from"`, `"range-to"`)으로, "적용"을 공통 `Button`(`secondary`)으로 바꿨습니다. 필드 오류(`FieldError`)는 각 입력 아래에 둡니다. 날짜 검증(`checkRange`)과 오류 문구는 바꾸지 않았습니다. 안내 "양 끝 날짜 포함 · 최대 N일"은 `.form-hint` 상자 대신 `text-meta` 문단으로 폼 아래 줄에 놓입니다.
-  - `.range-label`을 `RangeSummary`로 바꿨습니다.
-- `frontend/src/style.css`: 쓰는 곳이 없어진 `.custom-range`, `.custom-range label`, `.custom-range .form-hint`, `.date-control button`을 지웠습니다. `.period-bar`, `.date-control`, `.date-control input`, `.range-label`과 모바일 규칙은 종목 분석 화면이 아직 써서 남겼습니다.
-- 남긴 것: 주소의 기간이 잘못됐을 때의 안내 `p.error`(`role="alert"`)는 #223에서 정할 공통 알림 부품으로 함께 옮깁니다.
-- 화면 차이: 날짜 입력에 테두리가 생기고 글자가 커집니다. 이전·다음 버튼이 공통 아이콘 버튼 크기(36px, 터치 화면 44px)가 됩니다. 직접 선택 폼의 입력에 테두리가 생기고, 안내 문구가 회색 상자 없이 아래 줄로 갑니다. 기간 표시 글자는 10px(모바일 9px)에서 12px로 커지고 위 여백이 15px에서 16px가 됩니다. 기간 줄의 줄바꿈은 이전에는 모바일에서만 켜졌지만 이제 모든 폭에서 켜지므로, 폭이 좁으면 태블릿에서도 날짜 이동이 탭 아래로 내려갈 수 있습니다.
+  - Changed `.period-bar` to a utility row (`flex flex-wrap justify-between`). As in #71, on a narrow screen the date stepper goes below the period tabs.
+  - Changed `.date-control` to `DateStepper`. The accessible names "기준 날짜" (base date), "이전 기간" (previous period), and "다음 기간" (next period) are the same.
+  - Changed `form.custom-range` to a utility form, the start and end dates to the shared `Label` + `Input` (`id="range-from"`, `"range-to"`), and "적용" (apply) to the shared `Button` (`secondary`). The field errors (`FieldError`) are placed below each input. The date validation (`checkRange`) and the error texts were not changed. The hint "양 끝 날짜 포함 · 최대 N일" (both end dates included · at most N days) is placed on the line below the form as a `text-meta` paragraph instead of a `.form-hint` box.
+  - Changed `.range-label` to `RangeSummary`.
+- `frontend/src/style.css`: deleted `.custom-range`, `.custom-range label`, `.custom-range .form-hint`, and `.date-control button`, which are no longer used. I left `.period-bar`, `.date-control`, `.date-control input`, `.range-label`, and the mobile rules because the exercise analysis screen still uses them.
+- Left as it is: the notice `p.error` (`role="alert"`) for an invalid period in the URL is moved together with the shared notice part to be decided in #223.
+- Differences on screen: the date input gets a border and larger text. The previous and next buttons become the shared icon button size (36px, 44px on touch screens). The inputs of the custom range form get a border, and the hint text goes to the line below without a gray box. The period display text grows from 10px (mobile 9px) to 12px, and the margin above goes from 15px to 16px. Line wrapping of the period line used to be on only on mobile, but now it is on at every width, so when the width is narrow the date stepper may go below the tabs on a tablet too.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/components/date-stepper.test.tsx` 3개. 이전·다음 버튼이 -1·1로 움직이고 폼을 제출하지 않는 `type="button"`인지, 공통 `Input`인지, 날짜를 고르면 전달하고 비우면 무시하는지, `onMove`가 없으면 버튼이 없는지, 기간 표시가 "2026-10-12 — 2026-10-18 선택한 기간의 기록"으로 읽히는지 확인합니다.
-- 기존: `period.test.tsx`(날짜 이동)와 `custom-range.test.tsx`(직접 선택, 잘못된 범위 오류, 주소의 잘못된 기간)는 역할·접근 이름으로 찾으므로 고치지 않고 통과합니다.
+- Added: 3 tests in `frontend/src/components/date-stepper.test.tsx`. They check that the previous and next buttons move by -1 and 1 and are `type="button"` so they do not submit a form, that it is the shared `Input`, that choosing a date passes it on and clearing it is ignored, that without `onMove` there are no buttons, and that the period display reads as "2026-10-12 — 2026-10-18 선택한 기간의 기록" (records of the selected period).
+- Existing: `period.test.tsx` (date move) and `custom-range.test.tsx` (custom range, invalid range error, invalid period in the URL) find elements by role and accessible name, so they pass without changes.
 - `npm run test -w frontend -- src/components/date-stepper.test.tsx src/period.test.tsx src/custom-range.test.tsx`: 34 pass
 - `npm run test -w frontend`: 213 pass, 4 skip
-- `npm run typecheck -w frontend`, 바뀐 파일의 eslint(`--max-warnings 0`)와 prettier: 통과
-- 시각 기준선과 e2e(반응형·axe·터치 44px)는 PR CI로 확인합니다. 로컬 전체 `npm run check`와 e2e는 세 워크트리가 동시에 돌아 메모리 부족 이력이 있어 돌리지 않았습니다.
+- `npm run typecheck -w frontend`, eslint (`--max-warnings 0`) and prettier on the changed files: passed
+- Visual baselines and e2e (responsive, axe, touch 44px) are confirmed with the PR CI. I did not run the local full `npm run check` and e2e because three worktrees were running at the same time and there is a history of running out of memory.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review fixes
 
-1차 리뷰는 필수 지적 없이 권장 4건이었고 모두 반영했습니다.
+The first review had no required comments and 4 recommendations, and I applied all of them.
 
-- 직접 선택의 "적용" 버튼이 입력보다 4px 위에 놓였습니다. 라벨에 준 `text-meta`가 `cn`에서 `Label`의 `leading-none`을 지워 라벨 줄이 16px가 됐기 때문입니다. 라벨을 `text-meta leading-none`으로 바꿔 12px로 되돌렸고 주석을 맞췄습니다.
-- `custom-range.test.tsx`의 범위 오류 검사가 폼 아래 안내("최대 371일")에도 맞아 오류가 없어도 통과할 수 있었습니다. 두 오류를 종료일 입력의 접근 설명(`toHaveAccessibleDescription`, `aria-describedby` 연결)으로 확인하도록 바꿨습니다.
-- 위 "화면 차이"에 기간 표시 글자 크기와 줄바꿈 범위 변화를 더했습니다.
-- `style.css`에서 남긴 규칙을 설명하는 주석을 `.period-bar` 위로 옮겼습니다.
-- 참고만 하고 고치지 않은 것: `.field-error`의 음수 위 여백 때문에 오류 문구가 입력에 가깝게 붙습니다. `FieldError`는 className을 받지 않아, 시각 결과에서 거슬리면 따로 다룹니다.
-- 보완 후: `npm run test -w frontend -- src/components/date-stepper.test.tsx src/period.test.tsx src/custom-range.test.tsx` 34 pass, `npm run typecheck -w frontend`, 바뀐 파일 eslint·prettier 통과
+- The "적용" (apply) button of the custom range was 4px higher than the input. This was because the `text-meta` given to the label removed `leading-none` of `Label` in `cn`, so the label line became 16px. I changed the label to `text-meta leading-none` to bring it back to 12px and adjusted the comment.
+- The range error check of `custom-range.test.tsx` could also match the hint below the form ("최대 371일" (at most 371 days)), so it could pass even without an error. I changed it to check the two errors through the accessible description of the end date input (`toHaveAccessibleDescription`, linked with `aria-describedby`).
+- I added the period display text size and the change in the line wrapping range to "differences on screen" above.
+- I moved the comment that explains the rules left in `style.css` above `.period-bar`.
+- Noted only and not fixed: because of the negative top margin of `.field-error`, the error text sits close to the input. `FieldError` does not accept a className, so I handle it separately if it bothers us in the visual result.
+- After the fixes: `npm run test -w frontend -- src/components/date-stepper.test.tsx src/period.test.tsx src/custom-range.test.tsx` 34 pass, `npm run typecheck -w frontend`, eslint and prettier on the changed files passed
 
-## 변경 — test: 시각 기준선 갱신
+## Change — test: update visual baselines
 
-- 2차 리뷰는 보완점이 없었습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
-- `677142f`의 CI `e2e-visual`에서 16건만 실패했고 axe·반응형·터치 44px 포함 나머지 62건은 통과했습니다. 실패는 기간 선택 줄이 보이는 `dashboard`·`journal`·`body`와 뒤에 대시보드가 보이는 `workout-editor`의 360·390·768·1280입니다.
-- `dashboard-360` 실제 화면과 `journal-1280` 실제·차이 이미지를 직접 봤습니다. 날짜 입력 테두리, 공통 아이콘 버튼, 12px 기간 표시와 그 때문에 아래 내용이 조금 내려간 것 외에 차이가 없어 `visual-baselines` 아티팩트로 16장을 갱신했습니다.
-- 한계: e2e 고정 화면에는 직접 선택 폼과 범위 오류가 나오지 않습니다. 이 둘은 화면 테스트(`custom-range.test.tsx`)로만 확인했고, 적용 버튼 정렬은 클래스 계산으로만 확인했습니다.
+- The second review had no fixes. Two reviews are done, so there is no third review.
+- In the CI `e2e-visual` of `677142f`, only 16 failed, and the other 62 including axe, responsive, and touch 44px passed. The failures are 360, 390, 768, and 1280 of `dashboard`, `journal`, and `body`, where the period selection line is visible, and of `workout-editor`, which shows the dashboard behind it.
+- I looked directly at the actual screen of `dashboard-360` and the actual and diff images of `journal-1280`. Other than the date input border, the shared icon buttons, the 12px period display, and the content below moving down a little because of it, there was no difference, so I updated 16 images with the `visual-baselines` artifact.
+- Limit: the custom range form and the range error do not appear on the e2e fixed screens. I checked these two only with the screen tests (`custom-range.test.tsx`), and I checked the alignment of the apply button only by class calculation.
 
-## 변경 — merge: origin/main 병합
+## Change — merge: merge origin/main
 
-- 기다리는 동안 #227(#102 나의 목표)이 main에 병합되어 `origin/main`을 merge했습니다(rebase·강제 push 없음).
-- 충돌은 `frontend/src/app.tsx`의 import 한 곳뿐이었습니다. main은 쓰지 않게 된 `components/field`의 `Input`을 뺐고, 이 브랜치는 `DateStepper`·`RangeSummary` import를 더했습니다. 두 변경을 모두 살렸습니다. `style.css`는 자동 병합됐고, 종목 분석이 쓰는 `.period-bar`·`.date-control`·`.range-label`은 그대로 남아 있습니다.
-- 시각 기준선은 겹치지 않습니다. main은 `goals`·`goal-editor` 8장, 이 브랜치는 `dashboard`·`journal`·`body`·`workout-editor` 16장을 바꿨습니다. 병합 결과는 다시 CI로 확인합니다.
-- 병합 후: `npm run typecheck -w frontend`, `app.tsx` eslint 통과, `npm run test -w frontend` 217 pass, 4 skip
+- While waiting, #227 (#102 My goals) was merged to main and I merged `origin/main` (no rebase, no force push).
+- The only conflict was one import in `frontend/src/app.tsx`. Main removed `Input` of `components/field`, which is not used any more, and this branch added the `DateStepper` and `RangeSummary` imports. I kept both changes. `style.css` merged automatically, and `.period-bar`, `.date-control`, and `.range-label`, which the exercise analysis uses, are still there.
+- The visual baselines do not overlap. Main changed 8 images of `goals` and `goal-editor`, and this branch changed 16 images of `dashboard`, `journal`, `body`, and `workout-editor`. The merge result is confirmed with CI again.
+- After the merge: `npm run typecheck -w frontend`, eslint of `app.tsx` passed, `npm run test -w frontend` 217 pass, 4 skip

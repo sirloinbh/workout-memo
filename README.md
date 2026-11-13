@@ -1,26 +1,26 @@
-# FORM · 나의 운동 기록
+# FORM · My Workout Log
 
-나 한 명의 운동 일지를 기록하고, 기간별 훈련량과 점진적 과부하 목표를 확인하는 서비스입니다. 로그인 없이 로컬에서 사용합니다.
+A service for logging my own workouts and checking training volume and progressive overload goals by period. There is one user and no login. It runs locally.
 
-## 개발 기준
+## Development standards
 
-Node.js **24.21.0**, npm **11.19.0**을 사용합니다. 설치는 `npm ci`, 포맷은 `npm run format`, 전체 검증은 `npm run check`입니다. 상세 명령과 잠금 파일 정책은 [개발 기준 문서](docs/development-baseline.md)를 참고하세요.
+It uses Node.js **24.21.0** and npm **11.19.0**. Install with `npm ci`, format with `npm run format`, and verify everything with `npm run check`. For the detailed commands and the lockfile policy, see the [development baseline doc](docs/development-baseline.md).
 
-## 개발 작업 절차와 Codex 스킬
+## Development procedure and Codex skills
 
-변경 작업은 **GitHub 이슈 등록 → 이슈 번호 기반 브랜치 → 구현 및 커밋별 docs 기록 → 테스트 후 PR → 사용자 직접 병합** 순서로 진행합니다. 상세 규칙은 [AGENTS.md](AGENTS.md)와 [구현 절차 스킬](skills/workout-implementation/SKILL.md)에 있습니다.
+Changes follow this order: **register a GitHub issue → a branch based on the issue number → implementation with a docs record per commit → tests, then a PR → the user merges it directly**. The detailed rules are in [AGENTS.md](AGENTS.md) and the [implementation procedure skill](skills/workout-implementation/SKILL.md).
 
-앞서 정리한 기술 구성·코드 규칙·API·디자인·검증·운영 추천은 [개발 기반 스킬](skills/workout-foundation/SKILL.md)에 보관합니다. 스킬 원본은 이 저장소의 `skills/`이며, Codex 스킬 경로에 설치하면 `$workout-implementation`, `$workout-foundation`으로 사용할 수 있습니다. 로컬 설치본을 수정하기보다 저장소 원본을 갱신한 뒤 다시 설치하세요. Claude Code용 복제본은 `.claude/skills/`에 있으며, 원본 수정 후 `npm run skills:sync`로 갱신합니다(`npm run check`가 불일치를 검출). 새 세션에서 스킬 목록이 갱신됩니다. 구현·수정 시 테스트 코드도 함께 작성하고 커밋 전과 PR 생성·갱신 전에 실행합니다. [테스트 스킬](skills/workout-testing/SKILL.md)은 `$workout-testing`으로 사용할 수 있습니다. PR은 자동 코드 리뷰를 최대 2회 거쳐 보완 커밋을 반영하고(큰 수정은 새 이슈로 분리), 필수 CI가 통과하면 에이전트가 병합합니다.
+The earlier recommendations for the tech setup, code rules, API, design, verification, and operations are kept in the [development foundation skill](skills/workout-foundation/SKILL.md). The source of the skills is `skills/` in this repo; if you install them in the Codex skills path you can use them as `$workout-implementation` and `$workout-foundation`. Rather than editing a local installed copy, update the source in the repo and install it again. The copy for Claude Code is in `.claude/skills/`; after editing the source, refresh it with `npm run skills:sync` (`npm run check` detects a mismatch). The skill list is refreshed in a new session. When you implement or fix something, also write test code and run it before committing and before creating or updating a PR. The [testing skill](skills/workout-testing/SKILL.md) can be used as `$workout-testing`. A PR goes through automatic code review at most 2 times and gets the fix commits applied (large fixes are split into new issues), and when the required CI passes the agent merges it.
 
-새 웹앱 프로젝트를 같은 개발 환경으로 시작하려면 [AI 에이전트용 개발 환경 설정 문서](docs/ai-agent-project-setup.md)를 에이전트에게 전달하세요. 언어·기술 스택·AI 지침·디자인·Git 전략·저장소 분화·DB·AWS 인프라와 부트스트랩 순서를 담고 있습니다.
+To start a new web app project in the same development environment, give the [development environment setup doc for AI agents](docs/ai-agent-project-setup.md) to an agent. It covers the language, the tech stack, the AI instructions, the design, the Git strategy, the repository split, the DB, the AWS infrastructure, and the bootstrap order.
 
-## 로컬 AI 작업 자동화
+## Local AI work automation
 
-작업일별 총정리는 [일일 작업 기록](docs/daily/README.md)에 날짜별로 누적하고, 최신 우선순위·할 일·차단 해제 절차는 [다음 작업](docs/next-steps/README.md)에서 갱신합니다.
+The summary of each working day accumulates by date in the [daily work log](docs/daily/README.md), and the latest priorities, to-dos, and the unblocking procedure are updated in [next steps](docs/next-steps/README.md).
 
-요구사항 대화는 주 에이전트와 진행하고, 확정한 이슈는 PC에서 테스트 → 구현 → 독립 검토 → 검사 → PR 순서로 처리합니다. 시작·중지·이슈 등록·복구 방법은 [로컬 에이전트 운영 문서](docs/local-agent-workflow.md)를 참고하세요.
+The requirements conversation is held with the main agent, and each confirmed issue is processed on the PC in this order: test → implementation → independent review → checks → PR. For how to start, stop, register issues, and recover, see the [local agent operations doc](docs/local-agent-workflow.md).
 
-워커는 중앙 리포(`sirloinbh/project-standards`)의 실행기를 PC에 설치해서 씁니다.
+The worker uses the runner from the central repo (`sirloinbh/project-standards`), installed on the PC.
 
 ```powershell
 $agents = "$env:LOCALAPPDATA\sirloinbh-tools\agents.ps1"
@@ -30,18 +30,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $agents -Root . status
 powershell -NoProfile -ExecutionPolicy Bypass -File $agents -Root . stop
 ```
 
-## 실행
+## Running
 
 ```powershell
 Copy-Item .env.example .env
 docker compose up --build -d
 ```
 
-접속: http://localhost:8101 . `.env`의 비밀번호를 변경한 후 실행하세요. 데이터는 `workout-data` 볼륨에 저장됩니다. `docker compose down` 후에도 유지되며, `down -v`는 데이터를 삭제합니다.
+Open http://localhost:8101 . Change the password in `.env` before you run it. Data is stored in the `workout-data` volume. It stays after `docker compose down`, and `down -v` deletes the data.
 
-기존 볼륨을 새 버전으로 실행하기 전에는 `npm ci` 후 `npm run db:migrate`로 미적용 마이그레이션을 적용하세요. 절차와 실패 시 복구 방법은 [database/README.md](database/README.md#마이그레이션-적용-58)에 있고, API 요청·응답 규칙은 [REST API 계약](docs/api.md)에 있습니다.
+Before running an existing volume with a new version, run `npm ci` and then `npm run db:migrate` to apply the pending migrations. The procedure and how to recover from a failure are in [database/README.md](database/README.md#applying-migrations-58), and the API request and response rules are in the [REST API contract](docs/api.md).
 
-개발 실행:
+Development run:
 
 ```powershell
 docker compose up -d db
@@ -49,41 +49,41 @@ npm ci
 npm run dev
 ```
 
-http://localhost:5201 . `.env`의 DATABASE_URL 비밀번호도 함께 맞추세요. 비밀번호에 URL 예약문자가 있으면 DATABASE_URL에 URL 인코딩이 필요합니다.
+Open http://localhost:5201 . Also match the DATABASE_URL password in `.env`. If the password has URL reserved characters, DATABASE_URL needs URL encoding.
 
-## 기능과 규칙
+## Features and rules
 
-- **루틴짜기**: 무분할~5분할, 순서와 중복을 보존하는 운동 부위, 운동별 기준 세트·총중량 kg·반복 수를 입력해 저장합니다. 일정은 기본값인 주기 방식(N일 운동 후 M일 휴식 반복)과 요일 방식(주당 운동 횟수·휴식 요일) 중 고르며 운동일마다 분할을 순환합니다. 분할 수를 고르면 주기(무분할·2분할 2+1, 3분할 3+1, 4분할 4+1, 5분할 5+2)와 기본 부위를 미리 채우고 바꿀 수 있습니다(#88). 부위는 가슴·등·어깨·이두·삼두·하체-앞·하체-뒤·복근이며, 이전에 저장한 '팔'은 그대로 보존합니다. 12주 각각의 중량/반복 증가량과 4·8·12주차의 디로딩 대상·감소량을 수동 입력합니다. 저장된 계획을 다시 조회할 수 있으며 실제 일지나 목표 달성을 생성하지 않습니다. 기존 DB에는 [루틴 마이그레이션](database/README.md)을 먼저 적용하세요.
-- **자동 주차 목표(이중 점진 과부하)**: 새 루틴의 기본 방식입니다. 종목별 현재 총중량·반복 수와 반복 범위(기본 8~12회)를 입력하면, 종목이 들어 있는 분할의 세션(운동일)마다 반복 수를 1회씩 늘리고 상한을 넘으면 총중량을 운동별 증량 단위(기본 5 kg, 나의 목표의 목표 추가에서 운동마다 변경, #86)만큼 올린 뒤 하한으로 되돌립니다. 증량 단위는 이미 저장된 루틴에도 적용됩니다. 0 kg 종목은 반복 수만 늘립니다. 4·8·12주차의 세션은 직전 목표 중량의 90%(2.5 kg 단위)로 디로딩하며 진행하지 않습니다. 세션 날짜부터 같은 분할의 다음 세션 전까지 저장한 일지에서 계획 세트를 모두 목표 이상으로 수행하면 다음 세션에서 진행하고, 못하면 같은 목표를 유지하며 기록이 없는 앞으로의 목표는 '예상'으로 표시합니다. 기존 수동 루틴도 그대로 조회됩니다. 새 운동 일지와 루틴 종목은 기본 3세트로 시작합니다.
-- **루틴 목표·휴식·간편 입력**: 운동 일지 화면에서 진행 중인 루틴(시작일이 오늘(Asia/Seoul)이거나 그 이전인 루틴 중 가장 최근에 시작한 루틴)의 오늘·이번 주·12주 목표를 종목별 세트·총중량 kg·반복 수로 확인합니다. 종목 간 중량은 합산하지 않습니다. '오늘 하루 휴식하기'는 실행 전 이동될 일정과 제외될 마지막 목표를 보여주고, 남은 목표를 한 운동일씩 뒤로 미룹니다. 12주 종료일은 고정되며 넘친 목표는 '제외됨'으로 남고, 당일에만 취소할 수 있습니다. '오늘 루틴으로 기록하기'는 오늘 목표로 일지 초안을 채우고 같은 종목의 직전 기록을 참고값으로 보여주며, 저장하기 전에는 실제 기록이 아닙니다. 기존 DB에는 `005_routine_progress.sql`을 적용하세요.
-- **신체 기록**: 날짜별 체중 kg, 체지방률 %, 골격근량 kg을 선택 입력합니다(하나 이상 필수, 소수점 둘째 자리까지). 하루에 한 기록만 저장하며 이미 기록한 날짜는 수정합니다. 측정하지 않은 값은 미입력(NULL)으로 보관하고 추정하지 않습니다. 대시보드와 같은 기간 선택으로 추이를 보며, 빠진 값은 0으로 그리거나 선으로 잇지 않습니다. 같은 날 운동 볼륨을 나란히 보여주지만 인과 관계나 의학적 판정을 제시하지 않습니다. 기존 DB에는 [신체 기록 마이그레이션](database/README.md)을 먼저 적용하세요.
-- **인바디 가져오기(#89)**: 신체 기록 화면에서 인바디가 내보낸 CSV(머리글 이름으로 날짜·체중·체지방률·골격근량 열을 찾고, 못 찾으면 직접 지정)나 결과지 사진을 고르면 편집 가능한 미리보기에 값을 채웁니다. 확인한 행만 기존 신체 기록 API로 저장합니다. 사진은 브라우저에서 Tesseract(tesseract.js 7.0.0)로 읽으며 이미지는 서버로 보내지 않습니다. OCR 엔진과 한국어·영어 언어 데이터는 처음 사용할 때 jsdelivr CDN에서 내려받습니다. 원본 파일은 보관하지 않고, 읽지 못한 값은 비워 둡니다.
+- **Routine planning**: choose a no-split to 5-split plan, enter the body parts (order and repeats are preserved), the base sets, total weight in kg, and reps for each exercise, and save. For the schedule, pick between the default cycle mode (N workout days, then M rest days, repeated) and the weekday mode (workouts per week, rest weekdays); the split rotates on each workout day. When you pick the number of splits, the cycle (no-split and 2-split 2+1, 3-split 3+1, 4-split 4+1, 5-split 5+2) and the default body parts are pre-filled and can be changed (#88). The body parts are chest, back, shoulders, biceps, triceps, legs-front, legs-back, and abs, and an earlier saved "arms" is preserved as it is. You enter by hand the weight and rep increase for each of the 12 weeks and the deload target and reduction for weeks 4, 8, and 12. A saved plan can be viewed again and does not create real logs or goal achievement. For an existing DB, apply the [routine migration](database/README.md) first.
+- **Automatic weekly goals (double progressive overload)**: the default mode for a new routine. When you enter the current total weight and reps for each exercise and a rep range (8 to 12 by default), each session (workout day) of the split that contains the exercise adds 1 rep, and when the upper limit is passed it raises the total weight by the exercise's weight step (5 kg by default, changeable per exercise from Add goal in My goals, #86) and goes back to the lower limit. The weight step also applies to routines that were already saved. An exercise at 0 kg only adds reps. The sessions in weeks 4, 8, and 12 deload to 90% of the previous target weight (in 2.5 kg steps) and do not progress. If, in the logs saved from the session date up to before the next session of the same split, you do all the planned sets at or above the target, it progresses in the next session; if you do not, it keeps the same target, and future targets with no log are shown as "expected". Existing manual routines are still shown as they were. A new workout log and a routine exercise start with 3 sets by default.
+- **Routine goals, rest, and quick entry**: on the workout log screen, you see the today, this week, and 12-week goals of the routine in progress (the most recently started routine among those whose start date is today (Asia/Seoul) or earlier) as sets, total weight in kg, and reps for each exercise. Weights are not summed across exercises. "Rest today" shows the schedule that will move and the last goal that will be dropped before it runs, and pushes the remaining goals back by one workout day each. The 12-week end date is fixed, goals that overflow stay as "Excluded", and it can be canceled only on the same day. "Log with today's routine" fills a log draft with today's goals and shows the previous record of the same exercise as a reference value; it is not a real record until you save it. For an existing DB, apply `005_routine_progress.sql`.
+- **Body records**: enter body weight in kg, body fat in %, and skeletal muscle in kg for each date, all optional (at least one is required, up to two decimal places). Only one record is saved per day, and you edit a date that is already recorded. A value that was not measured is kept as not entered (NULL) and is not estimated. You view the trend with the same period selection as the dashboard, and missing values are not drawn as 0 or joined with a line. It shows the same day's workout volume side by side but does not present causation or a medical judgment. For an existing DB, apply the [body record migration](database/README.md) first.
+- **InBody import (#89)**: on the body records screen, choose a CSV exported by InBody (the date, weight, body fat, and skeletal muscle columns are found by header name, and you specify them yourself if they are not found) or a photo of the result sheet, and the values fill an editable preview. Only the rows you confirm are saved through the existing body record API. A photo is read in the browser with Tesseract (tesseract.js 7.0.0) and the image is not sent to the server. The OCR engine and the Korean and English language data are downloaded from the jsdelivr CDN the first time you use it. The original file is not kept, and values that could not be read are left empty.
 
-피트니스 서비스 13개의 기능·가격·웹 지원 비교와 추가 구현 이슈는 [서비스 조사 및 구현 백로그](docs/fitness-app-research-2026.md)를 참고하세요.
+For a comparison of the features, prices, and web support of 13 fitness services and the additional implementation issues, see the [service research and implementation backlog](docs/fitness-app-research-2026.md).
 
-- 일지 입력·조회·수정·삭제, 세트별 운동명·총중량·반복 수·머신·메모.
-- 1일, 월요일 기준 1주, 달력 1달, 기준일까지 4주/12주 조회. 기간별 일수·볼륨·세트 수와 그래프. 기간 일지는 날짜별 기록을 모아 확인하고 각각 편집하는 방식입니다.
-- 목표 시작일·종료일, 목표 총중량·반복 수. 같은 운동명(앞뒤 공백·영문 대소문자 무시)으로 한 세트에서 두 조건을 모두 충족하면 달성. 미래 기록은 목표 판정에서 제외합니다.
-- **종목 분석**: 종목별 최고 중량·최다 반복·최고 세트 볼륨(중량 × 반복) PR과 선택 기간의 날짜별 추이. 같은 종목 판단은 목표 판정과 같은 규칙입니다. PR은 서울 기준 오늘까지의 전체 서버 기록, 추이와 주간 부위 통계는 선택 기간(오늘까지)을 사용하며 조회할 때마다 다시 계산하므로 수정·삭제가 바로 반영됩니다. 같은 값이 여러 번 나오면 처음 달성한 날짜를 PR 날짜로 표시하고 동률 횟수를 함께 보여줍니다.
-- 추정 1RM은 Epley 공식 `총중량 kg × (1 + 반복 수 ÷ 30)`이며 1~10회 세트에만 적용합니다(1회 세트는 그 중량). 0kg(맨몸·보조 등 중량 미입력) 세트와 기본중량 미확인 머신 세트는 제외합니다. 실측 1RM은 실제로 1회 수행한 세트의 최고 총중량으로 따로 표시합니다.
-- 부위별 주간 운동량: 사용자가 운동마다 직접 지정한 부위(가슴·등·어깨·팔·하체-앞·하체-뒤·복근)로 월요일 시작 주의 세트 수와 볼륨을 집계합니다. 운동명으로 부위를 추측하지 않으며 지정하지 않은 운동은 `미분류`입니다. 여러 부위에 지정한 운동의 세트는 각 부위에 모두 더하므로 부위 합계가 전체 합계보다 클 수 있습니다. 기존 DB에는 [부위 매핑 마이그레이션](database/README.md)을 먼저 적용하세요.
-- 브랜드 선택, Arsenal Strength 등 머신 기본중량 입력·수정. 미확인 값은 NULL이며 샘플 중량을 사실처럼 제공하지 않습니다.
-- 중량은 기본중량을 포함한 총중량입니다. 좌우/편측 장비도 동일한 기준으로 입력하세요.
+- Entering, viewing, editing, and deleting logs, with the exercise name, total weight, reps, machine, and a note for each set.
+- Queries for 1 day, 1 week starting Monday, 1 calendar month, and 4 weeks or 12 weeks up to a base date. Days, volume, and set counts by period, and a graph. The period log gathers the records of each date and you edit each one.
+- Goal start date and end date, target total weight and reps. A goal is met when one set of the same exercise name (leading and trailing spaces and English letter case ignored) meets both conditions. Future records are excluded from goal evaluation.
+- **Exercise analysis**: per-exercise PRs for best weight, most reps, and best set volume (weight × reps), and the date-by-date trend for the selected period. The same-exercise decision uses the same rule as goal evaluation. PRs use all the server records up to today in Seoul time, and the trend and the weekly body-part stats use the selected period (up to today). They are recalculated on every query, so edits and deletes show up right away. If the same value appears several times, the date it was first reached is shown as the PR date together with the number of ties.
+- The estimated 1RM uses the Epley formula `total weight kg × (1 + reps ÷ 30)` and applies only to sets of 1 to 10 reps (a 1-rep set is that weight). Sets at 0 kg (bodyweight, assisted, or no weight entered) and sets on machines with an unconfirmed base weight are excluded. The measured 1RM is shown separately as the best total weight of a set actually done for 1 rep.
+- Weekly volume by body part: aggregates the sets and volume of each week starting Monday by the body part you assign to each exercise yourself (chest, back, shoulders, arms, legs-front, legs-back, abs). It does not guess the body part from the exercise name, and an exercise you have not assigned is `미분류` (Unclassified). The sets of an exercise assigned to several body parts are added to each of them, so the sum of body parts can be larger than the overall total. For an existing DB, apply the [body part mapping migration](database/README.md) first.
+- Brand selection, and entering and editing the base weight of machines such as Arsenal Strength. An unconfirmed value is NULL, and sample weights are not given as if they were facts.
+- Weight is the total weight including the base weight. Enter left-right and single-side equipment on the same basis.
 
-## 저장소 구성
+## Repository layout
 
-이 저장소는 전체 소스를 포함하는 우산 모노레포입니다. `frontend`, `backend`, `database`는 `git subtree split`으로 각 비공개 저장소에 배포합니다. AWS 인프라(Terraform)는 공유 저장소 `sirloinbh/shared-aws-infrastructure`에서 관리합니다. 루트에 Docker Compose, 통합 CI, 운영 스크립트를 둡니다. 일반 `git clone URL`로 전체 구성을 받을 수 있습니다. 변경은 이 모노레포에서 커밋하고 `scripts/push-repositories.ps1`로 각 저장소에 반영합니다. 하위 저장소에서 직접 변경한 경우에는 먼저 `git subtree pull --prefix=frontend URL main --squash`처럼 동기화하세요.
+This repo is an umbrella monorepo that contains all the source. `frontend`, `backend`, and `database` are published to their own private repositories with `git subtree split`. The AWS infrastructure (Terraform) is managed in the shared repo `sirloinbh/shared-aws-infrastructure`. The root holds Docker Compose, the integrated CI, and the operations scripts. A plain `git clone URL` gets you the whole setup. Commit changes in this monorepo and apply them to each repository with `scripts/push-repositories.ps1`. If you changed something directly in a sub-repository, first sync it with something like `git subtree pull --prefix=frontend URL main --squash`.
 
-## 검증·운영
+## Verification and operations
 
-`npm run check`는 TypeScript 빌드와 테스트입니다. 실제 DB 테스트는 `DATABASE_URL`을 테스트 DB로 지정해 `npm run db:migrate`로 스키마를 준비한 뒤 `TEST_DATABASE_URL`을 설정하세요. GitHub 통합 CI는 전용 PostgreSQL 서비스에 `db:migrate`로 스키마를 준비한 뒤 전체 빌드와 DB 통합 테스트를 수행합니다. 화면 테스트는 Vitest·React Testing Library(`npm run test -w frontend`)로 실행하며 `npm test`에 포함됩니다. 실제 브라우저의 운동 일지 생성·조회·수정·삭제는 `npm run test:e2e`(Playwright, 설치된 Chrome)로 검증하며, 테스트 DB를 `E2E_DATABASE_URL`로 지정해야 합니다. 같은 명령이 모든 페이지·주요 모달의 가로 넘침·고정 요소 겹침과 axe 접근성(WCAG 2.1 A/AA)도 검사합니다. CI의 `e2e` 작업은 고정 Playwright 컨테이너에서 같은 검사와 화면 스크린샷 비교(기준선 `e2e/__screenshots__/`)를 실행합니다. 프론트엔드·백엔드 저장소에서는 개별 빌드 및 Docker 이미지 빌드도 검사합니다.
+`npm run check` is the TypeScript build and the tests. For the real DB tests, point `DATABASE_URL` at the test DB, prepare the schema with `npm run db:migrate`, and then set `TEST_DATABASE_URL`. The integrated GitHub CI prepares the schema on a dedicated PostgreSQL service with `db:migrate`, then runs the whole build and the DB integration tests. Screen tests run with Vitest and React Testing Library (`npm run test -w frontend`) and are part of `npm test`. Creating, viewing, editing, and deleting a workout log in a real browser is verified with `npm run test:e2e` (Playwright, installed Chrome), and you must point the test DB at `E2E_DATABASE_URL`. The same command also checks every page and the main modals for horizontal overflow, fixed-element overlap, and axe accessibility (WCAG 2.1 A/AA). The CI `e2e` job runs the same checks and the screenshot comparison (baselines in `e2e/__screenshots__/`) in a fixed Playwright container. The frontend and backend repositories also check the separate builds and the Docker image builds.
 
-`docker compose logs --tail 100 api`로 오류 확인, `./scripts/backup.ps1`로 SQL 백업. 앱의 `백업·내보내기` 화면은 분석용 CSV와 앱 복원용 JSON 백업(검증·미리보기·전체 취소 복원)을 제공합니다. 형식과 정책은 `database/README.md`를 참고하세요. SQL 백업은 DB 전체 복구, JSON 백업은 앱 기록 이전·복원용으로 역할이 다릅니다. 백업은 PC 외부의 별도 안전한 저장소에도 보관하고 정기적으로 복원 확인을 하세요. AWS 인프라와 비용 알림은 `sirloinbh/shared-aws-infrastructure`의 `docs/operations.md`를 참고하세요.
+Check errors with `docker compose logs --tail 100 api`, and make a SQL backup with `./scripts/backup.ps1`. The app's `Backup and export` screen provides an analysis CSV and an app-restore JSON backup (validation, preview, and restore that is canceled as a whole on failure). For the format and policy, see `database/README.md`. A SQL backup is for restoring the whole DB and a JSON backup is for moving and restoring app records, so their roles differ. Also keep backups in a separate safe place outside the PC and check restores regularly. For the AWS infrastructure and cost alerts, see `docs/operations.md` in `sirloinbh/shared-aws-infrastructure`.
 
-운영 배포는 개인 AWS 계정의 Lightsail 서버 한 대(월 약 $7~8, $10 예산 알림)에서 허용한 IP만 접속하도록 구성합니다. 준비·적용·배포·롤백·백업·복원 절차는 [배포·운영 문서](docs/deployment.md)를 따릅니다. 로컬 실행 시 포트는 계속 localhost에만 바인딩됩니다.
+Production deployment runs on one Lightsail server in a personal AWS account (about $7 to $8 per month, with a $10 budget alert) and is set up so that only allowed IPs can connect. Follow the [deployment and operations doc](docs/deployment.md) for the procedures to prepare, apply, deploy, roll back, back up, and restore. When running locally, the ports are still bound to localhost only.
 
-개인용 앱 8개의 공유 서버·DB 운영 대안과 가정별 월 예산은 중앙 리포의 [공유 호스팅 비용 문서](https://github.com/sirloinbh/project-standards/blob/main/docs/costs.md)를 참고하세요.
+For the shared server and DB operating options for the 8 personal apps and the monthly budget for each assumption, see the [shared hosting cost doc](https://github.com/sirloinbh/project-standards/blob/main/docs/costs.md) in the central repo.
 
-## 프로젝트 전용 GitHub 계정
+## Project-only GitHub account
 
-이 프로젝트의 gh와 Git 인증은 sirloinbh 전용 설정을 사용합니다. VS Code 계정B 실행·환경변수·래퍼 명령·검증 방법은 [인증 설정 문서](docs/project-github-auth.md)를 참고하세요.
+The gh and Git authentication of this project use the sirloinbh-only settings. For how to run VS Code as account B, the environment variables, the wrapper commands, and how to verify, see the [authentication setup doc](docs/project-github-auth.md).

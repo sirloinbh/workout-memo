@@ -13,7 +13,7 @@
   "paths": {
     "/api/body-measurements/{id}": {
       "delete": {
-        "summary": "신체 기록 삭제 → { ok: true }",
+        "summary": "Delete a body record → { ok: true }",
         "parameters": [
           {
             "name": "id",
@@ -52,7 +52,7 @@
         }
       },
       "put": {
-        "summary": "신체 기록 전체 교체. 생략한 값은 null",
+        "summary": "Replace a whole body record. Omitted values become null",
         "parameters": [
           {
             "name": "id",
@@ -113,7 +113,7 @@
     },
     "/api/cardio-goals/{id}": {
       "delete": {
-        "summary": "유산소 목표 삭제 → { ok: true }",
+        "summary": "Delete a cardio goal → { ok: true }",
         "parameters": [
           {
             "name": "id",
@@ -154,7 +154,7 @@
     },
     "/api/cardio-sessions/{id}": {
       "delete": {
-        "summary": "유산소 기록 삭제 → { ok: true }",
+        "summary": "Delete a cardio record → { ok: true }",
         "parameters": [
           {
             "name": "id",
@@ -193,7 +193,7 @@
         }
       },
       "get": {
-        "summary": "유산소 기록 1개",
+        "summary": "One cardio record",
         "parameters": [
           {
             "name": "id",
@@ -232,7 +232,7 @@
         }
       },
       "put": {
-        "summary": "유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 null",
+        "summary": "Replace a whole cardio record (transaction). Omitted optional values become null",
         "parameters": [
           {
             "name": "id",
@@ -293,7 +293,7 @@
     },
     "/api/goals/{id}": {
       "delete": {
-        "summary": "목표 삭제 → { ok }",
+        "summary": "Delete a goal → { ok }",
         "parameters": [
           {
             "name": "id",
@@ -334,7 +334,7 @@
     },
     "/api/routines/{id}/rests/{date}": {
       "delete": {
-        "summary": "당일 휴식 취소",
+        "summary": "Cancel the rest on the same day",
         "parameters": [
           {
             "name": "id",
@@ -394,7 +394,7 @@
     },
     "/api/workouts/{id}": {
       "delete": {
-        "summary": "일지와 세트 삭제 → { ok: true }",
+        "summary": "Delete a log and its sets → { ok: true }",
         "parameters": [
           {
             "name": "id",
@@ -433,7 +433,7 @@
         }
       },
       "put": {
-        "summary": "일지 전체 교체 → { id, version }. version 필수",
+        "summary": "Replace a whole log → { id, version }. version required",
         "parameters": [
           {
             "name": "id",
@@ -504,7 +504,7 @@
     },
     "/api/analysis": {
       "get": {
-        "summary": "?from&to(최대 371일) 종목별 PR·추정 1RM·부위별 주간 운동량",
+        "summary": "?from&to (up to 371 days) PR by exercise, estimated 1RM, and weekly volume by body part",
         "parameters": [
           {
             "name": "from",
@@ -544,7 +544,7 @@
     },
     "/api/backup": {
       "get": {
-        "summary": "복원용 JSON 백업 파일",
+        "summary": "JSON backup file for restore",
         "responses": {
           "200": {
             "description": "Success"
@@ -554,7 +554,7 @@
     },
     "/api/body-measurements": {
       "get": {
-        "summary": "?from&to 기간의 신체 기록(날짜 순)",
+        "summary": "Body records in the ?from&to period (by date)",
         "parameters": [
           {
             "name": "from",
@@ -592,7 +592,7 @@
         }
       },
       "post": {
-        "summary": "신체 기록 등록 → 201. 같은 날짜는 409",
+        "summary": "Create a body record → 201. The same date is 409",
         "requestBody": {
           "required": true,
           "content": {
@@ -632,7 +632,7 @@
     },
     "/api/brands": {
       "get": {
-        "summary": "브랜드 목록(id 순)",
+        "summary": "Brand list (by id)",
         "responses": {
           "200": {
             "description": "Success"
@@ -642,7 +642,7 @@
     },
     "/api/cardio-goals": {
       "get": {
-        "summary": "유산소 목표 목록과 서버 판정 achieved·progress",
+        "summary": "Cardio goal list with the server-evaluated achieved and progress",
         "responses": {
           "200": {
             "description": "Success"
@@ -650,7 +650,7 @@
         }
       },
       "post": {
-        "summary": "유산소 목표 등록 → 201",
+        "summary": "Create a cardio goal → 201",
         "requestBody": {
           "required": true,
           "content": {
@@ -680,7 +680,7 @@
     },
     "/api/cardio-goals/{id}/suggestion": {
       "get": {
-        "summary": "그 목표의 다음 목표 제안(저장하지 않음). 범위를 넘으면 suggestion: null",
+        "summary": "Next goal suggestion for that goal (not saved). suggestion: null if out of range",
         "parameters": [
           {
             "name": "id",
@@ -721,7 +721,7 @@
     },
     "/api/cardio-sessions": {
       "get": {
-        "summary": "?from&to 기간의 유산소 기록(최근 순). kind 선택",
+        "summary": "Cardio records in the ?from&to period (newest first). kind optional",
         "parameters": [
           {
             "name": "from",
@@ -778,7 +778,7 @@
         }
       },
       "post": {
-        "summary": "유산소 기록 등록 → 201. 같은 출처·외부 ID는 409",
+        "summary": "Create a cardio record → 201. The same source and external ID is 409",
         "requestBody": {
           "required": true,
           "content": {
@@ -818,7 +818,7 @@
     },
     "/api/cardio-sessions/records": {
       "get": {
-        "summary": "유산소 개인 기록(전체 기간): 종류별 최장 거리, 러닝 5km·10km 최고 기록",
+        "summary": "Cardio personal records (all time): longest distance per kind, best running 5km and 10km times",
         "responses": {
           "200": {
             "description": "Success"
@@ -828,7 +828,7 @@
     },
     "/api/exercise-body-parts": {
       "get": {
-        "summary": "운동별 부위 매핑",
+        "summary": "Body part mapping per exercise",
         "responses": {
           "200": {
             "description": "Success"
@@ -836,7 +836,7 @@
         }
       },
       "put": {
-        "summary": "운동 1개의 부위 매핑 교체. 빈 배열은 매핑 삭제",
+        "summary": "Replace the body part mapping of one exercise. An empty array deletes the mapping",
         "requestBody": {
           "required": true,
           "content": {
@@ -866,7 +866,7 @@
     },
     "/api/exercise-names": {
       "get": {
-        "summary": "운동명 자동완성 후보(#124). 최근 → 자주 사용 순 최대 50개",
+        "summary": "Exercise name autocomplete candidates (#124). Recent, then most used, up to 50",
         "responses": {
           "200": {
             "description": "Success"
@@ -876,7 +876,7 @@
     },
     "/api/exercise-weight-steps": {
       "get": {
-        "summary": "운동별 증량 단위(#86). 지정한 운동만",
+        "summary": "Weight step per exercise (#86). Only the exercises that were set",
         "responses": {
           "200": {
             "description": "Success"
@@ -884,7 +884,7 @@
         }
       },
       "put": {
-        "summary": "운동 1개의 증량 단위 저장. null은 기본 5 kg으로 되돌림",
+        "summary": "Save the weight step of one exercise. null goes back to the default 5 kg",
         "requestBody": {
           "required": true,
           "content": {
@@ -914,7 +914,7 @@
     },
     "/api/export/cardio.csv": {
       "get": {
-        "summary": "유산소 분석용 CSV(?from&to 선택). 복원에 사용할 수 없음",
+        "summary": "CSV for cardio analysis (?from&to optional). Cannot be used for restore",
         "parameters": [
           {
             "name": "from",
@@ -961,7 +961,7 @@
     },
     "/api/export/workouts.csv": {
       "get": {
-        "summary": "분석용 CSV(?from&to 선택). 복원에 사용할 수 없음",
+        "summary": "CSV for analysis (?from&to optional). Cannot be used for restore",
         "parameters": [
           {
             "name": "from",
@@ -1008,7 +1008,7 @@
     },
     "/api/goal-suggestion": {
       "get": {
-        "summary": "?exercise=의 다음 목표 제안(저장하지 않음)",
+        "summary": "Next goal suggestion for ?exercise= (not saved)",
         "parameters": [
           {
             "name": "exercise",
@@ -1040,7 +1040,7 @@
     },
     "/api/goals": {
       "get": {
-        "summary": "목표 목록과 서버 판정 achieved",
+        "summary": "Goal list with the server-evaluated achieved",
         "responses": {
           "200": {
             "description": "Success"
@@ -1048,7 +1048,7 @@
         }
       },
       "post": {
-        "summary": "목표 등록 → 201",
+        "summary": "Create a goal → 201",
         "requestBody": {
           "required": true,
           "content": {
@@ -1078,7 +1078,7 @@
     },
     "/api/health": {
       "get": {
-        "summary": "DB 연결 확인. { \"status\": \"ok\" }",
+        "summary": "DB connection check. { \"status\": \"ok\" }",
         "responses": {
           "200": {
             "description": "Success"
@@ -1098,7 +1098,7 @@
     },
     "/api/machines": {
       "get": {
-        "summary": "머신 목록과 연결된 공식 참고값(최근 등록 순)",
+        "summary": "Machine list with the linked official reference values (newest first)",
         "responses": {
           "200": {
             "description": "Success"
@@ -1106,7 +1106,7 @@
         }
       },
       "post": {
-        "summary": "머신 등록 → 201",
+        "summary": "Create a machine → 201",
         "requestBody": {
           "required": true,
           "content": {
@@ -1146,7 +1146,7 @@
     },
     "/api/official-machine-weights": {
       "get": {
-        "summary": "제조사 공식 시작 저항 참고값. ?brand= 선택",
+        "summary": "Manufacturer official starting resistance reference values. ?brand= optional",
         "parameters": [
           {
             "name": "brand",
@@ -1178,7 +1178,7 @@
     },
     "/api/routine-progress": {
       "get": {
-        "summary": "진행 중 루틴의 오늘 목표·주간/12주 진행·이전 기록. 없으면 routine: null",
+        "summary": "Today's goal, weekly and 12-week progress, and previous records of the routine in progress. routine: null if none",
         "responses": {
           "200": {
             "description": "Success"
@@ -1188,7 +1188,7 @@
     },
     "/api/routines": {
       "get": {
-        "summary": "저장된 루틴과 84일 일정(schedule)",
+        "summary": "Saved routines with the 84-day schedule (schedule)",
         "responses": {
           "200": {
             "description": "Success"
@@ -1196,7 +1196,7 @@
         }
       },
       "post": {
-        "summary": "루틴 저장 → 201 { id }",
+        "summary": "Save a routine → 201 { id }",
         "requestBody": {
           "required": true,
           "content": {
@@ -1226,7 +1226,7 @@
     },
     "/api/routines/{id}": {
       "get": {
-        "summary": "루틴 1개와 일정",
+        "summary": "One routine with its schedule",
         "parameters": [
           {
             "name": "id",
@@ -1267,7 +1267,7 @@
     },
     "/api/workouts": {
       "get": {
-        "summary": "?from&to 기간의 일지와 세트(최근 날짜 순)",
+        "summary": "Logs and sets in the ?from&to period (latest date first)",
         "parameters": [
           {
             "name": "from",
@@ -1305,7 +1305,7 @@
         }
       },
       "post": {
-        "summary": "일지 저장 → 201 { id, version }. Idempotency-Key 선택",
+        "summary": "Save a log → 201 { id, version }. Idempotency-Key optional",
         "parameters": [
           {
             "name": "Idempotency-Key",
@@ -1357,7 +1357,7 @@
     },
     "/api/backup/preview": {
       "post": {
-        "summary": "복원 미리보기(같은 절차 후 ROLLBACK)",
+        "summary": "Restore preview (the same procedure, then ROLLBACK)",
         "requestBody": {
           "required": true,
           "content": {
@@ -1407,7 +1407,7 @@
     },
     "/api/backup/restore": {
       "post": {
-        "summary": "복원 실행. mode: \"replace\"는 confirm: \"전체 교체\" 필수",
+        "summary": "Run a restore. mode: \"replace\" requires confirm: \"전체 교체\" (Korean for \"full replace\")",
         "requestBody": {
           "required": true,
           "content": {
@@ -1457,7 +1457,7 @@
     },
     "/api/routines/{id}/rests": {
       "post": {
-        "summary": "오늘 휴식 선택 { date } → 201(적용) 또는 200(이미 적용)",
+        "summary": "Choose to rest today { date } → 201 (applied) or 200 (already applied)",
         "parameters": [
           {
             "name": "id",
@@ -1521,7 +1521,7 @@
     },
     "/api/machines/{id}": {
       "put": {
-        "summary": "머신 수정",
+        "summary": "Update a machine",
         "parameters": [
           {
             "name": "id",

@@ -1,84 +1,84 @@
-# REST API 계약
+# REST API contract
 
-Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·머신·목표·신체 기록·유산소 기록의 입력 검증 원본은 [shared/contract.ts](../shared/contract.ts)의 Zod 스키마입니다. 서버(400 응답)와 화면(저장 전 항목별 오류)이 같은 스키마와 한국어 메시지를 사용합니다. 루틴 등 나머지 스키마는 [domain.ts](../backend/src/domain.ts)에 있습니다. 이 문서는 그 의미와 엔드포인트 목록을 정리합니다. 아래 엔드포인트 표는 `backend/test/api-contract.test.ts`가 실제 등록된 Express 라우트와 비교하므로, 라우트를 추가·삭제하면 이 표도 함께 고쳐야 `npm test`가 통과합니다.
+The request and response rules of the Workout Memo API (`backend`). The source of truth for input validation of logs, sets, machines, goals, body records, and cardio records is the Zod schemas in [shared/contract.ts](../shared/contract.ts). The server (400 responses) and the screen (per-field errors before saving) use the same schemas and the same Korean messages. The remaining schemas, such as routines, are in [domain.ts](../backend/src/domain.ts). This document sums up their meaning and the endpoint list. `backend/test/api-contract.test.ts` compares the endpoint table below with the Express routes that are really registered, so if you add or delete a route, you must fix this table too for `npm test` to pass.
 
-## 공통 규칙
+## Common rules
 
-- 기본 경로는 `/api`입니다. 웹(8101)의 nginx가 `/api`를 API 컨테이너(3101)로 전달합니다. 로그인은 없고, 사용자 본인만 접근할 수 있는 로컬 주소에서 사용합니다.
-- 요청·응답 본문은 JSON(UTF-8)이며 기본 요청 크기 한도는 256KB입니다. 백업 복원 요청만 10MB(+64KB)까지 받습니다.
-- 날짜는 `YYYY-MM-DD` 문자열이며 실제 존재하는 날짜만 허용합니다. "오늘"은 서비스 시간대 `Asia/Seoul` 기준입니다.
-- 중량(`weight`, `target_weight`, `base_weight`)은 머신 기본중량을 포함한 총중량 kg입니다. 0 이상 99999 이하이며, 확인하지 못한 기본중량은 `null`입니다. 반복 수는 1~1000의 정수입니다.
-- 경로의 `:id`는 0으로 시작하지 않고 숫자만으로 된 양의 정수(최대 15자리)입니다. `1e3`, 앞뒤 공백이 붙은 `%207%20`, `07`처럼 숫자만이 아니거나 0으로 시작하면 400 `{ "error": "<대상> ID가 올바르지 않습니다" }`입니다(중앙 `standard/http.ts`의 `parseId`, #172).
-- 운동 이름은 앞뒤 공백과 대소문자를 무시한 `lower(trim(name))` 기준으로 같은 운동으로 판정합니다. 목표 달성과 종목 분석이 같은 규칙을 씁니다.
-- 완료하지 않은 세트(`completed=false`)는 계획으로 보관만 합니다. 목표 달성, 볼륨, PR 계산에는 반영하지 않습니다.
+- The base path is `/api`. The nginx of the web app (8101) forwards `/api` to the API container (3101). There is no login, and it is used on a local address that only the user can reach.
+- Request and response bodies are JSON (UTF-8), and the default request size limit is 256KB. Only the backup restore request accepts up to 10MB (+64KB).
+- Dates are `YYYY-MM-DD` strings, and only dates that really exist are accepted. "Today" is based on the service time zone `Asia/Seoul`.
+- Weight (`weight`, `target_weight`, `base_weight`) is the total weight in kg including the machine base weight. It is 0 or more and 99999 or less, and a base weight that could not be confirmed is `null`. Reps is an integer from 1 to 1000.
+- The `:id` in a path is a positive integer made only of digits, not starting with 0 (up to 15 digits). If it is not only digits or starts with 0, such as `1e3`, `%207%20` with spaces around it, or `07`, the response is 400 `{ "error": "<target> ID가 올바르지 않습니다" }` (the message says the ID is not valid; `parseId` in the central `standard/http.ts`, #172).
+- Exercise names are judged to be the same exercise by `lower(trim(name))`, which ignores leading and trailing spaces and letter case. Goal achievement and exercise analysis use the same rule.
+- A set that is not completed (`completed=false`) is only kept as a plan. It is not counted in goal achievement, volume, or PR calculation.
 
-## 오류 형식
+## Error format
 
-모든 오류 응답은 `{ "error": "<한국어 메시지>" }` 형식입니다.
+Every error response has the form `{ "error": "<Korean message>" }`.
 
-| 상태 | 의미                                                                                                                                                      |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400  | 입력 검증 실패(Zod 메시지를 `, `로 연결, 최대 10개), JSON 형식 오류, 잘못된 경로 ID, 존재하지 않는 머신·브랜드·공식 참고값·근력 일지 참조, 백업 형식 오류 |
-| 404  | 대상 일지·머신·루틴·신체 기록·목표·유산소 기록이 없음. 없는 `/api` 경로는 `{ "error": "요청한 API를 찾을 수 없습니다" }`                                  |
-| 409  | 고유값 중복(같은 이름·날짜, 유산소의 같은 출처·외부 ID), 일지 버전 충돌, 같은 재시도 키에 다른 내용 또는 만료된 키, 루틴 휴식의 날짜·상태 조건 불일치     |
-| 413  | 요청 크기 한도 초과. 백업 경로는 10MB 한도를 알려 주는 메시지, 나머지는 "요청 본문이 너무 큽니다"                                                         |
-| 500  | DB 연결 오류 등 서버 오류. 응답은 `{ "error": "서버 오류가 발생했습니다" }`이고, 상세 내용은 서버 로그(`request_error`)에만 남깁니다                      |
+| Status | Meaning                                                                                                                                                                                                                                |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400    | Input validation failure (Zod messages joined with `, `, at most 10), a JSON format error, a bad path ID, a reference to a machine, brand, official reference value, or strength log that does not exist, a backup format error        |
+| 404    | The target log, machine, routine, body record, goal, or cardio record does not exist. For an `/api` path that does not exist: `{ "error": "요청한 API를 찾을 수 없습니다" }` (the requested API was not found)                         |
+| 409    | A duplicate unique value (the same name or date, the same source and external ID for cardio), a log version conflict, a different body or an expired key for the same retry key, a date or state condition mismatch for a routine rest |
+| 413    | The request size limit was exceeded. The backup path gives a message that states the 10MB limit, and the others "요청 본문이 너무 큽니다" (the request body is too large)                                                              |
+| 500    | A server error such as a DB connection error. The response is `{ "error": "서버 오류가 발생했습니다" }` (a server error occurred), and the details are left only in the server log (`request_error`)                                   |
 
-오류 처리는 다른 앱과 같은 중앙 관리 파일 `backend/src/standard/http.ts`(sirloinbh/project-standards#309)가 맡습니다. 이 앱만의 메시지(머신·브랜드·공식 참고값·근력 일지 참조 오류, 유산소 외부 ID 중복, 백업 10MB 한도)는 `routes/shared.ts`의 `appErrors`가 먼저 처리합니다(#172).
+Error handling is done by the centrally managed file `backend/src/standard/http.ts` (sirloinbh/project-standards#309), which is the same as in the other apps. The messages that only this app has (reference errors for machines, brands, official reference values, and strength logs, the duplicate cardio external ID, and the 10MB backup limit) are handled first by `appErrors` in `routes/shared.ts` (#172).
 
-## 엔드포인트
+## Endpoints
 
-| 메서드 | 경로                               | 설명                                                                      |
-| ------ | ---------------------------------- | ------------------------------------------------------------------------- |
-| GET    | `/api/health`                      | DB 연결 확인. `{ "status": "ok" }`                                        |
-| GET    | `/api/brands`                      | 브랜드 목록(id 순)                                                        |
-| GET    | `/api/official-machine-weights`    | 제조사 공식 시작 저항 참고값. `?brand=` 선택                              |
-| GET    | `/api/machines`                    | 머신 목록과 연결된 공식 참고값(최근 등록 순)                              |
-| POST   | `/api/machines`                    | 머신 등록 → 201                                                           |
-| PUT    | `/api/machines/:id`                | 머신 수정                                                                 |
-| GET    | `/api/workouts`                    | `?from&to` 기간의 일지와 세트(최근 날짜 순)                               |
-| POST   | `/api/workouts`                    | 일지 저장 → 201 `{ id, version }`. `Idempotency-Key` 선택                 |
-| PUT    | `/api/workouts/:id`                | 일지 전체 교체 → `{ id, version }`. `version` 필수                        |
-| DELETE | `/api/workouts/:id`                | 일지와 세트 삭제 → `{ ok: true }`                                         |
-| GET    | `/api/goals`                       | 목표 목록과 서버 판정 `achieved`                                          |
-| POST   | `/api/goals`                       | 목표 등록 → 201                                                           |
-| DELETE | `/api/goals/:id`                   | 목표 삭제 → `{ ok }`                                                      |
-| GET    | `/api/routines`                    | 저장된 루틴과 84일 일정(`schedule`)                                       |
-| POST   | `/api/routines`                    | 루틴 저장 → 201 `{ id }`                                                  |
-| GET    | `/api/routines/:id`                | 루틴 1개와 일정                                                           |
-| GET    | `/api/routine-progress`            | 진행 중 루틴의 오늘 목표·주간/12주 진행·이전 기록. 없으면 `routine: null` |
-| POST   | `/api/routines/:id/rests`          | 오늘 휴식 선택 `{ date }` → 201(적용) 또는 200(이미 적용)                 |
-| DELETE | `/api/routines/:id/rests/:date`    | 당일 휴식 취소                                                            |
-| GET    | `/api/body-measurements`           | `?from&to` 기간의 신체 기록(날짜 순)                                      |
-| POST   | `/api/body-measurements`           | 신체 기록 등록 → 201. 같은 날짜는 409                                     |
-| PUT    | `/api/body-measurements/:id`       | 신체 기록 전체 교체. 생략한 값은 `null`                                   |
-| DELETE | `/api/body-measurements/:id`       | 신체 기록 삭제 → `{ ok: true }`                                           |
-| GET    | `/api/analysis`                    | `?from&to`(최대 371일) 종목별 PR·추정 1RM·부위별 주간 운동량              |
-| GET    | `/api/exercise-body-parts`         | 운동별 부위 매핑                                                          |
-| PUT    | `/api/exercise-body-parts`         | 운동 1개의 부위 매핑 교체. 빈 배열은 매핑 삭제                            |
-| GET    | `/api/exercise-names`              | 운동명 자동완성 후보(#124). 최근 → 자주 사용 순 최대 50개                 |
-| GET    | `/api/exercise-weight-steps`       | 운동별 증량 단위(#86). 지정한 운동만                                      |
-| PUT    | `/api/exercise-weight-steps`       | 운동 1개의 증량 단위 저장. `null`은 기본 5 kg으로 되돌림                  |
-| GET    | `/api/goal-suggestion`             | `?exercise=`의 다음 목표 제안(저장하지 않음)                              |
-| GET    | `/api/cardio-sessions`             | `?from&to` 기간의 유산소 기록(최근 순). `kind` 선택                       |
-| GET    | `/api/cardio-sessions/records`     | 유산소 개인 기록(전체 기간): 종류별 최장 거리, 러닝 5km·10km 최고 기록    |
-| GET    | `/api/cardio-sessions/:id`         | 유산소 기록 1개                                                           |
-| POST   | `/api/cardio-sessions`             | 유산소 기록 등록 → 201. 같은 출처·외부 ID는 409                           |
-| PUT    | `/api/cardio-sessions/:id`         | 유산소 기록 전체 교체(트랜잭션). 생략한 선택 값은 `null`                  |
-| DELETE | `/api/cardio-sessions/:id`         | 유산소 기록 삭제 → `{ ok: true }`                                         |
-| GET    | `/api/export/cardio.csv`           | 유산소 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                 |
-| GET    | `/api/cardio-goals`                | 유산소 목표 목록과 서버 판정 `achieved`·`progress`                        |
-| POST   | `/api/cardio-goals`                | 유산소 목표 등록 → 201                                                    |
-| DELETE | `/api/cardio-goals/:id`            | 유산소 목표 삭제 → `{ ok: true }`                                         |
-| GET    | `/api/cardio-goals/:id/suggestion` | 그 목표의 다음 목표 제안(저장하지 않음). 범위를 넘으면 `suggestion: null` |
-| GET    | `/api/export/workouts.csv`         | 분석용 CSV(`?from&to` 선택). 복원에 사용할 수 없음                        |
-| GET    | `/api/backup`                      | 복원용 JSON 백업 파일                                                     |
-| POST   | `/api/backup/preview`              | 복원 미리보기(같은 절차 후 ROLLBACK)                                      |
-| POST   | `/api/backup/restore`              | 복원 실행. `mode: "replace"`는 `confirm: "전체 교체"` 필수                |
+| Method | Path                               | Description                                                                                                         |
+| ------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/health`                      | DB connection check. `{ "status": "ok" }`                                                                           |
+| GET    | `/api/brands`                      | Brand list (by id)                                                                                                  |
+| GET    | `/api/official-machine-weights`    | Manufacturer official starting resistance reference values. `?brand=` optional                                      |
+| GET    | `/api/machines`                    | Machine list with the linked official reference values (newest first)                                               |
+| POST   | `/api/machines`                    | Create a machine → 201                                                                                              |
+| PUT    | `/api/machines/:id`                | Update a machine                                                                                                    |
+| GET    | `/api/workouts`                    | Logs and sets in the `?from&to` period (latest date first)                                                          |
+| POST   | `/api/workouts`                    | Save a log → 201 `{ id, version }`. `Idempotency-Key` optional                                                      |
+| PUT    | `/api/workouts/:id`                | Replace a whole log → `{ id, version }`. `version` required                                                         |
+| DELETE | `/api/workouts/:id`                | Delete a log and its sets → `{ ok: true }`                                                                          |
+| GET    | `/api/goals`                       | Goal list with the server-evaluated `achieved`                                                                      |
+| POST   | `/api/goals`                       | Create a goal → 201                                                                                                 |
+| DELETE | `/api/goals/:id`                   | Delete a goal → `{ ok }`                                                                                            |
+| GET    | `/api/routines`                    | Saved routines with the 84-day schedule (`schedule`)                                                                |
+| POST   | `/api/routines`                    | Save a routine → 201 `{ id }`                                                                                       |
+| GET    | `/api/routines/:id`                | One routine with its schedule                                                                                       |
+| GET    | `/api/routine-progress`            | Today's goal, weekly and 12-week progress, and previous records of the routine in progress. `routine: null` if none |
+| POST   | `/api/routines/:id/rests`          | Choose to rest today `{ date }` → 201 (applied) or 200 (already applied)                                            |
+| DELETE | `/api/routines/:id/rests/:date`    | Cancel the rest on the same day                                                                                     |
+| GET    | `/api/body-measurements`           | Body records in the `?from&to` period (by date)                                                                     |
+| POST   | `/api/body-measurements`           | Create a body record → 201. The same date is 409                                                                    |
+| PUT    | `/api/body-measurements/:id`       | Replace a whole body record. Omitted values become `null`                                                           |
+| DELETE | `/api/body-measurements/:id`       | Delete a body record → `{ ok: true }`                                                                               |
+| GET    | `/api/analysis`                    | `?from&to` (up to 371 days) PR by exercise, estimated 1RM, and weekly volume by body part                           |
+| GET    | `/api/exercise-body-parts`         | Body part mapping per exercise                                                                                      |
+| PUT    | `/api/exercise-body-parts`         | Replace the body part mapping of one exercise. An empty array deletes the mapping                                   |
+| GET    | `/api/exercise-names`              | Exercise name autocomplete candidates (#124). Recent, then most used, up to 50                                      |
+| GET    | `/api/exercise-weight-steps`       | Weight step per exercise (#86). Only the exercises that were set                                                    |
+| PUT    | `/api/exercise-weight-steps`       | Save the weight step of one exercise. `null` goes back to the default 5 kg                                          |
+| GET    | `/api/goal-suggestion`             | Next goal suggestion for `?exercise=` (not saved)                                                                   |
+| GET    | `/api/cardio-sessions`             | Cardio records in the `?from&to` period (newest first). `kind` optional                                             |
+| GET    | `/api/cardio-sessions/records`     | Cardio personal records (all time): longest distance per kind, best running 5km and 10km times                      |
+| GET    | `/api/cardio-sessions/:id`         | One cardio record                                                                                                   |
+| POST   | `/api/cardio-sessions`             | Create a cardio record → 201. The same source and external ID is 409                                                |
+| PUT    | `/api/cardio-sessions/:id`         | Replace a whole cardio record (transaction). Omitted optional values become `null`                                  |
+| DELETE | `/api/cardio-sessions/:id`         | Delete a cardio record → `{ ok: true }`                                                                             |
+| GET    | `/api/export/cardio.csv`           | CSV for cardio analysis (`?from&to` optional). Cannot be used for restore                                           |
+| GET    | `/api/cardio-goals`                | Cardio goal list with the server-evaluated `achieved` and `progress`                                                |
+| POST   | `/api/cardio-goals`                | Create a cardio goal → 201                                                                                          |
+| DELETE | `/api/cardio-goals/:id`            | Delete a cardio goal → `{ ok: true }`                                                                               |
+| GET    | `/api/cardio-goals/:id/suggestion` | Next goal suggestion for that goal (not saved). `suggestion: null` if out of range                                  |
+| GET    | `/api/export/workouts.csv`         | CSV for analysis (`?from&to` optional). Cannot be used for restore                                                  |
+| GET    | `/api/backup`                      | JSON backup file for restore                                                                                        |
+| POST   | `/api/backup/preview`              | Restore preview (the same procedure, then ROLLBACK)                                                                 |
+| POST   | `/api/backup/restore`              | Run a restore. `mode: "replace"` requires `confirm: "전체 교체"` (Korean for "full replace")                        |
 
-## 주요 요청 본문
+## Main request bodies
 
-### 일지 `POST /api/workouts`, `PUT /api/workouts/:id`
+### Log `POST /api/workouts`, `PUT /api/workouts/:id`
 
 ```json
 {
@@ -101,49 +101,51 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 }
 ```
 
-- `title`과 `exercise`는 공백을 제거한 뒤 1~120자, `notes`는 4000자 이하입니다. 세트는 1~200개이며 배열 순서대로 저장합니다.
-- `completed`를 생략하면 `true`(기존 클라이언트 호환)입니다. `rpe`는 `null` 또는 1~10의 0.5 단위입니다. 화면은 #83부터 RPE를 입력받지 않으며, 저장된 값은 수정 시 그대로 다시 보냅니다.
-- `feedback`(#83)은 일지 전체의 체감으로 `hard`(힘듦)·`medium`(중간)·`easy`(쉬움) 또는 `null`(미입력)입니다. 생략하면 `null`로 저장합니다. 자동 이중 진행 루틴은 목표를 달성한 세션이라도 그 세션 기간 안에 해당 운동이 든 일지가 `hard`이면 다음 세션 목표를 유지합니다.
-- `version`은 PUT에서만 필수입니다. 조회한 값과 다르면 409이며 성공하면 1 증가합니다.
-- `Idempotency-Key`(UUID) 헤더를 보내면 첫 성공 커밋부터 7일 동안 같은 요청에 같은 응답을 재전송합니다. 저장 형식은 [database/README.md](../database/README.md)를 참고하세요.
+(In the example, `하체` means "lower body" and `스쿼트` means "squat".)
 
-### 머신 `POST /api/machines`, `PUT /api/machines/:id`
+- `title` and `exercise` are 1 to 120 characters after trimming spaces, and `notes` is 4000 characters or less. A log has 1 to 200 sets, saved in array order.
+- If `completed` is omitted it is `true` (compatible with existing clients). `rpe` is `null` or 1 to 10 in 0.5 steps. The screen has not asked for RPE since #83, and a stored value is sent back as it is when you edit.
+- `feedback` (#83) is the feeling of the whole log: `hard`, `medium`, `easy`, or `null` (not entered). If omitted it is saved as `null`. For an automatic double progression routine, even in a session where the goal was achieved, it keeps the goal of the next session if a log that contains that exercise within that session's period is `hard`.
+- `version` is required only in PUT. If it differs from the fetched value it is 409, and on success it increases by 1.
+- If you send an `Idempotency-Key` (UUID) header, the same response is resent for the same request for 7 days from the first successful commit. For the storage format, see [database/README.md](../database/README.md).
 
-`{ "brand_id": 1, "name": "레그 프레스", "base_weight": null, "notes": "", "official_weight_id": 12 }`
+### Machine `POST /api/machines`, `PUT /api/machines/:id`
 
-- `official_weight_id`는 공식 참고값 연결입니다. `base_weight`를 바꾸지 않습니다. 수정 요청에서 생략하면 기존 연결을 유지하고, `null`을 보내면 연결을 해제합니다.
-- `single_joint`(#84, boolean)는 단관절 운동 머신 여부입니다. 등록 시 생략하면 `false`, 수정 시 생략하면 기존 값을 유지합니다. 화면의 휴식 타이머가 세트 완료 시 단관절 기본 휴식을 고르는 데 씁니다.
+`{ "brand_id": 1, "name": "레그 프레스", "base_weight": null, "notes": "", "official_weight_id": 12 }` (`레그 프레스` is "Leg Press")
 
-### 목표 `POST /api/goals`
+- `official_weight_id` is the link to an official reference value. It does not change `base_weight`. If omitted in an update request the existing link is kept, and sending `null` removes the link.
+- `single_joint` (#84, boolean) says whether the machine is for a single-joint exercise. If omitted at creation it is `false`, and if omitted in an update the existing value is kept. The rest timer on the screen uses it to pick the single-joint default rest when a set is completed.
 
-`{ "exercise": "벤치프레스", "target_weight": 80, "target_reps": 5, "start_date": "2026-10-01", "deadline": "2026-12-31" }`
+### Goal `POST /api/goals`
 
-- `deadline`은 `start_date`보다 앞설 수 없습니다. `achieved`는 기간 안에(오늘 이후 날짜 제외) 같은 운동의 완료 세트 1개가 중량과 반복 수를 모두 충족하면 `true`입니다.
+`{ "exercise": "벤치프레스", "target_weight": 80, "target_reps": 5, "start_date": "2026-10-01", "deadline": "2026-12-31" }` (`벤치프레스` is "Bench Press")
 
-### 운동명 후보 `GET /api/exercise-names` (#124)
+- `deadline` cannot be earlier than `start_date`. `achieved` is `true` when one completed set of the same exercise within the period (dates after today excluded) meets both the weight and the reps.
+
+### Exercise name candidates `GET /api/exercise-names` (#124)
 
 `[{ "name": "스쿼트", "uses": 12, "last_used": "2026-11-09" }, { "name": "레그 프레스 머신", "uses": 0, "last_used": null }]`
 
-- 운동 일지 세트, 목표, 루틴 계획의 운동명과 머신 이름을 모읍니다. 목표 판정과 같은 정규화 이름(대소문자·앞뒤 공백 무시)으로 묶고, 가장 최근에 쓴 표기를 `name`으로 돌려줍니다.
-- `uses`는 그 이름을 쓴 일지·목표·루틴 수입니다. 한 일지에 세트가 여러 개여도 1번으로 셉니다. 머신 이름만 있으면 0입니다.
-- `last_used`는 일지 날짜, 목표 시작일, 루틴 만든 날(Asia/Seoul) 중 가장 늦은 날이고, 머신 이름만 있으면 `null`입니다.
-- `last_used`가 늦은 순, 같으면 `uses`가 많은 순으로 최대 50개를 돌려줍니다. 비슷한 이름(중간 공백까지 무시) 안내는 화면이 이 목록으로 계산합니다.
+- It gathers the exercise names of workout log sets, goals, and routine plans, and machine names. It groups them by the same normalized name as goal evaluation (letter case and leading and trailing spaces ignored) and returns the spelling used most recently as `name`.
+- `uses` is the number of logs, goals, and routines that used that name. A log with several sets counts as 1. If there is only a machine name it is 0.
+- `last_used` is the latest of the log date, the goal start date, and the routine creation date (Asia/Seoul), and it is `null` if there is only a machine name.
+- It returns up to 50, ordered by the latest `last_used`, and by the larger `uses` on a tie. The screen computes the hint about similar names (ignoring even inner spaces) from this list.
 
-### 증량 단위 `PUT /api/exercise-weight-steps`, 목표 제안 `GET /api/goal-suggestion` (#86)
+### Weight step `PUT /api/exercise-weight-steps`, goal suggestion `GET /api/goal-suggestion` (#86)
 
 `{ "exercise": "벤치프레스", "weight_step": 2.5 }`
 
-- 운동 식별은 목표 판정과 같은 정규화 이름(대소문자·앞뒤 공백 무시)입니다. `weight_step`은 0 초과 100 kg 이하, 소수점 둘째 자리까지이며 `null`이면 설정을 지워 기본 5 kg으로 돌아갑니다.
-- 자동 이중 진행 루틴(이미 저장된 루틴 포함)은 반복 상한을 넘으면 총중량을 이 값만큼 올립니다. 0 kg(맨몸) 운동은 반복 수만 늘립니다.
-- `GET /api/goal-suggestion?exercise=벤치프레스` → `{ exercise, weight_step, custom, base, target_weight }`. `base`는 그 운동의 가장 최근 목표(`source: "goal"`), 없으면 가장 최근 일지의 가장 무거운 완료 세트(`source: "record"`)이며 둘 다 없으면 `null`(`target_weight`도 `null`)입니다.
+- An exercise is identified by the same normalized name as goal evaluation (letter case and leading and trailing spaces ignored). `weight_step` is greater than 0 and at most 100 kg, with up to two decimal places, and `null` clears the setting and goes back to the default 5 kg.
+- An automatic double progression routine (including routines that were already saved) raises the total weight by this value when the rep upper limit is passed. An exercise at 0 kg (bodyweight) only adds reps.
+- `GET /api/goal-suggestion?exercise=벤치프레스` → `{ exercise, weight_step, custom, base, target_weight }`. `base` is the most recent goal of that exercise (`source: "goal"`), or if there is none, the heaviest completed set of the most recent log (`source: "record"`), and if there is neither it is `null` (`target_weight` is also `null`).
 
-### 신체 기록 `POST /api/body-measurements`, `PUT /api/body-measurements/:id`
+### Body record `POST /api/body-measurements`, `PUT /api/body-measurements/:id`
 
 `{ "date": "2026-10-20", "body_weight_kg": 72.4, "body_fat_percent": null, "skeletal_muscle_kg": 33.1 }`
 
-- 세 값 중 하나 이상이 필요하고 소수점 둘째 자리까지만 받습니다. 셋째 자리 이상은 반올림하지 않고 400으로 거부합니다.
+- At least one of the three values is needed, and only up to two decimal places are accepted. A third or later decimal place is not rounded and is rejected with 400.
 
-### 유산소 기록 `POST /api/cardio-sessions`, `PUT /api/cardio-sessions/:id` (#114)
+### Cardio record `POST /api/cardio-sessions`, `PUT /api/cardio-sessions/:id` (#114)
 
 ```json
 {
@@ -165,20 +167,20 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 }
 ```
 
-- 필수는 `date`, `kind`, `duration_sec`입니다. 나머지는 생략하면 `null`(메모는 `""`, 출처는 `manual`)이며 0으로 채우지 않습니다. PUT은 전체 교체라 생략한 선택 값이 `null`이 됩니다.
-- `date`는 실제 날짜이고 오늘(`Asia/Seoul`) 이후면 400 "유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다"입니다. 근력 일지는 계획 기록 때문에 미래 날짜를 허용하므로 둘이 다르게 동작합니다. 이 규칙은 오늘 날짜가 필요해 OpenAPI 스키마에는 없습니다.
-- `start_time`은 서울 시각 `HH:MM`(00:00~23:59)입니다.
-- `kind`: `running`(러닝)·`walking`(걷기)·`outdoor_cycling`(실외 사이클)·`indoor_cycling`(실내 자전거)·`rowing`(로잉)·`stairs`(계단)·`elliptical`(일립티컬)·`swimming`(수영)·`other`(기타).
-- `duration_sec`는 1~86400(24시간)의 정수 초입니다. `distance_km`는 모든 종류에서 km이며 0 초과 1000 이하, 소수점 셋째 자리(1 m)까지입니다. 수영은 화면에서만 m로 보여 줍니다.
-- 심박 `avg_heart_rate`·`max_heart_rate`는 30~250 bpm 정수이고 둘 다 있으면 최대가 평균 이상이어야 합니다. `calories_kcal` 0~20000, `elevation_gain_m`(누적 상승 고도) 0~10000 m, `avg_cadence` 1~300(걸음/분 또는 회전/분)의 정수입니다. `memo`는 2000자 이하입니다.
-- `effort`(체감 강도)는 일지 피드백(#83)과 같은 `hard`·`medium`·`easy` 또는 `null`입니다.
-- `workout_id`는 같은 날 근력 일지와의 선택 연결입니다. 없는 일지면 400 "연결할 근력 일지가 존재하지 않습니다"이고, 일지를 지우면 연결만 `null`이 됩니다.
-- `source`는 `manual`·`garmin`·`nike`·`file`이고 `external_id`는 가져온 기록의 원본 ID(공백 제거 후 1~200자)입니다. `manual`에는 `external_id`를 넣을 수 없습니다(400). 같은 `source`와 `external_id`가 이미 있으면 409 "같은 출처와 외부 ID의 유산소 기록이 이미 있습니다"이며, `external_id`가 `null`인 기록끼리는 중복으로 보지 않습니다.
-- 응답은 저장한 필드와 `id`, `created_at`, `updated_at`, 계산값 `pace_sec_per_km`(초/km, 소수 1자리)·`speed_kmh`(km/h, 소수 2자리)입니다. 계산값은 저장하지 않고 조회할 때 SQL로 계산하며 거리가 없으면 둘 다 `null`입니다.
-- 목록 `GET /api/cardio-sessions?from&to[&kind]`는 날짜·시작 시각 최근 순입니다. 없는 기록은 404 "유산소 기록을 찾을 수 없습니다", 잘못된 경로 ID는 400 "유산소 기록 ID가 올바르지 않습니다"입니다.
-- 구간(랩·인터벌)과 GPS 경로는 저장하지 않습니다(요약값만).
+- `date`, `kind`, and `duration_sec` are required. The rest become `null` if omitted (`""` for the memo, `manual` for the source) and are not filled with 0. PUT replaces the whole record, so omitted optional values become `null`.
+- `date` is a real date, and if it is after today (`Asia/Seoul`) the response is 400 "유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다" (a cardio record date cannot be after today). Strength logs allow future dates because of planned records, so the two behave differently. This rule needs today's date, so it is not in the OpenAPI schema.
+- `start_time` is Seoul time `HH:MM` (00:00 to 23:59).
+- `kind`: `running`, `walking`, `outdoor_cycling`, `indoor_cycling`, `rowing`, `stairs`, `elliptical`, `swimming`, `other`.
+- `duration_sec` is an integer number of seconds from 1 to 86400 (24 hours). `distance_km` is in km for every kind, greater than 0 and at most 1000, up to the third decimal place (1 m). Swimming is shown in m only on the screen.
+- Heart rate `avg_heart_rate` and `max_heart_rate` are integers from 30 to 250 bpm, and if both are present the maximum must be at least the average. `calories_kcal` is 0 to 20000, `elevation_gain_m` (cumulative elevation gain) is 0 to 10000 m, and `avg_cadence` is an integer from 1 to 300 (steps per minute or revolutions per minute). `memo` is 2000 characters or less.
+- `effort` (perceived effort) is `hard`, `medium`, `easy`, or `null`, the same as the log feedback (#83).
+- `workout_id` is an optional link to a strength log of the same day. If the log does not exist it is 400 "연결할 근력 일지가 존재하지 않습니다" (the strength log to link does not exist), and if the log is deleted only the link becomes `null`.
+- `source` is `manual`, `garmin`, `nike`, or `file`, and `external_id` is the original ID of an imported record (1 to 200 characters after trimming spaces). `manual` cannot have an `external_id` (400). If the same `source` and `external_id` already exist it is 409 "같은 출처와 외부 ID의 유산소 기록이 이미 있습니다" (a cardio record with the same source and external ID already exists), and records whose `external_id` is `null` are not treated as duplicates of each other.
+- The response is the saved fields plus `id`, `created_at`, `updated_at`, and the calculated values `pace_sec_per_km` (seconds per km, 1 decimal place) and `speed_kmh` (km/h, 2 decimal places). The calculated values are not stored and are calculated with SQL on query, and both are `null` if there is no distance.
+- The list `GET /api/cardio-sessions?from&to[&kind]` is ordered by date and start time, newest first. A record that does not exist is 404 "유산소 기록을 찾을 수 없습니다" (cardio record not found), and a bad path ID is 400 "유산소 기록 ID가 올바르지 않습니다" (the cardio record ID is not valid).
+- Laps (intervals) and GPS routes are not stored (summary values only).
 
-### 유산소 개인 기록 `GET /api/cardio-sessions/records` (#115)
+### Cardio personal records `GET /api/cardio-sessions/records` (#115)
 
 ```json
 {
@@ -190,46 +192,46 @@ Workout Memo API(`backend`)의 요청·응답 규칙입니다. 일지·세트·�
 }
 ```
 
-- 기간과 상관없이 저장된 모든 기록에서 찾습니다. 받는 입력이 없어 400이 없습니다.
-- `longest`: 거리가 있는 종류마다 가장 긴 기록 1개입니다. 순서는 `kind` 목록 순(러닝 먼저)이고 거리가 없는 종류는 빠집니다. 같은 거리면 날짜가 이른 기록입니다.
-- `best5k`·`best10k`: 러닝 중 거리가 5km·10km의 ±2%(4.9~5.1 km, 9.8~10.2 km, 경계 포함)인 기록에서 전체 시간이 가장 짧은 기록입니다. 더 긴 기록의 시간을 페이스로 줄여 추정하지 않습니다(2026-11-08 사용자 결정 4). 해당 기록이 없으면 `null`이고, 같은 시간이면 날짜가 이른 기록입니다.
-- 이 경로는 `/api/cardio-sessions/:id`보다 먼저 등록해 `records`가 ID로 읽히지 않습니다.
+- It searches all stored records regardless of the period. There is no input it accepts, so there is no 400.
+- `longest`: the longest single record for each kind that has a distance. The order follows the `kind` list (running first), and kinds with no distance are left out. For the same distance, the earlier date wins.
+- `best5k` and `best10k`: among running records whose distance is within ±2% of 5 km or 10 km (4.9 to 5.1 km, 9.8 to 10.2 km, boundaries included), the record with the shortest total time. It does not estimate by scaling the time of a longer record by pace (user decision 4 of 2026-11-08). If there is no such record it is `null`, and for the same time the earlier date wins.
+- This path is registered before `/api/cardio-sessions/:id` so that `records` is not read as an ID.
 
-### 유산소 목표 `GET`·`POST /api/cardio-goals`, `DELETE /api/cardio-goals/:id` (#116)
+### Cardio goals `GET` and `POST /api/cardio-goals`, `DELETE /api/cardio-goals/:id` (#116)
 
-- 근력 목표(`/api/goals`)와 따로 저장합니다. 판정 기준은 2026-11-08 사용자 결정입니다(#116 댓글).
-- `goal_type`과 필요한 목표값:
+- They are stored separately from strength goals (`/api/goals`). The evaluation criteria are a user decision of 2026-11-08 (comment on #116).
+- `goal_type` and the target values it needs:
 
-| `goal_type`        | 뜻                                | `period`            | 목표값                                      | `kind`                |
-| ------------------ | --------------------------------- | ------------------- | ------------------------------------------- | --------------------- |
-| `distance`         | 기간마다 거리 합계                | `week`·`month` 필수 | `target_distance_km`                        | 선택(`null`이면 전체) |
-| `duration`         | 기간마다 시간 합계                | 필수                | `target_duration_sec`                       | 선택                  |
-| `count`            | 기간마다 기록 횟수                | 필수                | `target_count`                              | 선택                  |
-| `record_time`      | 한 기록이 거리 이상을 시간 이내에 | `null`              | `target_distance_km`, `target_duration_sec` | 필수                  |
-| `longest_distance` | 한 기록의 최장 거리               | `null`              | `target_distance_km`                        | 필수                  |
+| `goal_type`        | Meaning                                         | `period`                    | Target values                               | `kind`                  |
+| ------------------ | ----------------------------------------------- | --------------------------- | ------------------------------------------- | ----------------------- |
+| `distance`         | Total distance per period                       | `week` or `month`, required | `target_distance_km`                        | Optional (`null` = all) |
+| `duration`         | Total time per period                           | Required                    | `target_duration_sec`                       | Optional                |
+| `count`            | Number of records per period                    | Required                    | `target_count`                              | Optional                |
+| `record_time`      | One record of at least a distance within a time | `null`                      | `target_distance_km`, `target_duration_sec` | Required                |
+| `longest_distance` | The longest distance of one record              | `null`                      | `target_distance_km`                        | Required                |
 
-- 그 종류에 쓰지 않는 목표값은 `null`이어야 합니다(400). 범위: 거리 0 초과 10000 km 이하·소수점 셋째 자리, 시간 1~2678400초(31일), 횟수 1~1000. 종료일은 시작일과 같거나 이후이고, 목표 기간은 5년(1826일) 이하입니다.
-- 판정(조회할 때마다 서버가 계산, 저장하지 않음):
-  - 시작일~종료일과 오늘(서울) 사이의 유산소 기록만 셉니다. `kind`가 있으면 그 종류만 셉니다. 거리 없는 기록은 거리 목표에서만 빠집니다.
-  - 기간 누적: 주(월~일)·달력 월마다 판정합니다. 시작·종료일에 걸친 주기도 목표 기간 안의 기록만 세고 목표값은 그대로입니다. `progress`는 `{ kind: "period", current, periods, periods_achieved }`이고, `periods`의 각 주기는 `{ start, end, value, achieved }`(`start`·`end`는 달력 주기, `value`는 km·초·횟수)입니다. `current`는 오늘이 든 주기이며 시작 전·종료 후에는 `null`입니다. `achieved`는 `current`의 달성 여부입니다.
-  - 기록 목표: `record_time`은 거리 ≥ 목표 거리인 한 기록의 전체 시간이 목표 시간 이하일 때 달성입니다(페이스로 추정하지 않음). `longest_distance`는 가장 긴 한 기록이 목표 거리 이상일 때 달성입니다. `progress`는 `{ kind: "record", best }`(가장 빠른 시간 초 또는 가장 긴 거리 km, 없으면 `null`)입니다.
-- 없는 목표는 404 "유산소 목표를 찾을 수 없습니다", 잘못된 경로 ID는 400입니다.
-- 다음 목표 제안(#251) `GET /api/cardio-goals/:id/suggestion` → `{ goal_id, suggestion }`. `suggestion`은 `POST /api/cardio-goals` 본문과 같은 모양이며 저장하지 않습니다. 2026-11-08 사용자 결정에 따라 그 목표의 목표값에서 올립니다(실제 기록 기준 아님): 누적 거리·최장 거리 +10%(0.1 km, 수영 0.05 km 단위), 누적 시간 +10%(1분 단위), 횟수 +1회, 기록 시간 -3%(5초 단위). 반올림해도 올리는 값은 다음 단위 경계 이상(61초 → 2분)이고, 기록 시간은 최소 5초 줄어듭니다(102초 → 95초). 종류·운동 종류·기간 단위·기록 거리는 같고, 시작일은 오늘(서울), 종료일은 원래 목표와 같은 길이입니다. 결과가 허용 범위를 넘으면 `null`입니다. 달성 여부와 관계없이 계산하며, 화면은 달성한 목표에만 보여 줍니다.
+- Target values that the kind does not use must be `null` (400). Ranges: distance greater than 0 and at most 10000 km with up to the third decimal place, time 1 to 2678400 seconds (31 days), count 1 to 1000. The end date is the same as or after the start date, and the goal period is 5 years (1826 days) or less.
+- Evaluation (the server calculates it on every query and does not store it):
+  - It counts only cardio records between the start date to the end date and today (Seoul). If `kind` is set, it counts only that kind. A record with no distance is left out only for distance goals.
+  - Cumulative per period: it is evaluated per week (Monday to Sunday) and per calendar month. For a period that straddles the start or end date, it counts only the records within the goal period and the target value stays the same. `progress` is `{ kind: "period", current, periods, periods_achieved }`, and each period in `periods` is `{ start, end, value, achieved }` (`start` and `end` are the calendar period, and `value` is km, seconds, or a count). `current` is the period that contains today, and it is `null` before the start and after the end. `achieved` is whether `current` is achieved.
+  - Record goals: `record_time` is achieved when the total time of one record with distance >= the target distance is at most the target time (not estimated by pace). `longest_distance` is achieved when the longest single record is at least the target distance. `progress` is `{ kind: "record", best }` (the fastest time in seconds or the longest distance in km, `null` if none).
+- A goal that does not exist is 404 "유산소 목표를 찾을 수 없습니다" (cardio goal not found), and a bad path ID is 400.
+- Next goal suggestion (#251) `GET /api/cardio-goals/:id/suggestion` → `{ goal_id, suggestion }`. `suggestion` has the same shape as the `POST /api/cardio-goals` body and is not saved. Following a user decision of 2026-11-08, it raises from the target values of that goal (not based on real records): cumulative distance and longest distance +10% (in 0.1 km units, 0.05 km for swimming), cumulative time +10% (in 1 minute units), count +1, and record time -3% (in 5 second units). Even after rounding, the raised value is at least the next unit boundary (61 seconds → 2 minutes), and the record time decreases by at least 5 seconds (102 seconds → 95 seconds). The kind, the exercise kind, the period unit, and the record distance are the same, the start date is today (Seoul), and the end date has the same length as the original goal. If the result is out of the allowed range it is `null`. It is calculated whether or not the goal is achieved, and the screen shows it only for goals that were achieved.
 
-### 루틴, 백업
+### Routines and backup
 
-루틴 계획 형식은 [domain.ts](../backend/src/domain.ts)의 `routineSchema`를 따릅니다. 수동 진행에서는 12주 변화량이 필수이며, `progression: "auto"`에서는 반복 범위가 필수입니다. 일정은 `schedule_mode`로 고릅니다(#88). `cycle`이면 `cycle: { train_days, rest_days }`(운동일 1~7, 휴식일 0~7)를 시작일부터 반복하고 `rest_days`(요일)는 빈 배열이어야 합니다. 생략하거나 `weekday`이면 기존처럼 휴식 요일과 주당 운동 횟수의 합이 7입니다. 운동마다 선택 필드 `machine_id`로 머신을 지정할 수 있고(#82), 존재하지 않는 머신이면 400입니다. 오늘 목표(`today_plan.target.exercises`)는 `machine_id`(없으면 `null`)를 함께 돌려주며, 새 일지는 이 값으로 세트를 채웁니다. 부위는 가슴·등·어깨·이두·삼두·하체-앞·하체-뒤·복근이며, 이전에 저장한 `팔`도 계속 허용합니다. 백업 파일 형식과 복원 규칙은 [database/README.md의 앱 내보내기·백업](../database/README.md#앱-내보내기백업-33)을 따릅니다.
+The routine plan format follows `routineSchema` in [domain.ts](../backend/src/domain.ts). For manual progression the 12-week changes are required, and for `progression: "auto"` the rep range is required. The schedule is chosen with `schedule_mode` (#88). With `cycle`, `cycle: { train_days, rest_days }` (workout days 1 to 7, rest days 0 to 7) repeats from the start date and `rest_days` (weekdays) must be an empty array. If omitted or `weekday`, as before, the sum of the rest weekdays and the workouts per week is 7. Each exercise can name a machine with the optional field `machine_id` (#82), and a machine that does not exist is 400. Today's goal (`today_plan.target.exercises`) also returns `machine_id` (`null` if none), and a new log fills the sets with this value. The body parts are chest, back, shoulders, biceps, triceps, legs-front, legs-back, and abs (the stored Korean values are `가슴`, `등`, `어깨`, `이두`, `삼두`, `하체-앞`, `하체-뒤`, `복근`), and the previously saved `팔` (arms) is still allowed. The backup file format and the restore rules follow [App export and backup in database/README.md](../database/README.md#app-export-and-backup-33).
 
-## 변경 절차
+## Change procedure
 
-1. 공유 입력 스키마는 `shared/contract.ts`에서 바꾸고 `npm run contract:sync`로 `backend/src/contract.ts`·`frontend/src/contract.ts`에 복제합니다(복제본 직접 수정 금지, `npm run check`가 불일치를 실패 처리). 그 밖의 스키마는 `domain.ts`(또는 기능 모듈)에서 바꾸고, 해당 기능의 단위·DB 통합 테스트를 함께 고칩니다.
-2. 라우트는 `backend/src/routes/<기능>.ts`에 둡니다. 백업 라우트는 별도 요청 크기 한도 때문에 `backup.ts`에서 JSON 파서보다 먼저 등록합니다.
-3. 이 문서의 엔드포인트 표와 해당 요청 규칙을 갱신합니다. 표가 실제 라우트와 다르면 `api-contract.test.ts`가 실패합니다.
-4. `backend/src/openapi.ts`의 `operations`(요청 스키마·상태 코드)를 맞추고 `npm run openapi`로 [openapi.json](openapi.json)을 다시 생성해 커밋합니다. 오래된 파일은 `openapi.test.ts`가 실패로 처리합니다.
-5. 기존 클라이언트를 깨는 변경(필드 삭제, 의미 변경)은 이슈에 영향과 이전 방법을 적은 뒤 진행합니다.
+1. Change the shared input schemas in `shared/contract.ts` and copy them to `backend/src/contract.ts` and `frontend/src/contract.ts` with `npm run contract:sync` (do not edit the copies directly; `npm run check` fails on a mismatch). Change other schemas in `domain.ts` (or the feature module), and fix the unit and DB integration tests of that feature too.
+2. Put routes in `backend/src/routes/<feature>.ts`. Because of its separate request size limit, the backup route is registered in `backup.ts` before the JSON parser.
+3. Update the endpoint table in this document and the matching request rules. If the table differs from the real routes, `api-contract.test.ts` fails.
+4. Fix `operations` (request schemas and status codes) in `backend/src/openapi.ts`, regenerate [openapi.json](openapi.json) with `npm run openapi`, and commit it. `openapi.test.ts` fails on an old file.
+5. For a change that breaks existing clients (removing a field, changing a meaning), write the effect and the migration method in the issue before you go ahead.
 
-프론트엔드·백엔드 공유 Zod 계약은 #64에서 복제 방식으로 도입했습니다. 각 영역이 Docker와 subtree 저장소에서 따로 빌드되므로 workspace 패키지 대신 복제본을 둡니다.
+The shared Zod contract for frontend and backend was introduced in #64 as a copy. Because each area is built separately in Docker and in the subtree repositories, there are copies instead of a workspace package.
 
 ## OpenAPI
 
-[openapi.json](openapi.json)(OpenAPI 3.1)은 등록된 라우트, 이 문서의 엔드포인트 설명, 서버 Zod 스키마에서 생성합니다(#68, `npm run openapi`). 요청 본문·조회 매개변수·경로 변수와 필드 제약(필수, 범위, 길이, 정수, 날짜 형식, null 허용, 기본값)을 담습니다. 응답 본문 스키마와 교차 필드 규칙(종료일 ≥ 시작일, RPE 0.5 단위, 루틴 주차 규칙 등)은 JSON Schema로 옮기지 않았으므로 이 문서의 설명을 따릅니다.
+[openapi.json](openapi.json) (OpenAPI 3.1) is generated from the registered routes, the endpoint descriptions of this document, and the server Zod schemas (#68, `npm run openapi`). It contains the request bodies, the query parameters, the path variables, and the field constraints (required, range, length, integer, date format, null allowed, default). Response body schemas and cross-field rules (end date >= start date, RPE in 0.5 steps, routine week rules, and so on) were not moved into JSON Schema, so follow the descriptions in this document.

@@ -1,58 +1,58 @@
 # Workout PostgreSQL
 
-PostgreSQL 17. 스키마의 관리 원본은 `migrations/NNN_name.sql` 하나이며 파일명 순서로 적용합니다. Docker의 빈 데이터 볼륨은 최초 실행 시 모든 파일을 적용합니다. 기존 볼륨에 SQL 파일을 추가하는 것만으로는 적용되지 않습니다.
+PostgreSQL 17. The single source of truth for the schema is `migrations/NNN_name.sql`, applied in file name order. An empty Docker data volume applies all the files on its first run. Adding a SQL file alone does not apply it to an existing volume.
 
-## 마이그레이션 적용 (#58)
+## Applying migrations (#58)
 
-새 API를 실행하기 전에 우산 저장소 루트에서 실행하세요. `.env`의 `DATABASE_URL`(호스트 포트 15401)을 사용하며, 이미 설정된 환경변수가 있으면 그 값이 우선합니다.
+Run this from the root of the umbrella repo before you run the new API. It uses `DATABASE_URL` from `.env` (host port 15401), and an environment variable that is already set takes priority.
 
 ```powershell
-npm run db:migrate              # 미적용 파일만 순서대로 적용
-npm run db:migrate -- --status  # 적용됨/대기 목록만 확인(DB 변경 없음)
+npm run db:migrate              # apply only the pending files, in order
+npm run db:migrate -- --status  # only list applied and pending files (no DB change)
 ```
 
-- 적용 이력은 `schema_migrations`(파일명, 체크섬, 적용 시각)에 남습니다. 파일 하나와 그 이력 행은 한 트랜잭션으로 커밋됩니다. 중간 파일이 실패하면 그 파일만 ROLLBACK하고 중단하며, 앞서 적용한 파일은 기록된 상태로 남습니다. 원인을 고친 뒤 다시 실행하면 실패한 파일부터 이어서 적용합니다.
-- 동시에 실행해도 advisory lock으로 한 번에 하나씩 적용합니다.
-- 다음 경우에는 아무것도 적용하지 않고 실패합니다. 적용한 파일의 내용을 바꾼 경우(체크섬 불일치, 줄바꿈과 UTF-8 BOM 차이는 무시), 적용한 파일을 삭제한 경우, 이미 적용한 번호보다 앞선 새 파일이 생긴 경우, 번호가 중복되거나 이름이 형식에 맞지 않는 경우. 적용한 파일은 고치지 말고 새 번호의 파일을 추가하세요.
-- 이력이 없는 기존 DB에서 처음 실행하면 001부터 모든 파일을 다시 적용하고 기록합니다. 001~009는 모두 재실행해도 안전하므로 기존 일지·세트·머신 값은 바뀌지 않습니다. 009는 공식 참고 행을 같은 키로 다시 갱신합니다.
-- Node가 파일을 UTF-8로 직접 읽으므로, 아래 PowerShell 파이프 방식에서 생기는 한글 손상이 없습니다.
-- **새 마이그레이션도 재실행해도 안전하게 작성하세요**(`IF NOT EXISTS`, `ON CONFLICT` 등). 빈 볼륨에서는 Docker 초기화가 이력 없이 파일을 먼저 실행하고, 이후 `db:migrate`가 같은 파일을 다시 적용하며 기록하기 때문입니다.
-- 실패 시 복구: 오류 메시지의 파일명과 원인을 확인합니다. 데이터 문제라면 백업(`scripts/backup.ps1`)을 먼저 만든 뒤 원인을 고치고 다시 실행하세요. 체크섬 불일치는 파일을 git의 원래 내용으로 되돌리면 해결됩니다.
+- The applied history is kept in `schema_migrations` (file name, checksum, applied time). A file and its history row are committed in one transaction. If a file in the middle fails, only that file is rolled back and the run stops, and the files applied before it stay recorded. After you fix the cause and run it again, it continues from the file that failed.
+- Even if it runs concurrently, an advisory lock applies one at a time.
+- In the following cases it fails without applying anything: you changed the content of an applied file (checksum mismatch; line ending and UTF-8 BOM differences are ignored), you deleted an applied file, a new file appeared with a number lower than one already applied, or numbers are duplicated or a name does not match the format. Do not edit an applied file; add a file with a new number.
+- The first run on an existing DB with no history applies all the files again from 001 and records them. 001 to 009 are all safe to re-run, so existing logs, sets, and machine values do not change. 009 updates the official reference rows again by the same key.
+- Node reads the files directly as UTF-8, so the Korean text corruption that happens with the PowerShell pipe method below does not occur.
+- **Write new migrations so they are safe to re-run too** (`IF NOT EXISTS`, `ON CONFLICT`, and so on). On an empty volume, the Docker initialization runs the files first without a history, and afterwards `db:migrate` applies the same files again and records them.
+- Recovery on failure: check the file name and the cause in the error message. If it is a data problem, make a backup first (`scripts/backup.ps1`), fix the cause, and run it again. A checksum mismatch is solved by restoring the file to its original content in git.
 
-아래의 파일별 psql 명령은 `db:migrate` 도입 전 절차이며 이력을 남기지 않습니다. 이미 그렇게 적용한 DB도 `db:migrate`를 한 번 실행하면 기준선으로 기록됩니다.
+The per-file psql commands below are the procedure from before `db:migrate` was introduced and do not leave a history. A DB that was already migrated that way is recorded as the baseline once you run `db:migrate` one time.
 
-## PowerShell 파이프를 쓰지 않는 이유 (#55)
+## Why we do not use a PowerShell pipe (#55)
 
-Windows PowerShell 5.1은 외부 프로그램과 파이프로 텍스트를 주고받을 때 UTF-8을 그대로 전달하지 않습니다. 보낼 때는 `$OutputEncoding`(기본 ASCII)으로, 받을 때는 콘솔 코드 페이지(한국어 Windows 기본 CP949)로 변환합니다. 그래서 `Get-Content … | docker compose exec … psql`로 마이그레이션을 적용하면 001의 `'기타'`가 `'??'` 브랜드로 추가되고, 009의 한글 참고 데이터가 깨진 중복 행으로 들어갑니다. 백업도 `pg_dump` 출력을 변수로 받으면 `기타`가 `湲고?`로 깨진 채 저장됩니다.
+Windows PowerShell 5.1 does not pass UTF-8 through as it is when it sends text to and from an external program through a pipe. When sending, it converts with `$OutputEncoding` (ASCII by default), and when receiving, with the console code page (CP949 by default on Korean Windows). So if you apply a migration with `Get-Content … | docker compose exec … psql`, the `'기타'` ("Other") in 001 is added as a `'??'` brand, and the Korean reference data in 009 goes in as corrupted duplicate rows. For backups too, if you receive the `pg_dump` output into a variable, `기타` is saved corrupted as `湲고?`.
 
-- 마이그레이션은 `npm run db:migrate`(Node가 UTF-8로 직접 읽음)를 씁니다. 파일 하나만 적용해야 하면 compose가 마운트한 컨테이너 안의 파일을 `psql -f`로 실행합니다(아래 명령들).
-- 백업은 `scripts/backup.ps1`이 컨테이너 안에서 파일로 덤프한 뒤 `docker compose cp`로 바이트 그대로 꺼냅니다. 복원도 파일을 컨테이너로 복사한 뒤 `-f`로 실행합니다.
-- 문서의 PowerShell 예시에 파이프 방식이 다시 들어오면 `npm run test:docs`가 실패합니다.
+- For migrations, use `npm run db:migrate` (Node reads it directly as UTF-8). If you must apply only one file, run the file inside the container that compose mounted with `psql -f` (the commands below).
+- For backups, `scripts/backup.ps1` dumps to a file inside the container and then takes it out byte for byte with `docker compose cp`. For restores too, copy the file into the container and then run it with `-f`.
+- If the pipe method comes back into a PowerShell example in the docs, `npm run test:docs` fails.
 
-예전에 파이프 방식으로 적용한 DB에 깨진 행이 남아 있는지는 아래 조회로 확인합니다. 조회만 하며 자동으로 삭제하지 않습니다. 결과가 있으면 백업을 먼저 만들고, 깨진 행을 참조하는 머신이 없는지 확인한 뒤 직접 정리하세요.
+To check whether a DB that was migrated with the pipe method in the past still has corrupted rows, use the queries below. They only query and do not delete automatically. If there is a result, make a backup first, check that no machine refers to the corrupted rows, and then clean them up yourself.
 
 ```powershell
 docker compose exec -T db psql -U workout -d workout -c "SELECT id, name FROM brands WHERE name LIKE '%?%'"
 docker compose exec -T db psql -U workout -d workout -c "SELECT id, brand, lineup, model_name FROM official_machine_weights WHERE concat_ws(' ', brand, lineup, model_name, setting, notes) LIKE '%?%'"
 ```
 
-기존 볼륨에는 세트 메모를 추가하는 `002_set_notes.sql`을 새 API 실행 전에 적용하세요.
-기존 일지와 세트는 유지되며 기존 세트 메모는 빈 문자열로 초기화됩니다. 재실행해도 안전합니다.
-빈 볼륨과 CI는 모든 마이그레이션을 파일명 순서로 적용합니다.
+For an existing volume, apply `002_set_notes.sql`, which adds set notes, before you run the new API.
+Existing logs and sets are kept, and existing set notes start as an empty string. It is safe to re-run.
+An empty volume and CI apply all the migrations in file name order.
 
-루틴 계획 API를 사용하기 전에는 `004_routines.sql`도 적용하세요. 루틴은 부위 순서와 중복, 수동 주차 목표를 보존하는 JSON 문서로 원자적으로 저장합니다. 실제 일지나 달성 목표를 생성하지 않습니다.
+Before you use the routine plan API, also apply `004_routines.sql`. A routine is saved atomically as a JSON document that preserves the order and repeats of body parts and the manual weekly goals. It does not create real logs or achieved goals.
 
 ```powershell
 docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/004_routines.sql
 ```
 
-루틴 목표·오늘 하루 휴식하기 API(#28) 전에는 `004_routines.sql` 다음에 `005_routine_progress.sql`을 적용하세요. `routine_rests`에 루틴별 휴식 날짜만 한 행씩 저장하며(같은 날 중복 불가), 이동된 일정과 '제외됨' 목표는 이 날짜로부터 계산합니다. 기존 일지·세트·루틴은 바뀌지 않으며 재실행해도 안전합니다. 루틴을 삭제하면 휴식 기록도 함께 삭제됩니다.
+Before the routine goals and "Rest today" API (#28), apply `005_routine_progress.sql` after `004_routines.sql`. `routine_rests` stores only the rest dates of each routine, one row each (no duplicate on the same day), and the moved schedule and the "Excluded" goals are calculated from these dates. Existing logs, sets, and routines do not change, and it is safe to re-run. When you delete a routine, its rest records are deleted too.
 
 ```powershell
 docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/005_routine_progress.sql
 ```
 
-종목 분석(종목별 PR·추정 1RM·부위별 주간 운동량) API를 사용하기 전에는 `007_exercise_body_parts.sql`도 적용하세요. 사용자가 직접 지정한 운동→부위 매핑만 보관합니다. 운동명은 목표 판정과 같은 규칙(`lower(trim(운동명))`)으로 정규화한 값으로 저장하며 운동명에서 부위를 추측하지 않습니다. 매핑이 없는 운동은 `미분류`로 집계합니다. 기존 일지·세트는 변경하지 않으며 재실행해도 안전합니다. PR과 주간 통계는 저장하지 않고 조회할 때마다 계산합니다. 완료하지 않은(`completed=false`) 계획 세트는 PR·추정 1RM·주간 운동량에 반영하지 않습니다.
+Before you use the exercise analysis API (PR by exercise, estimated 1RM, weekly volume by body part), also apply `007_exercise_body_parts.sql`. It keeps only the exercise-to-body-part mapping that the user assigned. The exercise name is stored as a value normalized by the same rule as goal evaluation (`lower(trim(exercise name))`), and the body part is not guessed from the exercise name. An exercise with no mapping is counted as `미분류` (Unclassified). Existing logs and sets do not change, and it is safe to re-run. PRs and weekly stats are not stored and are calculated on every query. Planned sets that are not completed (`completed=false`) are not counted in PRs, the estimated 1RM, or weekly volume.
 
 ```powershell
 docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/007_exercise_body_parts.sql
@@ -62,61 +62,61 @@ docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /dock
 docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/002_set_notes.sql
 ```
 
-신체 기록 API를 사용하기 전에는 `008_body_measurements.sql`도 적용하세요. 재실행해도 안전합니다(`CREATE TABLE IF NOT EXISTS`).
-`body_measurements`는 날짜(`date`, UNIQUE)마다 한 행이며 `body_weight_kg`·`skeletal_muscle_kg`(kg, 0 초과)와 `body_fat_percent`(%, 0~100)를 `NUMERIC(5,2)`로 저장합니다. 측정하지 않은 값은 NULL이며 세 값이 모두 NULL인 행은 CHECK 제약으로 거부합니다. API는 소수점 셋째 자리 이상의 입력을 반올림하지 않고 400으로 거부합니다. 같은 날짜의 생성 요청은 409이며 수정(PUT)으로 바꿉니다. 운동 일지와 외래키로 연결하지 않으므로 일지 삭제가 신체 기록에 영향을 주지 않습니다.
+Before you use the body records API, also apply `008_body_measurements.sql`. It is safe to re-run (`CREATE TABLE IF NOT EXISTS`).
+`body_measurements` has one row per date (`date`, UNIQUE) and stores `body_weight_kg` and `skeletal_muscle_kg` (kg, greater than 0) and `body_fat_percent` (%, 0 to 100) as `NUMERIC(5,2)`. A value that was not measured is NULL, and a row where all three values are NULL is rejected by a CHECK constraint. The API does not round input with a third or later decimal place and rejects it with 400. A create request for the same date returns 409, and you change it with an update (PUT). It is not linked to workout logs by a foreign key, so deleting a log does not affect body records.
 
 ```powershell
 docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/008_body_measurements.sql
 ```
 
-위 명령은 기본 DB 사용자·이름 기준이며 별도로 설정했다면 해당 이름으로 바꾸세요.
+The commands above assume the default DB user and name; if you set them separately, replace them with those names.
 
-머신 공식 참고값을 사용하는 새 API 실행 전에는 `009_official_machine_weights.sql`도 적용하세요. 제조사 공식 시작 저항(공무게) 참고 테이블 `official_machine_weights`를 만들고 조사 결과를 넣으며, `machines.official_weight_id` 선택 연결 열과 `Newtech` 브랜드(이미 있으면 건너뜀)를 추가합니다. 기존 머신의 기본중량과 과거 세트 총중량은 변경하지 않고 기존 머신의 연결은 NULL로 시작합니다. 재실행하면 참고 행을 같은 키로 갱신하며 안전합니다. 이 마이그레이션 없이 새 API를 실행하면 머신 목록 조회가 실패합니다. 조사 기준과 출처는 [docs/machine-official-weights.md](../docs/machine-official-weights.md)를 참고하세요. 이 파일은 한글 값을 포함하므로 파이프 대신 compose가 마운트한 컨테이너 안의 파일을 직접 실행하세요. Windows PowerShell 5.1은 네이티브 프로그램으로 파이프할 때 텍스트를 ASCII로 보내 한글(온힘·뉴텍·비고)을 손상시키고, 손상된 값은 재실행 시 UNIQUE 키 일치도 깨뜨립니다.
+Before you run the new API that uses official machine reference values, also apply `009_official_machine_weights.sql`. It creates the manufacturer official starting resistance (empty weight) reference table `official_machine_weights` and fills it with the research results, and adds the optional link column `machines.official_weight_id` and the `Newtech` brand (skipped if it already exists). It does not change the base weight of existing machines or the total weight of past sets, and the link of existing machines starts as NULL. Re-running updates the reference rows by the same key and is safe. If you run the new API without this migration, the machine list query fails. For the research criteria and the sources, see [docs/machine-official-weights.md](../docs/machine-official-weights.md). This file contains Korean values, so run the file inside the container that compose mounted directly, not through a pipe. Windows PowerShell 5.1 sends text as ASCII when piping to a native program, which corrupts the Korean (온힘, 뉴텍, and the notes), and corrupted values also break the UNIQUE key match when you re-run.
 
 ```powershell
 docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/009_official_machine_weights.sql
 ```
 
-일지 초안·안전한 재시도 API 실행 전에는 `003_workout_retries.sql`도 적용하세요.
-기존 일지는 `version=1`로 유지되고, 수정할 때 버전이 증가합니다. 마이그레이션은 재실행해도 안전합니다.
+Before you run the log draft and safe retry API, also apply `003_workout_retries.sql`.
+Existing logs are kept at `version=1`, and the version increases when you edit. The migration is safe to re-run.
 
 ```powershell
 docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/003_workout_retries.sql
 ```
 
-일지 POST/PUT의 UUID `Idempotency-Key`는 최초 성공 커밋부터 7일 동안 같은 메서드·대상·정규화된 내용의 결과를 재전송합니다.
-같은 키의 다른 요청이나 만료 키에는 409를 반환합니다. 실패한 트랜잭션은 키를 소비하지 않습니다.
-만료 키도 삭제하지 않아 과거 요청이 새 일지로 실행되는 것을 막습니다. `workout_requests`에는 본문 대신 SHA-256 지문과 응답 ID/버전을 보관합니다.
-키 생략 POST는 기존 클라이언트와 호환되지만 중복 방지가 적용되지 않습니다. 새 화면은 모든 일지 저장에 키를 보냅니다.
-PUT에는 조회한 양의 정수 `version`이 필수이며 누락·형식 오류는 400, 오래된 버전은 409입니다. 최신 버전을 확인해 내용을 비교한 뒤 다시 수정하세요.
+The UUID `Idempotency-Key` of a log POST/PUT resends the result of the same method, target, and normalized content for 7 days from the first successful commit.
+A different request with the same key, or an expired key, returns 409. A failed transaction does not consume the key.
+Expired keys are not deleted either, which keeps an old request from being run as a new log. `workout_requests` keeps a SHA-256 fingerprint and the response ID and version instead of the body.
+A POST without a key stays compatible with existing clients, but duplicate prevention does not apply to it. The new screen sends a key with every log save.
+A PUT requires the positive integer `version` that you fetched, a missing or malformed one is 400, and a stale version is 409. Check the latest version, compare the content, and then edit again.
 
-화면의 초안은 기기·브라우저별 localStorage 한 곳에 한 개만 보관하며 마지막 입력부터 7일 뒤 다음 시작 시 정리합니다.
-초안을 복구하거나 저장만 재시도해도 보존 기한이 연장되지는 않습니다. 서버 성공 응답 전에는 초안을 유지합니다.
-여러 탭의 초안은 같은 저장 위치를 공유하므로 한 탭에서 입력하세요. 초안은 기기 간 동기화되지 않으며 통계·목표에는 서버 기록만 사용합니다.
+The draft on the screen is kept as one draft in one localStorage per device and browser, and is cleaned up at the next start 7 days after the last input.
+Recovering a draft or only retrying a save does not extend the retention period. The draft is kept until the server returns a success response.
+Drafts in several tabs share the same storage location, so enter in one tab. Drafts are not synced between devices, and only server records are used for stats and goals.
 
-세트 완료 상태와 선택적 RPE를 쓰는 API 실행 전에는 `006_set_completion_rpe.sql`을 적용하세요.
-기존 세트는 이미 수행한 기록이므로 `completed=true`로 유지되어 목표 달성 결과가 바뀌지 않습니다. RPE는 NULL(미입력) 또는 1~10의 0.5 단위이며 서버와 DB CHECK에서 검증하고, 누락을 0으로 바꾸지 않습니다.
-`completed=false`인 세트는 계획으로 보관만 하며 목표 달성·볼륨·세트 수·운동한 날에 반영하지 않습니다. `completed`를 보내지 않는 기존 클라이언트의 세트는 완료로 저장됩니다. 재실행해도 안전합니다.
+Before you run the API that uses the set completion state and the optional RPE, apply `006_set_completion_rpe.sql`.
+Existing sets are already-performed records, so they stay `completed=true` and the goal achievement results do not change. RPE is NULL (not entered) or 1 to 10 in 0.5 steps, validated by the server and the DB CHECK, and a missing value is not turned into 0.
+A set with `completed=false` is only kept as a plan and is not counted in goal achievement, volume, set counts, or workout days. A set from an existing client that does not send `completed` is saved as completed. It is safe to re-run.
 
 ```powershell
 docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/006_set_completion_rpe.sql
 ```
 
-일지 체감 피드백(#83)을 쓰는 API 실행 전에는 `010_workout_feedback.sql`을 적용하세요(`npm run db:migrate`). `workouts.feedback`은 NULL(미입력) 또는 `hard`·`medium`·`easy`이며 DB CHECK로도 검증합니다. 기존 일지는 NULL로 남고 재실행해도 안전합니다.
+Before you run the API that uses the log feeling feedback (#83), apply `010_workout_feedback.sql` (`npm run db:migrate`). `workouts.feedback` is NULL (not entered) or `hard`, `medium`, or `easy`, and is also validated by a DB CHECK. Existing logs stay NULL, and it is safe to re-run.
 
-머신의 단관절 여부(#84)를 쓰는 API 실행 전에는 `011_machine_single_joint.sql`을 적용하세요. `machines.single_joint`는 `NOT NULL DEFAULT false`라 기존 머신은 단관절이 아닌 것으로 시작합니다. 재실행해도 안전합니다.
+Before you run the API that uses a machine's single-joint flag (#84), apply `011_machine_single_joint.sql`. `machines.single_joint` is `NOT NULL DEFAULT false`, so existing machines start as not single-joint. It is safe to re-run.
 
-운동별 증량 단위(#86)를 쓰는 API 실행 전에는 `012_exercise_weight_steps.sql`을 적용하세요. `exercise_weight_steps`는 정규화한 운동명(`lower(trim(name))`)별 증량 단위(0 초과 100 kg 이하)이며, 행이 없으면 기본 5 kg입니다. 재실행해도 안전합니다. 부위 지정(`exercise_body_parts`)과 같이 앱 백업 파일에는 아직 포함하지 않습니다.
+Before you run the API that uses the weight step per exercise (#86), apply `012_exercise_weight_steps.sql`. `exercise_weight_steps` is the weight step (greater than 0 and at most 100 kg) for each normalized exercise name (`lower(trim(name))`), and if there is no row the default is 5 kg. It is safe to re-run. Like the body part assignment (`exercise_body_parts`), it is not yet included in the app backup file.
 
-이두·삼두 부위(#88)를 쓰는 API 실행 전에는 `014_biceps_triceps.sql`을 적용하세요. `exercise_body_parts`의 부위 CHECK를 이두·삼두를 포함하도록 교체하며, 이전에 저장한 `팔`은 그대로 허용합니다. 데이터는 바꾸지 않고 재실행해도 안전합니다.
+Before you run the API that uses the biceps and triceps body parts (#88), apply `014_biceps_triceps.sql`. It replaces the body part CHECK of `exercise_body_parts` so that it includes biceps and triceps, and still allows the previously saved `팔` (arms). It does not change data and is safe to re-run.
 
-휴식 타이머는 서버에 저장하지 않습니다. 이 브라우저의 localStorage(`workout-memo:rest-timer:v1`)에 시간 설정·자동 시작 여부·종료 시각만 보관하며, 남은 시간은 종료 시각으로 다시 계산합니다. 운동 종류별 기본 휴식(하체·상체·단관절, #84)은 `workout-memo:rest-durations:v1`에 따로 보관합니다.
+The rest timer is not stored on the server. Only the time setting, whether it starts automatically, and the end time are kept in this browser's localStorage (`workout-memo:rest-timer:v1`), and the remaining time is calculated again from the end time. The default rest by exercise type (lower body, upper body, single-joint, #84) is kept separately in `workout-memo:rest-durations:v1`.
 
-중량은 kg 단위 총중량(머신 기본중량 포함), 반복 수는 양의 정수입니다. 기본중량 미확인은 NULL로 유지합니다. 일지 삭제 시 세트는 CASCADE 삭제됩니다. 목표 달성은 같은 운동명의 완료한 한 세트가 설정 기간 내 중량·횟수를 모두 충족한 경우입니다.
+Weight is the total weight in kg (including the machine base weight), and reps is a positive integer. An unconfirmed base weight is kept as NULL. When a log is deleted, its sets are deleted with CASCADE. A goal is met when one completed set of the same exercise name meets both the weight and the reps within the configured period.
 
-유산소 기록(#114)을 쓰는 API 실행 전에는 `015_cardio_sessions.sql`을 적용하세요. `cardio_sessions`는 날짜·시작 시각(`TIME`, 서울 시각)·종류 9가지·시간(정수 초)·거리(`NUMERIC(8,3)` km, 1 m 단위)와 선택 값(심박·칼로리·상승 고도·케이던스·체감 강도·메모)을 둡니다. 페이스·속도는 저장하지 않고 API가 조회할 때 계산합니다. API 검증과 같은 범위를 CHECK로도 막고(오늘 이후 날짜 금지만 API에서 검사), `workout_id`는 `workouts`를 참조하며 일지를 지우면 `NULL`이 됩니다(`ON DELETE SET NULL`). `(source, external_id)`는 `external_id`가 있을 때만 고유한 부분 고유 인덱스이고, `manual`은 외부 ID를 가질 수 없습니다. 구간(랩)·GPS 경로는 저장하지 않습니다. 재실행해도 안전합니다.
+Before you run the API that uses cardio records (#114), apply `015_cardio_sessions.sql`. `cardio_sessions` has the date, the start time (`TIME`, Seoul time), 9 kinds, the duration (integer seconds), the distance (`NUMERIC(8,3)` km, in 1 m units), and optional values (heart rate, calories, elevation gain, cadence, perceived effort, memo). Pace and speed are not stored and the API calculates them on query. The same ranges as the API validation are also enforced by CHECK (only the ban on dates after today is checked in the API), `workout_id` refers to `workouts` and becomes `NULL` when the log is deleted (`ON DELETE SET NULL`). `(source, external_id)` is a partial unique index that is unique only when `external_id` exists, and `manual` cannot have an external ID. Laps and GPS routes are not stored. It is safe to re-run.
 
-백업은 우산 저장소 `scripts/backup.ps1`, 복원은 아래 명령으로 수행합니다. 복원 대상은 비어 있는 별도 데이터베이스로 준비하세요.
+A backup is done with `scripts/backup.ps1` in the umbrella repo, and a restore with the commands below. Prepare a separate empty database as the restore target.
 
 ```powershell
 docker compose exec -T db createdb -U workout workout_restore
@@ -125,25 +125,25 @@ docker compose exec -T db psql -U workout -d workout_restore -v ON_ERROR_STOP=1 
 docker compose exec -T db rm -f /tmp/restore.sql
 ```
 
-## 앱 내보내기·백업 (#33)
+## App export and backup (#33)
 
-DB 스키마 변경은 없습니다(추가 마이그레이션 없음). `scripts/backup.ps1`의 SQL 덤프는 DB 전체 복구용이며 아래 두 파일과 역할이 다릅니다. 실제 백업 파일은 개인 기록이므로 저장소에 커밋하거나 로그·PR에 첨부하지 마세요(`backups/`는 git ignore 대상).
+There is no DB schema change (no additional migration). The SQL dump of `scripts/backup.ps1` is for restoring the whole DB, and its role differs from the two files below. Actual backup files are personal records, so do not commit them to the repo or attach them to logs or PRs (`backups/` is git-ignored).
 
-**분석용 CSV** `GET /api/export/workouts.csv[?from=YYYY-MM-DD&to=YYYY-MM-DD]`
+**CSV for analysis** `GET /api/export/workouts.csv[?from=YYYY-MM-DD&to=YYYY-MM-DD]`
 
-- UTF-8(BOM 포함, 스프레드시트의 한글 인식용), RFC 4180, CRLF 줄바꿈. 세트 1개당 1행이며 세트가 없는 일지는 세트 열이 빈 1행입니다. 날짜·일지 id·세트 순서로 정렬합니다.
-- 열: `workout_id, date, title, workout_notes, set_number, exercise, weight_kg, reps, volume_kg, set_notes, machine_id, brand, machine_name, machine_base_weight_kg, workout_feedback`. `workout_feedback`(#83)은 기존 열 위치를 바꾸지 않도록 마지막에 붙였으며, 일지의 체감 피드백(`hard`·`medium`·`easy`)을 세트 행마다 반복합니다. 미입력은 빈 칸입니다.
-- `date`는 `YYYY-MM-DD`. `weight_kg`는 머신 기본중량을 포함한 총중량(kg), `volume_kg = weight_kg × reps`. 숫자는 소수점 `.`, 천 단위 구분 없음.
-- NULL은 빈 칸입니다: 머신 없는 세트의 `machine_id`/`brand`/`machine_name`, 확인하지 못한 `machine_base_weight_kg`. 글자 열은 NULL이 아니므로 빈 칸은 빈 문자열입니다. 머신은 `machine_id`와 브랜드·이름으로 연결됩니다.
-- 쉼표·큰따옴표·줄바꿈이 있는 값은 큰따옴표로 감싸고 내부 `"`는 `""`로 씁니다.
-- 수식 실행 방지: 글자 값이 `=`, `+`, `-`, `@`, 탭, CR로 시작하면 앞에 `'`를 붙입니다. 따라서 CSV는 원본과 다를 수 있으며 **복원에 사용할 수 없습니다.**
+- UTF-8 (with BOM, so spreadsheets recognize Korean), RFC 4180, CRLF line endings. One row per set, and a log with no sets is one row with empty set columns. Sorted by date, log id, and set order.
+- Columns: `workout_id, date, title, workout_notes, set_number, exercise, weight_kg, reps, volume_kg, set_notes, machine_id, brand, machine_name, machine_base_weight_kg, workout_feedback`. `workout_feedback` (#83) is added last so that the existing column positions do not change, and it repeats the log's feeling feedback (`hard`, `medium`, `easy`) on every set row. Not entered is an empty cell.
+- `date` is `YYYY-MM-DD`. `weight_kg` is the total weight in kg including the machine base weight, and `volume_kg = weight_kg × reps`. Numbers use `.` as the decimal point and have no thousands separator.
+- NULL is an empty cell: `machine_id`, `brand`, and `machine_name` of a set with no machine, and `machine_base_weight_kg` that could not be confirmed. Text columns are not NULL, so an empty cell is an empty string. A machine is linked by `machine_id` and by the brand and name.
+- A value that contains a comma, a double quote, or a line break is wrapped in double quotes, and an inner `"` is written as `""`.
+- Formula execution prevention: if a text value starts with `=`, `+`, `-`, `@`, a tab, or CR, a `'` is put in front of it. So the CSV can differ from the original and **cannot be used for restore.**
 
-**유산소 분석용 CSV**(#114) `GET /api/export/cardio.csv[?from=YYYY-MM-DD&to=YYYY-MM-DD]` → `workout-memo-cardio-YYYY-MM-DD.csv`
+**CSV for cardio analysis** (#114) `GET /api/export/cardio.csv[?from=YYYY-MM-DD&to=YYYY-MM-DD]` → `workout-memo-cardio-YYYY-MM-DD.csv`
 
-- 위 근력 CSV는 그대로 두고 따로 내보냅니다. 인코딩·따옴표·수식 실행 방지 규칙은 같습니다. 기록 1개당 1행이며 날짜·시작 시각(없으면 먼저)·id 순입니다.
-- 열: `cardio_id, date, start_time, kind, duration_sec, distance_km, pace_sec_per_km, speed_kmh, avg_heart_rate, max_heart_rate, calories_kcal, elevation_gain_m, avg_cadence, effort, workout_id, source, external_id, memo`. `pace_sec_per_km`·`speed_kmh`는 계산값이며 거리가 없으면 빈 칸입니다. NULL은 모두 빈 칸입니다.
+- It is exported separately and leaves the strength CSV above as it is. The rules for encoding, quoting, and formula execution prevention are the same. One row per record, ordered by date, start time (earlier first if missing), and id.
+- Columns: `cardio_id, date, start_time, kind, duration_sec, distance_km, pace_sec_per_km, speed_kmh, avg_heart_rate, max_heart_rate, calories_kcal, elevation_gain_m, avg_cadence, effort, workout_id, source, external_id, memo`. `pace_sec_per_km` and `speed_kmh` are calculated values and are empty if there is no distance. All NULLs are empty cells.
 
-**복원용 백업** `GET /api/backup` → `workout-memo-backup-YYYY-MM-DD.json`
+**Backup for restore** `GET /api/backup` → `workout-memo-backup-YYYY-MM-DD.json`
 
 ```json
 {
@@ -183,7 +183,9 @@ DB 스키마 변경은 없습니다(추가 마이그레이션 없음). `scripts/
         "deadline": "YYYY-MM-DD"
       }
     ],
-    "routines": [{ "id": 1, "created_at": "ISO 8601", "plan": { "...": "루틴 API 계약과 동일" } }],
+    "routines": [
+      { "id": 1, "created_at": "ISO 8601", "plan": { "...": "same as the routine API contract" } }
+    ],
     "cardio_sessions": [
       {
         "id": 1,
@@ -222,17 +224,17 @@ DB 스키마 변경은 없습니다(추가 마이그레이션 없음). `scripts/
 }
 ```
 
-- 한 REPEATABLE READ 스냅샷에서 읽습니다. `id`는 파일 안의 참조 키일 뿐이며 복원 시 새 id가 발급됩니다. 세트는 일지 안에 순서대로 들어 있고 `machine_id`→`machines.id`→`brand_id`→`brands.id`로 연결됩니다. 중량은 총중량 kg 숫자, 기본중량 미확인은 `null`입니다. 일지의 `feedback`(#83)은 `hard`·`medium`·`easy` 또는 `null`입니다. 이 필드가 없는 이전 백업도 v1으로 그대로 복원되며 `null`이 됩니다. 일지 중복 판정에는 `feedback`을 쓰지 않으므로, 피드백만 다른 같은 일지는 건너뜁니다(기존 값 유지). 머신의 `single_joint`(#84)가 없는 이전 백업은 `false`로 복원합니다. 이미 있는 같은 머신과 연결할 때는 기존 머신의 값을 유지합니다.
-- v2(#114)는 `cardio_sessions`를 더했습니다. 필드 규칙은 유산소 API와 같고(오늘 이후 날짜 검사는 제외), `workout_id`는 같은 파일의 `workouts.id`를 가리킵니다. v2·v3 파일에는 이 목록이 꼭 있어야 하며(비어 있어도 됨), 그 전에 만든 v1 파일은 유산소 기록이 없는 백업으로 그대로 복원합니다.
-- v3(#253)는 `cardio_goals`(유산소 목표)를 더했습니다. 필드 규칙은 `POST /api/cardio-goals`와 같습니다(종류별 목표값, 목표 기간 5년 이하). 근력 목표처럼 `created_at`은 넣지 않아 복원한 목표의 등록 시각은 복원한 시각입니다(화면과 정렬에는 쓰지 않음). v3 파일에는 이 목록이 꼭 있어야 하며(비어 있어도 됨), v1·v2 파일은 유산소 목표가 없는 백업으로 그대로 복원합니다. **v3 파일은 v3를 모르는 이전 버전의 앱으로 되돌려 배포하면 복원할 수 없습니다**(지원하지 않는 버전으로 400). 되돌린 뒤 복원이 필요하면 되돌리기 전에 그 버전에서 백업을 다시 내보내 두세요(2026-11-08 사용자 결정).
-- `workout_requests`(저장 재시도 키)는 포함하지 않습니다. 기기별 일시적 중복 방지 기록이고 응답 id가 원본 DB에만 유효하기 때문입니다. 추가만 복원은 이 테이블을 건드리지 않습니다. 전체 교체는 같은 트랜잭션에서 이 테이블도 비웁니다(삭제된 일지 id를 과거 키가 재전송해 저장된 것처럼 보이는 것을 막기 위함). 이후 같은 키로 재시도하면 새 일지로 저장됩니다. 인증 정보·환경변수·Terraform state는 어떤 파일에도 들어가지 않습니다.
+- It is read in one REPEATABLE READ snapshot. An `id` is only a reference key inside the file, and new ids are issued when you restore. Sets are inside the log in order and are linked by `machine_id` → `machines.id` → `brand_id` → `brands.id`. Weight is a total weight in kg as a number, and an unconfirmed base weight is `null`. A log's `feedback` (#83) is `hard`, `medium`, `easy`, or `null`. An older backup without this field is also restored as v1 as it is and becomes `null`. `feedback` is not used to decide whether a log is a duplicate, so the same log that differs only in feedback is skipped (the existing value is kept). An older backup without a machine's `single_joint` (#84) is restored as `false`. When linking to a machine that already exists, the existing machine's value is kept.
+- v2 (#114) added `cardio_sessions`. The field rules are the same as the cardio API (except the check for dates after today), and `workout_id` points at `workouts.id` in the same file. A v2 or v3 file must have this list (it may be empty), and a v1 file made before that is restored as it is as a backup with no cardio records.
+- v3 (#253) added `cardio_goals` (cardio goals). The field rules are the same as `POST /api/cardio-goals` (a target value per kind, goal period of 5 years or less). Like strength goals, it does not include `created_at`, so the registered time of a restored goal is the time of the restore (not used on screen or for sorting). A v3 file must have this list (it may be empty), and v1 and v2 files are restored as they are as backups with no cardio goals. **A v3 file cannot be restored if you roll back and deploy an earlier version of the app that does not know v3** (400 for an unsupported version). If you need to restore after rolling back, export the backup again from that version before rolling back (user decision of 2026-11-08).
+- `workout_requests` (save retry keys) is not included. It is a temporary per-device duplicate prevention record and the response ids are valid only in the original DB. An add-only restore does not touch this table. A full replace also empties this table in the same transaction (to keep an old key from resending the id of a deleted log so that it looks saved). A later retry with the same key is saved as a new log. Credentials, environment variables, and Terraform state are not put in any file.
 
-**복원** `POST /api/backup/preview`, `POST /api/backup/restore` — 본문 `{ "mode": "merge" | "replace", "backup": {...}, "confirm"?: "전체 교체" }`
+**Restore** `POST /api/backup/preview`, `POST /api/backup/restore` — body `{ "mode": "merge" | "replace", "backup": {...}, "confirm"?: "전체 교체" }` (the `confirm` value is the Korean string `전체 교체`, "full replace", and the API matches it exactly)
 
-- 요청 본문 최대 10MB(+64KB). 형식 `format`→`version`(v1·v2·v3 지원)→스키마(날짜·총중량·반복 수·문자 길이·목표 기간·루틴 규칙·유산소 값 범위·유산소 목표 규칙)→참조(브랜드·머신·유산소가 연결한 일지 존재, id 중복, 브랜드 이름·브랜드별 머신 이름 중복, 유산소의 같은 출처·외부 ID 중복)를 검사하며 실패하면 400으로 아무것도 바꾸지 않습니다.
-- `merge`(기본, 추가만): 기존 행을 수정·삭제하지 않습니다. 브랜드는 이름, 머신은 브랜드+이름으로 기존 행과 연결합니다. 머신의 기본중량·메모가 다르면 **기존 값을 유지**하고 충돌로 보고하며 복원 세트는 기존 머신에 연결합니다. 일지(세트 내용·순서 포함)·목표·루틴은 내용이 동일한 기존 행이 있으면 건너뜁니다. 동일 행 1개는 들어오는 행 1개만 흡수하므로 같은 백업을 다시 복원해도 늘지 않고, 원래 2개였던 동일 일지는 2개로 복원됩니다.
-- 유산소 기록(#114): 외부 ID가 있으면 출처+외부 ID로 기존 행과 비교해 내용이 같으면 건너뛰고, 다르면 **기존 값을 유지**하고 충돌로 보고합니다. 외부 ID가 없으면 일지처럼 내용이 같은 기존 행을 1개씩 건너뜁니다. 일지 연결(`workout_id`)은 비교에 쓰지 않으며, 복원한 기록은 복원(또는 같은 내용으로 건너뛴 기존) 일지에 연결합니다.
-- `replace`(전체 교체): 브랜드·머신·일지·세트·목표·루틴·유산소 기록·유산소 목표와 저장 재시도 키(`workout_requests`)를 모두 삭제한 뒤 백업 내용으로 채웁니다. `confirm`이 정확히 `전체 교체`가 아니면 400이며 아무것도 삭제하지 않습니다. 유산소가 없는 v1 백업으로 전체 교체하면 지금 있는 유산소 기록도 모두 지워집니다(미리보기의 삭제 수에 나옵니다).
-- 유산소 목표(#253): 추가만이면 모든 값이 같은 목표가 이미 있을 때 건너뛰고, 아니면 추가합니다. 전체 교체는 근력 목표처럼 지우고 파일 내용으로 바꾸므로, 목표 목록이 없는 v1·v2 파일로 전체 교체하면 유산소 목표는 0개가 됩니다(삭제 수는 미리보기 요약에 나옵니다).
-- preview는 같은 절차를 한 트랜잭션에서 실행하고 ROLLBACK하여 추가·건너뜀·충돌·삭제 수를 돌려줍니다. restore는 같은 절차를 COMMIT합니다. 실행 중 쓰기 잠금(`LOCK ... IN EXCLUSIVE MODE`)으로 동시 저장을 기다리게 하며, 중간 오류는 전체 ROLLBACK 후 500을 반환합니다.
-- 복원된 일지는 새 기록으로 `version=1`이며 `created_at`은 보존합니다. 미리보기 ROLLBACK으로 id 시퀀스에 빈 번호가 생길 수 있습니다(무해).
+- The request body is at most 10MB (+64KB). It checks the format `format` → `version` (v1, v2, and v3 supported) → schema (dates, total weight, reps, text length, goal period, routine rules, cardio value ranges, cardio goal rules) → references (the log that a brand, machine, or cardio record links to exists, duplicate ids, duplicate brand names and machine names per brand, duplicate source and external ID of cardio), and if it fails it returns 400 and changes nothing.
+- `merge` (default, add only): it does not edit or delete existing rows. A brand is linked to an existing row by name, and a machine by brand + name. If a machine's base weight or notes differ, it **keeps the existing value**, reports a conflict, and links the restored sets to the existing machine. For logs (including set content and order), goals, and routines, it skips an item if an existing row with identical content exists. One identical row absorbs only one incoming row, so restoring the same backup again does not increase the count, and identical logs that were originally 2 are restored as 2.
+- Cardio records (#114): if there is an external ID, it compares with the existing row by source + external ID, skips it if the content is the same, and if it differs it **keeps the existing value** and reports a conflict. If there is no external ID, it skips one existing row with the same content at a time, like logs. The log link (`workout_id`) is not used in the comparison, and a restored record is linked to the restored log (or the existing log that was skipped for having the same content).
+- `replace` (full replace): it deletes all brands, machines, logs, sets, goals, routines, cardio records, cardio goals, and the save retry keys (`workout_requests`), and then fills them from the backup content. If `confirm` is not exactly `전체 교체` it returns 400 and deletes nothing. If you do a full replace with a v1 backup that has no cardio, the cardio records that exist now are also all erased (the preview shows it in the delete count).
+- Cardio goals (#253): in add-only mode it skips a goal if one with all the same values already exists and otherwise adds it. A full replace deletes and replaces them with the file content like strength goals, so a full replace with a v1 or v2 file that has no goal list leaves 0 cardio goals (the delete count appears in the preview summary).
+- preview runs the same procedure in one transaction and does ROLLBACK, and returns the numbers added, skipped, in conflict, and deleted. restore COMMITs the same procedure. While it runs, a write lock (`LOCK ... IN EXCLUSIVE MODE`) makes concurrent saves wait, and an error in the middle returns 500 after a ROLLBACK of everything.
+- A restored log is a new record with `version=1` and `created_at` is preserved. The preview ROLLBACK can leave gaps in the id sequence (harmless).

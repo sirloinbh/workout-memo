@@ -1,46 +1,46 @@
-# #98 UI 기준 결정을 디자인 시스템 문서에 기록
+# #98 Record the UI standard decision in the design system document
 
-- 이슈: [#98](https://github.com/sirloinbh/workout-memo/issues/98)
-- 브랜치: `docs/98-ui-standard-decision`
+- Issue: [#98](https://github.com/sirloinbh/workout-memo/issues/98)
+- Branch: `docs/98-ui-standard-decision`
 
-## 목적
+## Purpose
 
-UI 기준 결정(2026-10-30)은 #98 코멘트에만 있었습니다. 이슈 완료 기준 3개는 다음과 같이 충족합니다.
+The UI standard decision (2026-10-30) existed only in a #98 comment. The 3 completion criteria of the issue are met as follows.
 
-- 선택한 기준과 근거, 탈락한 후보와 이유: 이 PR에서 문서에 적습니다.
-- npm 패키지 위험 인지 확인: 새로 들일 패키지가 없어 해당 없습니다(결정 코멘트).
-- 이후 교체 이슈의 작업 단위 확정: 이 PR에서 문서에 적습니다.
+- The chosen standard and reasons, and the rejected candidates and reasons: this PR writes them in the document.
+- Confirmation that the npm package risk is understood: not applicable, because no new package is adopted (the decision comment).
+- Fixing the work units of the later replacement issues: this PR writes them in the document.
 
-## 변경 — docs: UI 기준 결정 기록
+## Change — docs: record the UI standard decision
 
-- `docs/design-system.md`에 "UI 기준 결정 (#98)" 절을 추가했습니다.
-  - 컴포넌트 기준, 탈락한 후보, 디자인 톤, 새 패키지 여부, Preflight, 시안을 적었습니다.
-  - 후속 작업 단위(#184, #99, #101~#105)를 적었습니다.
-- 앱 코드와 화면은 바꾸지 않았습니다. 다크 전용 적용은 #184에서 합니다.
+- I added a section "UI 기준 결정 (#98)" (UI standard decision (#98)) to `docs/design-system.md`.
+  - It covers the component standard, the rejected candidates, the design tone, whether there is a new package, Preflight, and the design mock.
+  - It lists the follow-up work units (#184, #99, and #101 to #105).
+- I did not change the app code or the screens. Applying dark only is done in #184.
 
-## 검증
+## Verification
 
-앱 동작 변경이 없어 테스트를 추가하지 않았습니다.
+There is no app behavior change, so I did not add tests.
 
-- `radix-ui` 1.7.0이 `frontend/package.json`에 있는 것을 확인했습니다.
-- `npm run format`: 이 커밋의 두 문서 외에 바뀐 파일이 없습니다.
+- I confirmed that `radix-ui` 1.7.0 is in `frontend/package.json`.
+- `npm run format`: no files changed other than the two documents in this commit.
 - `npm run test:docs`: 3 pass, 0 fail
-- 로컬 `npm run check`: 완료하지 못했습니다. 10분을 넘긴 뒤 시스템 메모리 부족으로 중단됐습니다. 전체 검사는 PR CI로 확인합니다.
+- Local `npm run check`: I could not complete it. It stopped because of low system memory after going over 10 minutes. The full check is confirmed by PR CI.
 
-## 변경 — docs: 1차 리뷰 보완
+## Change — docs: first review follow-up
 
-- 다크 전용이 #184 전까지 적용 전이라는 과도기 설명을 넣었습니다.
-- project-standards#354를 작업 단위 표에 넣고, 결정 코멘트 밖에서 보탠 이슈(#99, #105)의 출처를 적었습니다.
-- 패키지 도입 허용 사실, Preflight와 #100의 연결, 공통 컴포넌트 17개를 적었습니다. 개수는 `components/ui`의 테스트 외 파일로 세어 확인했습니다.
-- 앱 고유 컴포넌트 규칙을 다시 쓰지 않고 중앙 문서 절을 가리키게 했습니다.
-- 반영하지 않은 지적: "#354가 #184보다 먼저"는 근거 없음이라는 지적입니다. #184 본문의 "먼저 끝나야 하는 것"에 적혀 있어 유지했습니다.
-- 재검사: `npm run format` 후 이 두 문서만 변경, `npm run test:docs` 3 pass, 0 fail.
+- I added a transition explanation that dark only is not yet applied until #184.
+- I put project-standards#354 into the work unit table, and wrote the origin of the issues I added outside the decision comment (#99 and #105).
+- I wrote the fact that package adoption is allowed, the link between Preflight and #100, and the 17 shared components. I counted the number from the non-test files of `components/ui`.
+- I made the app-specific component rule point to the section of the central document instead of rewriting it.
+- A finding I did not apply: the finding that "#354 before #184" has no basis. It is written under "what must finish first" in the body of #184, so I kept it.
+- Re-check: after `npm run format`, only these two documents changed, and `npm run test:docs` 3 pass, 0 fail.
 
-## 변경 — docs: 리뷰 기록
+## Change — docs: review record
 
-- 1차 리뷰: 지적을 위 "1차 리뷰 보완"으로 반영했습니다.
-- 2차 리뷰: 보완점 없음. 분리한 이슈는 없습니다.
+- First review: I reflected the findings as the "first review follow-up" above.
+- Second review: no follow-up items. There are no issues I split off.
 
-## 제한·후속
+## Limits and follow-up
 
-- #104의 하단 탭 요구는 중앙 `docs/layout.md`의 "하단 탭은 쓰지 않는다"와 충돌합니다. 이 문서에서 결정하지 않고 #104에서 사용자에게 확인합니다.
+- The bottom tab requirement of #104 conflicts with "하단 탭은 쓰지 않는다" (do not use a bottom tab) in the central `docs/layout.md`. I do not decide it in this document, and I will confirm it with the user in #104.

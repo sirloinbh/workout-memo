@@ -1,57 +1,57 @@
-# #85 통계에서 특정 날짜·사용자 지정 날짜 구간 선택
+# #85 Choose a specific date or a custom date range in the stats
 
-- 이슈: [#85](https://github.com/sirloinbh/workout-memo/issues/85)
-- 브랜치: `feat/85-custom-date-range` (main `cc6f510`에서 시작, DB·API 변경 없음)
+- Issue: [#85](https://github.com/sirloinbh/workout-memo/issues/85)
+- Branch: `feat/85-custom-date-range` (started from main `cc6f510`, no DB or API change)
 
-## 결정 — 2026-10-21
+## Decisions — 2026-10-21
 
-- 그래프 묶음 단위는 구간 길이에 따라 정한다. 31일 이하는 일별, 92일 이하는 7일 단위(주별), 그보다 길면 달력 월별이다.
-- 최대 구간은 양 끝을 포함해 371일이다(분석 API 제한과 같음).
+- The chart grouping unit is decided by the length of the range. 31 days or fewer is daily, 92 days or fewer is in 7-day units (weekly), and longer is by calendar month.
+- The maximum range is 371 days including both ends (the same as the analysis API limit).
 
-## 변경
+## Change
 
-- `frontend/src/date-range.ts` (신규)
-  - `checkRange`: 항목별 오류를 돌려준다. 빈 값, 잘못된 날짜(공유 계약 `date`), 종료일 < 시작일, 371일 초과를 검사한다.
-  - `parseRange`: 주소의 `from`·`to`가 모두 올바를 때만 구간을 돌려준다.
-  - `rangeBuckets`: 그래프 묶음을 만든다. 월별은 연도가 바뀌면 `25.11`처럼 표시한다.
-- 화면(`frontend/src/app.tsx`)
-  - 대시보드·운동 일지·신체 기록의 기간 탭에 "직접 선택"을 추가했다. 시작일·종료일을 입력하고 "적용"을 누른다.
-  - 잘못된 구간은 해당 입력란에 오류(`aria-invalid`·`aria-describedby`)를 표시하고 요청하지 않는다.
-  - 적용한 구간은 주소 쿼리 `?from=YYYY-MM-DD&to=YYYY-MM-DD`에 남는다. 새로고침이나 공유한 링크에서도 유지된다.
-  - 같은 기간을 쓰는 대시보드·운동 일지·신체 기록 사이를 메뉴로 이동해도 쿼리를 유지한다. 다른 페이지로 가면 뺀다.
-  - 프리셋(1일~12주)을 누르면 쿼리를 지우고 기존 기준 날짜 방식으로 돌아간다.
-  - 주소의 구간이 잘못되었으면 기본 기간(1주)을 보여 주고 안내한다.
-  - 서버 조회는 기존 `?from&to`를 그대로 쓴다. 통계(운동한 날·완료 세트·누적 볼륨)는 서버가 돌려준 양 끝 포함 범위로 계산한다.
-  - 그래프: 직접 선택한 구간에만 새 묶음 규칙을 적용했다. 기존 프리셋 그래프는 그대로다. 막대가 12개를 넘으면 겹치지 않도록 이름표를 일정 간격으로만 표시한다.
-- 스타일: `.custom-range` 입력 행을 추가했다. 탭이 6개가 되어 좁은 화면에서는 `.tabs`가 줄바꿈된다.
+- `frontend/src/date-range.ts` (new)
+  - `checkRange`: returns an error per item. It checks an empty value, a bad date (the shared contract `date`), an end date before the start date, and more than 371 days.
+  - `parseRange`: returns the range only when both `from` and `to` in the address are valid.
+  - `rangeBuckets`: builds the chart groups. For monthly, it shows like `25.11` when the year changes.
+- Screen (`frontend/src/app.tsx`)
+  - I added "직접 선택" (custom range) to the period tabs of the dashboard, the workout journal, and body records. You enter the start and end dates and press "적용" (apply).
+  - A bad range shows an error on the matching input (`aria-invalid` and `aria-describedby`) and sends no request.
+  - The applied range stays in the address query `?from=YYYY-MM-DD&to=YYYY-MM-DD`. It persists across a reload or a shared link.
+  - When moving by the menu between the dashboard, workout journal, and body records, which use the same period, the query is kept. When going to another page, it is dropped.
+  - Pressing a preset (1 day to 12 weeks) clears the query and returns to the existing anchor date method.
+  - If the range in the address is bad, it shows the default period (1 week) and shows a notice.
+  - The server query keeps using the existing `?from&to`. The stats (days worked out, completed sets, and cumulative volume) are computed from the range, inclusive of both ends, that the server returned.
+  - Chart: I applied the new grouping rule only to a custom range. The existing preset charts are unchanged. When there are more than 12 bars, the labels are shown only at a fixed interval so they do not overlap.
+- Style: I added the `.custom-range` input row. With 6 tabs, `.tabs` wraps on narrow screens.
 
-## 테스트
+## Tests
 
-- `frontend/src/date-range.test.ts` (신규)
-  - 양 끝 포함 일수와 항목별 오류(371일 경계 포함)
-  - 주소 파싱
-  - 일·주·월 묶음과 연도 표기
-- `frontend/src/custom-range.test.tsx` (신규)
-  - 구간을 적용하면 양 끝 날짜의 기록은 포함되고 그 밖은 제외된다. 일별 막대와 주소 쿼리를 확인한다.
-  - 일지로 이동해도 구간이 유지되고, 프리셋을 누르면 해제된다.
-  - 주소로 다시 열면 같은 구간이 적용된다.
-  - 잘못된 구간은 항목별 오류만 보이고 요청이 늘지 않는다.
-  - 잘못된 주소는 기본 기간으로 표시하고 안내한다.
-- `e2e/custom-range.spec.ts` (신규)
-  - 실제 브라우저에서 적용하면 그 구간을 요청하고 주소가 바뀐다. 새로고침해도 유지된다.
-  - 잘못된 종료일은 안내만 하고 주소를 바꾸지 않는다.
-  - 320px 폭에서 가로 넘침이 없다.
+- `frontend/src/date-range.test.ts` (new)
+  - The number of days including both ends and the per-item errors (including the 371-day boundary)
+  - Address parsing
+  - The daily, weekly, and monthly groups and the year notation
+- `frontend/src/custom-range.test.tsx` (new)
+  - When a range is applied, records on both end dates are included and those outside are excluded. It checks the daily bars and the address query.
+  - The range stays when moving to the journal, and pressing a preset clears it.
+  - Opening again by the address applies the same range.
+  - A bad range shows only per-item errors and the requests do not increase.
+  - A bad address is shown as the default period with a notice.
+- `e2e/custom-range.spec.ts` (new)
+  - In a real browser, applying requests that range and the address changes. It persists after a reload.
+  - A bad end date only shows a notice and does not change the address.
+  - There is no horizontal overflow at 320px width.
 
-## 검증 — 2026-10-21
+## Verification — 2026-10-21
 
-- `npm run check`(Node 24.21.0, `TEST_DATABASE_URL`=로컬 전용 테스트 DB) 통과
-  - 백엔드 279 pass, 0 skip
-  - 프론트 97 pass
-  - 워커 162, skills 4, docs 3, build 통과
-- `npm run test:e2e`(같은 테스트 DB): 5 passed. 기존 320·390px 레이아웃 검사도 통과했다(탭 6개).
-- 320px 검사를 추가한 뒤 `e2e/custom-range.spec.ts`만 다시 실행했고 1 passed였다.
+- `npm run check` (Node 24.21.0, `TEST_DATABASE_URL`=the local dedicated test DB) passes
+  - Backend 279 pass, 0 skip
+  - Frontend 97 pass
+  - Workers 162, skills 4, docs 3, and build pass
+- `npm run test:e2e` (the same test DB): 5 passed. The existing 320px and 390px layout checks also passed (6 tabs).
+- After adding the 320px check, I ran only `e2e/custom-range.spec.ts` again and it was 1 passed.
 
-## 제한·후속
+## Limits and follow-up
 
-- 직접 선택한 구간에서는 이전·다음 기간 이동 버튼을 숨긴다(구간을 다시 고른다).
-- 종목 분석 페이지는 자체 기간(기준 날짜·주 수)을 그대로 쓴다.
+- In a custom range, the previous and next period buttons are hidden (you pick the range again).
+- The exercise analysis page keeps using its own period (anchor date and number of weeks).

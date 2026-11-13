@@ -1,61 +1,61 @@
-# #87 공식 공무게가 없는 머신 값 조사·보완
+# #87 Research and fill in the machine values that have no official empty-weight
 
-- 이슈: [#87](https://github.com/sirloinbh/workout-memo/issues/87)
-- 브랜치: `research/87-official-weights-followup`
-  - `feat/86-weight-step` 위에서 시작했다. 마이그레이션 번호(010 → 011 → 012 → 013) 순서를 지키기 위해서다.
-  - #91 → #92 → #94 → 이 PR 순서로 병합해야 한다.
+- Issue: [#87](https://github.com/sirloinbh/workout-memo/issues/87)
+- Branch: `research/87-official-weights-followup`
+  - It started on top of `feat/86-weight-step`. This keeps the migration number order (010 → 011 → 012 → 013).
+  - The merge order must be #91 → #92 → #94 → this PR.
 
-## 결정 — 2026-10-21
+## Decisions — 2026-10-21
 
-- 조사 대상은 #29에서 `unverified`로 남긴 28행 전부다(Hammer Strength 16, Arsenal Strength 11, Newtech 온힘 1).
-- 공식 출처가 없으면 비공식 측정값은 '참고(비공식)'으로 공식 값과 따로 표시한다.
+- The research targets are all 28 rows that #29 left as `unverified` (Hammer Strength 16, Arsenal Strength 11, Newtech 온힘 (Onhim) 1).
+- If there is no official source, an unofficial measured value is shown separately from the official values as "reference (unofficial)".
 
-## 조사
+## Research
 
-- 브랜드별로 하위 에이전트 2개가 웹 조사를 병렬로 했다. 주 에이전트는 결과 4건(Hammer Reverse V-Squat·Pullover, Arsenal Glute Bridge·ISO Conv Shoulder Press)을 제조사 페이지에서 다시 조회해 수치와 per arm 표기가 같은지 확인했다.
-- 결과
-  - Hammer Strength: 15행 공식 값 확인. Life Fitness 카탈로그 스펙표 기준이다.
-  - Arsenal Strength: 11행 공식 값 확인. 공식 사이트는 `myarsenalstrength.com`이다. #29의 `arsenalstrength.com`은 무관한 체육관이었다.
-  - 미확인 유지 2행
-    - Assisted Nordic Ham: 공식 값이 시작 저항이 아니라 보조 하중(Starting Assistance 18 lb)이다.
-    - Newtech 온힘: 핀(스택) 라인이고 공식 상세에 스택 최대 중량만 있다. 카탈로그 PDF는 직접 다운로드가 차단되어 확인하지 못했다.
-- 비공식 값: 공식 값이 없는 2행에서는 판매처·커뮤니티의 구체적인 수치를 찾지 못했다. 그래서 비공식 값을 저장하는 필드와 표시는 만들지 않았다. 이 정책은 문서에 남겼다. 판매처 값이 공식 값과 일치한 3건은 비고에 적지 않았다(공식 값만 채택).
-- 상세 표·판단 근거: [machine-official-weights-followup.md](../machine-official-weights-followup.md)
+- Two sub-agents did the web research in parallel, by brand. The main agent looked up 4 results again on the manufacturers' pages (Hammer Reverse V-Squat and Pullover, Arsenal Glute Bridge and ISO Conv Shoulder Press) and confirmed that the numbers and the per arm notation were the same.
+- Results
+  - Hammer Strength: official values confirmed for 15 rows. They are based on the Life Fitness catalog spec table.
+  - Arsenal Strength: official values confirmed for 11 rows. The official site is `myarsenalstrength.com`. The `arsenalstrength.com` in #29 was an unrelated gym.
+  - 2 rows stay unverified
+    - Assisted Nordic Ham: the official value is an assisted load (Starting Assistance 18 lb), not a starting resistance.
+    - Newtech 온힘 (Onhim): it is a pin (stack) line, and the official detail has only the maximum stack weight. The catalog PDF could not be checked because direct download was blocked.
+- Unofficial values: for the 2 rows with no official value, I could not find specific numbers from sellers or communities. So I did not create a field or display to store unofficial values. This policy is recorded in the document. I did not write in the notes the 3 cases where the seller's value matched the official value (only the official value is adopted).
+- Detailed table and the reasoning: [machine-official-weights-followup.md](../machine-official-weights-followup.md)
 
-## 변경
+## Change
 
 - `database/migrations/013_official_weights_followup.sql`
-  - 009가 미확인으로 둔 28행만 (브랜드·라인업·모델·설정) 키로 `UPDATE`한다.
-  - 26행은 `verified` 값, 원문 단위, kg 환산, 기준, 출처로 바꾸고, 2행은 미확인 사유를 갱신한다.
-  - 새 행 `INSERT`나 사용자 머신·세트 변경은 없다. 재실행해도 같은 결과다.
-- `docs/machine-official-weights-followup.md` (신규), `docs/machine-official-weights.md`에 후속 조사 링크를 추가했다. 기존 표는 #29 결과로 유지한다.
+  - It runs `UPDATE` by the key (brand, lineup, model, setting) on only the 28 rows that 009 left unverified.
+  - It changes 26 rows to the `verified` value, the original unit, the kg conversion, the basis, and the source, and updates the unverified reason of 2 rows.
+  - There is no new row `INSERT` and no change to user machines or sets. The result is the same when re-run.
+- `docs/machine-official-weights-followup.md` (new), and I added a link to the follow-up research in `docs/machine-official-weights.md`. The existing table stays as the #29 result.
 - `backend/test/official-weights.integration.test.ts`
-  - 009만 다시 실행하면 공유 테스트 DB의 013 결과가 되돌려진다. 그래서 재실행 검증이 009 → 013 순서로 실행하도록 바꿨다(실제 배포는 파일을 순서대로 한 번씩 적용한다).
-  - 미확인 예시 행은 Arsenal 대신 아무 미확인 행이나 고른다.
+  - If only 009 is run again, the 013 result in the shared test DB is reverted. So I changed the re-run verification to run in the order 009 → 013 (the real deployment applies the files once each, in order).
+  - For the unverified example row, it picks any unverified row instead of Arsenal.
 
-## 테스트
+## Tests
 
-- `backend/test/official-weights.test.ts`에 013 검사 3개를 추가했다(DB 없이 실행).
-  - 009의 미확인 행만 한 번씩 다시 다룬다. `INSERT`나 머신·세트 쓰기가 없다.
-  - `verified` 값
-    - 출처는 제조사 도메인(lifefitness.com, myarsenalstrength.com)이고, 판매처 도메인은 금지한다.
-    - lb → kg 환산이 정확하다.
-    - per arm 기준은 공식 표기에 있을 때만 쓴다.
-  - 미확인 행은 NULL과 사유를 가진다. Nordic Ham은 보조 하중이라 미확인이다.
-  - 후속 문서 표가 마이그레이션 값과 같다.
-- DB 통합(`official-weights.integration.test.ts`): 재실행 후에도 사용자 머신 기본중량과 세트 총중량이 그대로다. 테스트 DB 적용 후 상태별 개수는 verified 53, conflict 1, unverified 2였다.
-- 화면 표시: 공식 참고값 표시 코드는 바꾸지 않았다. 기존 `frontend/src/official-weights.test.tsx`가 `verified`·미확인 표시를 계속 검증한다.
+- I added 3 checks for 013 to `backend/test/official-weights.test.ts` (run without a DB).
+  - It touches only the unverified rows of 009, once each. There is no `INSERT` and no machine or set write.
+  - `verified` values
+    - The source is a manufacturer domain (lifefitness.com, myarsenalstrength.com), and seller domains are forbidden.
+    - The lb → kg conversion is exact.
+    - The per arm basis is used only when it is in the official notation.
+  - Unverified rows have NULL and a reason. Nordic Ham is unverified because it is an assisted load.
+  - The follow-up document table matches the migration values.
+- DB integration (`official-weights.integration.test.ts`): even after a re-run, the user machine default weights and the set total weights are unchanged. After applying to the test DB, the counts by state were verified 53, conflict 1, and unverified 2.
+- Screen display: I did not change the code that displays official reference values. The existing `frontend/src/official-weights.test.tsx` keeps verifying the `verified` and unverified display.
 
-## 검증 — 2026-10-21
+## Verification — 2026-10-21
 
-- `npm run check`(Node 24.21.0, `TEST_DATABASE_URL`=로컬 전용 테스트 DB) 통과
-  - 백엔드 296 pass, 0 skip(DB 통합 포함)
-  - 프론트 99 pass
-  - 워커 162, skills 4, docs 3, build 통과
-- `npm run test:e2e`(같은 테스트 DB): 4 passed
-- 처음 013을 적용한 직후의 통합 테스트는 3건 실패했다. 테스트가 009만 다시 실행해 갱신을 되돌렸기 때문이다. 재실행 순서를 고친 뒤 통과했다.
+- `npm run check` (Node 24.21.0, `TEST_DATABASE_URL`=the local dedicated test DB) passes
+  - Backend 296 pass, 0 skip (including the DB integration)
+  - Frontend 99 pass
+  - Workers 162, skills 4, docs 3, and build pass
+- `npm run test:e2e` (the same test DB): 4 passed
+- Right after I first applied 013, 3 integration tests failed. The test ran only 009 again and reverted the update. After fixing the re-run order, it passed.
 
-## 제한·후속
+## Limits and follow-up
 
-- Newtech 온힘 카탈로그 PDF는 직접 다운로드가 차단되었다. 사용자가 받은 카탈로그가 있으면 다시 확인할 수 있다.
-- Abdominal / Oblique Crunch는 공식 값이 "25 lb + 사용자 체중의 10%"이다. 고정 부분만 값으로 두었다.
+- The Newtech 온힘 (Onhim) catalog PDF could not be downloaded directly. If the user has the catalog, it can be checked again.
+- For Abdominal / Oblique Crunch, the official value is "25 lb + 10% of the user's body weight". Only the fixed part is kept as the value.

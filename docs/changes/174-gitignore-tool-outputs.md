@@ -1,29 +1,29 @@
-# #174 .gitignore에 테스트 산출물과 개인 설정 파일 추가하기
+# #174 Add test outputs and personal settings files to .gitignore
 
-- 이슈: [#174](https://github.com/sirloinbh/workout-memo/issues/174) (중앙 sirloinbh/project-standards#323)
+- Issue: [#174](https://github.com/sirloinbh/workout-memo/issues/174) (central sirloinbh/project-standards#323)
 
-## 변경
+## Change
 
-`.gitignore`의 `# --- project ---` 절에 아래 항목을 추가했다. 공통 부분은 중앙 관리 파일이라 건드리지 않았고, 중앙 템플릿 반영은 project-standards#323에서 다룬다.
+I added the items below to the `# --- project ---` section of `.gitignore`. The shared part is a centrally managed file, so I did not touch it, and applying it to the central template is handled in project-standards#323.
 
-| 항목                          | 이유                                                                                                                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `blob-report/`                | Playwright blob 리포터 결과                                                                                                                                              |
-| `coverage/`                   | Vitest coverage 결과                                                                                                                                                     |
-| `*.tsbuildinfo`               | TypeScript 증분 빌드 캐시                                                                                                                                                |
-| `*.tfvars`                    | Terraform 변수 파일. 비밀값이 들어갈 수 있다. `infrastructure/`를 #141에서 리포 밖으로 옮긴 뒤 로컬에 남은 `infrastructure/terraform.tfvars`가 추적 후보로 보이고 있었다 |
-| `.claude/settings.local.json` | 개인 Claude Code 권한 설정. 공유 설정 `.claude/settings.json`은 계속 추적한다                                                                                            |
+| Item                          | Reason                                                                                                                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `blob-report/`                | Playwright blob reporter output                                                                                                                                                                                                                          |
+| `coverage/`                   | Vitest coverage output                                                                                                                                                                                                                                   |
+| `*.tsbuildinfo`               | TypeScript incremental build cache                                                                                                                                                                                                                       |
+| `*.tfvars`                    | Terraform variable files. They may contain secrets. After `infrastructure/` was moved out of the repo in #141, the `infrastructure/terraform.tfvars` left locally was showing up as a candidate to be tracked                                          |
+| `.claude/settings.local.json` | Personal Claude Code permission settings. The shared settings `.claude/settings.json` are still tracked                                                                                                                                                  |
 
-## 검증
+## Verification
 
-- `git check-ignore -v --no-index`: 새 항목 경로(`infrastructure/terraform.tfvars`, `blob-report/x`, `coverage/index.html`, `frontend/tsconfig.tsbuildinfo`, `.claude/settings.local.json`)가 모두 새 규칙으로 무시된다. 기존 `.bkit/`, `.playwright-mcp/`, `test-results/`도 무시된다.
-- `.claude/settings.json`, `.env.example`은 무시되지 않는다(`git check-ignore` 종료 코드 1).
-- `git ls-files`로 새 패턴에 걸리는 추적 파일이 없음을 확인했다.
-- `npm run standards:check`(로컬): `.gitignore` 차이는 없다. 공유 패키지 4개(`@sirloinbh/*`)가 로컬 `node_modules`에 설치되지 않아 실패했다. 설치(`npm ci`)는 글로벌 규칙상 하지 않았고, 전체 검사는 PR CI 결과로 확인한다.
-- `npm run format:check`(로컬): 같은 이유(`@sirloinbh/prettier-config` 미설치)로 실행하지 못했다.
-- 첫 PR CI `verify`가 이 문서의 표 정렬로 Prettier 검사에 실패했다. 중앙 `packages/prettier-config/index.json`과 같은 설정으로 설치된 Prettier를 실행해 표를 정렬했고, `--check`가 통과했다.
-- 앱 코드 변경이 없어 `npm run check`는 실행하지 않았다.
+- `git check-ignore -v --no-index`: all the new item paths (`infrastructure/terraform.tfvars`, `blob-report/x`, `coverage/index.html`, `frontend/tsconfig.tsbuildinfo`, `.claude/settings.local.json`) are ignored by the new rules. The existing `.bkit/`, `.playwright-mcp/`, and `test-results/` are also ignored.
+- `.claude/settings.json` and `.env.example` are not ignored (`git check-ignore` exit code 1).
+- I confirmed with `git ls-files` that no tracked file matches the new patterns.
+- `npm run standards:check` (local): there is no difference in `.gitignore`. It failed because the 4 shared packages (`@sirloinbh/*`) are not installed in the local `node_modules`. I did not install (`npm ci`) because of the global rule, and the full check is confirmed with the PR CI result.
+- `npm run format:check` (local): I could not run it for the same reason (`@sirloinbh/prettier-config` is not installed).
+- The `verify` of the first PR CI failed the Prettier check because of the table alignment of this document. I ran the installed Prettier with the same settings as the central `packages/prettier-config/index.json` to align the table, and `--check` passed.
+- There is no app code change, so I did not run `npm run check`.
 
-## 후속
+## Follow-up
 
-- project-standards#323이 병합되면 동기화 PR로 공통 부분에 같은 항목이 들어온다. 그때 project 절의 중복 항목을 지운다.
+- When project-standards#323 is merged, the same items come into the shared part through the sync PR. Then delete the duplicate items in the project section.

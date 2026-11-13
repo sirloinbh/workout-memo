@@ -22,6 +22,7 @@ Headings that were renamed, with their anchors updated inside the batch: `11. �
 Korean kept on purpose, each with an English gloss:
 
 - The service name `FORM · 나의 운동 기록` (FORM · My Workout Log), the Korean brand line `온힘` (Onhim) of Newtech in the machine weight tables, and Korean UI strings quoted in `docs/ux-audit/2026-10-21.md` (screen names, button labels, quoted messages).
+- The label `조사 행 수` (rows researched) in the summary of both machine weight docs and the Korean line name `온힘 라인업 (모델 미확인)` (Onhim lineup, model unconfirmed) in their tables, because `backend/test/official-weights.test.ts` matches these strings.
 - The Korean service names `플랜핏` (Planfit) and `번핏` (Burnfit) in `docs/fitness-app-research-2026.md`.
 - The `'기타'` ("Other") brand example in `docs/ai-agent-project-setup.md`, and the quoted Korean error page text `잘못된 접근` ("invalid access") in `docs/machine-official-weights-followup.md`.
 

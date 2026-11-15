@@ -373,6 +373,7 @@ test('the request deadline aborts pending transport and permits an explicit retr
   }
   await saveFailed();
   expect(storageSize(), 'aborted request keeps draft').toBeGreaterThan(0);
+  expect(content()).toMatch(/The server did not answer within 15 seconds/);
   pending.resolve();
   await ui.user.click(matchingButton(/Retry/));
   await waitFor(() => expect(ui.mutations()).toHaveLength(2));
@@ -446,6 +447,32 @@ test('a failed save offers Retry save inside its alert banner', async () => {
   await ui.user.click(retry);
   await waitFor(() => expect(ui.mutations()).toHaveLength(2));
   await saved();
+});
+
+// #109: offline, the user reads why the save failed and that the draft survives a reload.
+test('an offline save explains the lost connection and the kept draft instead of "Failed to fetch"', async () => {
+  const ui = mount();
+  await fill(ui);
+  ui.offline();
+  submit();
+  await saveFailed();
+  expect(content()).toMatch(/Cannot reach the server\. Check your connection\./);
+  expect(content()).toMatch(/kept as a draft on this device/);
+  expect(content()).not.toMatch(/Failed to fetch/);
+  // The claim holds: a reload offers the same input back.
+  mount();
+  await loaded();
+  expect(recoverButtons().length).toBeGreaterThan(0);
+});
+
+test('an offline save does not promise a draft when local storage failed', async () => {
+  const ui = mount([], 'write');
+  await fill(ui);
+  ui.offline();
+  submit();
+  await saveFailed();
+  expect(content()).toMatch(/Cannot reach the server/);
+  expect(content()).not.toMatch(/kept as a draft on this device/);
 });
 
 test('cleanup failure keeps server acknowledgment separate from the local storage warning', async () => {

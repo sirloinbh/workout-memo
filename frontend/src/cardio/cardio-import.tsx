@@ -33,7 +33,7 @@ type Row = {
   // edited, so an activity imported before is still found by its id.
   readDate: string;
   selected: boolean;
-  // The user chose the check box; until then the default (only "저장 가능" rows) follows the
+  // The user chose the check box; until then the default (only "Ready to save" rows) follows the
   // latest duplicate check.
   touched: boolean;
   // The server's reason after a refused save, until the row is changed.
@@ -84,7 +84,7 @@ type Check =
 
 const canSave = (check: Check) => check.kind === 'ok' || check.kind === 'candidate';
 
-// What the row's 확인 column says and whether it may be saved, given the checks of the rows
+// What the row's Check column says and whether it may be saved, given the checks of the rows
 // before it: invalid values and an activity already stored cannot be saved. An earlier row with
 // the same id blocks this one only while that row is chosen, so either copy (e.g. the TCX
 // without pauses rather than the GPX) can be picked. A look-alike may be saved once checked.
@@ -100,21 +100,26 @@ function checkRow(
   if (!parsed.success)
     return { kind: 'invalid', text: Object.values(fieldErrors(parsed.error)).join(' · ') };
   const stored = existing.find((s) => isSameActivity(s, row.body));
-  if (stored) return { kind: 'blocked', text: `이미 가져온 기록입니다 (${sessionLabel(stored)})` };
+  if (stored) return { kind: 'blocked', text: `Already imported (${sessionLabel(stored)})` };
   const same = (r: Row, i: number) => i < index && isSameActivity(r.body, row.body);
   const chosenTwin = rows.findIndex((r, i) => same(r, i) && r.selected && canSave(before[i]));
   if (chosenTwin >= 0)
     return {
       kind: 'blocked',
-      text: `${chosenTwin + 1}행과 같은 활동입니다. 그 행의 선택을 해제하면 고를 수 있습니다`,
+      text: `Same activity as row ${chosenTwin + 1}. Clear that row's selection to choose this one`,
     };
   const similar = existing.find((s) => isSimilarActivity(s, row.body));
-  if (similar) return { kind: 'candidate', text: `중복 후보: 기존 기록 ${sessionLabel(similar)}` };
+  if (similar)
+    return {
+      kind: 'candidate',
+      text: `Possible duplicate: existing record ${sessionLabel(similar)}`,
+    };
   const twin = rows.findIndex(
     (r, i) => same(r, i) || (i < index && isSimilarActivity(r.body, row.body)),
   );
-  if (twin >= 0) return { kind: 'candidate', text: `중복 후보: ${twin + 1}행과 같거나 비슷합니다` };
-  return { kind: 'ok', text: '저장 가능' };
+  if (twin >= 0)
+    return { kind: 'candidate', text: `Possible duplicate: same as or similar to row ${twin + 1}` };
+  return { kind: 'ok', text: 'Ready to save' };
 }
 
 function checkRows(rows: readonly Row[], existing: readonly CardioSession[], today: string) {
@@ -123,7 +128,7 @@ function checkRows(rows: readonly Row[], existing: readonly CardioSession[], tod
   return checks;
 }
 
-// Rows the user has not chosen or cleared follow the default: chosen only when "저장 가능".
+// Rows the user has not chosen or cleared follow the default: chosen only when "Ready to save".
 // Re-run after the stored sessions or a row change, so a new look-alike is never left chosen.
 function withDefaults(rows: readonly Row[], existing: readonly CardioSession[], today: string) {
   const out: Row[] = [];
@@ -144,12 +149,12 @@ function withDefaults(rows: readonly Row[], existing: readonly CardioSession[], 
   return out;
 }
 
-// What the table shows but does not edit; "수정" opens the full form for these.
+// What the table shows but does not edit; "Edit" opens the full form for these.
 function summaryOf(body: CardioBody) {
   return [
     formatDuration(body.duration_sec),
     formatDistance(body.kind, body.distance_km),
-    body.avg_heart_rate === null ? null : `평균 심박 ${body.avg_heart_rate}`,
+    body.avg_heart_rate === null ? null : `Avg heart rate ${body.avg_heart_rate}`,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -157,7 +162,7 @@ function summaryOf(body: CardioBody) {
 
 // #119: brings activity files (TCX, GPX) in through an editable preview (2026-11-08 user
 // decisions). Files are read in this browser and never uploaded or kept. The table edits the
-// save check, kind, date and start time; "수정" opens CardioForm without saving for the rest.
+// save check, kind, date and start time; "Edit" opens CardioForm without saving for the rest.
 // The chosen rows are saved together: all or none.
 export function CardioImport({
   today,
@@ -210,7 +215,7 @@ export function CardioImport({
       () =>
         current &&
         setError(
-          '기존 유산소 기록을 불러오지 못해 중복을 확인할 수 없습니다. 파일을 다시 선택하세요.',
+          'Could not load the existing cardio records, so duplicates cannot be checked. Choose the files again.',
         ),
     );
     return () => {
@@ -255,7 +260,7 @@ export function CardioImport({
         loaded.current = `${span.from}~${span.to}#${reload}`;
       } catch {
         setError(
-          '기존 유산소 기록을 불러오지 못해 중복을 확인할 수 없습니다. 파일을 다시 선택하세요.',
+          'Could not load the existing cardio records, so duplicates cannot be checked. Choose the files again.',
         );
         setBusy(false);
         return;
@@ -267,7 +272,7 @@ export function CardioImport({
     requestAnimationFrame(() => fileInput.current?.focus());
     if (next.length)
       setStatus(
-        `활동 ${next.length}건을 읽었습니다. 값을 확인하고 저장할 기록을 고르세요. 중복 후보는 선택을 해제해 두었습니다.`,
+        `Read ${next.length} ${next.length === 1 ? 'activity' : 'activities'}. Check the values and choose the records to save. Possible duplicates are left unchecked.`,
       );
   }
 
@@ -299,18 +304,18 @@ export function CardioImport({
       setRows([]);
       done(saved.length);
     } catch (e) {
-      // Nothing was saved. Each refused row shows the server's reason in its 확인 column.
+      // Nothing was saved. Each refused row shows the server's reason in its Check column.
       const refused = e instanceof CardioImportError ? e.rows : [];
       const reasons = new Map(refused.map((p) => [chosen[p.index]?.key, p.message]));
       setRows((current) =>
         current.map((r) => (reasons.has(r.key) ? { ...r, result: reasons.get(r.key) } : r)),
       );
       // E.g. imported meanwhile in another tab: the stored sessions are read again, so the row
-      // shows "이미 가져온 기록" instead of looking savable after the next edit.
+      // shows "Already imported" instead of looking savable after the next edit.
       if (e instanceof CardioImportError && e.status === 409) setReload((n) => n + 1);
       setError(
         refused.length
-          ? `${(e as Error).message}. 표의 확인 칸에서 이유를 보고 고치거나 선택을 해제한 뒤 다시 저장하세요.`
+          ? `${(e as Error).message}. See the Check column for each reason, then fix the row or clear its selection and save again.`
           : (e as Error).message,
       );
     } finally {
@@ -320,20 +325,20 @@ export function CardioImport({
 
   const editingRow = rows.find((r) => r.key === editing);
   return (
-    <Card role="region" aria-label="활동 파일 가져오기" className="mt-4 gap-4 shadow-none">
+    <Card role="region" aria-label="Import activity file" className="mt-4 gap-4 shadow-none">
       <CardHeader>
         <CardTitle asHeading="h2" className="text-body font-semibold">
-          활동 파일 가져오기
+          Import activity file
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className={formHint}>
-          가민 커넥트 등에서 내보낸 TCX·GPX 파일을 고르세요. 여러 파일을 한 번에 고를 수 있습니다.
-          파일은 이 브라우저에서만 읽고 서버로 보내지 않으며, 요약값(시간·거리·심박·칼로리)만
-          저장합니다.
+          Choose TCX or GPX files exported from Garmin Connect or a similar service. You can choose
+          several files at once. Files are read only in this browser and are never sent to the
+          server; only the summary values (time, distance, heart rate, calories) are saved.
         </p>
         <Label className="mb-0 flex flex-col items-start gap-2 text-meta text-muted-foreground">
-          활동 파일 (TCX·GPX)
+          Activity file (TCX/GPX)
           <Input
             ref={fileInput}
             className={touchText}
@@ -350,7 +355,7 @@ export function CardioImport({
         </Label>
         {fileErrors.length > 0 && (
           <AlertBanner className="mb-0">
-            읽지 못한 파일이 있습니다.
+            Some files could not be read.
             <ul className="mt-1 list-disc pl-5">
               {fileErrors.map((message, i) => (
                 <li key={i}>{message}</li>
@@ -362,8 +367,8 @@ export function CardioImport({
         <Notice notice={status ? { kind: 'status', text: status } : undefined} />
         {rows.some((r) => r.format === 'gpx') && (
           <p className={formHint}>
-            GPX 파일은 일시정지를 기록하지 않아 운동 시간이 첫 기록부터 마지막 기록까지(일시정지
-            포함)입니다. 다르면 &ldquo;수정&rdquo;에서 고치세요.
+            GPX files do not record pauses, so the workout time runs from the first record to the
+            last (pauses included). If that is wrong, fix it with &ldquo;Edit&rdquo;.
           </p>
         )}
         {rows.length > 0 && (
@@ -372,13 +377,13 @@ export function CardioImport({
               // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- a scrollable region must be focusable.
               tabIndex={0}
               role="region"
-              aria-label="가져올 활동 미리보기"
+              aria-label="Import preview"
               className="max-w-full overflow-x-auto rounded-md border outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               <table className="w-full border-collapse text-body-sm">
                 <thead className="bg-muted text-meta text-muted-foreground">
                   <tr>
-                    {['저장', '종류', '날짜', '시작', '기록', '확인', '수정'].map((h) => (
+                    {['Save', 'Type', 'Date', 'Start', 'Record', 'Check', 'Edit'].map((h) => (
                       <th scope="col" key={h} className={cell}>
                         {h}
                       </th>
@@ -393,7 +398,7 @@ export function CardioImport({
                       <tr key={row.key} className="border-t">
                         <td className={cell}>
                           <Checkbox
-                            aria-label={`${n}행 저장`}
+                            aria-label={`Save row ${n}`}
                             // As in the InBody import: the box stays 16px with the common 44px
                             // ::after touch area (#271).
                             className="pointer-coarse:min-h-4 pointer-coarse:min-w-4"
@@ -404,7 +409,7 @@ export function CardioImport({
                         </td>
                         <td className={cell}>
                           <select
-                            aria-label={`${n}행 종류`}
+                            aria-label={`Row ${n} type`}
                             className={cn(selectField, 'min-w-28')}
                             disabled={busy}
                             value={row.body.kind}
@@ -421,7 +426,7 @@ export function CardioImport({
                         </td>
                         <td className={cell}>
                           <Input
-                            aria-label={`${n}행 날짜`}
+                            aria-label={`Row ${n} date`}
                             className={cn(touchText, 'min-w-36')}
                             type="date"
                             max={today}
@@ -432,7 +437,7 @@ export function CardioImport({
                         </td>
                         <td className={cell}>
                           <Input
-                            aria-label={`${n}행 시작 시각`}
+                            aria-label={`Row ${n} start time`}
                             className={cn(touchText, 'min-w-28')}
                             type="time"
                             disabled={busy}
@@ -462,11 +467,11 @@ export function CardioImport({
                             type="button"
                             variant="outline"
                             size="sm"
-                            aria-label={`${n}행 수정`}
+                            aria-label={`Edit row ${n}`}
                             disabled={busy}
                             onClick={() => setEditing(row.key)}
                           >
-                            수정
+                            Edit
                           </Button>
                         </td>
                       </tr>
@@ -477,16 +482,17 @@ export function CardioImport({
             </div>
             {tooMany && (
               <p className={cn(formHint, 'text-destructive')}>
-                한 번에 {importLimit}건까지 저장할 수 있습니다. 선택을 {chosen.length - importLimit}
-                건 줄이세요.
+                You can save up to {importLimit} records at a time. Deselect{' '}
+                {chosen.length - importLimit}{' '}
+                {chosen.length - importLimit === 1 ? 'record' : 'records'}.
               </p>
             )}
             <div className="flex flex-wrap gap-2">
               <Button disabled={busy || !chosen.length || tooMany} onClick={() => void saveAll()}>
-                {busy ? '저장 중…' : `선택한 ${chosen.length}건 저장`}
+                {busy ? 'Saving…' : `Save ${chosen.length} selected`}
               </Button>
               <Button type="button" variant="ghost" disabled={busy} onClick={close}>
-                닫기
+                Close
               </Button>
             </div>
           </>
@@ -499,7 +505,7 @@ export function CardioImport({
             disabled={busy}
             onClick={close}
           >
-            닫기
+            Close
           </Button>
         )}
       </CardContent>

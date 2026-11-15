@@ -60,7 +60,7 @@ export async function importCardioSessions(sessions: CardioBody[]) {
       body: JSON.stringify({ sessions }),
     });
   } catch {
-    throw new CardioImportError('서버에 연결할 수 없습니다', undefined);
+    throw new CardioImportError('Cannot connect to the server', undefined);
   }
   const data = (await response.json().catch(() => ({}))) as {
     error?: unknown;
@@ -69,7 +69,9 @@ export async function importCardioSessions(sessions: CardioBody[]) {
   };
   if (!response.ok)
     throw new CardioImportError(
-      typeof data.error === 'string' && data.error ? data.error : '요청을 처리하지 못했습니다',
+      typeof data.error === 'string' && data.error
+        ? data.error
+        : 'The request could not be processed',
       response.status,
       Array.isArray(data.rows) ? data.rows : [],
     );

@@ -1457,7 +1457,7 @@
     },
     "/api/cardio-sessions/import": {
       "post": {
-        "summary": "가져온 유산소 기록 일괄 저장(전부 또는 없음) → 201. 거절 행은 rows로",
+        "summary": "Save imported cardio records in bulk (all or nothing) → 201. Rejected rows are in rows",
         "requestBody": {
           "required": true,
           "content": {
@@ -1470,10 +1470,10 @@
         },
         "responses": {
           "201": {
-            "description": "생성됨"
+            "description": "Created"
           },
           "400": {
-            "description": "입력 검증 실패 또는 존재하지 않는 참조",
+            "description": "Input validation failed or a referenced item does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1483,7 +1483,7 @@
             }
           },
           "409": {
-            "description": "중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치",
+            "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
               "application/json": {
                 "schema": {
@@ -1493,7 +1493,7 @@
             }
           },
           "413": {
-            "description": "요청 크기 한도 초과",
+            "description": "Request size limit exceeded",
             "content": {
               "application/json": {
                 "schema": {

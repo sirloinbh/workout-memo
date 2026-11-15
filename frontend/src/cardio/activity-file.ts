@@ -80,7 +80,7 @@ const kmOf = (metres: number) => (metres >= 1 ? Math.round(metres) / 1000 : null
 function parseXml(file: string, text: string) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length)
-    throw new ActivityFileError(`${file}: 파일을 읽지 못했습니다. 손상되었거나 XML이 아닙니다.`);
+    throw new ActivityFileError(`${file}: Could not read the file. It is damaged or not XML.`);
   return doc;
 }
 
@@ -125,17 +125,17 @@ const tcxKinds: Record<string, CardioKind> = {
 export function parseTcx(file: string, text: string): ImportedActivity[] {
   const doc = parseXml(file, text);
   if (doc.documentElement.localName !== 'TrainingCenterDatabase')
-    throw new ActivityFileError(`${file}: TCX 파일이 아닙니다.`);
+    throw new ActivityFileError(`${file}: Not a TCX file.`);
   const activities = descendants(doc, 'Activity');
-  if (!activities.length) throw new ActivityFileError(`${file}: 활동 기록이 없습니다.`);
+  if (!activities.length) throw new ActivityFileError(`${file}: No activities found.`);
   return activities.map((activity, index) => {
     const name = activities.length > 1 ? `${file} (${index + 1})` : file;
     const laps = children(activity, 'Lap');
-    if (!laps.length) throw new ActivityFileError(`${name}: 랩(요약 값)이 없습니다.`);
+    if (!laps.length) throw new ActivityFileError(`${name}: No laps (summary values) found.`);
     const start =
       instantOf(laps[0].getAttribute('StartTime') ?? '') ??
       instantOf(textOf(child(activity, 'Id')));
-    if (!start) throw new ActivityFileError(`${name}: 시작 시각이 없습니다.`);
+    if (!start) throw new ActivityFileError(`${name}: No start time found.`);
     let seconds = 0;
     let metres = 0;
     let calories: number | null = null;
@@ -182,7 +182,7 @@ export function parseTcx(file: string, text: string): ImportedActivity[] {
 }
 
 // GPX `trk/type` is free text: Garmin writes running, cycling, walking, hiking, ... and other
-// apps similar words. Anything else is 기타 and can be changed in the preview.
+// apps similar words. Anything else is Other and can be changed in the preview.
 const gpxKinds: [RegExp, CardioKind][] = [
   [/run|jog/, 'running'],
   [/walk|hik/, 'walking'],
@@ -214,9 +214,9 @@ function metresBetween(a: { lat: number; lon: number }, b: { lat: number; lon: n
 export function parseGpx(file: string, text: string): ImportedActivity[] {
   const doc = parseXml(file, text);
   if (doc.documentElement.localName !== 'gpx')
-    throw new ActivityFileError(`${file}: GPX 파일이 아닙니다.`);
+    throw new ActivityFileError(`${file}: Not a GPX file.`);
   const tracks = descendants(doc, 'trk');
-  if (!tracks.length) throw new ActivityFileError(`${file}: 트랙 기록이 없습니다.`);
+  if (!tracks.length) throw new ActivityFileError(`${file}: No track records found.`);
   return tracks.map((track, index) => {
     const name = tracks.length > 1 ? `${file} (${index + 1})` : file;
     let first: Date | null = null;
@@ -242,7 +242,7 @@ export function parseGpx(file: string, text: string): ImportedActivity[] {
         if (heart !== null && heart > 0) hearts.push(heart);
       }
     }
-    if (!first || !last) throw new ActivityFileError(`${name}: 기록 시각이 없습니다.`);
+    if (!first || !last) throw new ActivityFileError(`${name}: No record timestamps found.`);
     return finish(name, 'gpx', first, {
       kind: gpxKind(textOf(child(track, 'type'))),
       duration_sec: Math.round((last.getTime() - first.getTime()) / 1000),
@@ -276,5 +276,5 @@ export function parseActivityFile(file: string, text: string): ImportedActivity[
   if (extension === 'gpx') return parseGpx(file, text);
   if (/<TrainingCenterDatabase[\s>]/.test(text)) return parseTcx(file, text);
   if (/<gpx[\s>]/.test(text)) return parseGpx(file, text);
-  throw new ActivityFileError(`${file}: TCX·GPX 파일만 가져올 수 있습니다.`);
+  throw new ActivityFileError(`${file}: Only TCX and GPX files can be imported.`);
 }

@@ -164,16 +164,16 @@ export function registerCardioRoutes(app: express.Express, pool: Pool, today: ()
 export const cardioImportLimit = 200;
 export const cardioImportRequest = z.object({
   sessions: z
-    .array(z.unknown(), { error: '가져올 유산소 기록 목록(sessions)을 배열로 보내세요' })
-    .min(1, '가져올 유산소 기록을 1건 이상 선택하세요')
-    .max(cardioImportLimit, `유산소 기록은 한 번에 ${cardioImportLimit}건까지 가져올 수 있습니다`),
+    .array(z.unknown(), { error: 'Send the cardio records to import (sessions) as an array' })
+    .min(1, 'Select at least 1 cardio record to import')
+    .max(cardioImportLimit, `You can import up to ${cardioImportLimit} cardio records at a time`),
 });
 // The same body with the row schema spelled out, for the OpenAPI document.
 export const cardioImportDocument = z.object({
   sessions: z.array(cardioSessionObject).min(1).max(cardioImportLimit),
 });
 export type CardioImportProblem = { index: number; message: string };
-const importedOnly = '가져온 기록에는 출처(file·garmin·nike)와 외부 ID가 필요합니다';
+const importedOnly = 'Imported records need a source (file, garmin or nike) and an external ID';
 const shownIssues = 3;
 
 function importRows(body: unknown, today: string) {
@@ -197,7 +197,7 @@ function importRows(body: unknown, today: string) {
     const key = `${row.source}\u0000${row.external_id}`;
     const first = seen.get(key);
     if (first !== undefined) {
-      problems.push({ index, message: `${first + 1}번째 행과 같은 활동입니다` });
+      problems.push({ index, message: `Same activity as row ${first + 1}` });
       return;
     }
     seen.set(key, index);
@@ -213,12 +213,12 @@ function sendImportProblems(
 ) {
   const rows = [...problems].sort((a, b) => a.index - b.index);
   res.status(status).json({
-    error: `${rows.length}건에 문제가 있어 아무것도 저장하지 않았습니다`,
+    error: `${rows.length} ${rows.length === 1 ? 'record has a problem' : 'records have problems'}, so nothing was saved`,
     rows,
   });
 }
 
-// A row may carry a 2000-character memo (about 6 KB of Korean in JSON), so 200 rows do not fit
+// A row may carry a 2000-character memo (about 6 KB of Hangul in JSON), so 200 rows do not fit
 // the app-wide 256kb body limit. This route parses its own body and is registered before that
 // parser (app.ts), like the backup routes.
 export const cardioImportMaxBytes = 2 * 1024 * 1024;
@@ -245,7 +245,7 @@ export function registerCardioImportRoute(
       const taken = new Set(existing.rows.map((r) => `${r.source}\u0000${r.external_id}`));
       const repeated = rows.flatMap((r, index) =>
         taken.has(`${r.source}\u0000${r.external_id}`)
-          ? [{ index, message: '이미 가져온 활동입니다' }]
+          ? [{ index, message: 'This activity was already imported' }]
           : [],
       );
       if (repeated.length) {

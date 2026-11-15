@@ -179,7 +179,7 @@ export function CardioPanel({
               }}
             >
               <FileUp aria-hidden />
-              파일 가져오기
+              Import file
             </Button>
             <Button
               disabled={busy}
@@ -224,7 +224,7 @@ export function CardioPanel({
           close={closeImport}
           done={(count) => {
             closeImport();
-            setStatus(`유산소 기록 ${count}건을 가져왔습니다`);
+            setStatus(`Imported ${count} cardio ${count === 1 ? 'record' : 'records'}`);
             onChanged?.();
             void load();
           }}

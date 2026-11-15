@@ -5,7 +5,7 @@ description: Establish or improve the repeatable development foundation of the w
 
 # Workout Memo Development Foundation
 
-Make the development, verification, and operation of the workout log app repeatable. First read `AGENTS.md` at the project root and `skills/workout-implementation/SKILL.md`, then work in this order: issue → numbered branch → implementation and docs record → tests and PR → automatic review (at most 2 rounds) → merge after CI passes. This skill does not skip the issue, PR, or CI steps and does not grant separate deployment permission.
+Make the development, verification, and operation of the workout log app repeatable. First read `AGENTS.md` at the project root and `skills/workout-implementation/SKILL.md`, then work in this order: issue → numbered branch → implementation and docs record → tests and PR → automatic review (1 or 2 rounds, more only while blocking findings remain) → merge after CI passes. This skill does not skip the issue, PR, or CI steps and does not grant separate deployment permission.
 
 ## Scope and choices
 
@@ -24,7 +24,7 @@ Make the development, verification, and operation of the workout log app repeata
 4. For screen changes, keep the existing design while tidying shared components, forms, loading, empty results, errors, and keyboard access within the scope of that feature.
 5. Apply the project's `skills/workout-testing/SKILL.md` as well. Write the implementation or fix together with the related test code, and add a regression test for a bug. Run the related checks before committing and before creating or updating a PR, and record the real results in the docs and the PR. Verify the changed behavior of the reference feature, workout log CRUD, with suitable unit, integration, and browser checks.
 6. Do deployment work within the scope the user requested. Prepare image versions, health checks, config and secret management, backup and restore, and rollback to the previous version. Choose resources that cost money to match the purpose of the deployment and the budget.
-7. Include a docs record in each work commit, open a verified PR, go through automatic review (at most 2 rounds), and merge once CI passes.
+7. Include a docs record in each work commit, open a verified PR, go through automatic review (1 or 2 rounds, more only while blocking findings remain), and merge once CI passes.
 
 ## Done criteria
 

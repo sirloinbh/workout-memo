@@ -1,3 +1,4 @@
+import { meHandler } from '@sirloinbh/auth-client';
 import express from 'express';
 import type { Pool } from 'pg';
 import { types } from 'pg';
@@ -20,10 +21,16 @@ import { errorHandler, notFound } from './standard/http.js';
 types.setTypeParser(1082, (value) => value);
 
 // Feature routes live in routes/; the REST contract is documented in docs/api.md.
-export function createApp(pool: Pool, options: { today?: () => string } = {}) {
+export function createApp(
+  pool: Pool,
+  options: { today?: () => string; auth?: express.RequestHandler } = {},
+) {
   const today = options.today ?? (() => seoulToday());
   const app = express();
   app.disable('x-powered-by');
+  // #303: the shared sign-in guards every /api route except /api/health, before any route registers.
+  if (options.auth) app.use('/api', options.auth);
+  app.get('/api/me', meHandler);
   // Backup routes parse their own 10MB body, so they register before the 256kb parser.
   registerBackupRoutes(app, pool);
   // #119: up to 200 imported cardio sessions; its own 2MB body limit.

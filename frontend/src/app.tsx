@@ -102,6 +102,7 @@ import {
   withDuration,
 } from './rest-timer';
 import { Routines } from './routines';
+import { AccountActions, SignInGate } from './sign-in';
 const restKindLabels: Record<RestKind, string> = {
   lower: 'Lower body',
   upper: 'Upper body',
@@ -373,7 +374,9 @@ export function App() {
   return (
     <QueryClientProvider client={client}>
       <BrowserRouter>
-        <Workspace />
+        <SignInGate>
+          <Workspace />
+        </SignInGate>
       </BrowserRouter>
     </QueryClientProvider>
   );
@@ -1055,6 +1058,7 @@ function Workspace() {
       <AppShell
         appName="FORM · My Workout Log"
         nav={navItems}
+        actions={<AccountActions />}
         footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">

@@ -65,20 +65,20 @@ async function checkScreen(
   }
   expect(
     (known[screen] ?? []).filter((pair) => !used.has(pair)),
-    `${screen}: 허용 목록에 있지만 ${widths.map((w) => w.width).join('·')}px 어디에도 나타나지 않은 조합. 색을 고쳤다면 a11y-known-contrast.json에서 지운다`,
+    `${screen}: on the allowlist, but the combination did not appear at any of ${widths.map((w) => w.width).join('·')}px. If you fixed the color, remove it from a11y-known-contrast.json`,
   ).toEqual([]);
 }
 
-test('허용 목록은 검사하는 화면만 가리킨다', () => {
+test('The allowlist only points at the screens being checked', () => {
   const screens = new Set<string>([...pages, ...modals].map((s) => s.name));
   expect(Object.keys(known).filter((screen) => !screens.has(screen))).toEqual([]);
 });
 
 for (const { path, name } of pages)
-  test(`${name} 화면 접근성`, async ({ browser }) => {
+  test(`${name} screen accessibility`, async ({ browser }) => {
     await checkScreen(browser, name, (page) => openPage(page, path));
   });
 for (const modal of modals)
-  test(`${modal.name} 모달 접근성`, async ({ browser }) => {
+  test(`${modal.name} modal accessibility`, async ({ browser }) => {
     await checkScreen(browser, modal.name, (page) => openModal(page, modal), '[role="dialog"]');
   });

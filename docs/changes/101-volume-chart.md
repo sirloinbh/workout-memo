@@ -1,54 +1,54 @@
-# #101 대시보드 그래프 영역을 공통 Card로 교체 (7단계)
+# #101 Replace the dashboard chart area with the shared Card (step 7)
 
-- 이슈: [#101](https://github.com/sirloinbh/workout-memo/issues/101)
-- 브랜치: `feat/101-volume-chart`
+- Issue: [#101](https://github.com/sirloinbh/workout-memo/issues/101)
+- Branch: `feat/101-volume-chart`
 
-## 목적
+## Purpose
 
-#101을 요소 하나씩 나눠 옮기는 일곱 번째 PR입니다. 대시보드의 그래프 영역(트레이닝 볼륨 카드와 옆의 안내 카드)을 공통 `Card`와 유틸리티 클래스로 바꾸고 해당 `style.css` 규칙을 지웁니다. 남은 범위는 운동 일지의 루틴 목표 카드이며, 이 PR은 #101을 닫지 않습니다.
+This is the seventh PR in #101, which moves one element at a time. The chart area on the dashboard (the training volume card and the notice card beside it) now uses the shared `Card` and utility classes, and the matching `style.css` rules are removed. The remaining scope is the routine goal card in the workout journal. This PR does not close #101.
 
-## 변경 — feat: 그래프 영역 교체
+## Change — feat: replace the chart area
 
 - `frontend/src/app.tsx`
-  - 트레이닝 볼륨 카드: `Card`, `CardHeader`, `CardTitle`(h2), `CardDescription`, `CardAction`(범례)으로 바꿨습니다.
-  - 안내 카드(THE NEXT CHAPTER): `Card` 위에 `bg-muted`로 만들고, "나의 목표 확인하기"는 공통 `Button`(`link`)입니다. 장식 원은 `aria-hidden`입니다.
-  - `Chart`: 막대 높이를 고정 145px 기준 픽셀에서 그래프 높이 대비 %로 바꿨습니다. 막대 색은 `bg-foreground/20`, 마지막 구간은 `bg-primary`, 모서리는 `rounded-t-sm`입니다. 축과 날짜 글자는 `text-meta`(12px)입니다.
-  - 막대가 7개를 넘으면(12주, 8일 이상 직접 지정) 날짜 라벨을 걸러 보여 줍니다. 1주(요일 7개), 4주(4개), 1달(5개)은 모두 보여 줍니다. 기준은 아래 1차 리뷰 보완에서 바꿨습니다.
-  - 카드 배치: 1열 → `md` 230px → `xl` 280px → `2xl` 340px 오른쪽 열입니다. 이전에는 761px·1101px·1500px에서 바뀌었습니다.
-- `frontend/src/style.css`: `.overview-grid`, `.legend`, `.chart`, `.chart-y`, `.plot`, `.grid-lines`, `.bars`, `.bar-column`, `.bar`, `.chart-empty`, `.focus-card`, `.focus-top`, `.rings`와 반응형 규칙, 대비 규칙의 `.focus-card`를 지웠습니다. 비게 된 `@media (min-width: 1500px)`도 지웠습니다. `.card`, `.section-title`은 다른 화면이 써서 남겼습니다.
-- 화면 차이: 제목 15→16px, 설명 10→14px, 범례·축·날짜 8~9px→12px로 커집니다. 그래프 높이는 215px→224px(`2xl` 256px)입니다. 모바일에서 안내 카드 설명이 오른쪽 위에 겹쳐 놓이지 않고 제목 아래로 갑니다. 대비 규칙에서 `.focus-card`를 지워 안내 카드의 "THE NEXT CHAPTER"와 설명이 `muted-foreground` 색으로 조금 흐려집니다. 다크 `muted` 바탕 위 대비는 약 5.8:1로 AA를 넘습니다.
+  - Training volume card: now `Card`, `CardHeader`, `CardTitle` (h2), `CardDescription`, and `CardAction` (legend).
+  - Notice card (THE NEXT CHAPTER): built on `Card` with `bg-muted`, and "나의 목표 확인하기" (check my goals) is the shared `Button` (`link`). The decorative circles are `aria-hidden`.
+  - `Chart`: bar height changes from pixels based on a fixed 145px to a % of the chart height. The bar color is `bg-foreground/20`, the last period is `bg-primary`, and the corners are `rounded-t-sm`. The axis and date text are `text-meta` (12px).
+  - When there are more than 7 bars (12 weeks, or a custom range of 8 days or more), the date labels are thinned out. 1 week (7 weekdays), 4 weeks (4), and 1 month (5) show all of them. The rule was changed in the first review follow-up below.
+  - Card layout: 1 column → `md` 230px → `xl` 280px → `2xl` 340px for the right column. Before, it changed at 761px, 1101px, and 1500px.
+- `frontend/src/style.css`: removed `.overview-grid`, `.legend`, `.chart`, `.chart-y`, `.plot`, `.grid-lines`, `.bars`, `.bar-column`, `.bar`, `.chart-empty`, `.focus-card`, `.focus-top`, `.rings`, the responsive rules, and `.focus-card` in the contrast rules. I also removed the `@media (min-width: 1500px)` block that became empty. `.card` and `.section-title` stay because other screens use them.
+- Visual differences: the title grows 15→16px, the description 10→14px, and the legend, axis, and dates 8-9px→12px. The chart height is 215px→224px (256px at `2xl`). On mobile, the notice card description goes under the title instead of sitting over the top right. Because `.focus-card` was removed from the contrast rules, "THE NEXT CHAPTER" and the description in the notice card get a little fainter in the `muted-foreground` color. The contrast on the dark `muted` background is about 5.8:1, above AA.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-- 막대 열 넘침(must-fix): 열이 `flex-1`인데 `min-w-0`이 없어 열 최소 너비가 날짜 라벨 폭(약 30px)이 됐습니다. 사이드바와 오른쪽 열이 있는 768px에서 12주를 고르면 그래프 폭 약 130px에 300px 넘게 필요해 막대가 안내 카드를 덮습니다. 360px과 31일 직접 지정도 같습니다.
-  - 열에 `min-w-0`을 넣고, 라벨은 열 가운데에 `absolute`로 놓아 열 너비 계산에서 뺐습니다. 막대 최소 너비는 6px에서 2px로 줄였습니다.
-  - 라벨 거르기와 막대 간격을 화면 폭(`xl`)이 아니라 그래프 자체 폭(container query)으로 정합니다. 사이드바 때문에 두 폭이 따로 움직입니다. 라벨은 4개에 하나는 항상, 2개에 하나는 그래프 200px부터, 모두는 480px부터(2차 리뷰 보완) 보입니다. 간격은 1px → `@sm` 4px → `@lg` 10px입니다.
-- 기록 수정: 라벨을 거르는 구간을 "4주·1달·12주·직접 지정"으로 잘못 적었습니다. 4주는 4개, 1달은 5개라 거르지 않습니다.
-- 안내 카드 제목: 오른쪽 열이 230px인 `md`~`xl` 사이에서 24px 제목이 줄을 더 바꾸지 않게 `md:text-xl xl:text-2xl`로 했습니다(이전 22px).
-- 테스트가 마크업 구조(`parentElement.nextElementSibling`)에 묶여 있던 것을 라벨의 `data-slot="volume-label"`로 찾게 바꿨습니다.
-- 반영하지 않음: 768px에서 12주를 고른 시각 기준선 추가. 고정 데이터 e2e의 범위를 넓히는 일이라 이 PR에 넣지 않았습니다. 넘침은 위 구조 변경과 화면 테스트로 막습니다.
+- Bar column overflow (must-fix): the column is `flex-1` without `min-w-0`, so the minimum column width became the date label width (about 30px). At 768px with the sidebar and the right column, choosing 12 weeks needs more than 300px in a chart about 130px wide, so the bars cover the notice card. The same happens at 360px and with a 31-day custom range.
+  - I added `min-w-0` to the column, and the label is placed in the center of the column with `absolute`, so it no longer counts in the column width calculation. I cut the minimum bar width from 6px to 2px.
+  - The label thinning and the bar gap are now decided by the chart's own width (container query), not the screen width (`xl`). The sidebar makes the two widths move separately. Labels show as follows: one in 4 always, one in 2 from a 200px chart, and all from 480px (changed in the second review follow-up). The gap is 1px → `@sm` 4px → `@lg` 10px.
+- Record fix: I wrongly wrote that the thinning applies to "4 weeks, 1 month, 12 weeks, and custom range". 4 weeks has 4 and 1 month has 5, so they are not thinned.
+- Notice card title: between `md` and `xl`, where the right column is 230px, I used `md:text-xl xl:text-2xl` so the 24px title does not wrap onto more lines (it was 22px before).
+- A test that was tied to the markup structure (`parentElement.nextElementSibling`) now finds the label by `data-slot="volume-label"`.
+- Not applied: adding a visual baseline with 12 weeks chosen at 768px. That widens the scope of the fixed-data e2e, so I did not put it in this PR. The overflow is prevented by the structure change above and the screen tests.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/period.test.tsx`
-  - 막대 높이가 가장 큰 구간 대비 %이고, 마지막 구간 하나만 강조되며, 기록이 있으면 빈 안내가 없는지 확인합니다.
-  - 1주는 라벨 7개를 모두 보이고, 12주는 라벨 12개가 항상·200px·480px 단계로 나뉘는지 확인합니다(1차 리뷰 보완에서 바꿈).
-- 추가: `frontend/src/custom-range.test.tsx` — 31일 직접 지정에서 3일마다 라벨이 붙고 같은 단계로 나뉘는지 확인합니다(1차 리뷰 보완).
-- 첫 커밋: `npm run test -w frontend -- src/period.test.tsx src/custom-range.test.tsx` 29 pass
-- 1차 보완 후: 같은 명령 30 pass, `npm run test -w frontend` 207 pass·4 skip, `npm run build -w frontend`로 container query 클래스(`@min-[200px]`, `@min-[400px]`, `@sm`, `@lg`)가 CSS에 생성됨을 확인
-- 첫 커밋: `npm run test -w frontend` 206 pass, 4 skip
-- `npm run typecheck -w frontend`, `npm run lint`, prettier: 통과
-- 시각 기준선과 e2e(반응형·axe)는 PR CI로 확인합니다. 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다.
+- Added: `frontend/src/period.test.tsx`
+  - Checks that the bar height is a % of the largest period, that only the last period is highlighted, and that the empty notice is not shown when there are records.
+  - Checks that 1 week shows all 7 labels, and that the 12 labels for 12 weeks split into the always, 200px, and 480px steps (changed in the first review follow-up).
+- Added: `frontend/src/custom-range.test.tsx` — checks that a 31-day custom range puts a label every 3 days and splits into the same steps (first review follow-up).
+- First commit: `npm run test -w frontend -- src/period.test.tsx src/custom-range.test.tsx` 29 pass
+- After the first follow-up: the same command 30 pass, `npm run test -w frontend` 207 pass and 4 skip, and `npm run build -w frontend` confirmed that the container query classes (`@min-[200px]`, `@min-[400px]`, `@sm`, `@lg`) are generated in the CSS
+- First commit: `npm run test -w frontend` 206 pass, 4 skip
+- `npm run typecheck -w frontend`, `npm run lint`, prettier: pass
+- Visual baselines and e2e (responsive, axe) are checked by PR CI. I did not run the full local `npm run check` because it has a history of running out of memory.
 
-## 변경 — fix: 2차 리뷰 보완
+## Change — fix: second review follow-up
 
-- 라벨을 모두 보이는 기준을 그래프 400px에서 480px로 올렸습니다. 400px 근처에서 12개의 5글자 라벨(예: `12/29`, 약 33px)이 틈 1px 미만으로 맞닿거나 살짝 겹쳤습니다.
-- 기록의 테스트 결과 줄을 커밋별로 나눴습니다.
-- 반영하지 않음: "범례·y축·날짜·빈 안내·THE NEXT CHAPTER에 흐린 글자색이 빠졌다"는 지적. 공통 토큰의 `text-meta`·`text-caption` 유틸리티가 `color: var(--color-muted-foreground)`를 함께 지정해 이미 흐린 색입니다(`@sirloinbh/design-tokens/tailwind.css`).
-- 리뷰는 2회까지라 3차 리뷰는 하지 않습니다.
-- 2차 보완 후: `npm run test -w frontend -- src/period.test.tsx src/custom-range.test.tsx` 30 pass, `npm run lint`·`npm run typecheck -w frontend`·prettier 통과, 빌드 CSS에 `@container (min-width:480px)` 생성 확인
+- I raised the threshold for showing all labels from a 400px chart to 480px. Near 400px, the 12 five-character labels (for example `12/29`, about 33px) touched with a gap under 1px or overlapped slightly.
+- I split the test result lines of this record by commit.
+- Not applied: the comment that "the legend, y axis, dates, empty notice, and THE NEXT CHAPTER lost the faded text color". The `text-meta` and `text-caption` utilities of the shared tokens also set `color: var(--color-muted-foreground)`, so the color is already faded (`@sirloinbh/design-tokens/tailwind.css`).
+- Reviews stop at two, so there is no third review.
+- After the second follow-up: `npm run test -w frontend -- src/period.test.tsx src/custom-range.test.tsx` 30 pass, `npm run lint`, `npm run typecheck -w frontend`, and prettier pass, and I confirmed that `@container (min-width:480px)` is generated in the built CSS
 
-## 변경 — fix: 안내 카드 링크 버튼 여백
+## Change — fix: notice card link button padding
 
-- CI 시각 기준선 이미지를 확인하다 발견했습니다. "나의 목표 확인하기"가 위 문장보다 약 12px 안쪽에 있었습니다. 공통 `Button`의 `has-[>svg]:px-3`가 `px-0`보다 우선했기 때문입니다. `has-[>svg]:px-0`을 넣어 이전처럼 문장과 왼쪽을 맞췄습니다.
-- 시각 기준선 7장 갱신: `ee165c2`의 CI `e2e-visual`에서 7건만 실패했고 axe·반응형 포함 나머지 71건은 통과했습니다. 바뀐 것은 `dashboard-360·390·768·1280`과 뒤에 대시보드가 보이는 `workout-editor-360·768·1280`입니다. `dashboard-360·768·1280`을 직접 보고 글자 확대, 범례 위치, 안내 카드 배치, 링크 왼쪽 정렬이 의도대로임을 확인했습니다. 나머지 37장은 그대로입니다.
+- I found this while looking at the CI visual baseline images. "나의 목표 확인하기" sat about 12px further in than the sentence above it, because the `has-[>svg]:px-3` of the shared `Button` beat `px-0`. I added `has-[>svg]:px-0` so it lines up with the sentence on the left as before.
+- Updated 7 visual baselines: in the `e2e-visual` CI run for `ee165c2`, only 7 checks failed, and the other 71, including axe and responsive, passed. The changes were `dashboard-360·390·768·1280` and `workout-editor-360·768·1280`, which shows the dashboard behind it. I looked at `dashboard-360·768·1280` directly and confirmed that the larger text, the legend position, the notice card layout, and the left alignment of the link are as intended. The other 37 images are unchanged.

@@ -1,3 +1,4 @@
+import { plural } from './labels';
 // Routine goals (#28). Planned targets are shown per exercise exactly as planned;
 // weights of different exercises are never summed. Only saved journals are records.
 export type TargetExercise = {
@@ -65,23 +66,23 @@ type DraftSet = {
 };
 
 export const kg = (n: number) =>
-  new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
+  new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n);
 export const exerciseKey = (name: string) => name.trim().toLowerCase();
 // Auto routines (#28 rule change) have no manual change; the target is computed.
 export const changeLabel = (c: Change | null, deload = false) =>
   !c
     ? deload
-      ? '디로딩 · 자동 (직전 주 중량 90%)'
-      : '자동 · 이중 점진 과부하'
+      ? "Deload · auto (90% of last week's weight)"
+      : 'Auto · double progressive overload'
     : c.kind === 'deload'
-      ? `디로딩 · ${c.deload_metric === 'weight' ? '총중량' : c.deload_metric === 'sets' ? '세트 수' : '반복 수'} ${c.amount}${c.deload_metric === 'weight' ? ' kg' : ''} 감소`
-      : `${c.kind === 'increase_weight' ? '총중량' : '반복 수'} ${c.amount}${c.kind === 'increase_weight' ? ' kg' : ''} 증가`;
+      ? `Deload · ${c.deload_metric === 'weight' ? 'Total weight' : c.deload_metric === 'sets' ? 'Sets' : 'Reps'} -${c.amount}${c.deload_metric === 'weight' ? ' kg' : ''}`
+      : `${c.kind === 'increase_weight' ? 'Total weight' : 'Reps'} +${c.amount}${c.kind === 'increase_weight' ? ' kg' : ''}`;
 export const targetLabel = (t: { week: number; is_deload: boolean; split_name: string }) =>
-  `${t.week}주차${t.is_deload ? ' 디로딩' : ''} · ${t.split_name}`;
+  `Week ${t.week}${t.is_deload ? ' deload' : ''} · ${t.split_name}`;
 // Auto routines advance per session, so label the session within its week.
 export const sessionLabel = (t: Target, auto: boolean) =>
   auto && t.session
-    ? `${t.week}주차 ${t.session}번째${t.is_deload ? ' 디로딩' : ''} · ${t.split_name}`
+    ? `Week ${t.week} session ${t.session}${t.is_deload ? ' deload' : ''} · ${t.split_name}`
     : targetLabel(t);
 export const exerciseText = (e: {
   exercise: string;
@@ -91,13 +92,17 @@ export const exerciseText = (e: {
   projected?: boolean;
   result?: string | null;
 }) =>
-  `${e.exercise} ${e.sets}세트 · 총중량 ${kg(e.weight)} kg · ${e.reps}회` +
-  (e.result === 'achieved' ? ' · 달성' : e.result === 'missed' ? ' · 미달성(유지)' : '') +
-  (e.projected ? ' · 예상' : '');
+  `${e.exercise} ${plural(e.sets, 'set')} · total weight ${kg(e.weight)} kg · ${plural(e.reps, 'rep')}` +
+  (e.result === 'achieved'
+    ? ' · Achieved'
+    : e.result === 'missed'
+      ? ' · Not achieved (held)'
+      : '') +
+  (e.projected ? ' · Projected' : '');
 export const previousText = (p: Previous | undefined) =>
   p
-    ? `직전 기록 ${p.date} · ${p.sets.map((s) => `${kg(s.weight)} kg × ${s.reps}회`).join(', ')}`
-    : '직전 기록 없음';
+    ? `Previous ${p.date} · ${p.sets.map((s) => `${kg(s.weight)} kg × ${plural(s.reps, 'rep')}`).join(', ')}`
+    : 'No previous record';
 
 // A local journal draft prefilled from today's targets. It becomes a record only
 // when the user saves it through the normal journal save flow. A planned machine
@@ -134,5 +139,5 @@ export function setReference(progress: Progress | null, exercise: string) {
     (e) => exerciseKey(e.exercise) === key,
   );
   if (!planned) return null;
-  return `오늘 목표 ${kg(planned.weight)} kg × ${planned.reps}회 · ${previousText(progress?.previous?.[key])}`;
+  return `Today's goal ${kg(planned.weight)} kg × ${plural(planned.reps, 'rep')} · ${previousText(progress?.previous?.[key])}`;
 }

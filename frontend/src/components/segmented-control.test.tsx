@@ -5,16 +5,16 @@ import { expect, test, vi } from 'vitest';
 import { SegmentedControl } from './segmented-control';
 
 const options = [
-  { value: 'week', label: '1주' },
-  { value: 'month', label: '1달' },
-  { value: 'year', label: '1년' },
+  { value: 'week', label: '1 week' },
+  { value: 'month', label: '1 month' },
+  { value: 'year', label: '1 year' },
 ] as const;
 
 function Period({ onChange }: { onChange?: (value: string) => void }) {
   const [value, setValue] = useState<(typeof options)[number]['value']>('week');
   return (
     <SegmentedControl
-      label="기간"
+      label="Period"
       options={options}
       value={value}
       onValueChange={(next) => {
@@ -27,48 +27,48 @@ function Period({ onChange }: { onChange?: (value: string) => void }) {
 
 test('the group is named and only the current option is checked', () => {
   render(<Period />);
-  expect(screen.getByRole('radiogroup', { name: '기간' })).toBeInTheDocument();
-  expect(screen.getByRole('radio', { name: '1주' })).toBeChecked();
-  expect(screen.getByRole('radio', { name: '1달' })).not.toBeChecked();
+  expect(screen.getByRole('radiogroup', { name: 'Period' })).toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: '1 week' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: '1 month' })).not.toBeChecked();
 });
 
 test('choosing another option moves the selection', () => {
   const onChange = vi.fn();
   render(<Period onChange={onChange} />);
-  fireEvent.click(screen.getByRole('radio', { name: '1달' }));
+  fireEvent.click(screen.getByRole('radio', { name: '1 month' }));
   expect(onChange).toHaveBeenCalledWith('month');
-  expect(screen.getByRole('radio', { name: '1달' })).toBeChecked();
-  expect(screen.getByRole('radio', { name: '1주' })).not.toBeChecked();
+  expect(screen.getByRole('radio', { name: '1 month' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: '1 week' })).not.toBeChecked();
 });
 
 test('clicking the current option keeps it selected', () => {
   const onChange = vi.fn();
   render(<Period onChange={onChange} />);
-  fireEvent.click(screen.getByRole('radio', { name: '1주' }));
+  fireEvent.click(screen.getByRole('radio', { name: '1 week' }));
   expect(onChange).not.toHaveBeenCalled();
-  expect(screen.getByRole('radio', { name: '1주' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: '1 week' })).toBeChecked();
 });
 
 test('clicking the current option reports a reselect', () => {
   const onReselect = vi.fn();
   render(
     <SegmentedControl
-      label="기간"
+      label="Period"
       options={options}
       value="week"
       onValueChange={() => {}}
       onReselect={onReselect}
     />,
   );
-  fireEvent.click(screen.getByRole('radio', { name: '1주' }));
+  fireEvent.click(screen.getByRole('radio', { name: '1 week' }));
   expect(onReselect).toHaveBeenCalledOnce();
 });
 
 test('focus enters on the selected option and arrow keys move it', async () => {
   render(<Period />);
-  screen.getByRole('radiogroup', { name: '기간' }).focus();
-  const current = screen.getByRole('radio', { name: '1주' });
+  screen.getByRole('radiogroup', { name: 'Period' }).focus();
+  const current = screen.getByRole('radio', { name: '1 week' });
   await waitFor(() => expect(current).toHaveFocus());
   fireEvent.keyDown(current, { key: 'ArrowRight' });
-  await waitFor(() => expect(screen.getByRole('radio', { name: '1달' })).toHaveFocus());
+  await waitFor(() => expect(screen.getByRole('radio', { name: '1 month' })).toHaveFocus());
 });

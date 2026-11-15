@@ -29,10 +29,10 @@ export function registerGoalRoutes(app: express.Express, pool: Pool) {
       );
   });
   app.delete('/api/goals/:id', async (req, res) => {
-    const r = await pool.query('DELETE FROM goals WHERE id=$1', [parseId(req.params.id, '목표')]);
+    const r = await pool.query('DELETE FROM goals WHERE id=$1', [parseId(req.params.id, 'goal')]);
     // #172: a missing goal answers in the shared `{ error }` shape like every other 404.
     if (!r.rowCount) {
-      sendError(res, 404, '목표를 찾을 수 없습니다');
+      sendError(res, 404, 'Goal not found');
       return;
     }
     res.json({ ok: true });

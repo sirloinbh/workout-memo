@@ -35,7 +35,7 @@ const fixture = (): CardioSession[] => [
     effort: 'medium',
     source: 'garmin',
     external_id: 'garmin-1',
-    memo: '한강',
+    memo: 'Han River',
     pace_sec_per_km: 364.5,
     speed_kmh: 9.88,
   },
@@ -64,8 +64,8 @@ const fixture = (): CardioSession[] => [
 ];
 
 const workouts = [
-  { id: 7, date: '2026-11-08', title: '하체' },
-  { id: 8, date: '2026-11-07', title: '상체' },
+  { id: 7, date: '2026-11-08', title: 'Lower body' },
+  { id: 8, date: '2026-11-07', title: 'Upper body' },
 ];
 
 function mount(respond?: (request: ApiRequest) => unknown) {
@@ -87,7 +87,7 @@ function mount(respond?: (request: ApiRequest) => unknown) {
   return api;
 }
 
-const list = () => screen.findByRole('list', { name: '유산소 기록' });
+const list = () => screen.findByRole('list', { name: 'Cardio records' });
 const dialog = () => screen.getByRole('dialog');
 const field = (name: string) => within(dialog()).getByRole('textbox', { name });
 
@@ -97,15 +97,15 @@ test('lists the period with duration, distance, pace and speed; no pace without 
   expect(requests[0].url.pathname).toBe('/api/cardio-sessions');
   expect(requests[0].url.search).toBe('?from=2026-11-02&to=2026-11-08');
   expect(rows).toHaveLength(3);
-  expect(rows[0]).toHaveTextContent('2026-11-07 러닝');
-  expect(rows[0]).toHaveTextContent('체감 중간');
+  expect(rows[0]).toHaveTextContent('2026-11-07 Running');
+  expect(rows[0]).toHaveTextContent('Effort Medium');
   expect(rows[0]).toHaveTextContent('30:30 · 5.02 km · 6:05/km · 9.9 km/h');
-  expect(rows[0]).toHaveTextContent('한강');
+  expect(rows[0]).toHaveTextContent('Han River');
   // Swimming: distance in metres, pace and speed still per km.
-  expect(rows[1]).toHaveTextContent('2026-11-06 수영');
+  expect(rows[1]).toHaveTextContent('2026-11-06 Swimming');
   expect(rows[1]).toHaveTextContent('40:00 · 1,500 m · 26:40/km · 2.3 km/h');
-  expect(rows[2]).toHaveTextContent('2026-11-05 실내 자전거');
-  expect(rows[2]).toHaveTextContent('1:02:05 · 거리 미입력');
+  expect(rows[2]).toHaveTextContent('2026-11-05 Indoor cycling');
+  expect(rows[2]).toHaveTextContent('1:02:05 · No distance');
   expect(rows[2]).not.toHaveTextContent('/km');
   expect(rows[2]).not.toHaveTextContent('km/h');
 });
@@ -113,20 +113,20 @@ test('lists the period with duration, distance, pace and speed; no pace without 
 test('an empty period shows the empty state', async () => {
   mount((request) => (request.method === 'GET' ? [] : undefined));
   expect(
-    await screen.findByRole('heading', { name: '선택한 기간에 유산소 기록이 없습니다' }),
+    await screen.findByRole('heading', { name: 'No cardio records in the selected period' }),
   ).toBeInTheDocument();
-  expect(screen.queryByRole('list', { name: '유산소 기록' })).toBeNull();
+  expect(screen.queryByRole('list', { name: 'Cardio records' })).toBeNull();
 });
 
 test('a failed load shows the error with a reconnect action', async () => {
   let fail = true;
   mount((request) =>
-    request.method === 'GET' && fail ? json({ error: '서버 오류' }, 500) : undefined,
+    request.method === 'GET' && fail ? json({ error: 'Server error' }, 500) : undefined,
   );
   const alert = await screen.findByRole('alert');
-  expect(alert).toHaveTextContent('서버 오류');
+  expect(alert).toHaveTextContent('Server error');
   fail = false;
-  await userEvent.click(within(alert).getByRole('button', { name: '다시 연결' }));
+  await userEvent.click(within(alert).getByRole('button', { name: 'Reconnect' }));
   expect(await list()).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
@@ -135,24 +135,28 @@ test('creating sends the core fields as POST and reloads the list', async () => 
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
-  expect(screen.getByRole('heading', { name: '새 유산소 기록' })).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Add cardio record' }));
+  expect(screen.getByRole('heading', { name: 'New cardio record' })).toBeInTheDocument();
   // Only the core fields show at first.
-  const more = within(dialog()).getByRole('button', { name: '더 입력하기' });
+  const more = within(dialog()).getByRole('button', { name: 'Show more fields' });
   expect(more).toHaveAttribute('aria-expanded', 'false');
-  expect(within(dialog()).queryByRole('textbox', { name: '평균 심박 bpm (선택)' })).toBeNull();
+  expect(
+    within(dialog()).queryByRole('textbox', { name: 'Average heart rate bpm (optional)' }),
+  ).toBeNull();
 
-  await user.selectOptions(within(dialog()).getByLabelText('종류'), '수영');
-  await user.type(field('운동 시간 분'), '40');
-  await user.type(field('운동 시간 초'), '5');
+  await user.selectOptions(within(dialog()).getByLabelText('Type'), 'Swimming');
+  await user.type(field('Workout time minutes'), '40');
+  await user.type(field('Workout time seconds'), '5');
   // Swimming distance is typed in metres and saved in km.
-  expect(within(dialog()).queryByRole('textbox', { name: '거리 km' })).toBeNull();
-  await user.type(field('거리 m'), '1500');
-  expect(dialog()).toHaveTextContent('수영 거리는 m로 입력합니다. 저장할 때 km로 바꿉니다.');
-  expect(dialog()).not.toHaveTextContent('1,500 m는 1.5입니다');
-  await user.click(within(dialog()).getByRole('button', { name: '힘듦' }));
-  await user.type(within(dialog()).getByLabelText('메모 (선택)'), '자유형');
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  expect(within(dialog()).queryByRole('textbox', { name: 'Distance km' })).toBeNull();
+  await user.type(field('Distance m'), '1500');
+  expect(dialog()).toHaveTextContent(
+    'Enter swimming distance in m. It is converted to km when saved.',
+  );
+  expect(dialog()).not.toHaveTextContent('1,500 m is 1.5');
+  await user.click(within(dialog()).getByRole('button', { name: 'Hard' }));
+  await user.type(within(dialog()).getByLabelText('Memo (optional)'), 'Freestyle');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
 
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   const post = requests.find((r) => r.method === 'POST')!;
@@ -170,11 +174,11 @@ test('creating sends the core fields as POST and reloads the list', async () => 
     effort: 'hard',
     start_time: null,
     workout_id: null,
-    memo: '자유형',
+    memo: 'Freestyle',
     source: 'manual',
     external_id: null,
   });
-  expect(screen.getByRole('status')).toHaveTextContent('유산소 기록을 저장했습니다');
+  expect(screen.getByRole('status')).toHaveTextContent('Cardio record saved');
   expect(requests.filter((r) => r.method === 'GET')).toHaveLength(2);
 });
 
@@ -182,26 +186,26 @@ test('more input reveals the optional fields and links a same-day workout', asyn
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
-  const more = within(dialog()).getByRole('button', { name: '더 입력하기' });
+  await user.click(screen.getByRole('button', { name: 'Add cardio record' }));
+  const more = within(dialog()).getByRole('button', { name: 'Show more fields' });
   await user.click(more);
   expect(more).toHaveAttribute('aria-expanded', 'true');
-  await user.type(field('운동 시간 분'), '30');
-  await user.type(field('평균 심박 bpm (선택)'), '140');
-  await user.type(field('최대 심박 bpm (선택)'), '172');
-  await user.type(field('칼로리 kcal (선택)'), '320');
-  await user.type(field('상승 고도 m (선택)'), '25');
-  await user.type(field('케이던스 회/분 (선택)'), '170');
-  await user.type(within(dialog()).getByLabelText('시작 시각 (선택)'), '06:45');
-  const link = within(dialog()).getByLabelText('연결할 근력 일지');
+  await user.type(field('Workout time minutes'), '30');
+  await user.type(field('Average heart rate bpm (optional)'), '140');
+  await user.type(field('Max heart rate bpm (optional)'), '172');
+  await user.type(field('Calories kcal (optional)'), '320');
+  await user.type(field('Elevation gain m (optional)'), '25');
+  await user.type(field('Cadence /min (optional)'), '170');
+  await user.type(within(dialog()).getByLabelText('Start time (optional)'), '06:45');
+  const link = within(dialog()).getByLabelText('Strength journal to link');
   // Only the workout on the session's date (today) is offered.
   expect(
     within(link)
       .getAllByRole('option')
       .map((o) => o.textContent),
-  ).toEqual(['연결 안 함', '하체']);
-  await user.selectOptions(link, '하체');
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  ).toEqual(['Not linked', 'Lower body']);
+  await user.selectOptions(link, 'Lower body');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
 
   await waitFor(() => expect(requests.some((r) => r.method === 'POST')).toBe(true));
   expect(requests.find((r) => r.method === 'POST')!.body).toMatchObject({
@@ -220,49 +224,51 @@ test('nothing is sent for a future date, zero time or an invalid heart rate', as
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
-  const date = within(dialog()).getByLabelText('날짜');
+  await user.click(screen.getByRole('button', { name: 'Add cardio record' }));
+  const date = within(dialog()).getByLabelText('Date');
   // jsdom does not simulate typing into a date input reliably; set the value directly.
   fireEvent.change(date, { target: { value: '2026-11-09' } });
-  await user.type(field('운동 시간 분'), '0');
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  await user.type(field('Workout time minutes'), '0');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
 
   expect(date).toHaveAttribute('aria-invalid', 'true');
-  expect(dialog()).toHaveTextContent('유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다');
-  expect(field('운동 시간 분')).toHaveAttribute('aria-invalid', 'true');
-  expect(field('운동 시간 분')).toHaveAccessibleDescription('운동 시간은 1초 이상이어야 합니다');
+  expect(dialog()).toHaveTextContent('The cardio record date cannot be after today');
+  expect(field('Workout time minutes')).toHaveAttribute('aria-invalid', 'true');
+  expect(field('Workout time minutes')).toHaveAccessibleDescription(
+    'The workout time must be at least 1 second',
+  );
 
   // A heart-rate error opens the collapsed section so the message is visible.
   fireEvent.change(date, { target: { value: today } });
-  await user.type(field('운동 시간 분'), '5');
-  await user.click(within(dialog()).getByRole('button', { name: '더 입력하기' }));
-  await user.type(field('평균 심박 bpm (선택)'), '20');
-  await user.click(within(dialog()).getByRole('button', { name: '더 입력하기' }));
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
-  expect(within(dialog()).getByRole('button', { name: '더 입력하기' })).toHaveAttribute(
+  await user.type(field('Workout time minutes'), '5');
+  await user.click(within(dialog()).getByRole('button', { name: 'Show more fields' }));
+  await user.type(field('Average heart rate bpm (optional)'), '20');
+  await user.click(within(dialog()).getByRole('button', { name: 'Show more fields' }));
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
+  expect(within(dialog()).getByRole('button', { name: 'Show more fields' })).toHaveAttribute(
     'aria-expanded',
     'true',
   );
-  expect(field('평균 심박 bpm (선택)')).toHaveAccessibleDescription(
-    '평균 심박은 30~250 bpm의 정수로 입력하세요',
+  expect(field('Average heart rate bpm (optional)')).toHaveAccessibleDescription(
+    'Enter an average heart rate as a whole number from 30 to 250 bpm',
   );
-  await user.clear(field('평균 심박 bpm (선택)'));
-  await user.type(field('평균 심박 bpm (선택)'), '150');
-  await user.type(field('최대 심박 bpm (선택)'), '140');
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
-  expect(field('최대 심박 bpm (선택)')).toHaveAccessibleDescription(
-    '최대 심박은 평균 심박보다 낮을 수 없습니다',
+  await user.clear(field('Average heart rate bpm (optional)'));
+  await user.type(field('Average heart rate bpm (optional)'), '150');
+  await user.type(field('Max heart rate bpm (optional)'), '140');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
+  expect(field('Max heart rate bpm (optional)')).toHaveAccessibleDescription(
+    'Max heart rate cannot be lower than average heart rate',
   );
 
   // Text that Number() would read but nobody types as a number ("1e3", "0x10") is a field
   // error, and the heart-rate cross check still shows while another field fails.
-  await user.type(field('거리 km'), '1e3');
-  await user.type(field('칼로리 kcal (선택)'), '0x10');
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
-  expect(field('거리 km')).toHaveAccessibleDescription('거리를 숫자로 입력하세요');
-  expect(field('칼로리 kcal (선택)')).toHaveAccessibleDescription(/숫자로 입력하세요/);
-  expect(field('최대 심박 bpm (선택)')).toHaveAccessibleDescription(
-    '최대 심박은 평균 심박보다 낮을 수 없습니다',
+  await user.type(field('Distance km'), '1e3');
+  await user.type(field('Calories kcal (optional)'), '0x10');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
+  expect(field('Distance km')).toHaveAccessibleDescription('Enter the distance as a number');
+  expect(field('Calories kcal (optional)')).toHaveAccessibleDescription(/as a number/);
+  expect(field('Max heart rate bpm (optional)')).toHaveAccessibleDescription(
+    'Max heart rate cannot be lower than average heart rate',
   );
   expect(requests.some((r) => r.method === 'POST')).toBe(false);
 });
@@ -271,46 +277,46 @@ test('switching to and from swimming keeps the typed distance in m or km', async
   const user = userEvent.setup();
   mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
-  const kind = within(dialog()).getByLabelText('종류');
-  await user.type(field('거리 km'), '5');
-  await user.selectOptions(kind, '수영');
-  expect(field('거리 m')).toHaveValue('5000');
-  expect(within(dialog()).getByText('거리 m (선택)')).toBeInTheDocument();
-  await user.clear(field('거리 m'));
-  await user.type(field('거리 m'), '1500');
-  await user.selectOptions(kind, '러닝');
-  expect(field('거리 km')).toHaveValue('1.5');
+  await user.click(screen.getByRole('button', { name: 'Add cardio record' }));
+  const kind = within(dialog()).getByLabelText('Type');
+  await user.type(field('Distance km'), '5');
+  await user.selectOptions(kind, 'Swimming');
+  expect(field('Distance m')).toHaveValue('5000');
+  expect(within(dialog()).getByText('Distance m (optional)')).toBeInTheDocument();
+  await user.clear(field('Distance m'));
+  await user.type(field('Distance m'), '1500');
+  await user.selectOptions(kind, 'Running');
+  expect(field('Distance km')).toHaveValue('1.5');
   // Between two km kinds nothing changes.
-  await user.selectOptions(kind, '걷기');
-  expect(field('거리 km')).toHaveValue('1.5');
+  await user.selectOptions(kind, 'Walking');
+  expect(field('Distance km')).toHaveValue('1.5');
   // A decimal km value becomes whole metres; empty and unreadable text stay as typed.
-  await user.clear(field('거리 km'));
-  await user.type(field('거리 km'), '5.5');
-  await user.selectOptions(kind, '수영');
-  expect(field('거리 m')).toHaveValue('5500');
-  await user.clear(field('거리 m'));
-  await user.selectOptions(kind, '러닝');
-  expect(field('거리 km')).toHaveValue('');
-  await user.type(field('거리 km'), 'abc');
-  await user.selectOptions(kind, '수영');
-  expect(field('거리 m')).toHaveValue('abc');
+  await user.clear(field('Distance km'));
+  await user.type(field('Distance km'), '5.5');
+  await user.selectOptions(kind, 'Swimming');
+  expect(field('Distance m')).toHaveValue('5500');
+  await user.clear(field('Distance m'));
+  await user.selectOptions(kind, 'Running');
+  expect(field('Distance km')).toHaveValue('');
+  await user.type(field('Distance km'), 'abc');
+  await user.selectOptions(kind, 'Swimming');
+  expect(field('Distance m')).toHaveValue('abc');
 });
 
 test('a thousands comma is never read as a decimal point', async () => {
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
-  await user.type(field('운동 시간 분'), '30');
-  await user.selectOptions(within(dialog()).getByLabelText('종류'), '수영');
+  await user.click(screen.getByRole('button', { name: 'Add cardio record' }));
+  await user.type(field('Workout time minutes'), '30');
+  await user.selectOptions(within(dialog()).getByLabelText('Type'), 'Swimming');
   // "1,000" means one thousand metres here; it must not be saved as 1 m (0.001 km).
-  await user.type(field('거리 m'), '1,000');
-  await user.click(within(dialog()).getByRole('button', { name: '더 입력하기' }));
-  await user.type(field('칼로리 kcal (선택)'), '1,000');
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
-  expect(field('거리 m')).toHaveAttribute('aria-invalid', 'true');
-  expect(field('칼로리 kcal (선택)')).toHaveAccessibleDescription(/숫자로 입력하세요/);
+  await user.type(field('Distance m'), '1,000');
+  await user.click(within(dialog()).getByRole('button', { name: 'Show more fields' }));
+  await user.type(field('Calories kcal (optional)'), '1,000');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
+  expect(field('Distance m')).toHaveAttribute('aria-invalid', 'true');
+  expect(field('Calories kcal (optional)')).toHaveAccessibleDescription(/as a number/);
   expect(requests.some((r) => r.method === 'POST')).toBe(false);
 });
 
@@ -318,13 +324,13 @@ test('a swimming distance must be whole metres', async () => {
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
-  await user.selectOptions(within(dialog()).getByLabelText('종류'), '수영');
-  await user.type(field('운동 시간 분'), '30');
-  await user.type(field('거리 m'), '1500.5');
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
-  expect(field('거리 m')).toHaveAccessibleDescription(
-    '수영 거리는 1~1,000,000 m의 정수로 입력하세요',
+  await user.click(screen.getByRole('button', { name: 'Add cardio record' }));
+  await user.selectOptions(within(dialog()).getByLabelText('Type'), 'Swimming');
+  await user.type(field('Workout time minutes'), '30');
+  await user.type(field('Distance m'), '1500.5');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
+  expect(field('Distance m')).toHaveAccessibleDescription(
+    'Enter a swimming distance as a whole number from 1 to 1,000,000 m',
   );
   expect(requests.some((r) => r.method === 'POST')).toBe(false);
 });
@@ -333,13 +339,17 @@ test('editing a swim session shows metres and keeps its link to another day', as
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 수정' }));
-  expect(field('거리 m')).toHaveValue('1500');
-  const link = within(dialog()).getByLabelText('연결할 근력 일지');
+  await user.click(
+    screen.getByRole('button', { name: 'Edit cardio record 2026-11-06 Swimming 40:00' }),
+  );
+  expect(field('Distance m')).toHaveValue('1500');
+  const link = within(dialog()).getByLabelText('Strength journal to link');
   expect(link).toHaveValue('8');
-  expect(dialog()).toHaveTextContent('다른 날짜(2026-11-07)의 근력 일지에 연결돼 있습니다.');
-  expect(dialog()).not.toHaveTextContent('이 날짜에는 연결할 근력 일지가 없습니다.');
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  expect(dialog()).toHaveTextContent(
+    'Linked to the strength journal for another date (2026-11-07).',
+  );
+  expect(dialog()).not.toHaveTextContent('There is no strength journal to link on this date.');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
 
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   const put = requests.find((r) => r.method === 'PUT')!;
@@ -366,10 +376,10 @@ test('two sessions of one kind on one day get distinct button names', async () =
   );
   await list();
   for (const name of [
-    '2026-11-07 07:30 러닝 유산소 기록 수정',
-    '2026-11-07 19:00 러닝 유산소 기록 수정',
-    '2026-11-07 러닝 30:30 유산소 기록 수정',
-    '2026-11-07 러닝 30:30 유산소 기록 삭제',
+    'Edit cardio record 2026-11-07 07:30 Running',
+    'Edit cardio record 2026-11-07 19:00 Running',
+    'Edit cardio record 2026-11-07 Running 30:30',
+    'Delete cardio record 2026-11-07 Running 30:30',
   ])
     expect(screen.getByRole('button', { name })).toBeInTheDocument();
 });
@@ -378,26 +388,28 @@ test('editing an imported session PUTs the whole record with its source and exte
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  await user.click(screen.getByRole('button', { name: '2026-11-07 07:30 러닝 유산소 기록 수정' }));
-  expect(screen.getByRole('heading', { name: '유산소 기록 수정' })).toBeInTheDocument();
+  await user.click(
+    screen.getByRole('button', { name: 'Edit cardio record 2026-11-07 07:30 Running' }),
+  );
+  expect(screen.getByRole('heading', { name: 'Edit cardio record' })).toBeInTheDocument();
   // The stored values are filled in; extra values open the more section.
-  expect(field('운동 시간 시')).toHaveValue('');
-  expect(field('운동 시간 분')).toHaveValue('30');
-  expect(field('운동 시간 초')).toHaveValue('30');
-  expect(field('거리 km')).toHaveValue('5.02');
-  expect(within(dialog()).getByRole('button', { name: '더 입력하기' })).toHaveAttribute(
+  expect(field('Workout time hours')).toHaveValue('');
+  expect(field('Workout time minutes')).toHaveValue('30');
+  expect(field('Workout time seconds')).toHaveValue('30');
+  expect(field('Distance km')).toHaveValue('5.02');
+  expect(within(dialog()).getByRole('button', { name: 'Show more fields' })).toHaveAttribute(
     'aria-expanded',
     'true',
   );
-  expect(within(dialog()).getByRole('button', { name: '중간' })).toHaveAttribute(
+  expect(within(dialog()).getByRole('button', { name: 'Medium' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await user.clear(field('운동 시간 초'));
-  await user.type(field('운동 시간 초'), '0');
+  await user.clear(field('Workout time seconds'));
+  await user.type(field('Workout time seconds'), '0');
   // Pressing the chosen effort again clears it.
-  await user.click(within(dialog()).getByRole('button', { name: '중간' }));
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  await user.click(within(dialog()).getByRole('button', { name: 'Medium' }));
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
 
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   const put = requests.find((r) => r.method === 'PUT')!;
@@ -415,7 +427,7 @@ test('editing an imported session PUTs the whole record with its source and exte
     effort: null,
     start_time: '07:30',
     workout_id: null,
-    memo: '한강',
+    memo: 'Han River',
     source: 'garmin',
     external_id: 'garmin-1',
   });
@@ -425,17 +437,19 @@ test('a server refusal such as a 409 duplicate stays in the open form', async ()
   const user = userEvent.setup();
   const { requests } = mount((request) =>
     request.method === 'PUT'
-      ? json({ error: '같은 출처와 외부 ID의 유산소 기록이 이미 있습니다' }, 409)
+      ? json({ error: 'A cardio record with the same source and external ID already exists' }, 409)
       : undefined,
   );
   await list();
-  await user.click(screen.getByRole('button', { name: '2026-11-07 07:30 러닝 유산소 기록 수정' }));
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
-  expect(await within(dialog()).findByRole('alert')).toHaveTextContent(
-    '같은 출처와 외부 ID의 유산소 기록이 이미 있습니다',
+  await user.click(
+    screen.getByRole('button', { name: 'Edit cardio record 2026-11-07 07:30 Running' }),
   );
-  expect(field('운동 시간 분')).toHaveValue('30');
-  expect(within(dialog()).getByRole('button', { name: '유산소 기록 저장' })).toBeEnabled();
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
+  expect(await within(dialog()).findByRole('alert')).toHaveTextContent(
+    'A cardio record with the same source and external ID already exists',
+  );
+  expect(field('Workout time minutes')).toHaveValue('30');
+  expect(within(dialog()).getByRole('button', { name: 'Save cardio record' })).toBeEnabled();
   expect(requests.filter((r) => r.method === 'GET')).toHaveLength(1);
 });
 
@@ -445,12 +459,16 @@ test('deleting asks first, then removes and reloads; cancelling sends nothing', 
   await list();
   const confirm = vi.mocked(window.confirm);
   confirm.mockReturnValueOnce(false);
-  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }));
-  expect(confirm).toHaveBeenLastCalledWith('2026-11-06 수영 40:00 유산소 기록을 삭제할까요?');
+  await user.click(
+    screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
+  );
+  expect(confirm).toHaveBeenLastCalledWith('Delete the 2026-11-06 Swimming 40:00 cardio record?');
   expect(requests.some((r) => r.method === 'DELETE')).toBe(false);
 
-  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('유산소 기록을 삭제했습니다');
+  await user.click(
+    screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
+  );
+  expect(await screen.findByRole('status')).toHaveTextContent('Cardio record deleted');
   const removed = requests.find((r) => r.method === 'DELETE')!;
   expect(removed.path).toBe('/api/cardio-sessions/2');
   expect(requests.filter((r) => r.method === 'GET')).toHaveLength(2);
@@ -459,17 +477,19 @@ test('deleting asks first, then removes and reloads; cancelling sends nothing', 
 test('a failed delete shows its own error, keeps the row and does not reload', async () => {
   const user = userEvent.setup();
   const { requests } = mount((request) =>
-    request.method === 'DELETE' ? json({ error: '삭제하지 못했습니다' }, 500) : undefined,
+    request.method === 'DELETE' ? json({ error: 'Could not delete' }, 500) : undefined,
   );
   await list();
-  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }));
+  await user.click(
+    screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
+  );
   const alert = await screen.findByRole('alert');
-  expect(alert).toHaveTextContent('삭제하지 못했습니다');
+  expect(alert).toHaveTextContent('Could not delete');
   // Not the load failure banner: there is nothing to reconnect.
-  expect(within(alert).queryByRole('button', { name: '다시 연결' })).toBeNull();
+  expect(within(alert).queryByRole('button', { name: 'Reconnect' })).toBeNull();
   expect(screen.queryByRole('status')).toBeNull();
   expect(
-    screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }),
+    screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   ).toBeInTheDocument();
   expect(requests.filter((r) => r.method === 'GET')).toHaveLength(1);
 });
@@ -480,14 +500,16 @@ test('deleting a session already removed elsewhere (404) says so and reloads', a
   const { requests } = mount((request) => {
     if (request.method === 'DELETE') {
       gone = true;
-      return json({ error: '유산소 기록을 찾을 수 없습니다' }, 404);
+      return json({ error: 'Cardio record not found' }, 404);
     }
     if (request.method === 'GET' && gone) return fixture().filter((s) => s.id !== 2);
     return undefined;
   });
   await list();
-  await user.click(screen.getByRole('button', { name: '2026-11-06 수영 40:00 유산소 기록 삭제' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('이미 삭제된 기록입니다');
+  await user.click(
+    screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
+  );
+  expect(await screen.findByRole('status')).toHaveTextContent('This record was already deleted');
   await waitFor(() =>
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(2),
   );
@@ -505,11 +527,13 @@ test('a reload after saving keeps the list on screen until the answer arrives', 
     return gets === 1 ? fixture() : reload.promise;
   });
   await list();
-  await user.click(screen.getByRole('button', { name: '2026-11-07 07:30 러닝 유산소 기록 수정' }));
-  await user.click(within(dialog()).getByRole('button', { name: '유산소 기록 저장' }));
+  await user.click(
+    screen.getByRole('button', { name: 'Edit cardio record 2026-11-07 07:30 Running' }),
+  );
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
   await waitFor(() => expect(gets).toBe(2));
-  expect(screen.queryByText('기록을 불러오는 중…')).toBeNull();
-  expect(screen.getByRole('list', { name: '유산소 기록' })).toBeInTheDocument();
+  expect(screen.queryByText('Loading records…')).toBeNull();
+  expect(screen.getByRole('list', { name: 'Cardio records' })).toBeInTheDocument();
   reload.resolve(fixture());
 });
 
@@ -526,7 +550,7 @@ test('a new period clears the old rows and ignores a late answer for the old per
   const { rerender } = render(
     <CardioPanel from="2026-10-26" to="2026-11-01" today={today} workouts={workouts} />,
   );
-  expect(screen.getByText('기록을 불러오는 중…')).toBeInTheDocument();
+  expect(screen.getByText('Loading records…')).toBeInTheDocument();
   rerender(<CardioPanel from="2026-11-02" to={today} today={today} workouts={workouts} />);
   await waitFor(() => expect(requests).toHaveLength(2));
   fresh.resolve(fixture().slice(0, 1));
@@ -540,11 +564,11 @@ test('a new period clears the old rows and ignores a late answer for the old per
   const next = deferred<CardioSession[]>();
   mockApi(() => next.promise);
   rerender(<CardioPanel from="2026-11-09" to="2026-11-15" today={today} workouts={workouts} />);
-  expect(screen.getByText('기록을 불러오는 중…')).toBeInTheDocument();
-  expect(screen.queryByRole('list', { name: '유산소 기록' })).toBeNull();
+  expect(screen.getByText('Loading records…')).toBeInTheDocument();
+  expect(screen.queryByRole('list', { name: 'Cardio records' })).toBeNull();
   next.resolve([]);
   expect(
-    await screen.findByRole('heading', { name: '선택한 기간에 유산소 기록이 없습니다' }),
+    await screen.findByRole('heading', { name: 'No cardio records in the selected period' }),
   ).toBeInTheDocument();
 });
 
@@ -554,9 +578,9 @@ test('without a pinned today the form uses the Seoul date, not the device date',
   mockApi(() => []);
   const user = userEvent.setup();
   render(<CardioPanel from="2026-10-13" to="2026-10-19" workouts={[]} />);
-  await screen.findByRole('heading', { name: '선택한 기간에 유산소 기록이 없습니다' });
-  await user.click(screen.getByRole('button', { name: '유산소 기록 추가' }));
-  const date = within(dialog()).getByLabelText('날짜');
+  await screen.findByRole('heading', { name: 'No cardio records in the selected period' });
+  await user.click(screen.getByRole('button', { name: 'Add cardio record' }));
+  const date = within(dialog()).getByLabelText('Date');
   expect(date).toHaveValue('2026-10-15');
   expect(date).toHaveAttribute('max', '2026-10-15');
 });

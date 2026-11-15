@@ -14,8 +14,8 @@ const machines = [
   {
     id: 5,
     brand_id: 1,
-    brand: '해머',
-    name: '레그프레스',
+    brand: 'Hammer',
+    name: 'Leg Press',
     base_weight: 50,
     notes: '',
     official_status: null,
@@ -34,14 +34,14 @@ const target = {
   week: 1,
   is_deload: false,
   split_index: 0,
-  split_name: '하체',
+  split_name: 'Lower body',
   change: null,
   // Machine 99 is no longer in the machine list, so it falls back to a free exercise.
-  exercises: [exercise('레그프레스', 5, 2, 150), exercise('스쿼트', 99, 1, 100)],
+  exercises: [exercise('Leg Press', 5, 2, 150), exercise('Squat', 99, 1, 100)],
 };
 const withRoutine = (todayPlan: Progress['today_plan']): Progress => ({
   today,
-  routine: { id: 7, name: '12주 루틴' },
+  routine: { id: 7, name: '12-week routine' },
   start_date: today,
   status: 'active',
   today_plan: todayPlan,
@@ -68,39 +68,39 @@ const inputs = (label: string) =>
   within(dialog()).getAllByLabelText<HTMLInputElement | HTMLSelectElement>(label);
 const values = (label: string) => inputs(label).map((e) => e.value);
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
-  await openPage('운동 일지', user);
+  await openPage('Workout journal', user);
   await waitFor(() =>
-    expect(document.querySelector('[aria-label="루틴 목표"]')?.textContent ?? '').not.toMatch(
-      /불러오는 중/,
+    expect(document.querySelector('[aria-label="Routine goals"]')?.textContent ?? '').not.toMatch(
+      /Loading/,
     ),
   );
-  await waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
-  await user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
+  await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
+  await user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
 }
 
 test('a new journal is dated today with a date title even when another day is browsed', async () => {
   const ui = mount({ today, routine: null });
-  await openPage('운동 일지', ui.user);
-  fireEvent.change(screen.getByLabelText('기준 날짜'), { target: { value: '2026-09-01' } });
+  await openPage('Workout journal', ui.user);
+  fireEvent.change(screen.getByLabelText('Reference date'), { target: { value: '2026-09-01' } });
   await openEditor(ui.user);
-  expect(inputs('운동 날짜')[0]).toHaveValue(today);
-  expect(inputs('일지 제목')[0]).toHaveValue('10월 15일(목)');
+  expect(inputs('Workout date')[0]).toHaveValue(today);
+  expect(inputs('Journal title')[0]).toHaveValue('Thu, Oct 15');
   // Without a routine the journal starts with three empty sets as before (#28).
-  expect(values('운동명')).toEqual(['', '', '']);
+  expect(values('Exercise name')).toEqual(['', '', '']);
   // Defaults stay editable.
-  await ui.user.clear(inputs('일지 제목')[0]);
-  await ui.user.type(inputs('일지 제목')[0], '하체 데이');
-  expect(inputs('일지 제목')[0]).toHaveValue('하체 데이');
+  await ui.user.clear(inputs('Journal title')[0]);
+  await ui.user.type(inputs('Journal title')[0], 'Lower body day');
+  expect(inputs('Journal title')[0]).toHaveValue('Lower body day');
 });
 
 test("today's routine fills the sets with exercise, machine, total kg and reps", async () => {
   const ui = mount(withRoutine({ date: today, week: 1, rest: false, target }));
   await openEditor(ui.user);
-  expect(values('운동명')).toEqual(['레그프레스', '레그프레스', '스쿼트']);
-  expect(values('머신')).toEqual(['5', '5', '']);
-  expect(values('총중량 kg')).toEqual(['150', '150', '100']);
-  expect(values('횟수')).toEqual(['10', '10', '10']);
-  expect(inputs('일지 제목')[0]).toHaveValue('10월 15일(목)');
+  expect(values('Exercise name')).toEqual(['Leg Press', 'Leg Press', 'Squat']);
+  expect(values('Machine')).toEqual(['5', '5', '']);
+  expect(values('Total weight kg')).toEqual(['150', '150', '100']);
+  expect(values('Reps')).toEqual(['10', '10', '10']);
+  expect(inputs('Journal title')[0]).toHaveValue('Thu, Oct 15');
   fireEvent.submit(dialog().querySelector('form')!);
   await waitFor(() =>
     expect(ui.requests.some((r) => r.method === 'POST' && r.path === '/api/workouts')).toBe(true),
@@ -111,7 +111,7 @@ test("today's routine fills the sets with exercise, machine, total kg and reps",
     sets: { machine_id: number | null; completed: boolean }[];
   };
   expect(body.date).toBe(today);
-  expect(body.title).toBe('10월 15일(목)');
+  expect(body.title).toBe('Thu, Oct 15');
   expect(body.sets.map((s) => s.machine_id)).toEqual([5, 5, null]);
   // Planned sets are not performed until the user marks them.
   expect(body.sets.every((s) => !s.completed)).toBe(true);
@@ -120,6 +120,6 @@ test("today's routine fills the sets with exercise, machine, total kg and reps",
 test('a rest day starts with three empty sets', async () => {
   const ui = mount(withRoutine({ date: today, week: 1, rest: true, target: null }));
   await openEditor(ui.user);
-  expect(values('운동명')).toEqual(['', '', '']);
-  expect(values('머신')).toEqual(['', '', '']);
+  expect(values('Exercise name')).toEqual(['', '', '']);
+  expect(values('Machine')).toEqual(['', '', '']);
 });

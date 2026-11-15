@@ -47,7 +47,7 @@ test('each split default follows its cycle for all 84 days', () => {
     assert.deepEqual(
       schedule.map((s) => s.date),
       expected,
-      `${splits}분할 ${train}+${rest}`,
+      `${splits}-day split ${train}+${rest}`,
     );
     schedule.forEach((s, i) => {
       assert.equal(s.split_index, i % splits, 'splits rotate over training days');
@@ -70,14 +70,14 @@ test('the schema keeps cycle and weekday fields apart; saved weekday plans are u
     assert.equal(result.success, false);
     assert.match(result.error!.issues.map((i) => i.message).join(' '), message);
   };
-  bad({ schedule_mode: 'cycle', rest_days: [] }, /운동일과 휴식일 수를 입력하세요/);
+  bad({ schedule_mode: 'cycle', rest_days: [] }, /Enter the number of workout days and rest days/);
   bad(
     { schedule_mode: 'cycle', cycle: { train_days: 3, rest_days: 1 } },
-    /주기 방식에는 휴식 요일을 지정하지 않습니다/,
+    /Cycle mode does not take rest weekdays/,
   );
   bad(
     { cycle: { train_days: 3, rest_days: 1 } },
-    /요일 방식에는 운동·휴식 주기를 지정하지 않습니다/,
+    /Weekday mode does not take a workout\/rest cycle/,
   );
   bad(
     { schedule_mode: 'cycle', rest_days: [], cycle: { train_days: 0, rest_days: 1 } },

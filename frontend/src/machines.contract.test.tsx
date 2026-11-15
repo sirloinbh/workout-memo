@@ -16,7 +16,7 @@ const machine = {
   id: 5,
   brand_id: 2,
   brand: 'Hammer Strength',
-  name: '내 체스트 프레스',
+  name: 'My Chest Press',
   base_weight: '20.00',
   notes: '',
   official_weight_id: null,
@@ -40,8 +40,8 @@ test('the machine library lists machines answered by the contract mock', async (
   );
   const user = userEvent.setup();
   render(<App />);
-  await openPage('머신 라이브러리', user);
-  expect(await screen.findByText(/내 체스트 프레스/)).toBeInTheDocument();
+  await openPage('Machine Library', user);
+  expect(await screen.findByText(/My Chest Press/)).toBeInTheDocument();
   expect(document.querySelector('[data-slot="machine-row"]')?.textContent).toMatch(
     /Hammer Strength/,
   );

@@ -1,39 +1,39 @@
-# #101 운동 기록 카드 틀과 로컬 초안 안내를 공통 컴포넌트로 교체 (9단계)
+# #101 Replace the workout record card frame and the local draft notice with shared components (step 9)
 
-- 이슈: [#101](https://github.com/sirloinbh/workout-memo/issues/101)
-- 브랜치: `feat/101-journal-card`
+- Issue: [#101](https://github.com/sirloinbh/workout-memo/issues/101)
+- Branch: `feat/101-journal-card`
 
-## 목적
+## Purpose
 
-8단계 뒤 #101 완료 기준을 대조했을 때 남은 두 곳을 옮깁니다. 하나는 대시보드·운동 일지의 운동 기록 카드 틀(3단계에서는 목록 행만 옮김)이고, 다른 하나는 대시보드의 로컬 초안 복구 안내입니다. 이 PR이 병합되면 #101 완료 기준을 다시 대조하고 닫습니다.
+After step 8, I compared the remaining work against the #101 completion criteria. Two places are left. One is the workout record card frame on the dashboard and the workout journal (step 3 moved only the list rows). The other is the local draft recovery notice on the dashboard. When this PR is merged, I will compare the #101 completion criteria again and close it.
 
-## 변경 — feat: 카드 틀과 초안 안내 교체
+## Change — feat: replace the card frame and the draft notice
 
 - `frontend/src/app.tsx`
-  - 운동 기록 카드: `.card journal-card`와 `.section-title`을 `Card`, `CardHeader`, `CardTitle`(h2), `CardDescription`, `CardAction`으로 바꿨습니다. 개수는 `.count` 대신 `Badge`(`secondary`)이고, "전체 기록"은 공통 `Button`(`ghost`, `sm`)입니다.
-  - 빈 상태: `.empty`를 공통 `EmptyState`(h3, 아이콘, 설명, "운동 기록하기" `Button`)로 바꿨습니다. 불러오는 중 문구는 유틸리티 문단입니다.
-  - 로컬 초안 안내: `section.card`를 `Card`(`role="region"`, 이름 "로컬 초안")로, "초안 복구"·"초안 폐기"를 `Button`(`secondary`, `ghost`)으로 바꿨습니다. `md`부터 문구와 버튼이 한 줄에 놓입니다.
-- `frontend/src/style.css`: 지운 규칙이 없습니다. `.card`, `.section-title`, `.count`, `.empty`, `.subtle-button`, `.text-button`은 종목 분석·신체 기록·나의 목표·머신 라이브러리 등 #102·#103 범위 화면이 아직 씁니다. `.journal-card`에는 원래 규칙이 없었습니다.
-- 화면 차이: 개수 표시가 `Badge` 모양이 되고, 빈 상태가 점선 테두리 상자 안에 들어갑니다. 설명 글자가 커집니다. 초안 안내는 이전에 카드 안쪽 여백 없이 문구와 버튼이 붙어 있었는데, 여백과 버튼 간격이 생깁니다.
+  - Workout record card: replaced `.card journal-card` and `.section-title` with `Card`, `CardHeader`, `CardTitle` (h2), `CardDescription`, and `CardAction`. The count is a `Badge` (`secondary`) instead of `.count`, and "전체 기록" (all records) is the shared `Button` (`ghost`, `sm`).
+  - Empty state: replaced `.empty` with the shared `EmptyState` (h3, icon, description, and a "운동 기록하기" (record a workout) `Button`). The loading text is a utility paragraph.
+  - Local draft notice: replaced `section.card` with `Card` (`role="region"`, name "로컬 초안" (local draft)), and replaced "초안 복구" (restore draft) and "초안 폐기" (discard draft) with `Button` (`secondary`, `ghost`). From `md` up, the text and the buttons sit on one line.
+- `frontend/src/style.css`: no rules were removed. `.card`, `.section-title`, `.count`, `.empty`, `.subtle-button`, and `.text-button` are still used by screens in the scope of #102 and #103, such as exercise analysis, body records, my goals, and the machine library. `.journal-card` had no rule to begin with.
+- Visual differences: the count looks like a `Badge`, and the empty state sits in a dashed-border box. The description text gets larger. The draft notice used to have the text and the buttons stuck together with no inner padding; now it has padding and a gap between buttons.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/period.test.tsx`에 1개. 제목이 개수를 포함해 "운동 기록 2"로 읽히는지, 대시보드의 "전체 기록"이 운동 일지로 가고 그곳에서는 사라지는지, 빈 기간에 "운동 기록 0"과 빈 상태가 보이고 그 안의 "운동 기록하기"가 새 기록 창을 여는지 확인합니다.
-- 기존: 초안 복구·폐기 버튼은 `workout-draft.test.tsx` 등이 역할과 이름으로 누르므로 그대로 통과합니다.
+- Added: 1 test in `frontend/src/period.test.tsx`. It checks that the title reads "운동 기록 2" (workout records 2) including the count, that "전체 기록" on the dashboard goes to the workout journal and disappears there, and that an empty period shows "운동 기록 0" and the empty state, where "운동 기록하기" opens the new record window.
+- Existing: the draft restore and discard buttons are pressed by role and name in `workout-draft.test.tsx` and others, so they still pass.
 - `npm run test -w frontend -- src/period.test.tsx`: 25 pass
 - `npm run test -w frontend`: 210 pass, 4 skip
-- `npm run typecheck -w frontend`, `npm run lint`, prettier: 통과
-- 시각 기준선과 e2e(반응형·axe)는 PR CI로 확인합니다. 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다.
+- `npm run typecheck -w frontend`, `npm run lint`, prettier: pass
+- Visual baselines and e2e (responsive, axe) are checked by PR CI. I did not run the full local `npm run check` because it has a history of running out of memory.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-- 카드에 붙인 `data-slot="journal-card"`가 `Card`의 `data-slot="card"`를 덮어써, 나중에 공통 선택자를 쓰면 이 카드만 빠질 수 있었습니다. 쓰는 곳이 없어 지웠습니다.
-- 개수 `Badge`의 `text-meta`는 글자 크기와 함께 `muted-foreground` 색도 정해 `Badge`의 `text-secondary-foreground`와 겹쳤습니다. 크기만 정하는 `text-xs`로 바꿨습니다.
-- 지적된 필수 사항 "시각 기준선 미갱신"은 이 저장소의 절차대로 CI 이미지를 확인한 뒤 갱신합니다.
-- 1차 보완 후: `npm run test -w frontend -- src/period.test.tsx` 25 pass, `npm run lint`, `npm run typecheck -w frontend` 통과
+- The `data-slot="journal-card"` added to the card overrode the `data-slot="card"` of `Card`, so a shared selector used later could skip only this card. Nothing used it, so I removed it.
+- The `text-meta` on the count `Badge` set the `muted-foreground` color along with the font size, which clashed with the `text-secondary-foreground` of `Badge`. I changed it to `text-xs`, which sets only the size.
+- The required item the reviewer raised, "visual baselines not updated", is handled as this repo's procedure says: update them after checking the CI images.
+- After the first follow-up: `npm run test -w frontend -- src/period.test.tsx` 25 pass, `npm run lint` and `npm run typecheck -w frontend` pass
 
-## 변경 — test: 시각 기준선 갱신
+## Change — test: update visual baselines
 
-- 2차 리뷰는 보완점이 없었습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
-- `4b54494`의 CI `e2e-visual`에서 9건만 실패했고 axe·반응형·터치 포함 나머지 69건은 통과했습니다. 바뀐 것은 `dashboard`·`journal`의 360·390·768·1280과 뒤에 대시보드가 보이는 `workout-editor-768`입니다. `dashboard-1280`과 `journal-360`을 직접 보고 개수 `Badge`, 커진 설명 글자, "전체 기록" 버튼 외에 차이가 없음을 확인한 뒤 `visual-baselines` 아티팩트로 9장을 갱신했습니다.
-- 한계: e2e 고정 데이터에는 기록이 있고 로컬 초안이 없어 빈 상태와 초안 안내는 기준선 이미지에 나오지 않습니다. 이 둘은 화면 테스트(`period.test.tsx`, `workout-draft.test.tsx`)로만 확인했습니다.
+- The second review had no follow-up items. Two reviews are done, so there is no third review.
+- In the `e2e-visual` CI run for `4b54494`, only 9 checks failed, and the other 69, including axe, responsive, and touch, passed. The changes were `dashboard` and `journal` at 360, 390, 768, and 1280, and `workout-editor-768`, which shows the dashboard behind it. I looked at `dashboard-1280` and `journal-360` directly and confirmed there is no difference other than the count `Badge`, the larger description text, and the "전체 기록" button. Then I updated the 9 images from the `visual-baselines` artifact.
+- Limitation: the fixed e2e data has records and no local draft, so the empty state and the draft notice do not appear in the baseline images. Only the screen tests (`period.test.tsx`, `workout-draft.test.tsx`) cover them.

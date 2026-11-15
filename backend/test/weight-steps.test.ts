@@ -11,10 +11,10 @@ import { autoRoutineInput } from './routine-fixture.js';
 // #86: per-exercise progressive overload increment (default 5 kg) and goal suggestions.
 test('increments are positive, at most 100 kg and two decimals; null resets', () => {
   for (const weight_step of [5, 2.5, 1.25, 0.01, 100, null])
-    assert.equal(weightStepSchema.safeParse({ exercise: '벤치', weight_step }).success, true);
+    assert.equal(weightStepSchema.safeParse({ exercise: 'Bench', weight_step }).success, true);
   for (const weight_step of [0, -2.5, 100.01, 1.255, '5', Number.NaN])
     assert.equal(
-      weightStepSchema.safeParse({ exercise: '벤치', weight_step }).success,
+      weightStepSchema.safeParse({ exercise: 'Bench', weight_step }).success,
       false,
       `weight_step ${String(weight_step)}`,
     );
@@ -26,7 +26,7 @@ test(
   async () => {
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
     const prefix = `Step86-${randomUUID()}`;
-    const bench = `${prefix}-벤치`;
+    const bench = `${prefix}-Bench`;
     const today = '2097-03-04';
     const server = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
     await new Promise<void>((resolve) => server.once('listening', resolve));

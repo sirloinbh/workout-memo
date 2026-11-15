@@ -1,119 +1,119 @@
-# #115 유산소 기록 화면 ③ 운동 일지 탭 연결과 대시보드 요약
+# #115 Cardio records screen, part 3: connecting the workout journal tab and the dashboard summary
 
-- 이슈: [#115](https://github.com/sirloinbh/workout-memo/issues/115)
-- 브랜치: `feat/115-cardio-tab`
-- 선행: PR ①([115-cardio-form.md](115-cardio-form.md), 병합됨), PR ②([115-cardio-stats.md](115-cardio-stats.md), 병합됨), #116(유산소 목표, 병합됨), #105의 일지 쪽 변경(병합됨)
+- Issue: [#115](https://github.com/sirloinbh/workout-memo/issues/115)
+- Branch: `feat/115-cardio-tab`
+- Prerequisites: PR 1 ([115-cardio-form.md](115-cardio-form.md), merged), PR 2 ([115-cardio-stats.md](115-cardio-stats.md), merged), #116 (cardio goals, merged), the journal side change of #105 (merged)
 
-## 목적
+## Purpose
 
-#115의 마지막 PR입니다. PR ①·②에서 독립 부품으로 만든 유산소 목록·폼·통계·개인 기록을 운동 일지의 근력/유산소 탭(결정 1)에 붙이고, 대시보드에는 유산소 기록이 있을 때만 요약 카드 1개(결정 5)를 보여 줍니다. 390px 실제 브라우저 흐름(e2e)과 화면 공통 검사도 더합니다.
+This is the last PR of #115. It attaches the cardio list, form, statistics, and personal records, built as independent components in PR 1 and 2, to the strength/cardio tab of the workout journal (decision 1), and shows one summary card (decision 5) on the dashboard only when there are cardio records. It also adds the 390px real browser flow (e2e) and the common screen checks.
 
-| PR  | 내용                                                |
-| --- | --------------------------------------------------- |
-| ①   | 폼·목록·수정·삭제 부품(병합됨)                      |
-| ②   | 통계 부품과 개인 기록 API(병합됨)                   |
-| ③   | 운동 일지의 근력/유산소 탭 연결, 대시보드 요약, e2e |
+| PR  | Content                                                                            |
+| --- | ---------------------------------------------------------------------------------- |
+| 1   | Form, list, edit, and delete components (merged)                                   |
+| 2   | Statistics components and personal records API (merged)                            |
+| 3   | Connecting the strength/cardio tabs of the workout journal, dashboard summary, e2e |
 
-## 변경 — feat: 운동 일지의 근력/유산소 탭
+## Change — feat: strength/cardio tab of the workout journal
 
 - `frontend/src/app.tsx`
-  - 운동 일지 머리글 아래에 공통 `SegmentedControl`("기록 종류": 근력·유산소)을 둡니다. 근력은 기존 일지 화면(요약 카드, 오늘의 루틴, 운동 기록 목록) 그대로입니다.
-  - 유산소를 고르면 같은 기간 선택(기간 탭·기준 날짜·직접 선택) 아래에 `CardioTab`이 보입니다. 기간은 두 탭이 함께 씁니다.
-  - 선택한 탭은 주소의 `?tab=cardio`에 둡니다. 근력이 기본이라 매개변수가 없습니다. 탭을 바꾸면 기록이 하나 쌓여 뒤로·앞으로 가기와 새로고침에서 탭이 유지됩니다.
-  - 기간 주소(`?from&to`, #85)를 바꾸던 `setSearchParams({})`·`setSearchParams({ from, to })`는 주소 전체를 덮어 탭이 지워졌습니다. 이제 `setRangeAddress`가 `from`·`to`만 바꾸고, `setJournalTab`은 `tab`만 바꿉니다.
-  - 주 메뉴 링크: 운동 일지는 지금 주소를 그대로 이어 받고, 대시보드·신체 기록은 기간만 이어 받습니다(`tab` 제외).
-  - 운동 일지에서 불러온 기간의 근력 일지를 `{ id, date, title }`로 넘겨, 유산소 폼의 "연결할 근력 일지"가 같은 날 일지를 고를 수 있습니다. 요청을 더 하지 않습니다.
-- `frontend/src/cardio/cardio-tab.tsx`(새 파일): `CardioTab({ from, to, today?, workouts, onChanged? })`. `CardioPanel`과 `CardioStats`를 위아래로 놓는 작은 컨테이너입니다.
-- `frontend/src/cardio/cardio-panel.tsx`: 선택 속성 두 개를 더했습니다. 없으면 PR ①과 똑같이 동작합니다.
-  - `onSessionsChange(sessions)`: 화면의 목록이 바뀔 때마다(새 기간을 불러오는 동안은 `[]`) 알립니다. 최신 콜백을 ref에 두어, 부모가 매번 새 함수를 넘겨도 호출이 늘지 않습니다.
-  - `onChanged()`: 저장, 삭제, 이미 삭제된 기록(404) 뒤에 부릅니다.
+  - Under the workout journal header, put the shared `SegmentedControl` ("기록 종류", "record kind": strength and cardio). Strength is the existing journal screen (summary cards, today's routine, workout record list) as it is.
+  - When cardio is chosen, `CardioTab` shows under the same period selection (period tabs, reference date, custom pick). The period is shared by both tabs.
+  - The chosen tab is kept in `?tab=cardio` of the address. Strength is the default, so it has no parameter. Changing the tab adds one history entry, so the tab is kept on back, forward, and refresh.
+  - `setSearchParams({})` and `setSearchParams({ from, to })`, which used to change the period address (`?from&to`, #85), overwrote the whole address and wiped the tab. Now `setRangeAddress` changes only `from` and `to`, and `setJournalTab` changes only `tab`.
+  - Main menu links: the workout journal carries over the current address as it is, and the dashboard and body records carry over only the period (without `tab`).
+  - The strength journals of the period loaded in the workout journal are passed as `{ id, date, title }`, so "연결할 근력 일지" ("strength journal to link") in the cardio form can pick a same-day journal. No more requests are made.
+- `frontend/src/cardio/cardio-tab.tsx` (new file): `CardioTab({ from, to, today?, workouts, onChanged? })`. A small container that puts `CardioPanel` and `CardioStats` one above the other.
+- `frontend/src/cardio/cardio-panel.tsx`: added two optional properties. Without them it behaves exactly like PR 1.
+  - `onSessionsChange(sessions)`: notifies every time the list on screen changes (`[]` while a new period is being loaded). The latest callback is kept in a ref, so calls do not increase even if the parent passes a new function every time.
+  - `onChanged()`: called after a save, a delete, or an already deleted record (404).
 
-### 상태 끌어올리기
+### Lifting state up
 
-기록 목록을 불러오는 일은 `CardioPanel`에 그대로 두고, 탭(`CardioTab`)은 패널이 알려 준 목록과 `refreshKey`만 가집니다.
+Loading the record list is left in `CardioPanel`, and the tab (`CardioTab`) only holds the list the panel notifies it of and `refreshKey`.
 
-- 통계(`CardioStats`)는 패널이 이미 불러온 목록으로 계산하므로 `/api/cardio-sessions` 요청이 한 번뿐입니다.
-- 저장·삭제 뒤에는 패널이 목록을 다시 불러와 통계가 바뀌고, `onChanged`로 `refreshKey`를 올려 개인 기록(`CardioRecords`)도 다시 불러옵니다. 대시보드 요약의 캐시(`['cardio-sessions', …]`)도 무효로 표시해 대시보드로 돌아가면 새로 불러옵니다.
-- 불러오기를 탭으로 옮기는 방법도 있었지만, 그러면 PR ①의 경쟁 응답 처리·오류·재연결·포커스 유지를 옮기고 테스트를 다시 써야 합니다. 콜백 두 개로 PR ① 테스트(19개)를 그대로 통과시켰습니다.
+- The statistics (`CardioStats`) compute from the list the panel has already loaded, so there is only one `/api/cardio-sessions` request.
+- After a save or delete, the panel reloads the list so the statistics change, and `onChanged` raises `refreshKey` so the personal records (`CardioRecords`) are reloaded too. The cache of the dashboard summary (`['cardio-sessions', ...]`) is also marked invalid, so going back to the dashboard loads it fresh.
+- There was also a way to move the loading to the tab, but then the handling of racing responses, errors, reconnect, and focus keeping from PR 1 would have to move and the tests be rewritten. Two callbacks let the PR 1 tests (19) pass as they are.
 
-### 머리글 버튼
+### Header button
 
-유산소 탭에서는 머리글의 "운동 기록하기"를 숨기고, 유산소 목록 카드의 "유산소 기록 추가"를 그 화면의 주요 버튼으로 씁니다.
+On the cardio tab the "운동 기록하기" ("record workout") button of the header is hidden, and the "유산소 기록 추가" ("add cardio record") of the cardio list card is used as the main button of that screen.
 
-- 머리글 버튼을 "유산소 기록 추가"로 바꾸려면 패널 밖에서 폼을 여는 통로(명령형 ref나 열림 상태 끌어올리기)가 필요하고, 같은 이름의 버튼이 한 화면에 둘 생겨 화면 낭독기와 테스트에서 헷갈립니다.
-- 패널의 버튼은 기간 선택 바로 아래, 유산소 목록 카드 머리에 있어 머리글 버튼과 거의 같은 자리에서 찾을 수 있습니다.
-- 근력 탭과 대시보드의 "운동 기록하기"는 바뀌지 않습니다.
+- To change the header button into "유산소 기록 추가", a way to open the form from outside the panel (an imperative ref or lifting the open state up) would be needed, and two buttons with the same name would appear on one screen, which confuses screen readers and tests.
+- The panel's button is at the head of the cardio list card right under the period selection, so it can be found in almost the same place as the header button.
+- "운동 기록하기" on the strength tab and the dashboard is unchanged.
 
-## 변경 — feat: 대시보드 유산소 요약 카드
+## Change — feat: dashboard cardio summary card
 
-- 대시보드의 요약 카드 줄에 `StatCard` "유산소"를 더합니다. 값은 기간의 거리 합계(km, 종류를 더한 거리), 설명은 "횟수 · 시간"(예: "2회 · 1:32:05")입니다. `cardio/stats.ts`의 `totalsOf`와 `format.ts`의 `formatDistance`·`formatDuration`을 씁니다.
-- 기간에 유산소 기록이 없으면 카드를 그리지 않고 기존 4장 그대로입니다. 있으면 `lg`부터 5열, 그보다 좁으면 다섯째 카드가 한 줄을 차지합니다.
-- 요청은 대시보드에서만 `listCardioSessions(from, to)` 하나입니다(TanStack Query, `enabled: page === 'overview'`). 실패하면 카드만 숨기고 오류를 띄우지 않습니다. 운동 일지는 이 요청을 하지 않습니다.
+- Add a `StatCard` "유산소" ("cardio") to the summary card row of the dashboard. The value is the distance total of the period (km, a distance summed over kinds), and the description is "count · time" (for example "2회 · 1:32:05", "2 sessions · 1:32:05"). It uses `totalsOf` of `cardio/stats.ts` and `formatDistance` and `formatDuration` of `format.ts`.
+- If the period has no cardio records, the card is not drawn and it stays the existing 4 cards. If there are, it is 5 columns from `lg`, and below that the fifth card takes one line.
+- The request is only one `listCardioSessions(from, to)` on the dashboard (TanStack Query, `enabled: page === 'overview'`). If it fails, only the card is hidden and no error is shown. The workout journal does not make this request.
 
-## 변경 — test: 화면 공통 검사 고정 데이터
+## Change — test: fixed data for the common screen checks
 
 - `e2e/support/ui-fixtures.ts`
-  - `/api/cardio-sessions`: #116 목표에서 쓰던 고정 유산소 기록 4개(10/6·10/9·10/13 러닝, 10/14 실내 자전거)를 서버 응답 모양(최신 순, 서버와 같은 반올림의 페이스·속도)으로 돌려줍니다. 기간으로 거릅니다.
-  - `/api/cardio-sessions/records`: 서버와 같은 규칙으로 계산한 개인 기록(러닝 최장 9 km, 5·10km 기록 없음).
-  - 화면 목록에 `{ path: '/journal?tab=cardio', name: 'journal-cardio' }`을 더해 접근성·반응형·터치·시각 검사가 유산소 탭을 포함합니다.
-- 고정 시계(2026-10-15)의 대시보드 기본 기간(10/12~10/18)에 10/13·10/14 기록이 있어 대시보드에도 유산소 카드가 보입니다.
+  - `/api/cardio-sessions`: returns the 4 fixed cardio records used in the #116 goals (running on 10/6, 10/9, and 10/13, and an indoor bike on 10/14) in the server response shape (latest first, pace and speed rounded the same way as the server). It filters by period.
+  - `/api/cardio-sessions/records`: personal records computed with the same rules as the server (longest running 9 km, no 5 or 10km records).
+  - Added `{ path: '/journal?tab=cardio', name: 'journal-cardio' }` to the screen list so the accessibility, responsive, touch, and visual checks include the cardio tab.
+- The default dashboard period (10/12 to 10/18) of the fixed clock (2026-10-15) has the 10/13 and 10/14 records, so the cardio card shows on the dashboard too.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/cardio/journal-tab.test.tsx` 4개(앱 전체를 `mockApi`·`fixClock`으로 그림)
-  - 운동 일지는 근력으로 열리고 주소에 `tab`이 없음. 유산소를 누르면 `?tab=cardio`, 유산소 목록·통계가 보이고 근력 요약 카드와 "운동 기록하기"가 사라짐. 요청 기간은 기본 주(10/12~10/18). 뒤로 가기는 근력, 앞으로 가기는 다시 유산소.
-  - `/journal?tab=cardio&from=2026-10-01&to=2026-10-10`으로 열면 그 기간의 기록·페이스(6:00/km)·통계 기간이 보임. 기간 탭 "1주"를 누르면 주소에서 기간만 지워지고 `tab=cardio`는 남으며 새 기간으로 다시 계산됨. 대시보드로 가면 `tab`이 따라가지 않음.
-  - 유산소 기록을 저장하면 기간 합계(5 km, 30:00)가 바뀌고 개인 기록을 다시 불러와 "러닝 최장 거리"가 보임(`/records` 요청 2회).
-  - 대시보드는 기간에 기록이 있으면 "유산소" 카드(8.2km, "2회 · 1:32:05")를 보여 주고 요청은 1회. 기록이 없는 기간(1일)으로 바꾸면 카드가 사라짐. 운동 일지로 가도 대시보드 요청이 늘지 않음.
-- 추가: `e2e/cardio.spec.ts` 1개(390×844, 실제 API와 테스트 DB, 다른 spec과 겹치지 않는 2001-04-20)
-  - 운동 일지에서 유산소 탭을 고르면 주소가 `/journal?tab=cardio`이고 "운동 기록하기"가 없음.
-  - 러닝 1시간 2분 30초·12.5 km를 저장하면 목록에 "1:02:30 · 12.5 km · 5:00/km · 12 km/h", 기간 합계 12.5 km. 새로고침 뒤에도 탭과 기록이 남음.
-  - 거리를 10 km로 고치면 "6:15/km · 9.6 km/h", 새로고침 뒤에도 같음. 삭제하면 목록과 새로고침 뒤에서 사라짐. 실패로 남은 기록은 `afterAll`이 메모로 찾아 지웁니다.
-- 실행 결과
-  - `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx`: 8 files, 80 pass(PR ① `cardio-panel.test.tsx` 포함)
-  - `npm run test -w frontend -- src/custom-range.test.tsx`: 6 pass(기간 주소 처리를 바꿔 함께 실행)
-  - `npm run typecheck -w frontend`: 통과
-  - `node_modules/.bin/tsc -p e2e/tsconfig.json --noEmit`: 통과
-  - `node_modules/.bin/eslint`·`node_modules/.bin/prettier --check`(바꾼 파일): 통과
-- 로컬 전체 `npm test`·`npm run check`·e2e는 메모리 부족 이력이 있고 로컬 PostgreSQL이 꺼져 있어 실행하지 않았습니다. `e2e/cardio.spec.ts`와 화면 공통 검사는 CI `e2e` 작업에서 확인합니다.
+- Added: 4 tests in `frontend/src/cardio/journal-tab.test.tsx` (the whole app is drawn with `mockApi` and `fixClock`)
+  - The workout journal opens as strength and the address has no `tab`. Pressing cardio gives `?tab=cardio`, the cardio list and statistics show, and the strength summary cards and "운동 기록하기" disappear. The request period is the default week (10/12 to 10/18). Back goes to strength and forward goes to cardio again.
+  - Opening `/journal?tab=cardio&from=2026-10-01&to=2026-10-10` shows the records, the pace (6:00/km), and the statistics period of that period. Pressing the period tab "1주" ("1 week") removes only the period from the address while `tab=cardio` stays, and it is recomputed for the new period. Going to the dashboard does not carry `tab`.
+  - Saving a cardio record changes the period totals (5 km, 30:00) and reloads the personal records so "러닝 최장 거리" ("longest running distance") shows (2 `/records` requests).
+  - The dashboard shows the "유산소" ("cardio") card (8.2km, "2회 · 1:32:05") if the period has records, with 1 request. Changing to a period with no records (1 day) removes the card. Going to the workout journal does not increase the dashboard requests.
+- Added: 1 test in `e2e/cardio.spec.ts` (390x844, the real API and test DB, 2001-04-20 which does not overlap other specs)
+  - Choosing the cardio tab in the workout journal gives the address `/journal?tab=cardio` and there is no "운동 기록하기" ("record workout").
+  - Saving running of 1 hour 2 minutes 30 seconds and 12.5 km shows "1:02:30 · 12.5 km · 5:00/km · 12 km/h" in the list and 12.5 km in the period totals. The tab and the record remain after a refresh.
+  - Changing the distance to 10 km gives "6:15/km · 9.6 km/h", also after a refresh. Deleting removes it from the list and after a refresh. A record left by a failure is found by memo and removed by `afterAll`.
+- Run results
+  - `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx`: 8 files, 80 pass (including PR 1 `cardio-panel.test.tsx`)
+  - `npm run test -w frontend -- src/custom-range.test.tsx`: 6 pass (run together because the period address handling changed)
+  - `npm run typecheck -w frontend`: pass
+  - `node_modules/.bin/tsc -p e2e/tsconfig.json --noEmit`: pass
+  - `node_modules/.bin/eslint` and `node_modules/.bin/prettier --check` (changed files): pass
+- The full local `npm test`, `npm run check`, and e2e were not run because there is a history of running out of memory and the local PostgreSQL is off. `e2e/cardio.spec.ts` and the common screen checks are checked in the CI `e2e` job.
 
-## 시각 기준선
+## Visual baselines
 
-- 새 화면 `journal-cardio`(4개 폭)의 기준선이 없고, 대시보드(`dashboard`, 4개 폭)는 유산소 카드가, 근력 일지(`journal`, 4개 폭)는 머리글 아래 "기록 종류" 탭이 더해져 바뀝니다. 모두 12장입니다(1차 리뷰에서 `journal`이 빠진 것을 바로잡음). 기준선은 로컬에서 만들지 않았습니다.
-- CI `e2e`가 화면 차이로 실패하면 [workout-testing](../../skills/workout-testing/SKILL.md)의 절차대로 `playwright-report`의 diff를 확인한 뒤 같은 실행의 `visual-baselines` 아티팩트로 `e2e/__screenshots__/`를 갱신하고, 바뀐 장수를 이 문서와 PR에 적습니다.
+- The new screen `journal-cardio` (4 widths) has no baselines, the dashboard (`dashboard`, 4 widths) changes with the added cardio card, and the strength journal (`journal`, 4 widths) changes with the "기록 종류" ("record kind") tab added under the header. That is 12 images in all (corrected in the first review, where `journal` was missing). The baselines were not made locally.
+- If CI `e2e` fails on screen differences, follow the procedure of [workout-testing](../../skills/workout-testing/SKILL.md): check the diff in `playwright-report`, update `e2e/__screenshots__/` with the `visual-baselines` artifact of the same run, and write the changed count in this document and the PR.
 
-## 한계와 남은 일
+## Limits and remaining work
 
-- 유산소 탭에서는 근력 요약 카드와 오늘의 루틴 카드를 보이지 않습니다. 근력 일지의 로컬 초안 안내와 휴식 타이머는 두 탭에 그대로 보입니다.
-- 패널이 새 기간을 불러오는 동안 통계는 잠깐 빈 상태로 보입니다. 패널의 "기록을 불러오는 중…"과 같은 시점에 사라집니다.
-- 대시보드 카드의 거리는 수영도 km로 더합니다(유산소 탭의 기간 합계와 같음).
+- The cardio tab does not show the strength summary cards and today's routine card. The local draft notice and the rest timer of the strength journal still show on both tabs.
+- While the panel loads a new period, the statistics briefly look empty. They disappear at the same time as "기록을 불러오는 중…" ("loading records...") of the panel.
+- The distance of the dashboard card adds swimming in km too (the same as the period totals of the cardio tab).
 
-- 이 PR은 구현을 하위 에이전트에 맡겼습니다. 주 에이전트가 `app.tsx`의 주소 처리 변경을 읽고 `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx src/workout-draft.test.tsx`(10 files, 108 pass), typecheck(frontend·e2e), eslint, prettier, `test:docs`를 다시 돌려 확인했습니다.
+- This PR left the implementation to a sub-agent. The main agent read the address handling change in `app.tsx` and re-ran `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx src/workout-draft.test.tsx` (10 files, 108 pass), typecheck (frontend and e2e), eslint, prettier, and `test:docs` to check it.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-- (필수) 시각 기준선: 위 "시각 기준선" 절에 `journal` 4장을 더해 12장으로 바로잡았습니다. 실제 갱신은 이 커밋의 CI 아티팩트로 합니다.
-- (선택) 목록을 처음 불러오지 못하면 통계가 "기록 없음"처럼 보였습니다. `CardioPanel`이 `onSessionsChange(sessions, status)`로 `loading`·`error`·`ready`를 함께 알리고, `CardioTab`은 `ready`일 때만 통계를 보여 줍니다. 저장 뒤 다시 불러오기가 실패해 목록이 남은 경우는 `ready`입니다.
-- (선택) 대시보드 카드는 기간의 기록이 모두 거리 없음이면 "0 km" 대신 횟수(예: "1회")를 값으로, "45:00 · 거리 미입력"을 설명으로 보여 줍니다.
-- (선택) 테스트: 직접 고른 기간과 `tab=cardio`가 있는 주소에서 대시보드로 가면 `?from&to`만 남는지, 첫 불러오기 실패 때 통계가 숨는지, 거리 없는 기록만 있을 때의 카드를 더했습니다. 기간 프리셋 뒤 대시보드 이동 테스트의 주석도 실제 확인 내용에 맞췄습니다.
-- 한계(반영 안 함): 근력 일지 연결 후보는 일지 탭이 불러온 기간 안의 일지뿐입니다. 폼에서 날짜를 기간 밖으로 바꾸면 그날 일지가 있어도 후보에 없습니다. 화면 검사 고정 데이터의 속도는 서버의 NUMERIC 반올림과 달리 실수로 계산해 소수 둘째 자리 경계에서 다를 수 있지만 지금 데이터에서는 같습니다.
-- `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx`: 89 pass. typecheck, eslint, prettier 통과
+- (Required) Visual baselines: added the 4 `journal` images to the "Visual baselines" section above and corrected it to 12. The actual update is done with the CI artifact of this commit.
+- (Optional) When the list could not be loaded the first time, the statistics looked like "no records". `CardioPanel` now notifies `loading`, `error`, and `ready` together with `onSessionsChange(sessions, status)`, and `CardioTab` shows the statistics only when `ready`. The case where reloading after a save fails and the list remains is `ready`.
+- (Optional) If all the records of the period have no distance, the dashboard card shows the count (for example "1회", "1 session") as the value instead of "0 km" and "45:00 · 거리 미입력" ("45:00 · distance not entered") as the description.
+- (Optional) Tests: added that going to the dashboard from an address with a hand-picked period and `tab=cardio` leaves only `?from&to`, that the statistics are hidden when the first load fails, and the card when there are only records without distance. The comment of the test for going to the dashboard after a period preset was also fitted to what is actually checked.
+- Limit (not applied): the candidates for linking a strength journal are only the journals within the period that the journal tab has loaded. If the date is changed outside the period in the form, the journal of that day is not a candidate even if it exists. The speed in the fixed data for the screen checks is computed with real numbers unlike the server's NUMERIC rounding and could differ at a boundary of the second decimal place, but with the current data it is the same.
+- `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx`: 89 pass. typecheck, eslint, and prettier pass
 
-## 변경 — fix: 2차 리뷰 보완
+## Change — fix: second review follow-up
 
-- (선택, 1차 보완이 만든 회귀) 통계를 `ready`일 때만 그리게 하자 기간을 바꿀 때마다 `CardioStats`가 사라졌다 다시 붙었습니다. 그 결과 고른 지표가 '거리'로 돌아가고, 기간과 상관없는 개인 기록을 매번 다시 요청하고, 화면이 출렁였습니다. 이제 `error`일 때만 숨기고, 불러오는 동안에는 붙인 채로 `pending`을 넘겨 "통계를 불러오는 중…"을 보여 줍니다.
-- 추가 테스트: 기간 프리셋을 바꿔도 고른 지표('시간')가 남고 `/api/cardio-sessions/records`를 다시 요청하지 않음
-- (선택, 반영 안 함) 기간이 바뀐 직후 한 번의 렌더에서 새 기간과 옛 목록이 섞일 수 있습니다. 기간 필터를 거쳐 대개 빈 상태가 잠깐 보이는 정도이고, 이제 불러오는 동안은 "불러오는 중"이 보여 한계로 남깁니다.
-- `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx`: 90 pass. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- (Optional, a regression made by the first follow-up) When the statistics were drawn only when `ready`, `CardioStats` disappeared and was attached again every time the period changed. As a result the chosen metric went back to 'distance', the personal records, which do not depend on the period, were requested again each time, and the screen jumped. Now it is hidden only on `error`, and while loading it stays attached and passes `pending` to show "통계를 불러오는 중…" ("loading statistics...").
+- Added test: even if the period preset is changed, the chosen metric ('time') stays and `/api/cardio-sessions/records` is not requested again
+- (Optional, not applied) Right after the period changes, in one render the new period and the old list can be mixed. It goes through the period filter, so usually only an empty state shows briefly, and now "loading" shows while loading, so it is left as a limit.
+- `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/custom-range.test.tsx`: 90 pass. Two reviews are done, so there is no third review.
 
-## 변경 — test: 시각 기준선 갱신
+## Change — test: update visual baselines
 
-- `bfcce96`의 CI `e2e-visual`에서 시각 비교 14건만 실패했습니다. 새 `e2e/cardio.spec.ts`와 접근성·반응형·터치 검사를 포함한 83건은 통과했습니다.
-- 갱신: `journal-cardio` 4장(새 화면), `dashboard` 4장(유산소 카드), `journal` 4장("기록 종류" 탭), `workout-editor` 768·1280 2장(모달 뒤 대시보드에 카드가 더해짐). 모두 14장입니다.
-- 확인 방법: `journal-cardio` 1280·390과 `dashboard-1280`을 직접 보고 의도한 변화만 있음을 확인한 뒤 `visual-baselines` 아티팩트로 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
-- 발견한 결함: 러닝 페이스 추이의 점이 1280px에서 납작한 타원으로 그려집니다. SVG가 `preserveAspectRatio="none"`으로 늘어나기 때문이며, PR ②에서 생긴 문제입니다. 리뷰 2회를 마친 뒤라 이 PR에서 고치지 않고 #263으로 분리했습니다.
+- In CI `e2e-visual` for `bfcce96`, only 14 visual comparisons failed. 83, including the new `e2e/cardio.spec.ts` and the accessibility, responsive, and touch checks, passed.
+- Updated: `journal-cardio` 4 images (new screen), `dashboard` 4 images (cardio card), `journal` 4 images ("기록 종류" ("record kind") tab), and `workout-editor` 768 and 1280, 2 images (the card is added to the dashboard behind the modal). 14 in all.
+- How it was checked: viewed `journal-cardio` 1280 and 390 and `dashboard-1280` directly and confirmed only the intended changes, then updated with the `visual-baselines` artifact. The other images were byte-for-byte the same as the existing baselines.
+- Defect found: the dots of the running pace trend are drawn as flat ellipses at 1280px. This is because the SVG is stretched with `preserveAspectRatio="none"`, and the problem came from PR 2. It was after the two reviews, so it was not fixed in this PR and was split out to #263.
 
-## main 병합
+## Merge main
 
-- 병합 직전 main에 #257(백업에 유산소 목표 포함), #259(모바일 앱 문서), #262(수영 목표 m)가 들어왔습니다. `shared/**`와 `e2e/**`가 바뀌어 바로 병합 조건에 맞지 않아 `origin/main`을 merge했습니다. 충돌은 없었습니다.
-- 병합 뒤 `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/backup.test.tsx` 91 pass, `npm run typecheck -w frontend`, `tsc -p e2e/tsconfig.json` 통과
+- Just before the merge, #257 (cardio goals included in backup), #259 (mobile app docs), and #262 (swimming goal in m) entered main. `shared/**` and `e2e/**` changed, so it did not meet the condition to merge right away, and `origin/main` was merged. There were no conflicts.
+- After the merge, `npm run test -w frontend -- src/cardio src/period.test.tsx src/routing.test.tsx src/backup.test.tsx` gave 91 pass, and `npm run typecheck -w frontend` and `tsc -p e2e/tsconfig.json` passed

@@ -51,7 +51,7 @@ test('a rest can start with a duration other than the configured one', () => {
 });
 
 test('the machine contract accepts only a boolean single-joint flag', () => {
-  const machine = { brand_id: 1, name: '레그 익스텐션', base_weight: null };
+  const machine = { brand_id: 1, name: 'Leg Extension', base_weight: null };
   assert.equal(machineSchema.parse(machine).single_joint, undefined);
   assert.equal(machineSchema.parse({ ...machine, single_joint: true }).single_joint, true);
   for (const single_joint of ['true', 1, null])
@@ -84,7 +84,7 @@ test(
       const created = await call('/machines', 'POST', { ...body, single_joint: true });
       assert.equal(created.status, 201);
       assert.equal(created.data.single_joint, true);
-      const kept = await call(`/machines/${created.data.id}`, 'PUT', { ...body, notes: '수정' });
+      const kept = await call(`/machines/${created.data.id}`, 'PUT', { ...body, notes: 'Edit' });
       assert.equal(kept.data.single_joint, true, 'older clients do not clear the flag');
       const cleared = await call(`/machines/${created.data.id}`, 'PUT', {
         ...body,

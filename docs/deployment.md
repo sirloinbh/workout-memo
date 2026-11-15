@@ -1,101 +1,101 @@
-# 배포·운영 (Lightsail)
+# Deployment and operations (Lightsail)
 
-개인 계정의 Lightsail 서버 한 대에서 Docker Compose(웹·API·PostgreSQL)로 운영합니다(#73). 허용한 IP에서만 접속할 수 있습니다.
+The app runs on one Lightsail server in a personal account, with Docker Compose (web, API, PostgreSQL) (#73). It can be reached only from allowed IPs.
 
-## 1. 인프라 (shared-aws-infrastructure)
+## 1. Infrastructure (shared-aws-infrastructure)
 
-서버·고정 IP·방화벽·SSH 키·예산 알림은 공유 저장소 `sirloinbh/shared-aws-infrastructure`의 Terraform이 관리합니다. 아래 절차는 그 리포의 `docs/operations.md`를 따릅니다.
+The server, the static IP, the firewall, the SSH key, and the budget alert are managed by Terraform in the shared repo `sirloinbh/shared-aws-infrastructure`. The procedures below follow `docs/operations.md` in that repo.
 
-- 구성과 월 비용(약 $7~8, VAT 별도)
-- 처음 한 번 준비: AWS 프로필(Terraform 전용 IAM 사용자), SSH 키, `terraform.tfvars`
-- 인프라 적용(`terraform plan`·`apply`)과 state 백업·분실 시 복구
-- 새 PC의 SSH 키를 서버에 추가하기
-- 허용 IP 바꾸기, 알람, 철거
+- The setup and the monthly cost (about $7 to $8, VAT excluded)
+- One-time preparation: the AWS profile (an IAM user only for Terraform), the SSH key, and `terraform.tfvars`
+- Applying the infrastructure (`terraform plan` and `apply`), and backing up the state and recovering when it is lost
+- Adding the SSH key of a new PC to the server
+- Changing the allowed IP, alarms, and teardown
 
-이 리포에는 서버 안에서 실행하는 배포 스크립트(`deploy/`)와 PC에서 실행하는 `scripts/deploy.ps1`만 있습니다. 서버 주소(`<static_ip>`)는 인프라 리포에서 `terraform output static_ip`로 확인합니다.
+This repo has only the deploy scripts that run inside the server (`deploy/`) and `scripts/deploy.ps1`, which runs on the PC. Get the server address (`<static_ip>`) with `terraform output static_ip` in the infrastructure repo.
 
-## 2. 앱 배포·롤백
+## 2. App deploy and rollback
 
 ```powershell
-./scripts/deploy.ps1 -Server <static_ip> -Ref origin/main   # 배포
-./scripts/deploy.ps1 -Server <static_ip> -Rollback          # 직전 배포로 되돌림
+./scripts/deploy.ps1 -Server <static_ip> -Ref origin/main   # deploy
+./scripts/deploy.ps1 -Server <static_ip> -Rollback          # go back to the previous deploy
 ```
 
-배포 순서(`deploy/remote-deploy.sh`):
+The deploy order (`deploy/remote-deploy.sh`):
 
-1. 서버 초기화가 끝날 때까지 기다린다(`cloud-init status --wait`).
-2. ref를 fetch·checkout하고 커밋 태그(12자리)로 이미지를 빌드한다.
-3. 이전 배포가 있으면 DB 덤프를 먼저 만든다.
-4. DB를 시작하고, API 이미지 안에서 `node dist/migrate.js`로 마이그레이션을 적용한다(`schema_migrations` 기록). 첫 배포에서는 빈 볼륨을 Docker 초기화가 만들고, 이 단계가 기준선을 기록한다.
-5. 전체를 시작하고 `http://127.0.0.1/api/health`를 최대 60초 확인한다.
-6. health가 실패하면 이전 커밋의 이미지로 다시 시작하고 실패로 끝난다.
-7. 성공하면 `.deployed`·`.previous`를 기록하고, 현재·직전 이미지만 남긴다.
+1. Wait until the server initialization finishes (`cloud-init status --wait`).
+2. Fetch and check out the ref, and build the image with the commit tag (12 characters).
+3. If there is a previous deploy, make a DB dump first.
+4. Start the DB and apply the migrations with `node dist/migrate.js` inside the API image (recorded in `schema_migrations`). On the first deploy, Docker initialization creates the empty volume, and this step records the baseline.
+5. Start everything and check `http://127.0.0.1/api/health` for up to 60 seconds.
+6. If health fails, restart with the image of the previous commit and end as a failure.
+7. On success, record `.deployed` and `.previous`, and keep only the current and previous images.
 
-- 롤백은 다시 빌드하지 않고 직전 이미지로 바로 시작합니다.
-- 마이그레이션은 되돌리지 않습니다. 새 스키마에서 이전 앱이 동작하지 않거나 데이터를 되돌려야 하면, 배포 직전 덤프로 복원합니다(아래 4).
-- 로컬 동작은 바뀌지 않습니다. `compose.yaml`은 `IMAGE_TAG`·`WEB_BIND`·`WEB_PORT`·`DB_PORT` 변수를 쓰고, 로컬 기본값은 중앙 레지스트리 포트입니다(이미지 `local`, 웹 `127.0.0.1:8101`, DB `127.0.0.1:15401`). 서버 `.env`만 웹을 `0.0.0.0:80`으로 엽니다.
+- A rollback does not build again and starts right away from the previous image.
+- Migrations are not undone. If the previous app does not work on the new schema or the data must be rolled back, restore from the dump taken just before the deploy (see 4 below).
+- Local behavior does not change. `compose.yaml` uses the variables `IMAGE_TAG`, `WEB_BIND`, `WEB_PORT`, and `DB_PORT`, and the local defaults are the central registry ports (image `local`, web `127.0.0.1:8101`, DB `127.0.0.1:15401`). Only the server `.env` opens the web on `0.0.0.0:80`.
 
-## 2-1. main 자동 배포 (#75)
+## 2-1. Automatic deploy of main (#75)
 
-main에 병합되면 서버가 직접 확인해서 배포합니다(pull 방식). 서버 방화벽은 GitHub에 열지 않고, GitHub에도 AWS·SSH 키를 저장하지 않습니다.
+When something is merged to main, the server checks it itself and deploys (a pull method). The server firewall is not opened to GitHub, and no AWS or SSH key is stored in GitHub.
 
-- `workout-autodeploy.timer`가 2분마다 `deploy/autodeploy.sh`를 실행합니다(부팅 3분 후 시작).
-  1. `origin/main`을 fetch합니다. 이미 배포한 커밋이면 끝납니다.
-  2. 그 커밋의 GitHub Actions check-run을 공개 API로 조회합니다(인증 없이 시간당 60회, 대기 중일 때만 호출).
-     - 실행 중이거나 결과가 아직 없으면 다음 회차에 다시 확인합니다.
-     - 실패·취소가 하나라도 있으면 그 커밋은 배포하지 않습니다.
-     - 모두 성공(또는 skipped·neutral)이면 3번으로 갑니다.
-  3. 새 커밋의 `deploy/remote-deploy.sh deploy`를 실행합니다. 순서는 수동 배포와 같습니다(배포 전 덤프 → 마이그레이션 → health → 실패 시 이전 이미지).
-  4. 실패한 커밋은 `.autodeploy-failed`에 기록하고 다시 시도하지 않습니다. 다음 커밋이 오면 다시 시작합니다.
-- 수동 배포·롤백과 자동 배포는 같은 잠금(`/run/lock/workout-deploy.lock`)을 써서 동시에 실행되지 않습니다.
-- 수동 롤백은 현재 main 커밋을 건너뛸 커밋으로 기록합니다. 그래서 자동 배포가 그 커밋을 곧바로 다시 올리지 않고, 다음 main 커밋부터 다시 배포합니다.
-- 병합부터 배포까지 걸리는 시간은 CI(약 2~3분), 확인 주기(최대 2분), 서버 빌드(수 분)를 더한 정도입니다.
-- 상태 확인과 제어(서버에서):
+- `workout-autodeploy.timer` runs `deploy/autodeploy.sh` every 2 minutes (starting 3 minutes after boot).
+  1. It fetches `origin/main`. If that commit was already deployed, it ends.
+  2. It queries the GitHub Actions check-runs of that commit through the public API (60 times per hour without authentication, called only while waiting).
+     - If they are running or have no result yet, it checks again in the next round.
+     - If even one failed or was canceled, that commit is not deployed.
+     - If all succeeded (or were skipped or neutral), go to step 3.
+  3. It runs `deploy/remote-deploy.sh deploy` of the new commit. The order is the same as a manual deploy (pre-deploy dump → migrations → health → previous image on failure).
+  4. A failed commit is recorded in `.autodeploy-failed` and is not tried again. When the next commit comes, it starts again.
+- A manual deploy or rollback and the automatic deploy use the same lock (`/run/lock/workout-deploy.lock`), so they do not run at the same time.
+- A manual rollback records the current main commit as a commit to skip. So the automatic deploy does not put that commit back right away and deploys again from the next main commit.
+- The time from merge to deploy is about the sum of CI (about 2 to 3 minutes), the check interval (2 minutes at most), and the server build (several minutes).
+- Status check and control (on the server):
   ```bash
-  systemctl list-timers workout-autodeploy.timer          # 다음 실행 시각
-  journalctl -u workout-autodeploy -n 50 --no-pager       # 최근 기록
-  cat /opt/workout-memo/.deployed                          # 배포 중인 커밋
-  sudo systemctl stop workout-autodeploy.timer             # 일시 중지
-  sudo systemctl start workout-autodeploy.timer            # 재개
-  rm /opt/workout-memo/.autodeploy-failed                  # 건너뛴 커밋 다시 시도
+  systemctl list-timers workout-autodeploy.timer          # next run time
+  journalctl -u workout-autodeploy -n 50 --no-pager       # recent log
+  cat /opt/workout-memo/.deployed                          # the commit being deployed
+  sudo systemctl stop workout-autodeploy.timer             # pause
+  sudo systemctl start workout-autodeploy.timer            # resume
+  rm /opt/workout-memo/.autodeploy-failed                  # retry a skipped commit
   ```
-- 새 서버는 user-data가 timer를 설치합니다. 기존 서버는 `sudo bash /opt/workout-memo/deploy/install-autodeploy.sh`로 설치합니다.
+- On a new server, user-data installs the timer. On an existing server, install it with `sudo bash /opt/workout-memo/deploy/install-autodeploy.sh`.
 
-### 여러 번 배포할 때의 비용
+### Cost of deploying many times
 
-배포 횟수 자체로 추가되는 요금은 없습니다. 근거는 다음과 같습니다.
+The number of deploys by itself adds no charge. The reasons are as follows.
 
-| 항목               | 반복 배포의 영향                                                                                                                                                                                    | 과금                                          |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Lightsail 인스턴스 | 정액 월 $7. 빌드 중 CPU를 많이 써도 요금은 같고, 버스트 한도를 넘으면 느려질 뿐입니다                                                                                                               | 없음                                          |
-| 데이터 전송        | 빌드 때 받는 이미지·npm 패키지·git은 인바운드 트래픽입니다. 2TB 허용량에는 포함되지만, 초과 과금은 아웃바운드에만 적용됩니다                                                                        | 없음(아웃바운드 2TB 초과 시에만 $0.09/GB부터) |
-| 스냅샷             | 하루 1회 고정이며 배포 횟수와 무관합니다. 다만 디스크 변경량이 크면 증분 크기가 늘어 $0.05/GB-month가 조금 늘 수 있습니다. 그래서 배포마다 현재·직전 이미지만 남기고, 7일 지난 빌드 캐시를 지웁니다 | 미미                                          |
-| 배포 전 DB 덤프    | 서버 디스크에 14일 보관. 수 KB~MB 수준입니다                                                                                                                                                        | 없음                                          |
-| GitHub Actions     | 공개 저장소라 표준 러너가 무료입니다                                                                                                                                                                | 없음                                          |
-| GitHub API 조회    | 공개 API, 인증 없음                                                                                                                                                                                 | 없음                                          |
-| ECR·S3·CloudWatch  | 사용하지 않음                                                                                                                                                                                       | 없음                                          |
+| Item                | Effect of repeated deploys                                                                                                                                                                                                                                         | Charge                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| Lightsail instance  | A flat $7 per month. Even if the build uses a lot of CPU, the charge is the same, and it only gets slower if the burst limit is exceeded                                                                                                                           | None                                         |
+| Data transfer       | The images, npm packages, and git received during a build are inbound traffic. They count toward the 2TB allowance, but the overage charge applies only to outbound                                                                                                | None (from $0.09/GB only above 2TB outbound) |
+| Snapshots           | Fixed at once a day, regardless of the number of deploys. But if the disk changes a lot, the incremental size grows and the $0.05/GB-month can rise a little. So each deploy keeps only the current and previous images and deletes build caches older than 7 days | Negligible                                   |
+| Pre-deploy DB dump  | Kept 14 days on the server disk. A few KB to MB                                                                                                                                                                                                                    | None                                         |
+| GitHub Actions      | The repo is public, so the standard runners are free                                                                                                                                                                                                               | None                                         |
+| GitHub API queries  | Public API, no authentication                                                                                                                                                                                                                                      | None                                         |
+| ECR, S3, CloudWatch | Not used                                                                                                                                                                                                                                                           | None                                         |
 
-[Lightsail 요금](https://aws.amazon.com/lightsail/pricing/), [Lightsail 데이터 전송](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-faq-data-transfer-allowance.html). 예상 밖의 비용은 월 $10 예산 알림(50%·80%·예상 100%)으로 확인합니다.
+[Lightsail pricing](https://aws.amazon.com/lightsail/pricing/), [Lightsail data transfer](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-faq-data-transfer-allowance.html). An unexpected cost shows up in the $10 monthly budget alert (50%, 80%, forecast 100%).
 
-## 3. 접속
+## 3. Access
 
-- **브라우저**: `http://<static_ip>`. 허용 IP에서만 열립니다.
+- **Browser**: `http://<static_ip>`. It opens only from allowed IPs.
 - **SSH**: `ssh -i ~/.ssh/workout-memo-lightsail ubuntu@<static_ip>`
-- **SSH 터널**(전송 암호화): `ssh -i ~/.ssh/workout-memo-lightsail -L 8101:127.0.0.1:80 ubuntu@<static_ip>`를 실행한 뒤 `http://localhost:8101`로 접속합니다.
-- **로그**: 서버에서 `cd /opt/workout-memo && docker compose logs --tail 100 api`
+- **SSH tunnel** (encrypted transport): run `ssh -i ~/.ssh/workout-memo-lightsail -L 8101:127.0.0.1:80 ubuntu@<static_ip>` and then open `http://localhost:8101`.
+- **Logs**: on the server, `cd /opt/workout-memo && docker compose logs --tail 100 api`
 
-## 4. 백업·복원
+## 4. Backup and restore
 
-- **자동**
-  - 매일 03:00 Lightsail 스냅샷: 서버 전체이며, 콘솔에서 새 인스턴스로 복원할 수 있습니다.
-  - 매일 03:30 DB 덤프: `/var/backups/workout/workout-<날짜>.sql.gz`, 실행 로그는 `/var/log/workout-backup.log`.
-- **수동 덤프**: `/usr/local/bin/workout-backup`
-- **PC로 가져오기**: `scp -i ~/.ssh/workout-memo-lightsail ubuntu@<ip>:/var/backups/workout/<파일> ./backups/`. `backups/`는 git에서 제외됩니다.
-- **복원 확인**(서버, 별도 DB에): 아래 명령으로 복원한 뒤 `workouts`·`schema_migrations` 행을 확인합니다. 로컬에서 같은 명령으로 덤프 → 복원 → 일지·이력 9행 확인을 검증했습니다.
+- **Automatic**
+  - A Lightsail snapshot every day at 03:00: the whole server, and it can be restored to a new instance from the console.
+  - A DB dump every day at 03:30: `/var/backups/workout/workout-<date>.sql.gz`, and the run log is `/var/log/workout-backup.log`.
+- **Manual dump**: `/usr/local/bin/workout-backup`
+- **Bring it to the PC**: `scp -i ~/.ssh/workout-memo-lightsail ubuntu@<ip>:/var/backups/workout/<file> ./backups/`. `backups/` is excluded from git.
+- **Check a restore** (on the server, into a separate DB): restore with the commands below, then check the `workouts` and `schema_migrations` rows. Locally, the same commands were verified as dump → restore → check of the log and 9 history rows.
   ```bash
   cd /opt/workout-memo
   docker compose exec -T db createdb -U workout workout_restore
-  gunzip -c /var/backups/workout/<파일> | docker compose exec -T db psql -q -U workout -d workout_restore -v ON_ERROR_STOP=1
+  gunzip -c /var/backups/workout/<file> | docker compose exec -T db psql -q -U workout -d workout_restore -v ON_ERROR_STOP=1
   ```
-- **운영 DB를 덤프로 교체**: 앱을 멈추고(`docker compose stop api web`), 위 방법으로 `workout`을 다시 만들어 복원한 뒤 다시 시작합니다. 되돌릴 수 없는 작업이므로 직전 덤프를 먼저 만듭니다.
-- 앱 화면의 "백업·내보내기" JSON 백업도 PC 보관용으로 함께 씁니다.
+- **Replace the production DB with a dump**: stop the app (`docker compose stop api web`), recreate `workout` and restore with the method above, and then start again. It cannot be undone, so make a dump right before it first.
+- Also use the app screen's "Backup and export" JSON backup for keeping on the PC.

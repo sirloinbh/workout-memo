@@ -242,10 +242,13 @@ test('the goal schema accepts each type only with its own targets', () => {
     target_count: 3,
     deadline: '2031-11-03',
   });
-  assert.equal(long.error!.issues[0].message, '목표 기간은 5년(1826일) 이하로 정하세요');
-  // Korean particles follow the last syllable.
+  assert.equal(
+    long.error!.issues[0].message,
+    'Keep the goal period to 5 years (1826 days) or less',
+  );
+  // Each message names its field in plain English.
   const missing = cardioGoalSchema.safeParse({ ...base, goal_type: 'duration', period: 'week' });
-  assert.equal(missing.error!.issues[0].message, '목표 시간을 입력하세요');
+  assert.equal(missing.error!.issues[0].message, 'Enter the goal time');
 });
 
 // #251: next goals (2026-11-08 decisions N1, N2, N4) from the goal's own targets.

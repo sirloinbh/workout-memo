@@ -1,29 +1,29 @@
-# #101 체감 피드백을 ToggleChips로 교체 (4단계)
+# #101 Replace the feeling feedback with ToggleChips (step 4)
 
-- 이슈: [#101](https://github.com/sirloinbh/workout-memo/issues/101)
-- 브랜치: `feat/101-feedback-chips`
+- Issue: [#101](https://github.com/sirloinbh/workout-memo/issues/101)
+- Branch: `feat/101-feedback-chips`
 
-## 목적
+## Purpose
 
-#101을 요소 하나씩 나눠 옮기는 네 번째 PR입니다. `.tabs`를 쓰던 마지막 요소인 체감 피드백을 `ToggleChips`로 바꾸고 `.tabs` 규칙을 지웁니다. 이 PR은 #101을 닫지 않습니다.
+This is the fourth PR in #101, which moves one element at a time. The feeling feedback is the last element that used `.tabs`. It becomes `ToggleChips`, and the `.tabs` rules are removed. This PR does not close #101.
 
-## 변경 — feat: 체감 피드백 교체
+## Change — feat: replace the feeling feedback
 
-- `frontend/src/app.tsx`: 일지 편집의 체감 피드백을 `ToggleChips`로 바꿨습니다. 하나만 고르는 규칙은 호출 쪽에서 지킵니다. 다른 값을 누르면 바뀌고, 고른 값을 다시 누르면 해제됩니다. 전과 같습니다.
-- 그룹 이름은 `체감 피드백 (선택)`에서 `체감 피드백`으로 바뀝니다. 각 칩의 `aria-pressed`는 그대로입니다. 칩 사이는 화살표로 이동합니다.
-- `frontend/src/style.css`: `.tabs`, `.feedback-field`와 관련 반응형, 대비 규칙을 지웠습니다.
-- `docs/design-system.md`: `ToggleChips`의 이 사용법을 적었습니다.
-- 모양이 탭에서 둥근 칩으로 바뀌고, 고른 칩은 주 색 바탕입니다.
+- `frontend/src/app.tsx`: the feeling feedback in the journal editor is now `ToggleChips`. The caller keeps the pick-one rule. Pressing another value switches to it, and pressing the selected value again clears it. This is the same as before.
+- The group name changes from `체감 피드백 (선택)` (feeling feedback (optional)) to `체감 피드백` (feeling feedback). The `aria-pressed` of each chip is unchanged. Arrow keys move between chips.
+- `frontend/src/style.css`: removed `.tabs`, `.feedback-field`, and the related responsive and contrast rules.
+- `docs/design-system.md`: documented this use of `ToggleChips`.
+- The look changes from tabs to rounded chips, and the selected chip has the primary color as its background.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-- 포커스 표시: 다크에서 `ring/50`은 대비가 약 1.9:1(리뷰 계산)이라 키보드 포커스가 잘 보이지 않습니다. `ToggleChips`, `SegmentedControl`, `Switch`를 `ring-ring`으로 바꿨습니다. 대비는 약 4:1로 3:1 기준을 넘습니다(토큰 값으로 계산, 화면으로는 재지 않음).
-- 중앙 공통 컴포넌트(`Button` 등)도 `ring/50`을 씁니다. 중앙 관리 파일이라 여기서 고치지 않았습니다.
-- 저장 중에는 Radix 묶음의 `tabIndex=0` 때문에 Tab이 보이지 않는 곳에 한 번 멈출 수 있습니다. 값은 바뀌지 않아 그대로 뒀습니다.
-- 쓸모없어진 `style.css` 주석을 지웠습니다.
+- Focus indicator: in dark mode, `ring/50` has a contrast of about 1.9:1 (reviewer's calculation), so keyboard focus is hard to see. `ToggleChips`, `SegmentedControl`, and `Switch` now use `ring-ring`. The contrast is about 4:1, which passes the 3:1 bar (calculated from the token values, not measured on screen).
+- The central shared components (`Button` and others) also use `ring/50`. They are centrally managed files, so they were not fixed here.
+- While saving, the Radix group's `tabIndex=0` can make Tab stop once at an invisible place. The value does not change, so this was left as is.
+- Removed an obsolete `style.css` comment.
 
-## 테스트
+## Tests
 
-- `frontend/src/set-completion.test.tsx`: 다른 값을 누르면 하나만 남는 검증을 추가했습니다.
-- 시각 기준선 2장 갱신: 체감 피드백이 보이는 일지 편집 모달 768px, 1280px입니다. CI 실행의 실패 2건이 모두 이 시각 회귀였고, axe를 포함한 나머지 76건은 통과했습니다. `workout-editor-1280`을 직접 봤습니다.
-- 로컬 전체 `npm run check`는 메모리 부족 이력이 있어 돌리지 않았습니다. e2e는 PR CI로 확인합니다.
+- `frontend/src/set-completion.test.tsx`: added a check that only one value remains when another is pressed.
+- Updated 2 visual baselines: the journal edit modal at 768px and 1280px, where the feeling feedback is visible. Both CI failures were these visual regressions, and the other 76 checks, including axe, passed. I looked at `workout-editor-1280` directly.
+- I did not run the full local `npm run check` because it has a history of running out of memory. e2e is checked by PR CI.

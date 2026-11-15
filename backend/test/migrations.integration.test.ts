@@ -128,16 +128,13 @@ test(
           ? { ...f, sql: f.sql + '\n-- edited', checksum: checksum(f.sql + '\n-- edited') }
           : f,
       );
-      await assert.rejects(
-        migrate(client, edited),
-        new RegExp(`내용이 바뀌었습니다: ${files[1].name}`),
-      );
+      await assert.rejects(migrate(client, edited), new RegExp(`was modified: ${files[1].name}`));
       const broken: Migration = {
         name: '999_broken.sql',
         sql: 'CREATE TABLE half_applied(id integer); SELECT 1/0;',
         checksum: checksum('broken'),
       };
-      await assert.rejects(migrate(client, [...files, broken]), /999_broken\.sql 적용 실패/);
+      await assert.rejects(migrate(client, [...files, broken]), /999_broken\.sql failed to apply/);
       assert.equal(
         (await client.query(`SELECT to_regclass('${schema}.half_applied') t`)).rows[0].t,
         null,

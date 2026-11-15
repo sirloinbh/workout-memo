@@ -183,7 +183,7 @@ test(
         withMachine.splits[0].exercises[0].machine_id = missing;
         const rejected = await call('/routines', 'POST', withMachine);
         assert.equal(rejected.status, 400);
-        assert.match((rejected.data as { error: string }).error, /머신을 찾을 수 없습니다/);
+        assert.match((rejected.data as { error: string }).error, /could not be found/);
         assert.equal(
           (await pool.query("SELECT id FROM routines WHERE plan->>'name' = $1", [name])).rowCount,
           1,

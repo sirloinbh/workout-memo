@@ -14,14 +14,14 @@ function mount() {
   const api = mockApi(({ method, url, body }) => {
     if (url.pathname === '/api/exercise-weight-steps' && method === 'PUT') {
       step = (body as { weight_step: number | null }).weight_step;
-      return { exercise: '벤치프레스', weight_step: step ?? 5, custom: step !== null };
+      return { exercise: 'Benchpress', weight_step: step ?? 5, custom: step !== null };
     }
     if (url.pathname === '/api/goal-suggestion') {
       const name = url.searchParams.get('exercise');
       const weightStep = step ?? 5;
-      return name === '벤치프레스'
+      return name === 'Benchpress'
         ? {
-            exercise: '벤치프레스',
+            exercise: 'Benchpress',
             weight_step: weightStep,
             custom: step !== null,
             base: { source: 'record', weight: 100, reps: 8 },
@@ -35,40 +35,42 @@ function mount() {
   return { user: userEvent.setup(), requests: api.requests };
 }
 const dialog = () => screen.getByRole('dialog');
-const box = () => within(dialog()).getByRole('region', { name: '다음 목표 제안' });
+const box = () => within(dialog()).getByRole('region', { name: 'Suggest next goal' });
 
 test('the suggestion fills the target and the increment is saved per exercise', async () => {
   const ui = mount();
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await ui.user.click(screen.getByRole('button', { name: '목표 추가' }));
-  await ui.user.type(within(dialog()).getByLabelText('운동명'), '벤치프레스');
-  await waitFor(() => expect(box().textContent).toMatch(/제안 105 kg · 직전 기록 100 kg \+ 5 kg/));
-  await ui.user.click(within(box()).getByRole('button', { name: '제안 적용' }));
-  expect(within(dialog()).getByLabelText('목표 총중량 (kg)')).toHaveValue(105);
+  await openPage('My Goals', ui.user);
+  await ui.user.click(screen.getByRole('button', { name: 'Add goal' }));
+  await ui.user.type(within(dialog()).getByLabelText('Exercise name'), 'Benchpress');
+  await waitFor(() =>
+    expect(box().textContent).toMatch(/Suggestion 105 kg · Previous record 100 kg \+ 5 kg/),
+  );
+  await ui.user.click(within(box()).getByRole('button', { name: 'Apply suggestion' }));
+  expect(within(dialog()).getByLabelText('Goal total weight (kg)')).toHaveValue(105);
 
-  const stepInput = within(box()).getByLabelText('이 운동의 증량 단위 (kg)');
+  const stepInput = within(box()).getByLabelText('Increase step for this exercise (kg)');
   expect(stepInput).toHaveValue(5);
   await ui.user.clear(stepInput);
   await ui.user.type(stepInput, '2.5');
-  await ui.user.click(within(box()).getByRole('button', { name: '증량 단위 저장' }));
+  await ui.user.click(within(box()).getByRole('button', { name: 'Save increase step' }));
   await waitFor(() =>
-    expect(box().textContent).toMatch(/제안 102.5 kg · 직전 기록 100 kg \+ 2.5 kg/),
+    expect(box().textContent).toMatch(/Suggestion 102.5 kg · Previous record 100 kg \+ 2.5 kg/),
   );
   const put = ui.requests.find((r) => r.method === 'PUT')!;
-  expect(put.body).toEqual({ exercise: '벤치프레스', weight_step: 2.5 });
+  expect(put.body).toEqual({ exercise: 'Benchpress', weight_step: 2.5 });
 
   // An invalid increment is explained and not sent.
   await ui.user.clear(stepInput);
   await ui.user.type(stepInput, '0');
-  await ui.user.click(within(box()).getByRole('button', { name: '증량 단위 저장' }));
-  expect(box().textContent).toMatch(/증량 단위는 0보다 커야 합니다/);
+  await ui.user.click(within(box()).getByRole('button', { name: 'Save increase step' }));
+  expect(box().textContent).toMatch(/The increase step must be greater than 0/);
   expect(ui.requests.filter((r) => r.method === 'PUT')).toHaveLength(1);
 
-  await ui.user.click(within(box()).getByRole('button', { name: '기본값(5 kg)으로' }));
-  await waitFor(() => expect(box().textContent).toMatch(/제안 105 kg/));
+  await ui.user.click(within(box()).getByRole('button', { name: 'To the default (5 kg)' }));
+  await waitFor(() => expect(box().textContent).toMatch(/Suggestion 105 kg/));
   expect(ui.requests.filter((r) => r.method === 'PUT').at(-1)!.body).toEqual({
-    exercise: '벤치프레스',
+    exercise: 'Benchpress',
     weight_step: null,
   });
 });
@@ -76,11 +78,9 @@ test('the suggestion fills the target and the increment is saved per exercise', 
 test('without a goal or record there is no suggestion', async () => {
   const ui = mount();
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await ui.user.click(screen.getByRole('button', { name: '목표 추가' }));
-  await ui.user.type(within(dialog()).getByLabelText('운동명'), '새 운동');
-  await waitFor(() =>
-    expect(box().textContent).toMatch(/목표나 완료 기록이 없어 제안할 수 없습니다/),
-  );
-  expect(within(box()).queryByRole('button', { name: '제안 적용' })).toBeNull();
+  await openPage('My Goals', ui.user);
+  await ui.user.click(screen.getByRole('button', { name: 'Add goal' }));
+  await ui.user.type(within(dialog()).getByLabelText('Exercise name'), 'New exercise');
+  await waitFor(() => expect(box().textContent).toMatch(/has no goals or completed records/));
+  expect(within(box()).queryByRole('button', { name: 'Apply suggestion' })).toBeNull();
 });

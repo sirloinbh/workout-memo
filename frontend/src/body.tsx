@@ -35,11 +35,17 @@ type WorkoutLike = {
 
 // Units match the API: kg and %, stored with at most two decimals.
 const metrics: { key: MetricKey; label: string; unit: string; min: string; max: string }[] = [
-  { key: 'body_weight_kg', label: '체중', unit: 'kg', min: '0.01', max: '999.99' },
-  { key: 'body_fat_percent', label: '체지방률', unit: '%', min: '0', max: '100' },
-  { key: 'skeletal_muscle_kg', label: '골격근량', unit: 'kg', min: '0.01', max: '999.99' },
+  { key: 'body_weight_kg', label: 'Weight', unit: 'kg', min: '0.01', max: '999.99' },
+  { key: 'body_fat_percent', label: 'Body fat', unit: '%', min: '0', max: '100' },
+  {
+    key: 'skeletal_muscle_kg',
+    label: 'Skeletal muscle mass',
+    unit: 'kg',
+    min: '0.01',
+    max: '999.99',
+  },
 ];
-const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
+const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n);
 const day = (value: string) => new Date(value.slice(0, 10) + 'T12:00:00Z');
 const days = (from: string, to: string) => Math.round((+day(to) - +day(from)) / 86400000);
 
@@ -54,7 +60,7 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? '신체 기록 요청에 실패했습니다');
+    if (!res.ok) throw Error(data.error ?? 'The body record request failed');
     return data;
   } finally {
     clearTimeout(timer);
@@ -107,13 +113,13 @@ export function BodyMeasurements({
       const raw = draft[m.key].trim();
       const value = raw === '' ? null : Number(raw);
       if (value !== null && !Number.isFinite(value)) {
-        setFormError(`${m.label} 값을 숫자로 입력하세요`);
+        setFormError(`Enter ${m.label} as a number`);
         return;
       }
       body[m.key] = value;
     }
     if (metrics.every((m) => body[m.key] === null)) {
-      setFormError('체중, 체지방률, 골격근량 중 하나 이상을 입력하세요');
+      setFormError('Enter at least one of weight, body fat, or skeletal muscle mass');
       return;
     }
     setSaving(true);
@@ -121,7 +127,7 @@ export function BodyMeasurements({
     try {
       await request(draft.id ? '/' + draft.id : '', draft.id ? 'PUT' : 'POST', body);
       setDraft(null);
-      setStatus('신체 기록을 저장했습니다');
+      setStatus('Body record saved');
       await load();
     } catch (e) {
       // Keep the input so the user can change the date or edit the existing record.
@@ -131,11 +137,11 @@ export function BodyMeasurements({
     }
   }
   async function remove(row: BodyRecord) {
-    if (saving || !confirm(`${row.date.slice(0, 10)} 신체 기록을 삭제할까요?`)) return;
+    if (saving || !confirm(`Delete the body record for ${row.date.slice(0, 10)}?`)) return;
     setSaving(true);
     try {
       await request('/' + row.id, 'DELETE');
-      setStatus('신체 기록을 삭제했습니다');
+      setStatus('Body record deleted');
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -179,8 +185,8 @@ export function BodyMeasurements({
     <section>
       <PageHeader
         eyebrow="BODY CHANGES, SIDE BY SIDE"
-        title="몸의 변화도 함께 기록해요"
-        description="체중·체지방률·골격근량을 날짜별로 기록합니다. 측정하지 않은 값은 비워두면 미입력으로 보관하며 추정하지 않습니다."
+        title="Track your body changes too"
+        description="Record weight, body fat, and skeletal muscle mass by date. Values you did not measure can be left blank and are stored as not entered; nothing is estimated."
         actions={
           <>
             <Button
@@ -188,11 +194,11 @@ export function BodyMeasurements({
               aria-expanded={importing}
               onClick={() => setImporting(!importing)}
             >
-              인바디 가져오기
+              Import InBody
             </Button>
             <Button disabled={saving} onClick={() => edit()}>
               <Plus aria-hidden />
-              신체 기록 추가
+              Add body record
             </Button>
           </>
         }
@@ -203,7 +209,7 @@ export function BodyMeasurements({
           className="mt-4"
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
-              다시 연결
+              Reconnect
             </Button>
           }
         >
@@ -218,7 +224,7 @@ export function BodyMeasurements({
         <Card className="mt-4 gap-4 shadow-none">
           <CardHeader>
             <CardTitle asHeading="h2" className="text-body font-semibold">
-              {draft.id ? '신체 기록 수정' : '새 신체 기록'}
+              {draft.id ? 'Edit body record' : 'New body record'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -234,7 +240,7 @@ export function BodyMeasurements({
                 className="m-0 grid min-w-0 grid-cols-2 gap-x-3 border-0 p-0 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1"
               >
                 <Label className={fieldLabel}>
-                  측정 날짜
+                  Measurement date
                   <Input
                     className={touchText}
                     type="date"
@@ -253,7 +259,7 @@ export function BodyMeasurements({
                       min={m.min}
                       max={m.max}
                       step="0.01"
-                      placeholder="미입력"
+                      placeholder="Not entered"
                       value={draft[m.key]}
                       onChange={(e) => setDraft({ ...draft, [m.key]: e.target.value })}
                     />
@@ -261,13 +267,13 @@ export function BodyMeasurements({
                 ))}
               </fieldset>
               <p className={hint}>
-                날짜마다 한 개의 기록만 저장합니다. 이미 기록한 날짜는 목록에서 수정하세요. 값은
-                소수점 둘째 자리까지 저장하며, 하나 이상 입력해야 합니다.
+                Only one record is saved per date. Edit an already recorded date from the list.
+                Values are saved to 2 decimal places, and at least one is required.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button disabled={saving}>
                   {saving && <Spinner size="sm" aria-hidden />}
-                  {saving ? '저장 중…' : '신체 기록 저장'}
+                  {saving ? 'Saving…' : 'Save body record'}
                 </Button>
                 <Button
                   type="button"
@@ -275,7 +281,7 @@ export function BodyMeasurements({
                   disabled={saving}
                   onClick={() => setDraft(null)}
                 >
-                  취소
+                  Cancel
                 </Button>
               </div>
             </form>
@@ -292,36 +298,36 @@ export function BodyMeasurements({
       {/* A failed load has no rows to judge, so it must not claim the values are missing. */}
       {!loading && !error && missing.length > 0 && (
         <p className={cn(hint, 'mt-4')}>
-          이 기간에 입력한 값이 없는 지표: {missing.map((m) => m.label).join(' · ')}
+          Metrics with no values in this period: {missing.map((m) => m.label).join(' · ')}
         </p>
       )}
       <p className={cn(hint, 'mt-2 mb-4')}>
-        같은 날의 운동 볼륨을 나란히 보여줄 뿐이며, 운동과 신체 변화 사이의 인과 관계를 뜻하지
-        않습니다. 의학적 판정이나 권장 범위는 제공하지 않습니다.
+        This only shows same-day workout volume side by side and does not imply a causal link
+        between training and body changes. No medical judgment or recommended range is provided.
       </p>
       <Card className="gap-0 py-0 shadow-none">
         <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
           <CardTitle asHeading="h2" className="flex items-center gap-2 text-body font-semibold">
-            신체 기록{' '}
+            Body records{' '}
             <Badge variant="secondary" className="text-xs">
               {rows.length}
             </Badge>
           </CardTitle>
           <CardDescription className="text-caption">
-            선택한 기간의 측정값과 같은 날 운동 볼륨
+            Measurements for the selected period and same-day workout volume
           </CardDescription>
         </CardHeader>
         {/* #173: a reload keeps the list on screen; the status line is for screen readers. */}
         {loading && rows.length > 0 && (
           <p role="status" className="sr-only">
-            기록을 불러오는 중…
+            Loading records…
           </p>
         )}
         {loading && rows.length === 0 ? (
           // #173: row placeholders while the list first loads; the hidden line keeps the status.
-          <div aria-busy="true" aria-label="신체 기록 목록" className="px-6 py-6">
+          <div aria-busy="true" aria-label="Body record list" className="px-6 py-6">
             <p role="status" className="sr-only">
-              기록을 불러오는 중…
+              Loading records…
             </p>
             <SkeletonList />
           </div>
@@ -330,11 +336,11 @@ export function BodyMeasurements({
             className="m-4 md:m-6"
             headingLevel="h3"
             icon={<Scale />}
-            title="선택한 기간에 신체 기록이 없습니다"
-            description="측정한 날의 값만 입력하세요. 그래프는 기록한 값만 표시합니다."
+            title="No body records in the selected period"
+            description="Enter values only for the days you measured. The chart shows only the values you recorded."
           />
         ) : (
-          <List aria-label="신체 기록" className="px-4 py-1 md:px-6 md:py-2.5">
+          <List aria-label="Body records" className="px-4 py-1 md:px-6 md:py-2.5">
             {[...rows].reverse().map((row) => {
               const date = row.date.slice(0, 10);
               const volume = volumeByDate.get(date);
@@ -346,14 +352,14 @@ export function BodyMeasurements({
                       {metrics
                         .map(
                           (m) =>
-                            `${m.label} ${row[m.key] === null ? '미입력' : fmt(row[m.key]!) + ' ' + m.unit}`,
+                            `${m.label} ${row[m.key] === null ? 'Not entered' : fmt(row[m.key]!) + ' ' + m.unit}`,
                         )
                         .join(' · ')}
                     </p>
                     <p className="mt-1 text-meta text-muted-foreground">
                       {volume === undefined
-                        ? '같은 날 운동 기록 없음'
-                        : `같은 날 운동 볼륨 ${fmt(volume)} kg`}
+                        ? 'No workout records on the same day'
+                        : `Same-day workout volume ${fmt(volume)} kg`}
                     </p>
                   </div>
                   <div className="flex gap-1 max-md:ml-auto">
@@ -361,19 +367,19 @@ export function BodyMeasurements({
                       variant="ghost"
                       size="sm"
                       disabled={saving}
-                      aria-label={`${date} 신체 기록 수정`}
+                      aria-label={`Edit body record ${date}`}
                       onClick={() => edit(row)}
                     >
-                      수정
+                      Edit
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       disabled={saving}
-                      aria-label={`${date} 신체 기록 삭제`}
+                      aria-label={`Delete body record ${date}`}
                       onClick={() => void remove(row)}
                     >
-                      삭제
+                      Delete
                     </Button>
                   </div>
                 </ListItem>
@@ -423,7 +429,7 @@ function Trend({
       data-slot="body-trend"
       className="m-0 rounded-xl border bg-card p-4 text-card-foreground"
       role="img"
-      aria-label={`${metric.label} 추이 (${metric.unit}): ${points
+      aria-label={`${metric.label} trend (${metric.unit}): ${points
         .map((p) => `${p.date} ${fmt(p.value)}`)
         .join(', ')}`}
     >
@@ -434,7 +440,7 @@ function Trend({
         <span>
           {change === null
             ? `${fmt(points[0].value)} ${metric.unit}`
-            : `첫 기록 대비 ${change > 0 ? '+' : ''}${fmt(change)} ${metric.unit}`}
+            : `${change > 0 ? '+' : ''}${fmt(change)} ${metric.unit} vs first record`}
         </span>
       </figcaption>
       <svg

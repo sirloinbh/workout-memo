@@ -12,8 +12,8 @@ export function DateStepper({
   value,
   onValueChange,
   onMove,
-  previousLabel = '이전 기간',
-  nextLabel = '다음 기간',
+  previousLabel = 'Previous period',
+  nextLabel = 'Next period',
   className,
 }: {
   label: string;

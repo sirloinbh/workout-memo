@@ -1,79 +1,79 @@
-# #64 공유 Zod 계약과 React Hook Form 항목별 입력 검증
+# #64 Shared Zod contract and per-field input validation with React Hook Form
 
-- 이슈: [#64](https://github.com/sirloinbh/workout-memo/issues/64) (로드맵 [#3](https://github.com/sirloinbh/workout-memo/issues/3) 3단계 화면 기반, 2단계 공유 계약)
-- 브랜치: `feat/64-shared-contract-forms`. #62(PR #63) 위에 쌓았다. 병합 순서는 #59 → #61 → #63 → 이 PR이다.
+- Issue: [#64](https://github.com/sirloinbh/workout-memo/issues/64) (roadmap [#3](https://github.com/sirloinbh/workout-memo/issues/3), step 3: screen foundation, and step 2: shared contract)
+- Branch: `feat/64-shared-contract-forms`. Stacked on #62 (PR #63). The merge order is #59 → #61 → #63 → this PR.
 
-## 목적
+## Purpose
 
-- 입력 규칙(날짜, 총중량 0~99999 kg, 반복 수 1~1000, 글자 수)은 서버 Zod 스키마에만 있었다. 화면은 HTML 속성으로 일부만 막았다.
-- 서버 오류는 "String must contain…" 같은 영어 기본 메시지로 한 줄에 표시되었다.
+- The input rules (dates, total weight 0 to 99999 kg, reps 1 to 1000, and text length) were only in the server Zod schema. The screen blocked only some of them with HTML attributes.
+- Server errors were shown on one line with default English messages such as "String must contain…".
 
-## 변경 — 2026-10-20
+## Change — 2026-10-20
 
-### 공유 계약
+### Shared contract
 
-- 원본 `shared/contract.ts`를 만들었다.
-  - 포함: 날짜, 일지·세트, 머신, 목표, 신체 기록 스키마와 `fieldErrors`(경로별 메시지).
-  - 메시지는 한국어이고, 조사는 마지막 글자의 받침에 맞춘다(예: 운동명을, 반복 수는).
-  - 목표 종료일 오류는 `deadline` 경로에 붙인다.
-- `scripts/contract.mjs`와 npm 스크립트
-  - `npm run contract:sync`: 원본을 `backend/src/contract.ts`, `frontend/src/contract.ts`에 복사한다.
-  - `npm run contract:check`: `npm run check`에 포함된다. 복제본이 다르면 실패하며, CRLF 차이는 무시한다.
-- workspace 패키지 대신 복제 방식을 쓴 이유: `frontend`·`backend` Docker 빌드 컨텍스트와 subtree 저장소가 각 디렉터리만으로 빌드되어야 한다. 이 방식은 기존 스킬 복제본(`skills/` → `.claude/skills/`)과도 같다.
-- `backend/src/domain.ts`는 공유 스키마를 re-export한다. 기존 import 경로와 서버 검증 위치는 그대로다. 루틴·조회 범위·공식 참고값 질의 스키마는 domain.ts에 남겼다.
-- 서버 400 응답은 이제 공유 스키마의 한국어 메시지를 반환한다. 영어 메시지에 의존하던 테스트는 없었다.
+- I created the source `shared/contract.ts`.
+  - It includes the schemas for dates, journals and sets, machines, goals, and body records, and `fieldErrors` (a message per path).
+  - The messages are in Korean, and the particles follow the final consonant of the last character (for example 운동명을 (exercise name, object particle), 반복 수는 (reps, topic particle)).
+  - The goal end date error is attached to the `deadline` path.
+- `scripts/contract.mjs` and npm scripts
+  - `npm run contract:sync`: copies the source to `backend/src/contract.ts` and `frontend/src/contract.ts`.
+  - `npm run contract:check`: it is included in `npm run check`. It fails if a copy differs, and ignores CRLF differences.
+- Why copying instead of a workspace package: the `frontend` and `backend` Docker build contexts and the subtree repos must each build from their own directory alone. This is also the same as the existing skill copies (`skills/` → `.claude/skills/`).
+- `backend/src/domain.ts` re-exports the shared schemas. The existing import paths and the place of server validation stay as they are. The routine, query range, and official reference value query schemas stay in domain.ts.
+- A server 400 response now returns the Korean messages of the shared schema. No test depended on the English messages.
 
-### 패키지
+### Packages
 
-사용자가 공급망 위험을 인지했다고 명시 승인한 뒤 설치했다.
+I installed them after the user's explicit approval that they are aware of the supply chain risk.
 
-- frontend에 설치: zod 3.25.76(백엔드와 같은 버전), react-hook-form 7.89.0, @hookform/resolvers 5.9.1. 정확한 버전으로 고정했고 `--ignore-scripts`를 썼다.
-- 새로 추가된 패키지는 2개(react-hook-form, @standard-schema/utils)이고, install 스크립트는 없다.
-- subtree용 `frontend/package-lock.json`은 `--before=2026-10-06`으로 다시 만들었다.
+- Installed in frontend: zod 3.25.76 (the same version as the backend), react-hook-form 7.89.0, and @hookform/resolvers 5.9.1. Pinned to exact versions, with `--ignore-scripts`.
+- 2 packages were newly added (react-hook-form and @standard-schema/utils), and there is no install script.
+- I regenerated the `frontend/package-lock.json` for the subtree with `--before=2026-10-06`.
 
-### 화면
+### Screens
 
-- **목표 폼**: `GoalForm` 컴포넌트로 분리하고 React Hook Form + `zodResolver(goalSchema)`로 바꿨다.
-  - `noValidate`를 써서 브라우저 기본 메시지 대신 계약 메시지를 보여준다.
-  - 숫자는 `valueAsNumber`로 받는다. 빈 값은 "숫자로 입력하세요" 오류가 된다.
-- **일지 폼**: 초안·재시도·세트 완료 상태가 기존 상태와 localStorage 초안에 묶여 있어 RHF로 옮기지 않았다. 대신 저장 직전에 `workoutSchema.safeParse`로 검사한다.
-  - 실패하면 요청을 보내지 않는다. 상태를 "입력을 확인하세요 · 서버로 보내지 않았습니다"로 표시하고, 날짜·제목·세트 수·세트별 운동명/총중량/반복 수/RPE 오류를 보여준다.
-  - 서버로 보내는 본문과 재시도 지문(fingerprint)은 기존과 같다.
-- **머신 폼**: 저장 직전에 `machineSchema.safeParse`로 검사하고 브랜드·이름·기본중량 오류를 표시한다.
-- **접근성**: 오류 문구는 `label` 밖의 `.field-error`에 둔다. 입력란에는 `aria-invalid="true"`와 `aria-describedby`를 연결한다. 문구가 label 밖에 있으므로 입력란의 접근성 이름은 바뀌지 않는다.
-- 모달을 닫으면 남은 오류를 지운다.
+- **Goal form**: I split it into a `GoalForm` component and changed it to React Hook Form + `zodResolver(goalSchema)`.
+  - It uses `noValidate` to show the contract messages instead of the browser's default messages.
+  - Numbers are taken with `valueAsNumber`. An empty value becomes the error "숫자로 입력하세요" (enter a number).
+- **Journal form**: the draft, retry, and set completion state are tied to the existing state and the localStorage draft, so I did not move it to RHF. Instead, it checks with `workoutSchema.safeParse` right before saving.
+  - On failure it sends no request. It shows the status "입력을 확인하세요 · 서버로 보내지 않았습니다" (check your input · not sent to the server), and shows the errors for the date, title, number of sets, and each set's exercise name, total weight, reps, and RPE.
+  - The body sent to the server and the retry fingerprint are the same as before.
+- **Machine form**: it checks with `machineSchema.safeParse` right before saving and shows the brand, name, and default weight errors.
+- **Accessibility**: the error text goes in `.field-error` outside the `label`. The input gets `aria-invalid="true"` and `aria-describedby` linked. The text is outside the label, so the accessible name of the input does not change.
+- Closing the modal clears remaining errors.
 
-## 테스트
+## Tests
 
-새 테스트:
+New tests:
 
-- `frontend/src/forms.test.tsx` (3개)
-  - 목표: 빈 값 제출 시 운동명·총중량 오류, 종료일이 시작일보다 앞서면 종료일 오류, 요청은 0건이다. 올바르게 고치면 숫자 타입 본문으로 POST 1건이 전송된다.
-  - 일지: 총중량 100000과 두 번째 세트 운동명 누락이 각 입력란에 연결된다. 정상 필드에는 표시되지 않고 요청은 0건이다. 수정 후 3세트로 저장된다.
-  - 머신: 브랜드와 이름이 없으면 등록 요청 없이 오류를 보여준다.
-- `backend/test/contract.test.ts` (3개)
-  - 세트 경로별 한국어 메시지와 조사, 빈 세트 배열 오류
-  - 목표 종료일 오류가 `deadline` 경로에 붙는지
-  - API 400 응답이 같은 메시지를 반환하는지(저장소에 도달하지 않음)
-- `scripts/test/contract.test.mjs` (2개): 저장소 복제본이 원본과 일치하는지, 바뀌거나 없는 복제본을 찾고 CRLF 차이는 무시하는지
+- `frontend/src/forms.test.tsx` (3 tests)
+  - Goal: submitting empty values gives the exercise name and total weight errors, an end date before the start date gives the end date error, and there are 0 requests. After fixing it correctly, 1 POST is sent with a numeric body.
+  - Journal: a total weight of 100000 and a missing exercise name in the second set are linked to each input. They are not shown on the normal fields, and there are 0 requests. After a fix, it saves with 3 sets.
+  - Machine: without a brand and name, it shows errors with no create request.
+- `backend/test/contract.test.ts` (3 tests)
+  - The Korean messages per set path and the particles, and the empty set array error
+  - The goal end date error is attached to the `deadline` path
+  - The API 400 response returns the same messages (it does not reach storage)
+- `scripts/test/contract.test.mjs` (2 tests): the repo copies match the source, and it finds a changed or missing copy and ignores CRLF differences
 
-기존 테스트 수정:
+Existing test change:
 
-- `frontend/src/set-completion.test.tsx`의 `openNew`가 기본 3세트 모두에 운동명을 채우도록 바꿨다. 기존 테스트는 2·3번째 세트를 빈 운동명으로 저장했다. 실제 서버라면 400으로 거부하는 입력을 목업 서버만 받아준 것이다. 검증 대상(세트 완료 상태 전송)은 바꾸지 않았다.
+- I changed `openNew` in `frontend/src/set-completion.test.tsx` to fill the exercise name in all 3 default sets. The old test saved the 2nd and 3rd sets with an empty exercise name. A real server would reject that input with 400, and only the mock server accepted it. The thing under test (sending the set completion state) is unchanged.
 
-실행 결과(Node 24.21.0, 전용 테스트 DB, 로컬 Chrome):
+Run results (Node 24.21.0, dedicated test DB, local Chrome):
 
-| 검사                                    | 결과                           |
-| --------------------------------------- | ------------------------------ |
-| `npm run check` (`contract:check` 포함) | **EXIT=0**                     |
-| 백엔드 node:test (DB 포함)              | **275 pass / 0 fail / 0 skip** |
-| 프론트 Vitest                           | **85 pass / 0 fail**           |
-| 계약 동기화 테스트                      | 2 pass                         |
-| `npm run test:e2e`                      | **2 passed**                   |
-| `docker build ./frontend`, `./backend`  | 모두 성공                      |
+| Check                                        | Result                         |
+| -------------------------------------------- | ------------------------------ |
+| `npm run check` (including `contract:check`) | **EXIT=0**                     |
+| Backend node:test (with DB)                  | **275 pass / 0 fail / 0 skip** |
+| Frontend Vitest                              | **85 pass / 0 fail**           |
+| Contract sync test                           | 2 pass                         |
+| `npm run test:e2e`                           | **2 passed**                   |
+| `docker build ./frontend`, `./backend`       | Both succeed                   |
 
-## 제한·후속
+## Limits and follow-up
 
-- 일지·머신 폼은 RHF로 옮기지 않았다. 초안 저장·재시도 키·세트 완료 연타 방지가 기존 상태 로직에 묶여 있어서다. 이 동작을 RHF로 옮기려면 별도 이슈에서 초안 저장 구조부터 나눠야 한다.
-- 루틴·신체 기록 폼은 기존 서버 검증을 그대로 쓴다. 신체 기록 스키마는 계약에 포함했으므로 화면 적용은 후속 작업이다.
-- OpenAPI 문서 생성은 2단계 잔여 작업으로 별도 진행한다.
+- I did not move the journal and machine forms to RHF. The draft saving, the retry key, and the protection against repeated taps on set complete are tied to the existing state logic. To move this behavior to RHF, a separate issue must first split the draft saving structure.
+- The routine and body record forms use the existing server validation as it is. The body record schema is in the contract, so applying it to the screen is follow-up work.
+- Generating OpenAPI docs proceeds separately as the remaining work of step 2.

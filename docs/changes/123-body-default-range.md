@@ -1,74 +1,74 @@
-# #123 신체 기록 기본 조회 기간 1주로 빈 그래프만 보이는 문제
+# #123 Empty charts shown because the body records default range is 1 week
 
-- 이슈: [#123](https://github.com/sirloinbh/workout-memo/issues/123)
-- 브랜치: `fix/123-body-default-range` (main `b533fc1`에서 시작, DB·API 변경 없음)
+- Issue: [#123](https://github.com/sirloinbh/workout-memo/issues/123)
+- Branch: `fix/123-body-default-range` (started from main `b533fc1`, no DB or API change)
 
-## 목적
+## Purpose
 
-체중·인바디는 보통 주 1회 이하로 측정한다. 기본 기간이 `1주`라서 지난주에 측정했으면 신체 기록 첫 화면에 빈 그래프 카드 3개와 "기록이 없습니다"만 보였다([UX 점검](../ux-audit/2026-10-21.md) U-09).
+Weight and InBody are usually measured once a week or less. Because the default range was `1주` (1 week), if the last measurement was last week, the first screen of body records showed 3 empty chart cards and only "기록이 없습니다" (no records) ([UX audit](../ux-audit/2026-10-21.md) U-09).
 
-## 변경 — fix: 신체 기록 기본 기간 12주와 빈 지표 한 줄 안내
+## Change — fix: 12-week default range for body records and a one-line notice for empty metrics
 
-- 기본 기간(`frontend/src/app.tsx`)
-  - 사용자가 기간 프리셋을 고르기 전에는 신체 기록 페이지만 `12주`로 시작한다. 대시보드·운동 일지는 그대로 `1주`로 시작한다.
-  - 프리셋을 한 번 고르면 지금처럼 세 페이지가 같은 기간을 함께 쓴다(#17).
-  - 직접 선택한 구간(`?from&to`, #85)은 그대로 모든 기본값보다 우선한다. 주소의 구간이 잘못됐을 때 보여 주는 "기본 기간"은 신체 기록에서는 12주다.
-  - "마지막 기록이 들어가는 기간을 기본으로" 하는 방식은 고르지 않았다. 기록을 먼저 조회해야 기간이 정해져서 요청이 두 번 필요하다. 12주(84일)면 주 1회 측정 기준으로 점이 12개 안팎이라 추이를 볼 수 있다.
-- 빈 지표(`frontend/src/body.tsx`, `frontend/src/style.css`)
-  - 선택한 기간에 값이 하나도 없는 지표는 그래프 카드를 그리지 않는다. 대신 그래프 아래에 한 줄로 알린다. 예: `이 기간에 입력한 값이 없는 지표: 체지방률 · 골격근량`
-  - 그래프(`Trend`)는 값이 하나 이상인 지표만 그리므로, 카드 안의 빈 상태 문구(`chart-empty`)와 "기록 없음" 분기를 지웠다.
+- Default range (`frontend/src/app.tsx`)
+  - Until the user picks a range preset, only the body records page starts with `12주` (12 weeks). The dashboard and the workout log still start with `1주`.
+  - Once a preset is picked, the three pages share the same range as now (#17).
+  - A range picked directly (`?from&to`, #85) still takes priority over every default. The "default range" shown when the range in the URL is invalid is 12 weeks on body records.
+  - I did not choose the approach of "default to the range that contains the last record". The records would have to be queried first to decide the range, which needs two requests. With 12 weeks (84 days) and one measurement a week, there are about 12 points, which is enough to see a trend.
+- Empty metrics (`frontend/src/body.tsx`, `frontend/src/style.css`)
+  - A metric that has no value at all in the selected range does not get a chart card. Instead, one line below the charts tells about it. Example: `이 기간에 입력한 값이 없는 지표: 체지방률 · 골격근량` (Metrics with no entered value in this period: body fat percentage · skeletal muscle mass)
+  - The chart (`Trend`) draws only metrics that have at least one value, so the empty-state text inside the card (`chart-empty`) and the "기록 없음" (no records) branch were removed.
 
-## 테스트
+## Tests
 
 - `frontend/src/body.test.tsx`
-  - 추가: 월요일(2024-03-11)에 처음 열면 12주(`2023-12-19`~`2024-03-11`)를 요청하고 `12주` 탭이 선택돼 있다. 지난주 기록만 있어도 그래프 3개에 점이 그려진다. 이 테스트는 수정 전 코드에서 1주(`2024-03-11`~`2024-03-17`)를 요청하므로 실패한다.
-  - 추가: 12주 기본값은 신체 기록에만 적용된다. 대시보드는 1주로 시작하고, `4주`를 고른 뒤 신체 기록으로 오면 4주를 유지한다.
-  - 수정: 빈 기간에는 그래프 카드가 없고, 세 지표를 한 줄로 안내한다(기존에는 빈 그래프 3개를 확인했다).
-  - 수정: 1주 기준 기존 시나리오(`openWeek`)는 기본값이 12주로 바뀌어서 `1주`를 먼저 누른다. 검증하는 내용은 그대로다.
-- 시각 회귀 기준선: `e2e/__screenshots__/ui-visual.spec.ts/body-{360,390,768,1280}.png` 4장을 갱신했다(아래 "시각 기준선 갱신").
+  - Added: opening it for the first time on a Monday (2024-03-11) requests 12 weeks (`2023-12-19` to `2024-03-11`) and the `12주` tab is selected. Even with only last week's record, the 3 charts show points. This test fails on the code before the fix, because it requests 1 week (`2024-03-11` to `2024-03-17`).
+  - Added: the 12-week default applies only to body records. The dashboard starts with 1 week, and if `4주` (4 weeks) is picked and the user comes to body records, 4 weeks is kept.
+  - Changed: an empty range has no chart cards, and the three metrics are noted in one line (before, it checked for 3 empty charts).
+  - Changed: the existing 1-week scenario (`openWeek`) now clicks `1주` first because the default became 12 weeks. What it verifies is the same.
+- Visual regression baselines: updated 4 images `e2e/__screenshots__/ui-visual.spec.ts/body-{360,390,768,1280}.png` (see "Visual baseline update" below).
 
-## 검증 — 2026-10-30
+## Verification — 2026-10-30
 
-로컬 Node 24.21.0(Volta)에서 실행했다. `npm ci --ignore-scripts`는 사용자가 직접 실행했고 `.standards/ioc-scan.mjs`는 의심 항목 없음이었다.
+Run on local Node 24.21.0 (Volta). `npm ci --ignore-scripts` was run by the user directly, and `.standards/ioc-scan.mjs` found no suspicious item.
 
-- 회귀 확인: 수정 전 코드(`app.tsx`·`body.tsx`·`style.css`만 되돌림)에서 `npm run test -w frontend -- src/body.test.tsx`를 실행했다. 6개 중 새 테스트 2개(12주 기본값, 빈 지표 한 줄 안내)가 실패했다. 수정 후에는 6개 모두 통과했다.
-- 관련 화면 테스트: `body`·`custom-range`·`period`·`routing`·`inbody-import`를 실행해 39 pass였다.
-- `npm run check`(`TEST_DATABASE_URL` 미설정)
-  - format·lint·contract·typecheck 통과
-  - 백엔드 206 pass, 35 skip(DB 통합 테스트는 미실행이라 통과로 세지 않는다)
-  - 프론트 175 pass, 1 fail. 실패한 `src/test/contract-api.test.ts`의 "계약에 없는 요청은 거부" 검사는 이 변경과 관계없다. 이 PC의 `localhost:3000`에서 다른 프로젝트(qesg-channel) 서버가 응답해 요청이 거부되지 않았다(응답 헤더 `x-powered-by: Nuxt`). 중앙 관리 파일이라 여기서 고치지 않는다.
-  - 실패로 멈춘 뒤 남은 단계를 따로 실행했다: `test:skills` 4 pass, `test:docs` 3 pass, `build` 통과.
-- `npm run standards:check` 통과(중앙 `7a47662`).
-- e2e·시각 회귀·DB 통합 테스트는 로컬에서 실행하지 않았다. CI `e2e`와 DB 작업 결과로 확인한다.
+- Regression check: with the code before the fix (only `app.tsx`, `body.tsx`, and `style.css` reverted), I ran `npm run test -w frontend -- src/body.test.tsx`. Of 6, the 2 new tests (12-week default, one-line notice for empty metrics) failed. After the fix all 6 passed.
+- Related screen tests: I ran `body`, `custom-range`, `period`, `routing`, and `inbody-import`, and got 39 pass.
+- `npm run check` (`TEST_DATABASE_URL` not set)
+  - format, lint, contract, typecheck passed
+  - backend 206 pass, 35 skip (DB integration tests did not run, so they are not counted as passed)
+  - frontend 175 pass, 1 fail. The failed check "계약에 없는 요청은 거부" (requests not in the contract are rejected) in `src/test/contract-api.test.ts` has nothing to do with this change. On this PC, another project's server (qesg-channel) answered on `localhost:3000`, so the request was not rejected (response header `x-powered-by: Nuxt`). It is a centrally managed file, so it is not fixed here.
+  - After the failure stopped the run, I ran the remaining steps separately: `test:skills` 4 pass, `test:docs` 3 pass, `build` passed.
+- `npm run standards:check` passed (central `7a47662`).
+- e2e, visual regression, and DB integration tests were not run locally. They are checked with the CI `e2e` and DB jobs.
 
-## 1차 리뷰 — 2026-10-30
+## First review — 2026-10-30
 
-별도 에이전트가 읽기 전용으로 리뷰했다. 기본 기간, 직접 선택 구간, 잘못된 주소 대체, 쿼리 키, 페이지 이동에서는 회귀가 없었다. 지적은 1건이다.
+A separate agent reviewed read-only. There was no regression in the default range, the directly picked range, the fallback for an invalid URL, the query keys, or page navigation. There was 1 comment.
 
-- 지적: 조회가 실패하면 `rows`가 비어 있어서, 오류 알림 아래에 "값이 없는 지표: 체중 · 체지방률 · 골격근량"이 함께 보였다. 데이터가 없는 것처럼 잘못 안내한다.
-- 반영(fix: 조회 실패 시 빈 지표 안내 숨김): 안내는 조회가 성공했을 때만 보인다(`!error`).
-- 테스트: `body.test.tsx`에 "조회 실패 시 오류만 알리고 빈 지표 안내는 없다"를 추가했다. 보완 전 `body.tsx`로는 실패, 보완 후 `body.test.tsx` 7 pass였다.
-- 참고 의견(반영하지 않음): 신체 기록 페이지에서 `?from&to`·잘못된 주소를 따로 검사하는 테스트가 없다. 해당 분기는 이번에 바꾸지 않았고 기존 `custom-range.test.tsx`가 통과한다.
+- Comment: when the query failed, `rows` was empty, so "값이 없는 지표: 체중 · 체지방률 · 골격근량" (metrics with no value: weight · body fat percentage · skeletal muscle mass) was shown under the error notice. It wrongly tells that there is no data.
+- Applied (fix: hide the empty-metric notice when the query fails): the notice is shown only when the query succeeded (`!error`).
+- Test: added "조회 실패 시 오류만 알리고 빈 지표 안내는 없다" (when the query fails, only the error is shown and there is no empty-metric notice) to `body.test.tsx`. It failed with the `body.tsx` from before the fix and `body.test.tsx` had 7 pass after.
+- Note (not applied): there is no test that checks `?from&to` and an invalid URL separately on the body records page. I did not change that branch this time, and the existing `custom-range.test.tsx` passes.
 
-## 2차 리뷰 — 2026-10-30
+## Second review — 2026-10-30
 
-별도 에이전트가 1차 보완과 최종 diff 전체를 읽기 전용으로 리뷰했다. 보완점은 없었다.
+A separate agent reviewed the first fix and the whole final diff read-only. There were no further fixes.
 
-- 1차 지적은 `!error` 조건으로 해결됐고, 새 테스트도 올바르다.
-- `Trend`는 값이 하나 이상인 지표에만 그려진다. 그래서 빈 배열의 `Math.min`/`Math.max`로 Infinity·NaN이 생기는 경로가 없다.
-- docs 기록이 코드와 일치한다.
+- The first comment is resolved by the `!error` condition, and the new test is correct.
+- `Trend` is drawn only for metrics with at least one value. So there is no path where `Math.min`/`Math.max` of an empty array creates Infinity or NaN.
+- The docs record matches the code.
 
-## 시각 기준선 갱신 — 2026-10-30
+## Visual baseline update — 2026-10-30
 
-- CI 실행 `41005592990`(head `bd90707`)의 `e2e-visual`이 신체 기록 4장에서만 실패했다. 예: 390px 기준 1350px → 1748px 높이.
-- 같은 실행의 `visual-baselines` 아티팩트를 받아 기존 기준선과 파일 단위로 비교했다. 달라진 파일은 `body-*.png` 4장뿐이었다.
-- 390px 이미지를 전후로 직접 확인했다. 의도한 변화만 있었다.
-  - `12주` 탭이 선택됐다.
-  - 기간이 `2026-07-24 — 2026-10-15`로 바뀌었다.
-  - 그래프 3개에 추이 선이 그려졌다.
-  - 기록이 1건에서 5건으로 늘었다.
-- 4장을 아티팩트 이미지로 교체했다.
+- The `e2e-visual` of CI run `41005592990` (head `bd90707`) failed only on the 4 body records images. Example: at 390px, height 1350px → 1748px.
+- I downloaded the `visual-baselines` artifact of the same run and compared it file by file with the existing baselines. Only the 4 `body-*.png` files differed.
+- I checked the 390px image before and after directly. Only the intended changes were there.
+  - The `12주` tab is selected.
+  - The range changed to `2026-07-24 — 2026-10-15`.
+  - Trend lines are drawn in the 3 charts.
+  - Records grew from 1 to 5.
+- I replaced the 4 images with the artifact images.
 
-## 제한·후속
+## Limits and follow-up
 
-- 측정 간격이 12주보다 긴 사용자는 여전히 빈 화면을 볼 수 있다. 그때는 기간 탭이나 "직접 선택"으로 넓혀야 한다.
+- A user whose measurement interval is longer than 12 weeks can still see an empty screen. They then have to widen the range with the range tabs or "직접 선택" (custom range).

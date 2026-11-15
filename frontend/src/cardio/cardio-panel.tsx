@@ -157,9 +157,12 @@ export function CardioPanel({
         <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
           <CardTitle asHeading="h2" className="flex items-center gap-2 text-body font-semibold">
             Cardio records{' '}
-            <Badge variant="secondary" className="text-xs">
-              {sessions.length}
-            </Badge>
+            {/* #173: no count until the records arrive, so the first load does not claim 0. */}
+            {!loading && (
+              <Badge variant="secondary" className="text-xs">
+                {sessions.length}
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription className="text-caption">
             {from} ~ {to}

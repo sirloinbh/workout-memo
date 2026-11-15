@@ -23,8 +23,16 @@ After this, no feature screen shows only "loading" text (the done criterion of #
 
 Production build (`npm run build -w frontend`) served on localhost with a stub API that holds the cardio list and delays the save, in Chrome at 390x844 and 1440x900: the placeholder rows appear under the card header and buttons, and the save button shows the spinner and is disabled.
 
-- Seen but not changed: the count badge next to "Cardio records" shows 0 while the list loads.
+- The count badge next to "Cardio records" showed 0 while the list loaded; fixed in review round 1 (below).
 
 ## Checks
 
 - `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm run test:docs`: passed. The full `npm run check` was run in parts because a full local run was stopped for low memory earlier today; CI `verify` runs it whole.
+
+## Review round 1 (2026-11-16)
+
+An independent read-only review found nothing blocking (same pattern as `cardio-records.tsx` and `body.tsx`, no duplicate names because the busy region and the list never render together, import preview mode unaffected, no e2e spec depends on the visible text, no other loading-only screen left).
+
+- suggestion: the count badge showed 0 during the first load. **Fixed:** the badge is hidden until the records arrive; the first-load test checks the heading has no count while loading and the real count after.
+- nitpick: the test finds the busy region with a plain `[aria-busy]` query. Not changed: only the panel is mounted in that test.
+- `npm run test -w frontend -- src/cardio`: 9 files, 78 tests passed; `npm run lint` and `npm run format:check` passed.

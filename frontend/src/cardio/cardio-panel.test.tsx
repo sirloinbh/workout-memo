@@ -595,8 +595,13 @@ test('the first load shows placeholders and a screen-reader status, then the lis
   expect(screen.getByText('Loading records…')).toHaveClass('sr-only');
   for (const el of busy.querySelectorAll('[data-slot="skeleton"]'))
     expect(el).toHaveAttribute('aria-hidden', 'true');
+  // No count yet: the heading does not claim 0 records while they load.
+  expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/^Cardio records$/);
   answer.resolve(fixture());
   expect(await list()).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+    new RegExp(`^Cardio records ${fixture().length}$`),
+  );
   expect(document.querySelector('[aria-busy="true"]')).toBeNull();
 });
 

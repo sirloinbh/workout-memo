@@ -6,10 +6,10 @@ import type { Pool } from 'pg';
 import { createApp } from '../src/app.js';
 import { fieldErrors, goalSchema, workoutSchema } from '../src/contract.js';
 
-// #64: the server and the screens share these schemas and their Korean messages.
-const set = { exercise: '스쿼트', weight: 100, reps: 5 };
+// #64: the server and the screens share these schemas and their messages.
+const set = { exercise: 'Squat', weight: 100, reps: 5 };
 
-test('workout messages are Korean, field-specific and use the right particles', () => {
+test('workout messages are field-specific and read as plain English', () => {
   const result = workoutSchema.safeParse({
     date: '2026-02-30',
     title: ' ',
@@ -17,20 +17,20 @@ test('workout messages are Korean, field-specific and use the right particles', 
   });
   assert.ok(!result.success);
   assert.deepEqual(fieldErrors(result.error), {
-    date: '올바른 날짜를 입력하세요',
-    title: '일지 제목을 입력하세요',
-    'sets.1.exercise': '운동명을 입력하세요',
-    'sets.1.weight': '총중량은 0~99999 kg으로 입력하세요',
-    'sets.1.reps': '반복 수는 1~1000의 정수로 입력하세요',
+    date: 'Enter a valid date',
+    title: 'Enter a journal title',
+    'sets.1.exercise': 'Enter an exercise name',
+    'sets.1.weight': 'Enter a total weight from 0 to 99999 kg',
+    'sets.1.reps': 'Enter reps as a whole number from 1 to 1000',
   });
-  const empty = workoutSchema.safeParse({ date: '2026-10-20', title: '하체', sets: [] });
+  const empty = workoutSchema.safeParse({ date: '2026-10-20', title: 'Lower body', sets: [] });
   assert.ok(!empty.success);
-  assert.equal(fieldErrors(empty.error).sets, '세트를 1개 이상 입력하세요');
+  assert.equal(fieldErrors(empty.error).sets, 'Enter at least 1 set');
 });
 
 test('a goal ending before it starts is reported on the deadline field', () => {
   const result = goalSchema.safeParse({
-    exercise: '벤치프레스',
+    exercise: 'Benchpress',
     target_weight: 80,
     target_reps: 5,
     start_date: '2026-10-20',
@@ -38,11 +38,11 @@ test('a goal ending before it starts is reported on the deadline field', () => {
   });
   assert.ok(!result.success);
   assert.deepEqual(fieldErrors(result.error), {
-    deadline: '종료일은 시작일과 같거나 이후여야 합니다',
+    deadline: 'The end date must be the same as or after the start date',
   });
 });
 
-test('the API rejects invalid input with the same Korean message', async () => {
+test('the API rejects invalid input with the same message', async () => {
   const pool = {
     query: async () => {
       throw Error('Invalid input must not reach storage');
@@ -56,10 +56,16 @@ test('the API rejects invalid input with the same Korean message', async () => {
     const response = await fetch(`http://127.0.0.1:${address.port}/api/workouts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: '2026-10-20', title: '하체', sets: [{ ...set, reps: 0 }] }),
+      body: JSON.stringify({
+        date: '2026-10-20',
+        title: 'Lower body',
+        sets: [{ ...set, reps: 0 }],
+      }),
     });
     assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), { error: '반복 수는 1~1000의 정수로 입력하세요' });
+    assert.deepEqual(await response.json(), {
+      error: 'Enter reps as a whole number from 1 to 1000',
+    });
   } finally {
     server.close();
   }

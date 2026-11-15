@@ -17,7 +17,7 @@ test('reject impossible calendar dates and reversed goal periods', () => {
   );
 });
 test('reject empty sessions and invalid sets', () => {
-  const base = { date: '2026-10-14', title: '하체', sets: [] };
+  const base = { date: '2026-10-14', title: 'Lower body', sets: [] };
   assert.equal(workoutSchema.safeParse(base).success, false);
   assert.equal(
     workoutSchema.safeParse({ ...base, sets: [{ exercise: 'Squat', weight: -1, reps: 10 }] })

@@ -68,10 +68,11 @@ import {
   weightStepSchema,
   workoutSchema,
 } from './contract';
-import { dateTitle, seoulDate } from './date';
+import { dateTitle, monthNames, seoulDate } from './date';
 import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
 import { candidateNames, type ExerciseName } from './exercise-name-match';
 import { SimilarNameHint } from './exercise-names';
+import { plural } from './labels';
 import type { NoticeValue } from './lib/use-notice';
 import { cn } from './lib/utils';
 import { RoutineProgress } from './progress';
@@ -102,9 +103,9 @@ import {
 } from './rest-timer';
 import { Routines } from './routines';
 const restKindLabels: Record<RestKind, string> = {
-  lower: '하체',
-  upper: '상체',
-  single: '단관절',
+  lower: 'Lower body',
+  upper: 'Upper body',
+  single: 'Single-joint',
 };
 function readRestDurations(): RestDurations {
   try {
@@ -143,7 +144,7 @@ type Workout = {
   feedback?: Feedback | null;
   sets: SetRow[];
 };
-const feedbackLabels: Record<Feedback, string> = { hard: '힘듦', medium: '중간', easy: '쉬움' };
+const feedbackLabels: Record<Feedback, string> = { hard: 'Hard', medium: 'Medium', easy: 'Easy' };
 type Draft = {
   format: 1;
   savedAt: number;
@@ -205,7 +206,7 @@ function readDraft(): { draft: Draft | null; warning: string } {
       return {
         draft: null,
         warning:
-          '7일이 지난 로컬 초안을 정리했습니다. 저장 결과가 불확실했다면 서버 기록을 확인하세요.',
+          'Cleaned up local drafts older than 7 days. If the save result was uncertain, check the server record.',
       };
     }
     return { draft: d, warning: '' };
@@ -213,7 +214,7 @@ function readDraft(): { draft: Draft | null; warning: string } {
     return {
       draft: null,
       warning:
-        '로컬 저장 공간을 읽지 못했거나 초안이 손상되었습니다. 새 입력은 계속할 수 있습니다.',
+        'Could not read local storage or the draft is damaged. You can keep entering new input.',
     };
   }
 }
@@ -256,7 +257,11 @@ type OfficialWeight = {
   checked_date: string;
   notes: string;
 };
-const basisLabel = { per_arm: '편측', combined: '합계', unspecified: '기준 미표기' } as const;
+const basisLabel = {
+  per_arm: 'One side',
+  combined: 'Combined',
+  unspecified: 'No reference shown',
+} as const;
 function officialLabel(r: {
   status?: OfficialWeight['status'] | null;
   raw_value?: number | string | null;
@@ -264,13 +269,13 @@ function officialLabel(r: {
   weight_kg?: number | string | null;
   basis?: OfficialWeight['basis'];
 }) {
-  if (r.status !== 'verified' && r.status !== 'conflict') return '공식값 미확인';
+  if (r.status !== 'verified' && r.status !== 'conflict') return 'Official value unconfirmed';
   if (r.raw_value === null || r.raw_value === undefined || r.weight_kg == null)
-    return '공식값 미확인';
+    return 'Official value unconfirmed';
   const raw = r.raw_unit === 'kg' ? '' : `${fmt(Number(r.raw_value))} ${r.raw_unit} = `;
   return (
-    `${raw}${fmt(Number(r.weight_kg))} kg · ${r.basis ? basisLabel[r.basis] : '기준 미표기'}` +
-    (r.status === 'conflict' ? ' · 공식 자료 간 불일치' : '')
+    `${raw}${fmt(Number(r.weight_kg))} kg · ${r.basis ? basisLabel[r.basis] : 'Basis not stated'}` +
+    (r.status === 'conflict' ? ' · Official sources disagree' : '')
   );
 }
 type Goal = {
@@ -289,17 +294,17 @@ const today = () => seoulDate();
 const calendarDate = (value: string) => new Date(value + 'T12:00:00Z');
 const cleanDate = (v: string) => v.slice(0, 10);
 const dateLabel = (v: string) =>
-  calendarDate(cleanDate(v)).toLocaleDateString('ko-KR', {
+  calendarDate(cleanDate(v)).toLocaleDateString('en-US', {
     timeZone: 'UTC',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
     weekday: 'short',
   });
 const vol = (w: Workout) => w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * s.reps, 0);
-const fmt = (n: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(n);
+const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n);
 // #105: weight − / + moves by 5 kg (user decision); typing still allows 0.25 kg.
 const weightStep = 5;
-// #223: the save progress line ("저장 중…", "서버 저장 완료") as a polite Notice.
+// #223: the save progress line ("Saving…", "Saved to server") as a polite Notice.
 const statusNotice = (text: string): NoticeValue | undefined =>
   text ? { kind: 'status', text } : undefined;
 async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
@@ -313,7 +318,7 @@ async function api<T>(path: string, method = 'GET', body?: unknown, key?: string
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? '요청에 실패했습니다');
+    if (!res.ok) throw Error(data.error ?? 'The request failed');
     return data;
   } finally {
     clearTimeout(timer);
@@ -331,19 +336,19 @@ const pages = {
   backup: '/backup',
 } as const;
 type Page = keyof typeof pages;
-// #115: the journal's record kinds; 근력 is the default and has no address parameter.
+// #115: the journal's record kinds; Strength is the default and has no address parameter.
 type JournalTab = 'strength' | 'cardio';
 const journalTabs = [
-  { value: 'strength', label: '근력' },
-  { value: 'cardio', label: '유산소' },
+  { value: 'strength', label: 'Strength' },
+  { value: 'cardio', label: 'Cardio' },
 ] as const satisfies readonly { value: JournalTab; label: string }[];
 const periodOptions = [
-  { value: 'day', label: '1일' },
-  { value: 'week', label: '1주' },
-  { value: 'month', label: '1달' },
-  { value: '4weeks', label: '4주' },
-  { value: '12weeks', label: '12주' },
-  { value: 'custom', label: '직접 선택' },
+  { value: 'day', label: '1 day' },
+  { value: 'week', label: '1 week' },
+  { value: 'month', label: '1 month' },
+  { value: '4weeks', label: '4 weeks' },
+  { value: '12weeks', label: '12 weeks' },
+  { value: 'custom', label: 'Custom' },
 ];
 
 const pageOf = (path: string) =>
@@ -384,7 +389,7 @@ function Workspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const customRange = parseRange(searchParams.get('from'), searchParams.get('to'));
   const badRangeAddress = !customRange && (searchParams.has('from') || searchParams.has('to'));
-  // #115: the journal's 근력/유산소 tab lives in the address too (?tab=cardio), next to the
+  // #115: the journal's Strength/Cardio tab lives in the address too (?tab=cardio), next to the
   // range, so reloads and back/forward keep it. Each one changes only its own parameters.
   const journalTab: JournalTab = searchParams.get('tab') === 'cardio' ? 'cardio' : 'strength';
   const cardioTab = page === 'journal' && journalTab === 'cardio';
@@ -449,7 +454,7 @@ function Workspace() {
       setTimerWarning('');
     } catch {
       setTimerWarning(
-        '휴식 시간 설정을 이 브라우저에 보관하지 못했습니다. 새로고침하면 기본값으로 돌아갑니다.',
+        'Could not save the rest time setting in this browser. It returns to the default when you reload.',
       );
     }
   }
@@ -463,9 +468,7 @@ function Workspace() {
       localStorage.setItem(restTimerKey, JSON.stringify(next));
       setTimerWarning('');
     } catch {
-      setTimerWarning(
-        '타이머 상태를 이 브라우저에 보관하지 못했습니다. 새로고침하면 초기화됩니다.',
-      );
+      setTimerWarning('Could not save the timer state in this browser. It resets when you reload.');
     }
   }
   // Ticks only redraw; the shown value is always computed from the stored end time.
@@ -487,7 +490,7 @@ function Workspace() {
     };
   }, []);
   // #105: one short vibration when a rest ends while the app is open. Each end (endsAt)
-  // alerts once; browsers without the Vibration API (iPhone Safari) only show 휴식 종료.
+  // alerts once; browsers without the Vibration API (iPhone Safari) only show Rest over.
   const alertedEnd = useRef<number | null>(null);
   useEffect(() => {
     if (!endAlertDue(timer, Date.now()) || alertedEnd.current === timer.endsAt) return;
@@ -507,11 +510,11 @@ function Workspace() {
       setProgressError((e as Error).message);
     }
   }, []);
-  // Reload on every page change: a routine created in 루틴짜기 must show up when the
+  // Reload on every page change: a routine created in Routine Builder must show up when the
   // user comes back to the journal without a full page refresh.
   useEffect(() => {
     void loadProgress();
-    // Body parts mapped on 종목 분석 must apply to the rest timer when the user returns.
+    // Body parts mapped on Exercise Analysis must apply to the rest timer when the user returns.
     void queryClient.invalidateQueries({ queryKey: ['exercise-body-parts'] });
   }, [loadProgress, page, queryClient]);
   // Rest changes only the plan. A pending request blocks repeated clicks and the
@@ -544,7 +547,7 @@ function Workspace() {
       setStorageWarning('');
     } catch {
       setStorageWarning(
-        '로컬 저장 공간 오류: 초안 보관 또는 정리에 실패했습니다. 새로고침하면 입력을 잃거나 이전 초안이 다시 보일 수 있습니다.',
+        'Local storage error: saving or clearing the draft failed. If you reload, you may lose your input or see an older draft again.',
       );
     }
   }
@@ -554,7 +557,7 @@ function Workspace() {
     if (value) {
       persist({ format: 1, savedAt: Date.now(), editor: value, request: draft.current?.request });
       setRecovery(null);
-      setSaveState('로컬 초안 · 서버 저장 전');
+      setSaveState('Local draft · Before server save');
     } else setRecovery(draft.current);
   }
   // #124: typing, picking a suggestion or accepting a similar name all rename one set.
@@ -585,12 +588,12 @@ function Workspace() {
     const checked = workoutSchema.safeParse(editor);
     setIssues(checked.success ? {} : fieldErrors(checked.error));
     if (!checked.success) {
-      setSaveState('입력을 확인하세요 · 서버로 보내지 않았습니다');
+      setSaveState('Check your input · Not sent to the server');
       return;
     }
     workoutSaving.current = true;
     setSaving(true);
-    setSaveState('저장 중…');
+    setSaveState('Saving…');
     setSaveError('');
     const path = '/workouts' + (editor.id ? '/' + editor.id : '');
     const method = editor.id ? 'PUT' : 'POST';
@@ -606,14 +609,14 @@ function Workspace() {
       persist(null);
       setRecovery(null);
       updateEditor(null);
-      setSaveState('서버 저장 완료');
+      setSaveState('Saved to server');
       void loadProgress();
       await refreshAll();
     } catch (e) {
-      setSaveState('저장 실패 · 서버 저장 여부 미확인');
+      setSaveState('Save failed · Unknown whether the server saved it');
       setSaveError(
         (e as Error).message +
-          ' 입력은 화면에 유지됩니다. 재시도하거나 서버 기록을 확인하세요. 내용을 바꾸어 저장하면 별도 요청으로 처리됩니다.',
+          ' Your input stays on screen. Retry or check the server record. Saving after changing the content is handled as a separate request.',
       );
     } finally {
       workoutSaving.current = false;
@@ -757,14 +760,14 @@ function Workspace() {
     totalSets = workouts.reduce((n, w) => n + w.sets.filter(done).length, 0),
     days = new Set(workouts.filter((w) => w.sets.some(done)).map((w) => cleanDate(w.date))).size;
   const nav = [
-    ['overview', '대시보드', LayoutDashboard],
-    ['journal', '운동 일지', NotebookPen],
-    ['goals', '나의 목표', Target],
-    ['analysis', '종목 분석', Trophy],
-    ['routines', '루틴짜기', NotebookPen],
-    ['body', '신체 기록', Scale],
-    ['machines', '머신 라이브러리', Dumbbell],
-    ['backup', '백업·내보내기', DatabaseBackup],
+    ['overview', 'Dashboard', LayoutDashboard],
+    ['journal', 'Workout journal', NotebookPen],
+    ['goals', 'My Goals', Target],
+    ['analysis', 'Exercise Analysis', Trophy],
+    ['routines', 'Routine Builder', NotebookPen],
+    ['body', 'Body records', Scale],
+    ['machines', 'Machine Library', Dumbbell],
+    ['backup', 'Backup & Export', DatabaseBackup],
   ] as const;
   // #85: pages sharing the period keep a directly chosen range in the address. The journal's
   // tab (#115) belongs to the journal only.
@@ -800,7 +803,7 @@ function Workspace() {
       {/* #71: on narrow phones the date control wraps under the period tabs. */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <SegmentedControl
-          label="기간"
+          label="Period"
           options={periodOptions}
           value={customRange || customOpen ? 'custom' : period}
           onValueChange={(key) => {
@@ -820,13 +823,18 @@ function Workspace() {
           }}
         />
         {!customRange && !customOpen && (
-          <DateStepper label="기준 날짜" value={anchor} onValueChange={setAnchor} onMove={move} />
+          <DateStepper
+            label="Reference date"
+            value={anchor}
+            onValueChange={setAnchor}
+            onMove={move}
+          />
         )}
       </div>
       {(customOpen || customRange) && (
         <form
           className="mt-3 flex flex-wrap items-start gap-x-3 gap-y-2"
-          aria-label="기간 직접 선택"
+          aria-label="Custom range"
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
@@ -840,7 +848,7 @@ function Workspace() {
         >
           <div className="flex flex-col gap-1">
             <Label htmlFor="range-from" className="text-meta leading-none">
-              시작일
+              Start date
             </Label>
             <CommonInput
               id="range-from"
@@ -860,7 +868,7 @@ function Workspace() {
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="range-to" className="text-meta leading-none">
-              종료일
+              End date
             </Label>
             <CommonInput
               id="range-to"
@@ -880,18 +888,21 @@ function Workspace() {
           </div>
           {/* The label row is 12px (leading-none) plus a 4px gap, so the button lines up with the inputs. */}
           <Button type="submit" variant="secondary" className="mt-4">
-            적용
+            Apply
           </Button>
-          <p className="m-0 basis-full text-meta">양 끝 날짜 포함 · 최대 {maxRangeDays}일</p>
+          <p className="m-0 basis-full text-meta">
+            Both end dates included · up to {maxRangeDays} days
+          </p>
         </form>
       )}
       {badRangeAddress && (
         <AlertBanner className="mt-3 mb-0">
-          주소의 기간이 올바르지 않아 기본 기간을 표시합니다. 기간을 다시 선택하세요.
+          The period in the address is not valid, so the default period is shown. Choose a period
+          again.
         </AlertBanner>
       )}
       <RangeSummary from={from} to={to}>
-        선택한 기간의 기록
+        Records for the selected period
       </RangeSummary>
     </>
   );
@@ -901,7 +912,7 @@ function Workspace() {
   const timerBar = (
     <section
       data-slot="rest-timer"
-      aria-label="휴식 타이머"
+      aria-label="Rest timer"
       className="grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 min-[480px]:grid-cols-[1fr_auto]"
     >
       <strong
@@ -910,12 +921,12 @@ function Workspace() {
         className={cn('text-2xl tabular-nums', timerEnded && 'text-muted-foreground')}
       >
         {timerEnded
-          ? '휴식 종료'
+          ? 'Rest over'
           : timer.state === 'running'
-            ? `${formatRemaining(timerLeft)} 남음`
+            ? `${formatRemaining(timerLeft)} left`
             : timer.state === 'paused'
-              ? `${formatRemaining(timerLeft)} 일시정지`
-              : `휴식 ${formatRemaining(timerLeft)}`}
+              ? `${formatRemaining(timerLeft)} paused`
+              : `Rest ${formatRemaining(timerLeft)}`}
       </strong>
       <div className="flex flex-wrap gap-2 min-[480px]:justify-end">
         {(timer.state === 'idle' || timerEnded) && (
@@ -924,7 +935,7 @@ function Workspace() {
             variant="outline"
             onClick={() => updateTimer(startTimer(timer, Date.now()))}
           >
-            휴식 시작
+            Start rest
           </Button>
         )}
         {timer.state === 'running' && !timerEnded && (
@@ -933,7 +944,7 @@ function Workspace() {
             variant="outline"
             onClick={() => updateTimer(pauseTimer(timer, Date.now()))}
           >
-            일시정지
+            Pause
           </Button>
         )}
         {timer.state === 'paused' && (
@@ -942,12 +953,12 @@ function Workspace() {
             variant="outline"
             onClick={() => updateTimer(resumeTimer(timer, Date.now()))}
           >
-            재개
+            Resume
           </Button>
         )}
         {timer.state !== 'idle' && (
           <Button type="button" variant="ghost" onClick={() => updateTimer(cancelTimer(timer))}>
-            휴식 취소
+            Cancel rest
           </Button>
         )}
       </div>
@@ -956,18 +967,18 @@ function Workspace() {
   const timerSettings = (
     <section
       data-slot="rest-settings"
-      aria-label="휴식 설정"
+      aria-label="Rest settings"
       className="mb-4 grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 md:grid-cols-[1fr_auto]"
     >
       <label
         htmlFor="rest-duration"
         className="mb-0 flex flex-col gap-1 text-meta text-muted-foreground"
       >
-        휴식 시간(초)
+        Rest time (sec)
         <CommonInput
           id="rest-duration"
           type="number"
-          aria-label="휴식 시간(초)"
+          aria-label="Rest time (sec)"
           className="max-w-30 md:pointer-coarse:text-base"
           min={minRest}
           max={maxRest}
@@ -988,18 +999,18 @@ function Workspace() {
           onCheckedChange={(autoStart) => updateTimer({ ...timer, autoStart })}
         />
         <Label htmlFor="rest-auto-start" className="mb-0 flex-row text-meta text-foreground">
-          세트 완료 시 자동 시작
+          Auto-start when a set is done
         </Label>
       </div>
       <fieldset className="col-span-full m-0 flex flex-wrap gap-x-4 gap-y-2 border-0 p-0 text-meta text-muted-foreground">
-        <legend>운동별 기본 휴식(초) · 세트 완료로 시작할 때 적용</legend>
+        <legend>Default rest by exercise type (sec)</legend>
         {restKinds.map((kind) => (
           <label htmlFor={`rest-${kind}`} className="mb-0 flex flex-col gap-1 text-meta" key={kind}>
             {restKindLabels[kind]}
             <CommonInput
               id={`rest-${kind}`}
               type="number"
-              aria-label={`${restKindLabels[kind]} 휴식(초)`}
+              aria-label={`${restKindLabels[kind]} rest (sec)`}
               className="max-w-30 md:pointer-coarse:text-base"
               min={minRest}
               max={maxRest}
@@ -1012,15 +1023,14 @@ function Workspace() {
         ))}
       </fieldset>
       <p className="col-span-full text-meta text-muted-foreground">
-        종료 시각 기준으로 이 브라우저에만 보관합니다. 탭을 다시 열면 남은 시간이 맞춰지며,
-        브라우저를 닫은 동안에는 알림이 없습니다. 이 화면을 보고 있고 화면을 한 번 이상 누른 뒤
-        휴식이 끝나면, 진동을 지원하는 기기(Android 등)는 짧게 진동합니다. iPhone은 진동을 지원하지
-        않습니다.
+        Kept only in this browser, by end time; reopening the tab corrects the time left. No alert
+        while the browser is closed. If rest ends while this screen is open (after one tap),
+        supported devices such as Android vibrate; iPhone does not.
       </p>
       <p className="col-span-full text-meta text-muted-foreground">
-        세트를 완료하면 단관절 머신 → 하체 → 상체 순서로 운동의 기본 휴식을 씁니다. 단관절은 머신
-        라이브러리, 하체·상체는 종목 분석의 부위 지정을 따르며 운동명으로 추측하지 않습니다. 지정이
-        없으면 위의 휴식 시간을 씁니다.
+        On set completion, rest uses the default for single-joint machines, then lower body, then
+        upper body. Single-joint is set in the Machine Library; body parts come from Exercise
+        Analysis, not from the exercise name. If unset, the rest time above applies.
       </p>
     </section>
   );
@@ -1038,9 +1048,9 @@ function Workspace() {
   return (
     <>
       <AppShell
-        appName="FORM · 나의 운동 기록"
+        appName="FORM · My Workout Log"
         nav={navItems}
-        footer="오늘의 기록이 내일의 변화를 만듭니다."
+        footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">
           {/* Pages with their own component draw everything below, so the bar goes first. */}
@@ -1056,24 +1066,24 @@ function Workspace() {
               eyebrow="YOUR PROGRESS, IN FOCUS"
               title={
                 page === 'overview'
-                  ? '꾸준함을 기록하는 공간'
+                  ? 'A place to record consistency'
                   : page === 'journal'
-                    ? '오늘도 한 걸음 더'
+                    ? 'One more step today'
                     : page === 'goals'
-                      ? '다음 단계의 나를 향해'
-                      : '머신을 알면, 기록이 정확해져요'
+                      ? 'Toward the next you'
+                      : 'Knowing your machine makes your records accurate'
               }
               description={
                 page === 'overview'
-                  ? '운동의 흐름을 살펴보고, 다음 성장을 준비하세요.'
+                  ? 'See how your training flows and prepare for your next step.'
                   : page === 'journal'
-                    ? '모든 세트에는 어제보다 나아진 내가 담겨 있어요.'
+                    ? 'Every set holds a better you than yesterday.'
                     : page === 'goals'
-                      ? '중량·반복 수와 유산소 거리·시간으로 구체적인 성장 목표를 세워보세요.'
-                      : '브랜드별 머신과 기본중량을 나만의 라이브러리에 저장하세요.'
+                      ? 'Set concrete growth goals with weight, reps, and cardio distance and time.'
+                      : 'Save machines and base weights by brand to your own library.'
               }
               actions={
-                // #115: on the 유산소 tab the panel's own "유산소 기록 추가" is the main action.
+                // #115: on the Cardio tab the panel's own "Add cardio record" is the main action.
                 !cardioTab && (
                   <Button
                     // A recoverable local draft must be restored or discarded first (#101).
@@ -1095,10 +1105,10 @@ function Workspace() {
                   >
                     <Plus aria-hidden />
                     {page === 'goals'
-                      ? '목표 추가'
+                      ? 'Add goal'
                       : page === 'machines'
-                        ? '머신 등록'
-                        : '운동 기록하기'}
+                        ? 'Add machine'
+                        : 'Log workout'}
                   </Button>
                 )
               }
@@ -1108,7 +1118,7 @@ function Workspace() {
             <AlertBanner
               action={
                 <Button type="button" variant="outline" size="sm" onClick={reconnect}>
-                  다시 연결
+                  Reconnect
                 </Button>
               }
             >
@@ -1120,12 +1130,12 @@ function Workspace() {
           {recovery && !editor && (
             <Card
               role="region"
-              aria-label="로컬 초안"
+              aria-label="Local draft"
               className="mb-6 gap-3 p-4 shadow-none md:flex-row md:items-center md:justify-between md:p-5"
             >
               <p className="text-sm text-muted-foreground">
-                이 브라우저에 로컬 초안이 있습니다. 서버 기록과 별도로 보관됩니다. 복구 또는 폐기 후
-                다른 기록을 입력하세요.
+                This browser has a local draft. It is kept separately from server records. Restore
+                or discard it before entering another record.
               </p>
               <div className="flex shrink-0 flex-wrap gap-2">
                 <Button
@@ -1133,20 +1143,20 @@ function Workspace() {
                   onClick={() => {
                     updateEditor(recovery.editor);
                     setRecovery(null);
-                    setSaveState('로컬 초안 · 서버 저장 전');
+                    setSaveState('Local draft · Before server save');
                   }}
                 >
-                  초안 복구
+                  Restore draft
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={() => {
                     persist(null);
                     setRecovery(null);
-                    setSaveState('초안 폐기');
+                    setSaveState('Discard draft');
                   }}
                 >
-                  초안 폐기
+                  Discard draft
                 </Button>
               </div>
             </Card>
@@ -1154,7 +1164,7 @@ function Workspace() {
           {!ownPage && pageTimer}
           {page === 'journal' && (
             <SegmentedControl
-              label="기록 종류"
+              label="Record type"
               className="mb-4"
               options={journalTabs}
               value={journalTab}
@@ -1186,32 +1196,32 @@ function Workspace() {
                 className={`mb-6 grid grid-cols-2 gap-2.5 xl:gap-4 ${cardioSessions.length ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
               >
                 <StatCard
-                  label="운동한 날"
+                  label="Workout days"
                   value={String(days)}
-                  unit="일"
+                  unit={days === 1 ? ' day' : ' days'}
                   icon={<NotebookPen size={19} />}
-                  foot="기록한 날짜 기준"
+                  foot="By recorded date"
                 />
                 <StatCard
-                  label="누적 볼륨"
+                  label="Total volume"
                   value={fmt(total)}
                   unit="kg"
                   icon={<Dumbbell size={19} />}
-                  foot="총중량 × 반복 수"
+                  foot="Total weight × reps"
                 />
                 <StatCard
-                  label="완료한 세트"
+                  label="Completed sets"
                   value={String(totalSets)}
-                  unit="세트"
+                  unit={totalSets === 1 ? ' set' : ' sets'}
                   icon={<Activity size={19} />}
-                  foot={`${workouts.length}개의 운동 일지`}
+                  foot={plural(workouts.length, 'workout journal')}
                 />
                 <StatCard
-                  label="목표 달성"
+                  label="Goal achieved"
                   value={String(goals.filter((g) => g.achieved).length)}
                   unit={`/ ${goals.length}`}
                   icon={<Target size={19} />}
-                  foot="목표 기간 내 기록 기준"
+                  foot="Based on records within the goal period"
                 />
                 {/* #115: the fifth card fills a row of its own on phones. */}
                 {cardioSessions.length > 0 && (
@@ -1240,14 +1250,14 @@ function Workspace() {
                   <Card className="gap-0 py-0 shadow-none">
                     <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
                       <CardTitle asHeading="h2" className="text-body font-semibold">
-                        트레이닝 볼륨
+                        Training volume
                       </CardTitle>
                       <CardDescription className="text-caption">
-                        기록이 쌓일수록 선명해지는 성장
+                        Growth that gets clearer as your records build up
                       </CardDescription>
                       <CardAction className="flex items-center gap-1.5 text-meta whitespace-nowrap">
                         <i aria-hidden className="size-1.5 rounded-xs bg-primary" />
-                        볼륨 (kg)
+                        Volume (kg)
                       </CardAction>
                     </CardHeader>
                     <Chart workouts={workouts} from={from} to={to} custom={!!customRange} />
@@ -1257,20 +1267,21 @@ function Workspace() {
                       THE NEXT CHAPTER <ArrowUpRight aria-hidden size={19} />
                     </div>
                     <h2 className="mt-4 mb-2 text-2xl leading-normal font-semibold tracking-tight md:text-xl xl:text-2xl">
-                      조금 더 무겁게.
-                      <br />한 번 더 해내기.
+                      A little heavier.
+                      <br />
+                      Do it once more.
                     </h2>
                     <p className="text-caption">
-                      작은 도전이 모여
+                      Small challenges add up
                       <br />
-                      나만의 성장을 만듭니다.
+                      to build your own growth.
                     </p>
                     <Button
                       variant="link"
                       className="relative z-10 mt-2 self-start px-0 text-foreground has-[>svg]:px-0"
                       onClick={() => setPage('goals')}
                     >
-                      나의 목표 확인하기 <ArrowRight aria-hidden />
+                      See your goals <ArrowRight aria-hidden />
                     </Button>
                     <div
                       aria-hidden
@@ -1289,27 +1300,27 @@ function Workspace() {
                     asHeading="h2"
                     className="flex items-center gap-2 text-body font-semibold"
                   >
-                    운동 기록{' '}
+                    Workout records{' '}
                     <Badge variant="secondary" className="text-xs">
                       {workouts.length}
                     </Badge>
                   </CardTitle>
                   <CardDescription className="text-caption">
-                    오늘의 노력이 내일의 기준이 되도록
+                    So today&apos;s effort becomes tomorrow&apos;s baseline
                   </CardDescription>
                   {page === 'overview' && (
                     <CardAction>
                       <Button variant="ghost" size="sm" onClick={() => setPage('journal')}>
-                        전체 기록 <ArrowRight aria-hidden />
+                        All records <ArrowRight aria-hidden />
                       </Button>
                     </CardAction>
                   )}
                 </CardHeader>
                 {loading ? (
                   // #173: row placeholders while the list loads; the hidden line keeps the status.
-                  <div aria-busy="true" aria-label="운동 기록 목록" className="px-6 py-6">
+                  <div aria-busy="true" aria-label="Workout record list" className="px-6 py-6">
                     <p role="status" className="sr-only">
-                      기록을 불러오는 중…
+                      Loading records…
                     </p>
                     <SkeletonList />
                   </div>
@@ -1318,17 +1329,17 @@ function Workspace() {
                     className="m-4 md:m-6"
                     headingLevel="h3"
                     icon={<NotebookPen />}
-                    title="첫 번째 기록을 남겨보세요"
-                    description="오늘의 세트부터, 나의 성장 이야기가 시작돼요."
+                    title="Log your first record"
+                    description="Your growth story starts with today's sets."
                     action={
                       <Button variant="secondary" onClick={newWorkout}>
                         <Plus aria-hidden />
-                        운동 기록하기
+                        Log workout
                       </Button>
                     }
                   />
                 ) : (
-                  <List aria-label="운동 기록" className="px-4 py-1 md:px-6 md:py-2.5">
+                  <List aria-label="Workout records" className="px-4 py-1 md:px-6 md:py-2.5">
                     {workouts.map((w) => (
                       <ListItem
                         data-slot="workout-row"
@@ -1340,7 +1351,7 @@ function Workspace() {
                             {Number(cleanDate(w.date).slice(8))}
                           </strong>
                           <small className="mt-1 text-meta leading-none text-foreground">
-                            {Number(cleanDate(w.date).slice(5, 7))}월
+                            {monthNames[Number(cleanDate(w.date).slice(5, 7)) - 1]}
                           </small>
                         </div>
                         <div className="min-w-0 flex-1 [overflow-wrap:anywhere] max-md:basis-[calc(100%-3.625rem)]">
@@ -1351,21 +1362,23 @@ function Workspace() {
                           </p>
                           {w.feedback && (
                             <p className="mt-1 text-meta text-muted-foreground">
-                              체감 {feedbackLabels[w.feedback]}
+                              Effort {feedbackLabels[w.feedback]}
                             </p>
                           )}
                           {w.notes && (
                             <p className="mt-1 text-meta text-muted-foreground">{w.notes}</p>
                           )}
                           <details className="mt-1 text-body-sm">
-                            <summary>세트 기록 보기</summary>
+                            <summary>View set records</summary>
                             <ol>
                               {w.sets.map((s, i) => (
                                 <li key={i}>
-                                  {s.exercise} · {fmt(Number(s.weight))}kg × {s.reps}회 ·{' '}
-                                  {machines.find((m) => m.id === s.machine_id)?.name ?? '머신 없음'}
+                                  {s.exercise} · {fmt(Number(s.weight))}kg × {plural(s.reps, 'rep')}{' '}
+                                  ·{' '}
+                                  {machines.find((m) => m.id === s.machine_id)?.name ??
+                                    'No machine'}
                                   {s.rpe != null && ` · RPE ${fmt(Number(s.rpe))}`}
-                                  {!done(s) && ' · 미완료(통계 제외)'}
+                                  {!done(s) && ' · Incomplete (excluded from stats)'}
                                   {s.notes && <p>{s.notes}</p>}
                                 </li>
                               ))}
@@ -1377,10 +1390,12 @@ function Workspace() {
                             {fmt(vol(w))}{' '}
                             <small className="text-meta text-muted-foreground">kg</small>
                           </strong>
-                          <span className="mt-1 block">{w.sets.filter(done).length} 세트</span>
+                          <span className="mt-1 block">
+                            {plural(w.sets.filter(done).length, 'set')}
+                          </span>
                           {w.sets.some((s) => !done(s)) && (
                             <span className="mt-1 block">
-                              미완료 {w.sets.filter((s) => !done(s)).length}
+                              Incomplete {w.sets.filter((s) => !done(s)).length}
                             </span>
                           )}
                         </div>
@@ -1403,15 +1418,15 @@ function Workspace() {
                             })
                           }
                         >
-                          수정
+                          Edit
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="text-muted-foreground"
-                          aria-label={`${w.title} 삭제`}
+                          aria-label={`Delete ${w.title}`}
                           onClick={() => {
-                            if (confirm('이 운동 일지와 세트를 삭제할까요?'))
+                            if (confirm('Delete this workout journal and its sets?'))
                               void action(() => api('/workouts/' + w.id, 'DELETE'));
                           }}
                         >
@@ -1428,8 +1443,8 @@ function Workspace() {
             (goals.length === 0 ? (
               <EmptyState
                 icon={<Target />}
-                title="다음 운동의 목표를 세워보세요"
-                description="예: 레그 프레스 총중량 100kg, 10회 달성"
+                title="Set a goal for your next workout"
+                description="e.g. Leg Press total weight 100 kg, 10 reps achieved"
               />
             ) : (
               <div data-slot="goal-grid" className="grid gap-5 md:grid-cols-2">
@@ -1444,7 +1459,7 @@ function Workspace() {
                         variant={g.achieved ? 'success' : ended ? 'warning' : 'outline'}
                         className="mb-5"
                       >
-                        {g.achieved ? '달성 완료' : ended ? '기간 종료' : '도전 중'}
+                        {g.achieved ? 'Achieved' : ended ? 'Period ended' : 'In progress'}
                       </Badge>
                       <CardTitle asHeading="h2" className="text-body font-semibold">
                         {g.exercise}
@@ -1453,28 +1468,28 @@ function Workspace() {
                         {g.target_weight}
                         <small className="text-body-sm text-muted-foreground"> kg × </small>
                         {g.target_reps}
-                        <small className="text-body-sm text-muted-foreground"> 회</small>
+                        <small className="text-body-sm text-muted-foreground"> reps</small>
                       </div>
                       <p className="mt-3 text-body-sm text-muted-foreground">
                         {cleanDate(g.start_date)} — {cleanDate(g.deadline)}
                       </p>
                       <p className="mt-1 text-body-sm text-muted-foreground">
                         {g.achieved
-                          ? '목표 기간에 중량과 반복 수를 모두 달성했어요.'
-                          : '같은 운동명으로 기록하면 달성 여부를 확인해요.'}
+                          ? 'You hit both the weight and reps within the goal period.'
+                          : 'Log it under the same exercise name to check whether you achieved it.'}
                       </p>
                       <Button
                         variant="link"
                         size="sm"
                         className="mt-3 px-0"
-                        aria-label={`${g.exercise} 목표 삭제`}
+                        aria-label={`Delete ${g.exercise} goal`}
                         disabled={saving}
                         onClick={() => {
-                          if (confirm('이 목표를 삭제할까요?'))
+                          if (confirm('Delete this goal?'))
                             void action(() => api('/goals/' + g.id, 'DELETE'));
                         }}
                       >
-                        목표 삭제
+                        Delete goal
                       </Button>
                     </Card>
                   );
@@ -1486,10 +1501,10 @@ function Workspace() {
           {page === 'machines' && (
             <>
               <SegmentedControl
-                label="브랜드"
+                label="Brand"
                 className="mb-6"
                 options={[
-                  { value: '0', label: '전체 브랜드' },
+                  { value: '0', label: 'All brands' },
                   ...brands.map((b) => ({ value: String(b.id), label: b.name })),
                 ]}
                 value={String(brand)}
@@ -1498,11 +1513,11 @@ function Workspace() {
               <Card className="gap-0 py-0 shadow-none">
                 <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
                   <CardTitle asHeading="h2" className="text-body font-semibold">
-                    머신 라이브러리
+                    Machine Library
                   </CardTitle>
                   <CardDescription className="text-caption">
-                    기본중량은 기종·설정에 따라 다릅니다. 머신 표기와 제조사 자료를 확인해
-                    입력하세요.
+                    The base weight differs by model and setting. Check the machine label and
+                    manufacturer data, then enter it.
                   </CardDescription>
                 </CardHeader>
                 {machines.filter((m) => !brand || m.brand_id === brand).length === 0 ? (
@@ -1510,11 +1525,11 @@ function Workspace() {
                     className="m-4 md:m-6"
                     headingLevel="h3"
                     icon={<Dumbbell />}
-                    title="나만의 머신을 등록하세요"
-                    description="확인되지 않은 기본중량은 미입력으로 보관할 수 있어요."
+                    title="Register your own machine"
+                    description="An unconfirmed base weight can be stored as not entered."
                   />
                 ) : (
-                  <List aria-label="머신" className="px-4 py-1 md:px-6 md:py-2.5">
+                  <List aria-label="Machine" className="px-4 py-1 md:px-6 md:py-2.5">
                     {machines
                       .filter((m) => !brand || m.brand_id === brand)
                       .map((m) => (
@@ -1533,11 +1548,11 @@ function Workspace() {
                             <h3 className="text-body-sm font-semibold">{m.name}</h3>
                             <p className="mt-1 text-meta text-muted-foreground">
                               {m.brand}
-                              {m.single_joint ? ' · 단관절' : ''} · {m.notes || '메모 없음'}
+                              {m.single_joint ? ' · Single-joint' : ''} · {m.notes || 'No memo'}
                             </p>
                             {m.official_status && (
                               <p className="mt-1 text-meta text-muted-foreground">
-                                공식 참고값({m.official_model_name}
+                                Official reference ({m.official_model_name}
                                 {m.official_setting ? ` · ${m.official_setting}` : ''}):{' '}
                                 {officialLabel({
                                   status: m.official_status,
@@ -1555,16 +1570,16 @@ function Workspace() {
                                       target="_blank"
                                       rel="noreferrer"
                                     >
-                                      출처
+                                      Source
                                     </a>
-                                    {` (${m.official_checked_date} 확인)`}
+                                    {` (checked ${m.official_checked_date})`}
                                   </>
                                 )}
                               </p>
                             )}
                           </div>
                           <strong className="text-body-sm font-medium whitespace-nowrap max-md:ml-14.5">
-                            {m.base_weight === null ? '미입력' : `${m.base_weight} kg`}
+                            {m.base_weight === null ? 'Not entered' : `${m.base_weight} kg`}
                           </strong>
                           <Button
                             variant="ghost"
@@ -1577,7 +1592,7 @@ function Workspace() {
                               })
                             }
                           >
-                            수정
+                            Edit
                           </Button>
                         </ListItem>
                       ))}
@@ -1590,7 +1605,7 @@ function Workspace() {
       </AppShell>
       {editor && (
         <Modal
-          title={editor.id ? '운동 일지 수정' : '새로운 운동 기록'}
+          title={editor.id ? 'Edit workout journal' : 'New workout record'}
           layout="full"
           close={() => {
             setIssues({});
@@ -1612,9 +1627,9 @@ function Workspace() {
             </div>
             {storageWarning && <AlertBanner className="mb-3">{storageWarning}</AlertBanner>}
             <p className="form-hint">
-              초안은 이 기기·브라우저의 localStorage에 마지막 입력부터 7일 보관합니다. 다른 기기와
-              동기화되지 않으며 브라우저 데이터 삭제·비공개 모드에서는 사라질 수 있습니다. 서버 저장
-              기록만 통계와 목표에 반영합니다.
+              Drafts stay in this browser&apos;s localStorage for 7 days after the last input. They
+              do not sync to other devices and may vanish if you clear browser data or use private
+              mode. Only records saved to the server count toward stats and goals.
             </p>
             {saveError && (
               <AlertBanner
@@ -1627,7 +1642,7 @@ function Workspace() {
                     disabled={saving}
                     onClick={() => void saveWorkout()}
                   >
-                    다시 저장 재시도
+                    Retry save
                   </Button>
                 }
               >
@@ -1642,7 +1657,7 @@ function Workspace() {
             <fieldset disabled={saving} className="workout-fields">
               <div className="form-grid">
                 <label>
-                  운동 날짜
+                  Workout date
                   <input
                     type="date"
                     required
@@ -1653,11 +1668,11 @@ function Workspace() {
                 </label>
                 {issue('date')}
                 <label>
-                  일지 제목
+                  Journal title
                   <input
                     required
                     maxLength={120}
-                    placeholder="예: 하체 · 대퇴사두 집중"
+                    placeholder="e.g. Legs · quad focus"
                     value={editor.title}
                     onChange={(e) => setEditor({ ...editor, title: e.target.value })}
                     {...invalid('title')}
@@ -1666,9 +1681,9 @@ function Workspace() {
                 {issue('title')}
               </div>
               <div className="mb-4 flex flex-col items-start gap-2 text-caption text-muted-foreground">
-                <span>체감 피드백 (선택)</span>
+                <span>Effort feedback (optional)</span>
                 <ToggleChips
-                  label="체감 피드백"
+                  label="Effort feedback"
                   options={feedbackLevels.map((level) => feedbackLabels[level])}
                   value={editor.feedback ? [feedbackLabels[editor.feedback]] : []}
                   // At most one level: a new press replaces the old one, and pressing the
@@ -1688,17 +1703,17 @@ function Workspace() {
               {issue('feedback')}
               {issue('sets')}
               <p className="form-hint">
-                세트별로 기록하세요. 중량에는 머신 기본중량을 포함한 총중량(kg)을 입력합니다. 좌우를
-                함께 움직이는 장비는 양쪽 중량의 합계를, 편측 운동은 한쪽에서 실제로 움직인 총중량을
-                기록하세요. 기본중량을 모르면 임의로 더하지 말고 세트 메모에 남겨주세요. 머신을
-                선택해도 기본중량을 자동으로 더하지 않습니다.
+                Record each set. For weight, enter the total weight (kg) including the
+                machine&apos;s base weight. For equipment that moves both sides together, enter the
+                sum of both sides; for one-sided exercises, enter the total weight actually moved on
+                one side. If you do not know the base weight, do not guess; leave a note in the set
+                memo. Selecting a machine does not add its base weight automatically.
               </p>
               <p className="form-hint">
-                수행한 세트는 완료로 표시하세요. 완료한 세트만 통계와 목표 달성에 반영하며 미완료
-                세트는 계획으로 함께 보관합니다. 운동 전체가 어땠는지는 체감
-                피드백(힘듦·중간·쉬움)으로 남기고, 고르지 않으면 미입력으로 남습니다. 완료{' '}
-                {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0}
-                세트
+                Mark sets you performed as done. Only completed sets count toward stats and goal
+                achievement, and incomplete sets are kept as plans. Leave how the whole workout felt
+                as effort feedback (hard, medium, easy); if you do not choose, it stays not entered.
+                Completed {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0} sets
               </p>
               {editor.sets?.map((s, i) => (
                 // #105: one card per set; weight and reps take − / + presses and a number
@@ -1718,7 +1733,7 @@ function Workspace() {
                         done(s) && 'font-bold text-foreground',
                       )}
                     >
-                      {i + 1}세트
+                      Set {i + 1}
                     </span>
                     <Button
                       type="button"
@@ -1726,7 +1741,7 @@ function Workspace() {
                       size="icon"
                       className="text-muted-foreground"
                       disabled={editor.sets!.length === 1}
-                      aria-label="세트 삭제"
+                      aria-label="Delete set"
                       onClick={() =>
                         setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) })
                       }
@@ -1734,10 +1749,10 @@ function Workspace() {
                       <X size={15} />
                     </Button>
                   </div>
-                  {/* The hint stays in the name's grid cell so 머신 keeps its place beside it. */}
+                  {/* The hint stays in the name's grid cell so Machine keeps its place beside it. */}
                   <div>
                     <label htmlFor={`set-${i}-exercise`} className="mb-0 text-meta">
-                      운동명
+                      Exercise name
                       {/* #124: suggestions from earlier journals, goals, routines and machines. */}
                       <Combobox
                         id={`set-${i}-exercise`}
@@ -1745,7 +1760,7 @@ function Workspace() {
                         required
                         value={s.exercise}
                         options={exerciseNames}
-                        listLabel="이전에 쓴 이름"
+                        listLabel="Previously used names"
                         onValueChange={(exercise) => renameSet(i, exercise)}
                         {...invalid(`sets.${i}.exercise`)}
                       />
@@ -1757,7 +1772,7 @@ function Workspace() {
                     />
                   </div>
                   <label className="mb-0 text-meta">
-                    머신
+                    Machine
                     <select
                       className="h-9 px-2 py-0 text-body-sm pointer-coarse:text-base"
                       value={s.machine_id ?? ''}
@@ -1772,13 +1787,13 @@ function Workspace() {
                         setEditor({ ...editor, sets });
                       }}
                     >
-                      <option value="">자유 운동</option>
+                      <option value="">Free workout</option>
                       {machines.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.brand} · {m.name} (기본중량{' '}
-                          {m.base_weight === null ? '미확인' : `${m.base_weight} kg`})
+                          {m.brand} · {m.name} (base weight{' '}
+                          {m.base_weight === null ? 'unconfirmed' : `${m.base_weight} kg`})
                           {m.official_status
-                            ? ` · 공식 참고값 ${officialLabel({
+                            ? ` · Official reference ${officialLabel({
                                 status: m.official_status,
                                 raw_value: m.official_raw_value,
                                 raw_unit: m.official_raw_unit,
@@ -1794,11 +1809,11 @@ function Workspace() {
                   <div className="grid gap-3 min-[480px]:grid-cols-2 md:col-span-2">
                     <div className="flex min-w-0 flex-col gap-2">
                       <label htmlFor={`set-${i}-weight`} className="mb-0 text-meta">
-                        총중량 kg
+                        Total weight kg
                       </label>
                       <NumberValueInput
                         id={`set-${i}-weight`}
-                        label="총중량 kg"
+                        label="Total weight kg"
                         className="md:pointer-coarse:[&_input]:text-base"
                         step={weightStep}
                         // A whole-number step would pick the digits-only keypad; 0.25 kg still needs a point.
@@ -1817,11 +1832,11 @@ function Workspace() {
                     </div>
                     <div className="flex min-w-0 flex-col gap-2">
                       <label htmlFor={`set-${i}-reps`} className="mb-0 text-meta">
-                        횟수
+                        Reps
                       </label>
                       <NumberValueInput
                         id={`set-${i}-reps`}
-                        label="횟수"
+                        label="Reps"
                         className="md:pointer-coarse:[&_input]:text-base"
                         min={1}
                         max={1000}
@@ -1840,11 +1855,11 @@ function Workspace() {
                     <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
                   ))}
                   <label className="mb-0 text-meta md:col-span-2">
-                    세트 메모
+                    Set memo
                     <textarea
                       maxLength={4000}
                       value={s.notes}
-                      placeholder="자세, 머신 설정, 편측 기록 등"
+                      placeholder="Form, machine settings, one-sided records, etc."
                       onChange={(e) => {
                         const sets = [...editor.sets!];
                         sets[i] = { ...s, notes: e.target.value };
@@ -1863,10 +1878,10 @@ function Workspace() {
                     variant={done(s) ? 'default' : 'outline'}
                     className="h-auto min-h-12 w-full py-2 text-base whitespace-normal md:col-span-2"
                     aria-pressed={done(s)}
-                    aria-label={`${i + 1}세트 완료`}
+                    aria-label={`Set ${i + 1} done`}
                     onClick={() => markSet(i, !done(s))}
                   >
-                    {done(s) ? '완료됨 · 취소하려면 다시 누르기' : '완료'}
+                    {done(s) ? 'Done · tap again to cancel' : 'Done'}
                   </Button>
                 </div>
               ))}
@@ -1885,7 +1900,7 @@ function Workspace() {
                 }
               >
                 <Plus size={16} />
-                세트 추가
+                Add set
               </button>
               <button
                 type="button"
@@ -1910,21 +1925,21 @@ function Workspace() {
                 }
               >
                 <Plus size={16} />
-                다른 운동 추가
+                Add another exercise
               </button>
               <label>
-                운동 메모
+                Workout memo
                 <textarea
                   maxLength={4000}
                   value={editor.notes}
-                  placeholder="컨디션, 자세, 다음 운동에서 기억할 것…"
+                  placeholder="Condition, form, things to remember for the next workout…"
                   onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
                 />
               </label>
               <ModalFooter>
                 <Button className="w-full" disabled={saving}>
                   {saving && <Spinner size="sm" aria-hidden />}
-                  {saving ? '저장 중…' : '기록 저장하기'}
+                  {saving ? 'Saving…' : 'Save record'}
                 </Button>
               </ModalFooter>
             </fieldset>
@@ -1932,7 +1947,7 @@ function Workspace() {
         </Modal>
       )}
       {goalEditor && (
-        <Modal title="점진적 과부하 목표" close={() => setGoalEditor(false)}>
+        <Modal title="Progressive overload goals" close={() => setGoalEditor(false)}>
           <GoalForm
             deadline={to}
             saving={saving}
@@ -1948,7 +1963,7 @@ function Workspace() {
       )}
       {machineEditor && (
         <Modal
-          title={machineEditor.id ? '머신 정보 수정' : '머신 등록'}
+          title={machineEditor.id ? 'Edit machine details' : 'Add machine'}
           close={() => {
             setIssues({});
             setMachineEditor(null);
@@ -1972,7 +1987,7 @@ function Workspace() {
             }}
           >
             <Label className={fieldLabel}>
-              브랜드
+              Brand
               <select
                 required
                 className={selectField}
@@ -1994,7 +2009,7 @@ function Workspace() {
                 }}
               >
                 <option value="" disabled>
-                  브랜드 선택
+                  Choose a brand
                 </option>
                 {brands.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -2009,13 +2024,13 @@ function Workspace() {
               const refs = (officialWeights ?? []).filter((r) => r.brand === brandName);
               const selected = refs.find((r) => r.id === machineEditor.official_weight_id);
               if (officialWeights === null)
-                return <p className={fieldHint}>공식 참고값을 불러오지 못했습니다.</p>;
+                return <p className={fieldHint}>Could not load the official reference.</p>;
               if (!refs.length)
-                return <p className={fieldHint}>이 브랜드의 공식 참고값 자료가 없습니다.</p>;
+                return <p className={fieldHint}>No official reference data for this brand.</p>;
               return (
                 <>
                   <Label className={fieldLabel}>
-                    공식 참고값 (선택)
+                    Official reference (optional)
                     <select
                       className={selectField}
                       value={selected?.id ?? ''}
@@ -2026,7 +2041,7 @@ function Workspace() {
                         })
                       }
                     >
-                      <option value="">연결 안 함</option>
+                      <option value="">Not linked</option>
                       {refs.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.lineup} · {r.model_name}
@@ -2038,18 +2053,18 @@ function Workspace() {
                   {selected && (
                     <div
                       role="note"
-                      aria-label="공식 참고값"
+                      aria-label="Official reference"
                       className="mb-4 flex flex-col gap-1.5 rounded-md border bg-muted p-3 [overflow-wrap:anywhere]"
                     >
                       <strong className="text-body-sm font-medium">
-                        공식 참고값: {officialLabel(selected)}
+                        Official reference: {officialLabel(selected)}
                       </strong>
                       <p className={noteText}>
                         {selected.brand} {selected.lineup}
                         {selected.model_number ? ` ${selected.model_number}` : ''} ·{' '}
                         {selected.official_item_name}
                         {selected.official_kg_text
-                          ? ` · 제조사 kg 표기 ${selected.official_kg_text}`
+                          ? ` · Manufacturer kg figure ${selected.official_kg_text}`
                           : ''}
                       </p>
                       {selected.notes && <p className={noteText}>{selected.notes}</p>}
@@ -2061,16 +2076,17 @@ function Workspace() {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            제조사 공식 출처
+                            Official manufacturer source
                           </a>
                         ) : (
-                          '공식 출처 없음'
+                          'No official source'
                         )}{' '}
-                        · {selected.checked_date} 확인
+                        · checked {selected.checked_date}
                       </p>
                       <p className={noteText}>
-                        공식 참고값은 플레이트 없는 시작 저항이며 아래 기본중량에 자동 반영되지
-                        않습니다. 편측 값은 양쪽 합계가 아닙니다.
+                        The official reference is the starting resistance without plates and is not
+                        automatically added to the base weight below. A one-side value is not the
+                        sum of both sides.
                       </p>
                     </div>
                   )}
@@ -2078,7 +2094,7 @@ function Workspace() {
               );
             })()}
             <Label className={fieldLabel}>
-              머신 이름
+              Machine name
               <CommonInput
                 required
                 className={touchText}
@@ -2090,7 +2106,7 @@ function Workspace() {
             </Label>
             {issue('name')}
             <Label className={fieldLabel}>
-              기본중량 (kg) · 모르면 비워두세요
+              Base weight (kg) · leave blank if unknown
               <CommonInput
                 className={touchText}
                 type="number"
@@ -2109,11 +2125,12 @@ function Workspace() {
             </Label>
             {issue('base_weight')}
             <p className={fieldHint}>
-              확인하지 못한 기본중량은 비워두세요. 확인된 0 kg과 구분하여 저장하며, 기본중량을
-              수정해도 과거 세트의 총중량은 변경되지 않습니다.
+              Leave the base weight blank if you could not confirm it. It is stored separately from
+              a confirmed 0 kg, and changing the base weight does not change the total weight of
+              past sets.
             </p>
             <Label className={fieldLabel}>
-              확인 자료 / 설정 메모
+              Source / setting notes
               <textarea
                 className={textareaField}
                 maxLength={2000}
@@ -2136,12 +2153,13 @@ function Workspace() {
                 htmlFor="machine-single-joint"
                 className="mb-0 flex-row text-meta font-normal text-foreground"
               >
-                단관절 운동 머신 (세트 완료 시 단관절 기본 휴식 사용)
+                Single-joint exercise machine (uses the single-joint default rest when a set is
+                completed)
               </Label>
             </div>
             <Button className="w-full" disabled={saving}>
               {saving && <Spinner size="sm" aria-hidden />}
-              머신 저장하기
+              Save machine
             </Button>
           </form>
         </Modal>
@@ -2187,17 +2205,17 @@ function GoalForm({
   return (
     <form noValidate onSubmit={(event) => void handleSubmit(onSave)(event)}>
       <Label className={fieldLabel}>
-        운동명
+        Exercise name
         {/* #124: the same suggestions as the journal; a pick sets the form value. */}
         <Combobox
           className={touchText}
           maxLength={120}
-          placeholder="일지와 같은 운동명을 입력하세요"
+          placeholder="Enter the same exercise name as in the journal"
           {...register('exercise')}
           {...field('exercise')}
           value={exercise}
           options={names}
-          listLabel="이전에 쓴 이름"
+          listLabel="Previously used names"
           onValueChange={rename}
         />
       </Label>
@@ -2209,7 +2227,7 @@ function GoalForm({
       />
       <div className="grid grid-cols-2 gap-x-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
         <Label className={fieldLabel}>
-          목표 총중량 (kg)
+          Goal total weight (kg)
           <CommonInput
             className={touchText}
             type="number"
@@ -2221,7 +2239,7 @@ function GoalForm({
           />
         </Label>
         <Label className={fieldLabel}>
-          목표 반복 수
+          Goal reps
           <CommonInput
             className={touchText}
             type="number"
@@ -2232,7 +2250,7 @@ function GoalForm({
           />
         </Label>
         <Label className={fieldLabel}>
-          시작일
+          Start date
           <CommonInput
             className={touchText}
             type="date"
@@ -2241,7 +2259,7 @@ function GoalForm({
           />
         </Label>
         <Label className={fieldLabel}>
-          종료일
+          End date
           <CommonInput
             className={touchText}
             type="date"
@@ -2255,11 +2273,12 @@ function GoalForm({
       {message('start_date')}
       {message('deadline')}
       <p className={fieldHint}>
-        기간 안에 한 세트에서 목표 중량 이상, 목표 반복 수 이상을 수행하면 달성 처리됩니다.
+        It counts as achieved when you hit the goal weight or more and the goal reps or more in a
+        single set within the period.
       </p>
       <Button className="w-full" disabled={saving}>
         {saving && <Spinner size="sm" aria-hidden />}
-        목표 저장하기
+        Save goal
       </Button>
     </form>
   );
@@ -2310,7 +2329,7 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
     setBusy(true);
     try {
       await api('/exercise-weight-steps', 'PUT', checked.data);
-      setMessage(value === null ? '기본 증량 단위로 되돌렸습니다' : '증량 단위를 저장했습니다');
+      setMessage(value === null ? 'Reset to the default increase step' : 'Increase step saved');
       await load(name);
     } catch (e) {
       setMessage((e as Error).message);
@@ -2321,14 +2340,14 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
   if (!name) return null;
   return (
     <section
-      aria-label="다음 목표 제안"
+      aria-label="Suggest next goal"
       className="mb-4 rounded-lg border border-input p-3 text-body-sm"
     >
       {suggestion &&
         (suggestion.base && suggestion.target_weight !== null ? (
           <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-muted-foreground">
-            제안 {fmt(suggestion.target_weight)} kg ·{' '}
-            {suggestion.base.source === 'goal' ? '최근 목표' : '직전 기록'}{' '}
+            Suggestion {fmt(suggestion.target_weight)} kg ·{' '}
+            {suggestion.base.source === 'goal' ? 'Recent goals' : 'Previous record'}{' '}
             {fmt(suggestion.base.weight)} kg + {fmt(suggestion.weight_step)} kg{' '}
             <Button
               type="button"
@@ -2336,17 +2355,17 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
               size="sm"
               onClick={() => apply(suggestion.target_weight!)}
             >
-              제안 적용
+              Apply suggestion
             </Button>
           </p>
         ) : (
           <p className="mb-2 text-body-sm text-muted-foreground">
-            이 운동의 목표나 완료 기록이 없어 제안할 수 없습니다.
+            Cannot suggest because this exercise has no goals or completed records.
           </p>
         ))}
       <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
         <Label className={cn(fieldLabel, 'mb-0')}>
-          이 운동의 증량 단위 (kg)
+          Increase step for this exercise (kg)
           <CommonInput
             className={touchText}
             type="number"
@@ -2364,11 +2383,11 @@ function GoalSuggestion({ exercise, apply }: { exercise: string; apply: (w: numb
           onClick={() => void save(step === '' ? Number.NaN : Number(step))}
         >
           {busy && <Spinner size="sm" aria-hidden />}
-          증량 단위 저장
+          Save increase step
         </Button>
         {suggestion?.custom && (
           <Button type="button" variant="ghost" disabled={busy} onClick={() => void save(null)}>
-            기본값({defaultWeightStep} kg)으로
+            To the default ({defaultWeightStep} kg)
           </Button>
         )}
       </div>
@@ -2415,7 +2434,7 @@ function Chart({
         label:
           count > 7
             ? `${a.getUTCMonth() + 1}/${a.getUTCDate()}`
-            : ['일', '월', '화', '수', '목', '금', '토'][a.getUTCDay()],
+            : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][a.getUTCDay()],
         value: workouts
           .filter((w) => cleanDate(w.date) >= iso(a) && cleanDate(w.date) < iso(b))
           .reduce((n, w) => n + vol(w), 0),
@@ -2436,7 +2455,7 @@ function Chart({
       data-slot="volume-chart"
       className="flex h-56 gap-3 px-4 pt-6 pb-5 md:px-6 2xl:h-64"
       role="img"
-      aria-label={`기간별 운동 볼륨: ${values.map((v) => v.label + ' ' + fmt(v.value) + 'kg').join(', ')}`}
+      aria-label={`Volume by period: ${values.map((v) => v.label + ' ' + fmt(v.value) + 'kg').join(', ')}`}
     >
       <div className="flex shrink-0 flex-col justify-between pb-6 text-right text-meta tabular-nums">
         {[1, 0.75, 0.5, 0.25, 0].map((v) => (
@@ -2484,7 +2503,7 @@ function Chart({
         </div>
         {!workouts.length && (
           <div className="absolute inset-x-0 top-[30%] text-center text-caption">
-            첫 기록부터 그래프가 채워져요
+            The chart fills in from your first record
           </div>
         )}
       </div>

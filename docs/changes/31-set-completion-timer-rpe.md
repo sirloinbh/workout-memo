@@ -1,83 +1,83 @@
-# #31 feat: 세트 완료 표시·휴식 타이머·선택적 RPE 기록
+# #31 feat: Set completion marks, rest timer, and optional RPE logging
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/31
-- 브랜치: feat/31-set-completion-timer-rpe
+- Issue: https://github.com/sirloinbh/workout-memo/issues/31
+- Branch: feat/31-set-completion-timer-rpe
 
-## 변경 내용 (2026-10-19)
+## Changes (2026-10-19)
 
-- `database/migrations/006_set_completion_rpe.sql`: `sets.completed boolean NOT NULL DEFAULT true`, `sets.rpe numeric(3,1)`과 CHECK(NULL 또는 1~10의 0.5 단위)를 `ADD COLUMN IF NOT EXISTS`로 추가한다. 기존 세트는 수행 기록이므로 완료로 남아 목표 달성 결과가 바뀌지 않는다. 재실행해도 값은 유지된다. `database/README.md`에 적용 명령과 의미를 추가했다.
-- `backend/src/domain.ts`: 세트에 `completed`(boolean, 생략 시 true)와 `rpe`(number|null, 생략 시 null)를 추가했다. RPE는 1~10이면서 2배가 정수인 값만 허용하며 문자열·0·10.5·7.25 등은 400이다. 누락은 null로 남고 0으로 바꾸지 않는다. `volume`은 미완료 세트를 제외한다.
-- `backend/src/app.ts`: 세트 저장 시 두 값을 같은 트랜잭션으로 저장한다. 목표 달성 SQL은 `s.completed`인 세트만 본다. 재시도 키 fingerprint는 정규화된 본문을 그대로 사용하므로 완료 상태가 다르면 다른 요청이다.
-- `frontend/src/rest-timer.ts`(신규): 휴식 타이머 순수 로직. 남은 시간은 저장한 종료 시각(`endsAt`)과 현재 시각의 차로 계산하고, 일시정지 시 남은 ms를 보관, 재개 시 새 종료 시각을 만든다. 표시값은 초 단위 올림이라 실제 종료 전에는 0:00이 되지 않는다. 시간은 5~3600초 정수. 저장값은 형식·범위를 검증하고 손상 시 기본값(90초, 자동 시작 끔)으로 시작한다.
+- `database/migrations/006_set_completion_rpe.sql`: adds `sets.completed boolean NOT NULL DEFAULT true`, `sets.rpe numeric(3,1)`, and a CHECK (NULL, or 1 to 10 in steps of 0.5) with `ADD COLUMN IF NOT EXISTS`. Existing sets are performed records, so they stay completed and the goal achievement results do not change. Values are kept when it is re-run. Added the apply command and the meaning to `database/README.md`.
+- `backend/src/domain.ts`: added `completed` (boolean, true if omitted) and `rpe` (number|null, null if omitted) to the set. RPE allows only a value from 1 to 10 whose double is an integer, and a string, 0, 10.5, 7.25, and so on give 400. A missing value stays null and is not turned into 0. `volume` excludes incomplete sets.
+- `backend/src/app.ts`: when saving sets, stores both values in the same transaction. The goal achievement SQL looks only at sets where `s.completed`. The retry-key fingerprint uses the normalized body as it is, so a different completion state is a different request.
+- `frontend/src/rest-timer.ts` (new): the pure logic of the rest timer. The remaining time is calculated as the difference between the stored end time (`endsAt`) and the current time; on pause it keeps the remaining ms, and on resume it creates a new end time. The displayed value is rounded up to whole seconds, so it never reaches 0:00 before the real end. The duration is an integer of 5 to 3600 seconds. A stored value is validated for format and range, and if corrupted it starts from the defaults (90 seconds, auto-start off).
 - `frontend/src/main.tsx`:
-  - 세트마다 `완료`/`완료됨` 토글 버튼(`aria-pressed`)과 선택 입력 `RPE (선택)`을 추가했다. 비우면 null로 전송한다.
-  - 새 기록의 첫 세트와 `세트 추가`로 만든 세트는 미완료로 시작한다. 서버에서 읽은 기존 세트는 `completed`가 없으면 완료로 본다.
-  - 완료 상태는 기존 #34 로컬 초안에 함께 저장되어 새로고침·재접속 시 복구된다. 초안 검증에 두 필드를 추가했다(구형 초안은 필드가 없어도 허용).
-  - 같은 렌더의 완료 클릭이 반복되면 동기적으로 저장된 최신 초안을 기준으로 무시해 상태가 되돌아가거나 타이머가 재시작되지 않는다. 완료 취소는 타이머를 건드리지 않는다.
-  - 휴식 타이머 패널: 시간 설정, 시작·일시정지·재개·취소, `세트 완료 시 자동 시작` 체크박스(기본 꺼짐). 편집 창 안에 표시하고, 편집 창이 닫혀 있어도 타이머가 진행 중이면 페이지 상단에 표시한다. 진행 중에는 1초 단위로 다시 그리기만 하고, `visibilitychange`·`focus` 시 즉시 다시 그려 백그라운드 복귀 후 종료 시각 기준 값을 보여준다.
-  - 통계: 누적 볼륨·완료한 세트·그래프는 완료 세트만, 운동한 날은 완료 세트가 하나 이상인 날만 센다. 목록에는 완료 세트 수와 `미완료 n`, 세트 상세에 RPE와 `미완료(통계 제외)`를 표시한다.
-- `frontend/src/style.css`: 완료 버튼·RPE 행·타이머 패널과 760px 이하 배치를 추가했다.
+  - Added, per set, a `완료`/`완료됨` (Complete / Completed) toggle button (`aria-pressed`) and an optional input `RPE (선택)` (RPE (optional)). If left empty it is sent as null.
+  - The first set of a new record and a set made with `세트 추가` (Add set) start as incomplete. For an existing set read from the server, a missing `completed` is treated as completed.
+  - The completion state is stored together in the existing #34 local draft and restored on refresh or reconnect. Added the two fields to the draft validation (an older draft is allowed even without the fields).
+  - If a completion click repeats within the same render, it is ignored based on the latest draft stored synchronously, so the state does not flip back and the timer does not restart. Cancelling a completion does not touch the timer.
+  - Rest timer panel: duration setting, start, pause, resume, cancel, and a checkbox `세트 완료 시 자동 시작` (Auto-start when a set is completed) (off by default). It is shown inside the edit window, and also at the top of the page if the timer is running while the edit window is closed. While running it only redraws once a second, and redraws immediately on `visibilitychange` and `focus` so that it shows the end-time-based value after returning from the background.
+  - Statistics: cumulative volume, completed sets, and the graph count only completed sets, and workout days count only days with at least one completed set. The list shows the completed set count and `미완료 n` (n incomplete), and the set details show RPE and `미완료(통계 제외)` (incomplete (excluded from statistics)).
+- `frontend/src/style.css`: added the complete button, the RPE row, the timer panel, and the layout at 760px and below.
 
-## 판단 사항
+## Judgment calls
 
-- **타이머 상태는 클라이언트 전용**: localStorage `workout-memo:rest-timer:v1`에 설정·자동 시작 여부·종료 시각만 보관한다. 서버·다른 기기와 동기화하지 않는다. 저장은 사용자가 타이머를 조작할 때만 하며(초기 렌더에서 쓰지 않음) 읽기·쓰기 오류는 try/catch로 처리하고 경고만 표시한다. 브라우저가 닫힌 동안의 알림은 범위 밖이다.
-- **API 기본값은 완료**: `completed`를 보내지 않는 기존 클라이언트·스크립트의 세트는 지금까지처럼 수행 기록으로 저장된다. 이 결정으로 마이그레이션 전후·구형 클라이언트의 목표 판정이 같다.
-- **화면의 새 세트는 미완료로 시작**: 운동 중 입력하고 수행 후 완료를 누르는 흐름(자동 휴식 시작 포함)을 기준으로 했다. 완료하지 않은 세트를 실제 수행으로 집계하지 않는 쪽이 보수적이라고 판단했다. 사후에 한 번에 기록하는 사용자는 각 세트를 완료로 표시해야 하므로 편집 창에 `완료 n / m세트`와 안내를 표시한다. 기본값을 바꿀지는 PR 검토에서 확인이 필요하다.
-- **운동한 날**: 미완료 세트만 있는 일지(계획만 입력)는 운동한 날로 세지 않는다. 일지 자체는 목록에 남는다.
-- **#28과의 정책**: 루틴/간편 입력에서 만든 세트를 `completed:false`로 보내면 저장만 되고 목표·통계에서 제외된다. #28 구현 시 같은 필드를 사용해야 한다.
-- 타이머 시간을 진행 중에 바꾸면 현재 휴식의 종료 시각은 유지하고 다음 휴식부터 적용한다. 5초 미만·3600초 초과·소수는 무시한다.
-- 서버 측 통계 API는 아직 없고(통계는 화면에서 서버 기록으로 계산), 서버의 판정은 목표 달성 SQL과 `volume` 도메인 함수에 적용했다.
+- **Timer state is client-only**: only the settings, the auto-start flag, and the end time are kept in localStorage `workout-memo:rest-timer:v1`. It is not synced with the server or other devices. It saves only when the user operates the timer (it does not write on the initial render), and read and write errors are handled with try/catch and only a warning is shown. A notification while the browser is closed is out of scope.
+- **The API default is completed**: sets from existing clients and scripts that do not send `completed` are stored as performed records, as before. With this decision, the goal evaluation is the same before and after the migration and for old clients.
+- **New sets on screen start as incomplete**: I took as the basis the flow of entering during the workout and pressing complete after doing it (including auto-starting the rest). I judged it more conservative not to count an uncompleted set as actually performed. A user who records everything afterward has to mark each set as completed, so the edit window shows `완료 n / m세트` (Completed n / m sets) and a notice. Whether to change the default needs confirmation in the PR review.
+- **Workout days**: a log that has only incomplete sets (only the plan entered) is not counted as a workout day. The log itself stays in the list.
+- **Policy with #28**: if sets made by the routine or quick entry are sent as `completed:false`, they are only stored and are excluded from goals and statistics. The #28 implementation must use the same field.
+- If the timer duration is changed while running, the end time of the current rest is kept and the change applies from the next rest. Values under 5 seconds, over 3600 seconds, or fractional are ignored.
+- There is no server-side statistics API yet (statistics are calculated on screen from server records), and the server's evaluation was applied to the goal achievement SQL and the `volume` domain function.
 
-## 테스트
+## Tests
 
-- `backend/test/rest-timer.test.ts`(신규, 단위 4): 종료 시각 기반 남은 시간, 59.999초/60초 경계, 장시간 백그라운드 후 음수 없음, 일시정지·재개·취소·재개 멱등, 시간 범위 5~3600, 진행 중 시간 변경, 손상·범위 밖 저장값(시계 역행 포함) 기본값 처리.
-- `backend/test/set-completion.test.ts`(신규): 생략 시 완료·RPE null, 유효 RPE(1, 1.5, 6.5, 9.5, 10, null), 잘못된 RPE(0, 0.5, 10.5, 11, -1, 7.25, 8.1, '8', true, NaN)와 비boolean 완료 거부, `volume`의 미완료 제외, POST/PUT에서 잘못된 RPE가 저장소에 닿기 전 400. DB(전용 테스트 DB): 마이그레이션이 기존 행을 완료/NULL로 두고 재실행 시 값 보존, DB CHECK가 0·0.5·10.5·7.25 거부; 저장·재조회 시 완료 상태와 RPE 복원(누락은 null), 같은 Idempotency-Key 중복 제출 1건, 마감일의 미완료 세트는 미달성 → 완료로 수정 시 달성 → 완료 취소 시 다시 미달성, 잘못된 RPE 수정은 기록 불변, 마감 다음날 완료 세트는 미달성.
-- `backend/test/set-completion-ui.test.ts`(신규, VM 어댑터 7): 제어 가능한 시계·타이머·window 이벤트를 사용한다. 새 세트 미완료·완료·완료 취소와 전송 본문, 자동 시작 기본 꺼짐·선택 후 동일 렌더 중복 클릭에서 1회만 시작, 완료 취소 시 타이머 유지, 시간 설정(3초 무시)·시작·틱·일시정지(백그라운드 2분에도 고정)·재개·취소, 타이머 콜백 없이 시계만 이동한 백그라운드 복귀(1:00 → 0:01 → 휴식 종료, 음수 없음), 새로고침 후 남은 시간 0:45·완료 상태·RPE 8.5·자동 시작 설정 복구, RPE 비우면 null, 손상된 타이머 저장값, 미완료 세트의 볼륨·세트 수·운동한 날 제외.
-- 기존 테스트 변경: `workout-validation.test.ts`의 파싱 결과 기대값에 새 기본값 `completed: true, rpe: null`을 추가했다(메모 검증은 그대로). `workout-draft-ui.test.ts` VM 로더에 `./rest-timer` 모듈을 추가했다. `period-ui.test.ts` 어댑터의 `useState`가 React처럼 지연 초기화 함수를 실행하도록 고쳤다. 기존 assertion은 삭제·약화하지 않았다.
-- 구현 후 회귀 확인: 동일 렌더 중복 클릭 방지 조건과 볼륨의 완료 필터를 임시로 제거하면 UI 테스트 2건이 실패함을 확인하고 원복했다.
+- `backend/test/rest-timer.test.ts` (new, 4 unit tests): remaining time based on the end time, the 59.999 s / 60 s boundary, no negative value after a long time in the background, pause, resume, cancel, and idempotent resume, the 5 to 3600 time range, changing the duration while running, and the default handling of corrupted or out-of-range stored values (including the clock going backward).
+- `backend/test/set-completion.test.ts` (new): completed and RPE null when omitted, valid RPE (1, 1.5, 6.5, 9.5, 10, null), invalid RPE (0, 0.5, 10.5, 11, -1, 7.25, 8.1, '8', true, NaN) and rejecting a non-boolean completed, `volume` excluding incomplete sets, and 400 for an invalid RPE in POST/PUT before it reaches the repository. DB (dedicated test DB): the migration leaves existing rows as completed/NULL and keeps values when re-run, the DB CHECK rejects 0, 0.5, 10.5, 7.25; completion state and RPE are restored on save and re-read (missing is null), a duplicate submission with the same Idempotency-Key gives 1 record, an incomplete set on the deadline day is not achieved → achieved when edited to completed → not achieved again when the completion is cancelled, editing with an invalid RPE leaves the record unchanged, and a completed set on the day after the deadline is not achieved.
+- `backend/test/set-completion-ui.test.ts` (new, 7 VM adapter tests): uses a controllable clock, timer, and window events. New set incomplete, completed, completion cancelled and the sent body; auto-start off by default, and after choosing it, only 1 start on duplicate clicks in the same render; the timer is kept when a completion is cancelled; setting the duration (3 seconds ignored), start, tick, pause (frozen even after 2 minutes in the background), resume, cancel; return from the background where only the clock moves without a timer callback (1:00 → 0:01 → rest over, no negative); after refresh, restoring the remaining time 0:45, completion state, RPE 8.5, and the auto-start setting; clearing RPE gives null; a corrupted timer stored value; and excluding incomplete sets from volume, set count, and workout days.
+- Existing test changes: added the new defaults `completed: true, rpe: null` to the expected parse result in `workout-validation.test.ts` (the memo validation is the same). Added the `./rest-timer` module to the `workout-draft-ui.test.ts` VM loader. Fixed `useState` in the `period-ui.test.ts` adapter to run a lazy initializer function like React. No existing assertion was deleted or weakened.
+- Regression check after implementation: I confirmed that temporarily removing the same-render duplicate-click guard and the completed filter on volume makes 2 UI tests fail, and then reverted.
 
-## 실제 실행 결과
+## Actual run results
 
-- `node ../node_modules/tsx/dist/cli.mjs --test test/rest-timer.test.ts test/set-completion.test.ts test/set-completion-ui.test.ts test/workout-draft-ui.test.ts test/period-ui.test.ts`(Node 24.21.0, DB 미설정): **53 pass / 0 fail / 2 skip**. skip 2건은 DB 통합 테스트이며 성공으로 계산하지 않는다.
-- `issue-check.ps1 -Issue 31 -Migrate`(전용 DB `workout_test_31`에 001~006 적용 후 `npm run check`):
-  - 1회차: backend typecheck 실패(TS7022, 테스트의 fetch 응답 타입). 수정.
-  - 2회차: `npm test` **232 pass / 1 fail / 0 skip** — `workout-validation.test.ts`의 deepEqual이 새 기본 필드로 실패. 기대값에 기본값을 추가.
-  - 3회차: **EXIT=0**. 포맷·lint·typecheck 통과, 앱·DB `npm test` **233 pass / 0 fail / 0 skip / 0 cancelled**(DB 통합 테스트 포함), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, frontend/backend build 통과.
-- 최종 검사(이 문서 추가·포맷 후 같은 명령 재실행): **EXIT=0**. 포맷·lint·typecheck 통과, `npm test` **233 pass / 0 fail / 0 skip / 0 cancelled**, `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, build 통과. 이후 변경은 이 결과 줄 추가뿐이며 `prettier --check`로 확인했다.
+- `node ../node_modules/tsx/dist/cli.mjs --test test/rest-timer.test.ts test/set-completion.test.ts test/set-completion-ui.test.ts test/workout-draft-ui.test.ts test/period-ui.test.ts` (Node 24.21.0, DB not configured): **53 pass / 0 fail / 2 skip**. The 2 skips are DB integration tests and are not counted as success.
+- `issue-check.ps1 -Issue 31 -Migrate` (apply 001 to 006 to the dedicated DB `workout_test_31`, then `npm run check`):
+  - Run 1: backend typecheck failed (TS7022, the fetch response type in a test). Fixed.
+  - Run 2: `npm test` **232 pass / 1 fail / 0 skip** — the deepEqual in `workout-validation.test.ts` failed on the new default fields. Added the defaults to the expected value.
+  - Run 3: **EXIT=0**. Format, lint, and typecheck passed, app and DB `npm test` **233 pass / 0 fail / 0 skip / 0 cancelled** (including DB integration tests), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, frontend and backend builds passed.
+- Final check (re-running the same command after adding and formatting this document): **EXIT=0**. Format, lint, and typecheck passed, `npm test` **233 pass / 0 fail / 0 skip / 0 cancelled**, `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, build passed. The only change after that is adding this result line, confirmed with `prettier --check`.
 
-## 한계
+## Limits
 
-- 실제 브라우저(모바일 390px/PC) 확인은 이 단계에서 하지 않았다. VM 어댑터는 DOM 배치·포커스·실제 React 스케줄링·브라우저의 백그라운드 타이머 스로틀링을 검증하지 않는다. 코디네이터의 브라우저 확인이 필요하다.
-- 휴식 종료 시 소리·진동·알림은 없다. 여러 탭은 같은 타이머 저장 위치를 공유하지만 다른 탭의 변경을 실시간 반영하지 않는다(다음 새로고침 시 반영).
-- 운영 DB에는 `006_set_completion_rpe.sql`을 적용하지 않았다. 배포 전 적용이 필요하다. 마이그레이션 번호 005는 다른 작업용으로 비어 있다.
+- I did not check in a real browser (mobile 390px / PC) in this phase. The VM adapter does not verify DOM layout, focus, real React scheduling, or the browser's background timer throttling. The coordinator's browser check is needed.
+- There is no sound, vibration, or notification when a rest ends. Multiple tabs share the same timer storage location, but a change in another tab is not reflected in real time (it is reflected on the next refresh).
+- I did not apply `006_set_completion_rpe.sql` to the production DB. It must be applied before deployment. Migration number 005 is left empty for other work.
 
-## 수정: 빠른 연속 탭 무시 (2026-10-19)
+## Fix: ignore rapid consecutive taps (2026-10-19)
 
-- 코디네이터의 실제 브라우저(Chromium 390px) 확인에서 `완료` 더블클릭의 두 번째 클릭이 다음 렌더에 도착해 완료가 취소되는 문제가 발견됐다. 자동 시작한 휴식 타이머는 계속 진행되어 초안(`completed:false`)과 타이머 상태가 어긋났다.
-- `frontend/src/main.tsx`: 세트를 완료로 표시한 뒤 700ms 안에 같은 세트에 들어온 완료 취소는 무시한다. 무시한 클릭은 타이머를 재시작·취소하지 않는다. 700ms 이후의 의도적 취소는 그대로 동작한다. 눌린 상태 문구를 `완료됨 · 취소하려면 다시 누르기`로 바꾸고 `aria-pressed`는 유지했다.
-- `backend/test/set-completion-ui.test.ts`: 별도 렌더에서 100ms 간격의 두 클릭 → 완료 유지·휴식 1회 시작(1:30 남음), 1초 뒤 클릭 → 미완료·타이머 유지(1:29 남음)·전송 본문 `completed:false` 회귀 테스트를 추가했다. 수정 전 실행: 이 테스트 **fail**(`double click keeps completion`), 나머지 7 pass. 기존 두 UI 테스트의 의도적 완료 취소는 새 규칙에 맞게 취소 전에 시계를 1초 진행하도록 바꿨다(검증 내용은 같다).
-- 수정 후 `tsx --test test/set-completion-ui.test.ts test/workout-draft-ui.test.ts test/period-ui.test.ts`: **46 pass / 0 fail / 0 skip**.
-- `database/README.md`: 006 적용 명령을 컨테이너에 마운트된 파일을 읽는 `psql -f /docker-entrypoint-initdb.d/006_set_completion_rpe.sql`로 바꿨다(`compose.yaml`이 `database/migrations`를 해당 경로에 마운트함). Windows PowerShell 5.1의 네이티브 파이프는 ASCII로 전달해 한글이 손상될 수 있기 때문이다. 002/004 안내는 변경하지 않았다.
-- 수정·문서 반영 후 `issue-check.ps1 -Issue 31 -Migrate`: **EXIT=0**. 포맷·lint·typecheck·build 통과, `npm test` **234 pass / 0 fail / 0 skip / 0 cancelled**(전용 DB 포함), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**.
+- In the coordinator's real-browser (Chromium 390px) check, a problem was found where the second click of a `완료` (Complete) double-click arrives in the next render and cancels the completion. The auto-started rest timer kept running, so the draft (`completed:false`) and the timer state diverged.
+- `frontend/src/main.tsx`: after a set is marked completed, a completion cancel that arrives for the same set within 700 ms is ignored. An ignored click does not restart or cancel the timer. An intentional cancel after 700 ms works as before. I changed the pressed-state text to `완료됨 · 취소하려면 다시 누르기` (Completed · press again to cancel) and kept `aria-pressed`.
+- `backend/test/set-completion-ui.test.ts`: added a regression test in a separate render: two clicks 100 ms apart → completion kept and 1 rest start (1:30 left); a click 1 second later → incomplete, timer kept (1:29 left), and sent body `completed:false`. Run before the fix: this test **failed** (`double click keeps completion`), the other 7 passed. In the two existing UI tests, the intentional completion cancel now advances the clock by 1 second before the cancel to fit the new rule (the checks are the same).
+- After the fix, `tsx --test test/set-completion-ui.test.ts test/workout-draft-ui.test.ts test/period-ui.test.ts`: **46 pass / 0 fail / 0 skip**.
+- `database/README.md`: changed the 006 apply command to `psql -f /docker-entrypoint-initdb.d/006_set_completion_rpe.sql`, which reads the file mounted in the container (`compose.yaml` mounts `database/migrations` at that path). This is because the native pipe in Windows PowerShell 5.1 passes ASCII and can corrupt Korean. I did not change the 002/004 instructions.
+- `issue-check.ps1 -Issue 31 -Migrate` after the fix and doc update: **EXIT=0**. Format, lint, typecheck, and build passed, `npm test` **234 pass / 0 fail / 0 skip / 0 cancelled** (including the dedicated DB), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**.
 
-## 코디네이터 검토·실제 브라우저 확인 — 2026-10-19
+## Coordinator review and real-browser check — 2026-10-19
 
-- 독립 검토(읽기 전용): 차단 지적 없음. 006 마이그레이션 멱등성과 기존 세트 `completed=true` 보존, 서버 목표 판정·`volume`의 완료 세트 필터, RPE 0.5 단위 검증, #34 요청 fingerprint 호환, 종료 시각 기반 타이머를 확인했다. 참고(P3): RPE `onChange`가 렌더 시점 editor를 사용(같은 tick 이중 변경은 실사용에서 드묾).
-- 실제 브라우저(Playwright, 전용 DB `workout_test_31`의 dev 서버)에서 처음 확인했을 때 **완료 버튼 더블클릭이 완료→미완료로 되돌아가는 문제**를 발견했다. 두 클릭이 서로 다른 렌더에서 처리돼 같은 렌더 방어가 동작하지 않았다. 위의 `fix: ignore rapid repeat taps` 수정 후 재확인했다:
-  - 모바일 390px: 자동 시작 켜고 휴식 20초, RPE 8.5 입력 → 완료 더블클릭 시 `completed: true` 유지, 타이머 1회 시작("0:20 남음"), 버튼 "완료됨 · 취소하려면 다시 누르기", `aria-pressed=true`.
-  - 새로고침 → 초안 복구: 타이머가 종료 시각 기준으로 "0:11 남음", 완료 상태·RPE 8.5가 복원됐다.
-  - 미완료 세트를 추가해 저장 → 서버 기록은 `[completed:true, rpe:8.5]`, `[completed:false, rpe:null]`. 통계 "완료한 세트 1세트"에는 완료 세트만 집계된다. 가로 스크롤 없음.
-  - API: RPE 7.3, 0, 10.5, 0.5 → 모두 400.
-  - PC 1440px: 타이머·입력 모달 배치 정상.
+- Independent review (read-only): no blocking findings. Confirmed the idempotency of the 006 migration and that existing sets keep `completed=true`, the completed-set filter in the server goal evaluation and `volume`, the RPE 0.5-step validation, compatibility with the #34 request fingerprint, and the end-time-based timer. Note (P3): the RPE `onChange` uses the editor at render time (a double change in the same tick is rare in real use).
+- In the first real-browser check (Playwright, dev server on the dedicated DB `workout_test_31`), I found a **problem where a double-click on the complete button flips completed → incomplete**. The two clicks were handled in different renders, so the same-render guard did not work. I re-checked after the `fix: ignore rapid repeat taps` fix above:
+  - Mobile 390px: auto-start on, rest 20 seconds, RPE 8.5 entered → on a complete double-click `completed: true` is kept, the timer starts once ("0:20 남음" (0:20 left)), the button shows "완료됨 · 취소하려면 다시 누르기" (Completed · press again to cancel), and `aria-pressed=true`.
+  - Refresh → draft restore: the timer shows "0:11 남음" (0:11 left) based on the end time, and the completion state and RPE 8.5 were restored.
+  - Added an incomplete set and saved → the server record is `[completed:true, rpe:8.5]`, `[completed:false, rpe:null]`. In the statistics "완료한 세트 1세트" (1 completed set), only the completed set is counted. No horizontal scrolling.
+  - API: RPE 7.3, 0, 10.5, 0.5 → all 400.
+  - PC 1440px: the timer and input modal layout is normal.
 
-## main 통합: #28 루틴 진행과 충돌 해결 — 2026-10-19
+## Merge into main: resolving the conflict with #28 routine progress — 2026-10-19
 
-- #28(PR #50) 병합 후 `frontend/src/main.tsx`, `frontend/src/style.css`가 충돌했다. 두 기능이 같은 위치에 각각 추가한 import·상태·스타일을 모두 유지했다. 새 일지 기본값은 #28의 3세트에 #31의 `completed: false, rpe: null`을 합쳤다. 세트 행 grid에서 완료·RPE 줄(PC 3행·모바일 4행) 아래에 #28의 목표 참고 문구가 자동 배치되어 겹치지 않는다.
-- git이 감지하지 못한 의미 충돌을 함께 고쳤다. #31은 `completed`가 없는 세트를 기존 실적(완료)으로 간주한다.
-  - `frontend/src/progress.tsx` `routineDraft`: 오늘 목표로 채운 초안 세트가 `completed` 없이 만들어져 그대로 저장하면 목표가 수행 실적으로 집계될 수 있었다. `completed: false, rpe: null`로 시작하게 했다.
-  - `frontend/src/main.tsx` `다른 운동 추가`: 새 행도 `completed: false, rpe: null`로 시작한다.
-  - `backend/src/app.ts` 루틴 진행의 직전 기록: 미완료(계획) 세트를 제외한다(`s.completed`). 미완료 세트만 있는 더 최근 일지는 직전 기록이 되지 않는다.
-- 테스트: `routine-progress-ui.test.ts`에 초안 저장 본문의 `completed:false`·`rpe:null` 검증을 추가하고 추가 행 기대값을 갱신했다. `routine-progress.integration.test.ts`에 미완료 세트와 미완료 세트만 있는 최신 일지가 직전 기록에서 제외되는 회귀 검증을 추가했다. `set-completion-ui.test.ts`는 `./progress` 모듈을 로드하고, 새 일지 3세트 기본값에 맞춰 기대값을 갱신했다(검증 의도는 같다).
-- 전용 테스트 DB에 `005_routine_progress.sql`, `006_set_completion_rpe.sql`을 `psql -f`로 적용했다.
-- `npm run check`(Node 24, `TEST_DATABASE_URL` 설정): **EXIT=0**. 포맷·lint·typecheck·build 통과, `npm test` **274 pass / 0 fail / 0 skip / 0 cancelled**(DB 통합 포함), `test:agents` **162 pass**, `test:skills` **4 pass**.
-- 통합 후 실제 브라우저 확인은 하지 않았다.
+- After #28 (PR #50) was merged, `frontend/src/main.tsx` and `frontend/src/style.css` conflicted. I kept all the imports, state, and styles that the two features added at the same place. The default for a new log combines #28's 3 sets with #31's `completed: false, rpe: null`. In the set row grid, #28's goal reference text is placed automatically below the complete and RPE row (3 rows on PC, 4 rows on mobile), so they do not overlap.
+- I also fixed the semantic conflicts that git did not detect. #31 treats a set without `completed` as an existing performed record (completed).
+  - `frontend/src/progress.tsx` `routineDraft`: the draft sets filled with today's goal were created without `completed`, so saving them as they were could count the goal as a performed record. They now start as `completed: false, rpe: null`.
+  - `frontend/src/main.tsx` `다른 운동 추가` (Add another exercise): the new row also starts as `completed: false, rpe: null`.
+  - `backend/src/app.ts` previous record in the routine progress: excludes incomplete (planned) sets (`s.completed`). A more recent log with only incomplete sets does not become the previous record.
+- Tests: added to `routine-progress-ui.test.ts` the check of `completed:false` and `rpe:null` in the draft save body and updated the expected value of the extra row. Added to `routine-progress.integration.test.ts` a regression check that an incomplete set and the latest log with only incomplete sets are excluded from the previous record. `set-completion-ui.test.ts` loads the `./progress` module and updates its expected values to fit the new log's 3-set default (the intent of the checks is the same).
+- Applied `005_routine_progress.sql` and `006_set_completion_rpe.sql` to the dedicated test DB with `psql -f`.
+- `npm run check` (Node 24, `TEST_DATABASE_URL` set): **EXIT=0**. Format, lint, typecheck, and build passed, `npm test` **274 pass / 0 fail / 0 skip / 0 cancelled** (including DB integration), `test:agents` **162 pass**, `test:skills` **4 pass**.
+- I did not do a real-browser check after the merge.

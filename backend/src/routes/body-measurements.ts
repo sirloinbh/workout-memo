@@ -7,8 +7,8 @@ import { parseId } from '../standard/http.js';
 // NUMERIC(5,2) is returned as a JSON number; NULL stays null (never estimated or 0).
 const bodyColumns =
   'id, date, body_weight_kg::float8 AS body_weight_kg, body_fat_percent::float8 AS body_fat_percent, skeletal_muscle_kg::float8 AS skeletal_muscle_kg';
-const bodyConflict = '이 날짜의 신체 기록이 이미 있습니다. 기존 기록을 수정하세요.';
-const bodyMissing = '신체 기록을 찾을 수 없습니다';
+const bodyConflict = 'A body record already exists for this date. Edit the existing record.';
+const bodyMissing = 'Body record not found';
 
 export function registerBodyMeasurementRoutes(app: express.Express, pool: Pool) {
   app.get('/api/body-measurements', async (req, res) => {
@@ -33,7 +33,7 @@ export function registerBodyMeasurementRoutes(app: express.Express, pool: Pool) 
     else res.status(409).json({ error: bodyConflict });
   });
   app.put('/api/body-measurements/:id', async (req, res) => {
-    const target = parseId(req.params.id, '신체 기록');
+    const target = parseId(req.params.id, 'body record');
     const b = bodyMeasurementSchema.parse(req.body);
     try {
       // A full replacement: omitted metrics become NULL.
@@ -50,7 +50,7 @@ export function registerBodyMeasurementRoutes(app: express.Express, pool: Pool) 
   });
   app.delete('/api/body-measurements/:id', async (req, res) => {
     const r = await pool.query('DELETE FROM body_measurements WHERE id=$1', [
-      parseId(req.params.id, '신체 기록'),
+      parseId(req.params.id, 'body record'),
     ]);
     res.status(r.rowCount ? 200 : 404).json(r.rowCount ? { ok: true } : { error: bodyMissing });
   });

@@ -12,15 +12,15 @@ test('range length includes both ends', () => {
 test('invalid ranges are reported per field', () => {
   expect(checkRange('2026-10-01', '2026-10-10')).toEqual({});
   expect(checkRange('2026-10-10', '2026-10-10')).toEqual({});
-  expect(checkRange('', '')).toEqual({ from: '시작일을 입력하세요', to: '종료일을 입력하세요' });
-  expect(checkRange('2026-02-30', '2026-03-01').from).toBe('올바른 시작일을 입력하세요');
+  expect(checkRange('', '')).toEqual({ from: 'Enter a start date', to: 'Enter an end date' });
+  expect(checkRange('2026-02-30', '2026-03-01').from).toBe('Enter a valid start date');
   expect(checkRange('2026-10-10', '2026-10-09')).toEqual({
-    to: '종료일은 시작일과 같거나 이후여야 합니다',
+    to: 'The end date must be the same as or after the start date',
   });
   const last = new Date(Date.UTC(2025, 0, maxRangeDays)).toISOString().slice(0, 10);
   expect(checkRange('2025-01-01', last)).toEqual({});
   const over = new Date(Date.UTC(2025, 0, maxRangeDays + 1)).toISOString().slice(0, 10);
-  expect(checkRange('2025-01-01', over).to).toMatch(/최대 371일/);
+  expect(checkRange('2025-01-01', over).to).toMatch(/up to 371 days/);
 });
 
 test('only a complete valid range from the address is used', () => {
@@ -43,10 +43,10 @@ test('charts group by day up to 31 days, by week up to 92 days, otherwise by mon
 
   const monthly = rangeBuckets('2026-01-15', '2026-04-20');
   expect(monthly).toEqual([
-    { start: '2026-01-15', end: '2026-02-01', label: '1월' },
-    { start: '2026-02-01', end: '2026-03-01', label: '2월' },
-    { start: '2026-03-01', end: '2026-04-01', label: '3월' },
-    { start: '2026-04-01', end: '2026-04-21', label: '4월' },
+    { start: '2026-01-15', end: '2026-02-01', label: 'Jan' },
+    { start: '2026-02-01', end: '2026-03-01', label: 'Feb' },
+    { start: '2026-03-01', end: '2026-04-01', label: 'Mar' },
+    { start: '2026-04-01', end: '2026-04-21', label: 'Apr' },
   ]);
   expect(rangeBuckets('2025-11-10', '2026-02-20').map((b) => b.label)).toEqual([
     '25.11',

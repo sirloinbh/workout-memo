@@ -11,11 +11,12 @@ import { Notice } from './components/ui/notice';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { defaultWeightStep } from './contract';
+import { bodyPartLabel, plural } from './labels';
 import { cn } from './lib/utils';
 import { byWeek, kindLabel, previewTargets } from './progression';
 
 // #102: the routine form on the common components. Selects stay native like the journal's
-// machine select (#101): the tests and the "자유 운동" empty value rely on a real <select>.
+// machine select (#101): the tests and the "Free workout" empty value rely on a real <select>.
 const fieldLabel = 'flex-col items-stretch gap-1.5 text-meta font-normal text-muted-foreground';
 // The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
 const touchText = 'md:pointer-coarse:text-base';
@@ -28,7 +29,7 @@ const list = 'mt-2 space-y-1.5 pl-1 text-body-sm';
 
 // #88: 이두·삼두 replace 팔 for new choices; a saved 팔 still shows and can be removed.
 const parts = ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'];
-const days = ['일', '월', '화', '수', '목', '금', '토'];
+const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 type Exercise = {
   exercise: string;
   machine_id?: number | null;
@@ -65,7 +66,7 @@ const exercise = (): Exercise => ({
   rep_max: 12,
 });
 const split = (i: number): Split => ({
-  name: `분할 ${i + 1}`,
+  name: `Split ${i + 1}`,
   body_parts: [],
   exercises: [exercise()],
 });
@@ -130,7 +131,7 @@ const newPlan = (): Plan =>
     1,
   );
 const autoRule =
-  '현재 수행 능력(총중량·반복 수)을 입력하면 12주 목표를 자동으로 만듭니다. 종목이 들어 있는 분할의 세션(운동일)마다 반복 수를 1회씩 늘리고, 상한을 넘으면 총중량을 운동별 증량 단위(기본 5 kg, 나의 목표에서 운동마다 변경)만큼 올리고 반복 수를 하한으로 되돌립니다. 주 2~3번 하는 분할은 한 주에 2~3단계 진행합니다. 0 kg(맨몸) 종목은 반복 수만 늘립니다. 4·8·12주차의 세션은 모두 직전 목표 중량의 90%(2.5 kg 단위)·같은 반복 수로 디로딩하며 진행하지 않고, 다음 세션은 디로딩 직전 목표에서 이어갑니다. 세션 날짜부터 같은 분할의 다음 세션 전까지 저장한 일지에서 목표를 달성하지 못하면 다음 세션도 같은 목표를 유지합니다.';
+  "Enter your current performance (total weight and reps) and the 12-week goals are created automatically. Reps go up by 1 each session (workout day) of a split that includes the exercise; once the upper limit is exceeded, the total weight goes up by the exercise's increase step (default 5 kg, changeable per exercise in My Goals) and reps return to the lower limit. A split done 2-3 times a week advances 2-3 steps per week. Exercises at 0 kg (bodyweight) only increase reps. In weeks 4, 8, and 12, every session is a deload at 90% of the previous target weight (in 2.5 kg steps) with the same reps and does not advance, and the next session continues from the target before the deload. If you do not hit the goal in the journal saved between a session's date and the next session of the same split, the next session keeps the same goal.";
 // The server receives only the fields of the chosen mode.
 function payload(plan: Plan) {
   const auto = plan.progression === 'auto';
@@ -183,13 +184,14 @@ function Preview({
   if (!preview)
     return (
       <p className={cn(hint, 'my-5')}>
-        시작일과 일정(주기 또는 휴식 요일)을 입력하면 12주 예상 목표를 표시합니다.
+        Enter a start date and a schedule (cycle or rest weekdays) to see the 12-week projected
+        goals.
       </p>
     );
   return (
     <section data-slot="routine-preview" className="my-5 rounded-xl border p-4">
       <Heading className="mb-2 text-body-sm font-semibold">
-        12주 예상 목표 · 기록에 따라 바뀔 수 있음
+        12-week projected goals · may change with your records
       </Heading>
       {preview.map((split, i) =>
         split
@@ -206,11 +208,11 @@ function Preview({
                     data-deload={w.week % 4 === 0 || undefined}
                     className="[overflow-wrap:anywhere] data-deload:font-medium data-deload:text-foreground"
                   >
-                    {`${w.week}주차${w.week % 4 === 0 ? ' 디로딩' : ''}: `}
+                    {`Week ${w.week}${w.week % 4 === 0 ? ' deload' : ''}: `}
                     {w.rows
                       .map(
                         (r) =>
-                          `${r.session}번째 ${String(r.weight)} kg × ${r.reps}회(${kindLabel(r)})`,
+                          `Session ${r.session} ${String(r.weight)} kg × ${plural(r.reps, 'rep')} (${kindLabel(r)})`,
                       )
                       .join(', ')}
                   </li>
@@ -229,7 +231,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json();
-  if (!response.ok) throw Error(data.error ?? '루틴 요청에 실패했습니다');
+  if (!response.ok) throw Error(data.error ?? 'The routine request failed');
   return data;
 }
 type Machine = { id: number; brand: string; name: string };
@@ -239,8 +241,8 @@ const machineName = (machines: Machine[], id: number | null | undefined) => {
 };
 const goalLabel = (w: Week) =>
   w.kind === 'deload'
-    ? `디로딩 · ${w.deload_metric === 'weight' ? '총중량 kg' : w.deload_metric === 'sets' ? '세트 수' : '반복 수'} ${w.amount} 감소`
-    : `${w.kind === 'increase_weight' ? '총중량 kg' : '반복 수'} ${w.amount} 증가`;
+    ? `Deload · ${w.deload_metric === 'weight' ? 'Total weight kg' : w.deload_metric === 'sets' ? 'Sets' : 'Reps'} -${w.amount}`
+    : `${w.kind === 'increase_weight' ? 'Total weight kg' : 'Reps'} +${w.amount}`;
 
 export function Routines() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -293,21 +295,20 @@ export function Routines() {
     });
   return (
     <section data-slot="routine-page">
-      <h2 className="mb-2 text-body font-semibold">루틴짜기 · 12주 계획</h2>
+      <h2 className="mb-2 text-body font-semibold">Routine Builder · 12-week plan</h2>
       <p className="text-body-sm text-muted-foreground">
-        운동일마다 분할을 순환하며 4·8·12주차는 디로딩입니다. 자동 목표는 현재 수행 능력에서 12주
-        목표를 계산하고, 수동 목표는 주차별 변화량을 직접 입력합니다.
+        Splits rotate on each workout day, and weeks 4, 8, and 12 are deload weeks. Auto goals
+        calculate the 12-week goals from your current performance, and for manual goals you enter
+        the weekly changes yourself.
       </p>
       <p className="mb-4 text-body-sm text-muted-foreground">
-        계획은 목표일 뿐이며 실제 수행은 운동 일지에 따로 기록하세요.
+        A plan is only a goal. Record what you actually did separately in the workout journal.
       </p>
       {error && <AlertBanner>{error}</AlertBanner>}
       <Notice
         className="mb-3"
         notice={
-          savedId !== null
-            ? { kind: 'status', text: `루틴 #${savedId}을 저장했습니다.` }
-            : undefined
+          savedId !== null ? { kind: 'status', text: `Routine #${savedId} saved.` } : undefined
         }
       />
       <Button
@@ -319,18 +320,19 @@ export function Routines() {
           setSavedId(null);
         }}
       >
-        <Plus aria-hidden />새 루틴 만들기
+        <Plus aria-hidden />
+        Create new routine
       </Button>
       {/* #173: row placeholders while the saved routines first load (reloads after a save do not
           show a loading state); the status line is for screen readers. */}
       {loading && (
-        <div aria-busy="true" aria-label="저장된 루틴" className="mt-3 rounded-lg border p-4">
-          <Notice className="sr-only" notice={{ kind: 'status', text: '루틴 불러오는 중…' }} />
+        <div aria-busy="true" aria-label="Saved routines" className="mt-3 rounded-lg border p-4">
+          <Notice className="sr-only" notice={{ kind: 'status', text: 'Loading routines…' }} />
           <SkeletonList rows={2} />
         </div>
       )}
       {!loading && !plans.length && (
-        <p className="mt-3 text-body-sm text-muted-foreground">저장된 루틴이 없습니다.</p>
+        <p className="mt-3 text-body-sm text-muted-foreground">No saved routines.</p>
       )}
       {plans.length > 0 && (
         <ul data-slot="plan-list" className="mt-3 divide-y rounded-lg border">
@@ -351,7 +353,7 @@ export function Routines() {
                     .catch((e) => setError(e.message));
                 }}
               >
-                계획 보기
+                View plan
               </Button>
             </li>
           ))}
@@ -383,7 +385,7 @@ export function Routines() {
             }}
           >
             <Label className={cn(fieldLabel, 'mb-3')}>
-              주차 목표 방식
+              Weekly goal mode
               <select
                 className={nativeSelect}
                 value={draft.progression ?? 'manual'}
@@ -391,13 +393,13 @@ export function Routines() {
                   setDraft({ ...draft, progression: e.target.value as 'manual' | 'auto' })
                 }
               >
-                <option value="auto">자동 · 이중 점진 과부하</option>
-                <option value="manual">수동 · 주차별 직접 입력</option>
+                <option value="auto">Auto · double progressive overload</option>
+                <option value="manual">Manual · Enter by week</option>
               </select>
             </Label>
             {draft.progression === 'auto' && <p className={cn(hint, 'mb-3')}>{autoRule}</p>}
             <Label className={cn(fieldLabel, 'mb-3')}>
-              루틴 이름
+              Routine name
               <Input
                 className={touchText}
                 required
@@ -408,7 +410,7 @@ export function Routines() {
             </Label>
             <div className="grid grid-cols-2 gap-x-3 gap-y-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
               <Label className={fieldLabel}>
-                시작일
+                Start date
                 <Input
                   className={touchText}
                   required
@@ -418,7 +420,7 @@ export function Routines() {
                 />
               </Label>
               <Label className={fieldLabel}>
-                분할 방식
+                Split type
                 <select
                   className={nativeSelect}
                   value={draft.split_count}
@@ -426,13 +428,13 @@ export function Routines() {
                 >
                   {[1, 2, 3, 4, 5].map((n) => (
                     <option key={n} value={n}>
-                      {n === 1 ? '무분할' : `${n}분할`}
+                      {n === 1 ? 'No split' : `${n}-day split`}
                     </option>
                   ))}
                 </select>
               </Label>
               <Label className={fieldLabel}>
-                운동 일정 방식
+                Workout schedule type
                 <select
                   className={nativeSelect}
                   value={draft.schedule_mode ?? 'weekday'}
@@ -440,14 +442,14 @@ export function Routines() {
                     setDraft({ ...draft, schedule_mode: e.target.value as 'weekday' | 'cycle' })
                   }
                 >
-                  <option value="cycle">주기 · N일 운동 후 M일 휴식</option>
-                  <option value="weekday">요일 · 휴식 요일 지정</option>
+                  <option value="cycle">Cycle · N days on, then M days off</option>
+                  <option value="weekday">Weekdays · Set rest weekdays</option>
                 </select>
               </Label>
               {draft.schedule_mode === 'cycle' ? (
                 <>
                   <Label className={fieldLabel}>
-                    연속 운동일
+                    Consecutive workout days
                     <Input
                       className={touchText}
                       required
@@ -464,7 +466,7 @@ export function Routines() {
                     />
                   </Label>
                   <Label className={fieldLabel}>
-                    이어지는 휴식일
+                    Consecutive rest days
                     <Input
                       className={touchText}
                       required
@@ -483,7 +485,7 @@ export function Routines() {
                 </>
               ) : (
                 <Label className={fieldLabel}>
-                  주당 운동 횟수
+                  Workouts per week
                   <Input
                     className={touchText}
                     required
@@ -500,12 +502,12 @@ export function Routines() {
             </div>
             {draft.schedule_mode === 'cycle' ? (
               <p className={cn(hint, 'mt-3')}>
-                시작일부터 운동일과 휴식일을 반복합니다. 분할 방식을 고르면 기본 주기와 부위를
-                채우며, 바꿀 수 있습니다.
+                Workout days and rest days repeat from the start date. Choosing a split type fills
+                in the default cycle and body parts, and you can change them.
               </p>
             ) : (
               <fieldset className={box}>
-                <legend className={legend}>휴식 요일 · 운동 횟수와 합계 7일</legend>
+                <legend className={legend}>Rest weekdays · Workouts plus rest total 7 days</legend>
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   {days.map((day, i) => (
                     <Label key={day} className="min-h-9 gap-2 text-body-sm pointer-coarse:min-h-11">
@@ -533,9 +535,9 @@ export function Routines() {
             )}
             {draft.splits.map((s, i) => (
               <fieldset key={i} className={box}>
-                <legend className={legend}>분할 {i + 1}</legend>
+                <legend className={legend}>Split {i + 1}</legend>
                 <Label className={fieldLabel}>
-                  분할 이름
+                  Split name
                   <Input
                     className={touchText}
                     required
@@ -545,8 +547,8 @@ export function Routines() {
                   />
                 </Label>
                 <p className="mt-3 mb-2 text-meta text-muted-foreground">
-                  부위 버튼을 누를 때마다 순서대로 추가됩니다. 같은 부위도 여러 번 추가할 수
-                  있습니다.
+                  Each time you tap a body part button it is added in order. You can add the same
+                  part more than once.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {parts.map((p) => (
@@ -557,7 +559,7 @@ export function Routines() {
                       key={p}
                       onClick={() => changeSplit(i, { ...s, body_parts: [...s.body_parts, p] })}
                     >
-                      {p} 추가
+                      Add {bodyPartLabel(p)}
                     </Button>
                   ))}
                 </div>
@@ -567,13 +569,13 @@ export function Routines() {
                       key={j}
                       className="flex items-center gap-1 rounded-full border pl-3 text-body-sm"
                     >
-                      {p}{' '}
+                      {bodyPartLabel(p)}{' '}
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         className="rounded-full"
-                        aria-label={`분할 ${i + 1} 부위 ${j + 1} 삭제`}
+                        aria-label={`Delete split ${i + 1} body part ${j + 1}`}
                         onClick={() =>
                           changeSplit(i, {
                             ...s,
@@ -581,7 +583,7 @@ export function Routines() {
                           })
                         }
                       >
-                        삭제
+                        Delete
                       </Button>
                     </li>
                   ))}
@@ -593,7 +595,7 @@ export function Routines() {
                     key={j}
                   >
                     <Label className={cn(fieldLabel, 'col-span-2 md:col-span-1')}>
-                      운동명
+                      Exercise name
                       <Input
                         className={touchText}
                         required
@@ -603,7 +605,7 @@ export function Routines() {
                       />
                     </Label>
                     <Label className={cn(fieldLabel, 'col-span-2')}>
-                      머신
+                      Machine
                       <select
                         className={nativeSelect}
                         value={ex.machine_id ?? ''}
@@ -613,7 +615,7 @@ export function Routines() {
                           })
                         }
                       >
-                        <option value="">자유 운동</option>
+                        <option value="">Free workout</option>
                         {machines.map((m) => (
                           <option key={m.id} value={m.id}>
                             {m.brand} · {m.name}
@@ -628,17 +630,17 @@ export function Routines() {
                       <Label key={key} className={fieldLabel}>
                         {draft.progression === 'auto'
                           ? {
-                              sets: '세트 수',
-                              weight: '현재 총중량 (kg, 머신 기본중량 포함)',
-                              reps: '현재 반복 수',
-                              rep_min: '반복 하한',
-                              rep_max: '반복 상한',
+                              sets: 'Number of sets',
+                              weight: 'Current total weight (kg, including machine base weight)',
+                              reps: 'Current reps',
+                              rep_min: 'Lower reps',
+                              rep_max: 'Upper reps',
                             }[key]
                           : key === 'sets'
-                            ? '기준 세트 수'
+                            ? 'Reference sets'
                             : key === 'weight'
-                              ? '기준 총중량 (kg, 머신 기본중량 포함)'
-                              : '기준 반복 수'}
+                              ? 'Reference total weight (kg, including machine base weight)'
+                              : 'Reference reps'}
                         <Input
                           className={touchText}
                           required
@@ -668,7 +670,7 @@ export function Routines() {
                           })
                         }
                       >
-                        운동 삭제
+                        Delete exercise
                       </Button>
                     </div>
                   </div>
@@ -680,7 +682,7 @@ export function Routines() {
                   onClick={() => changeSplit(i, { ...s, exercises: [...s.exercises, exercise()] })}
                 >
                   <Plus aria-hidden />
-                  운동 추가
+                  Add exercise
                 </Button>
               </fieldset>
             ))}
@@ -689,10 +691,10 @@ export function Routines() {
               draft.weeks?.map((w, i) => (
                 <fieldset key={w.week} className={cn(box, 'grid grid-cols-2 gap-3')}>
                   <legend className={legend}>
-                    {w.week}주차 {w.kind === 'deload' ? '디로딩' : '증가 목표'}
+                    Week {w.week} {w.kind === 'deload' ? 'Deload' : 'Increase goal'}
                   </legend>
                   <Label className={fieldLabel}>
-                    {w.kind === 'deload' ? '감소 대상' : '증가 대상'}
+                    {w.kind === 'deload' ? 'Decrease target' : 'Increase target'}
                     <select
                       className={nativeSelect}
                       required
@@ -717,22 +719,22 @@ export function Routines() {
                       {w.kind === 'deload' ? (
                         <>
                           <option value="" disabled>
-                            감소 대상 선택
+                            Choose decrease target
                           </option>
-                          <option value="weight">총중량 (kg)</option>
-                          <option value="sets">세트 수</option>
-                          <option value="reps">반복 수</option>
+                          <option value="weight">Total weight (kg)</option>
+                          <option value="sets">Number of sets</option>
+                          <option value="reps">Reps</option>
                         </>
                       ) : (
                         <>
-                          <option value="increase_weight">총중량 (kg)</option>
-                          <option value="increase_reps">반복 수</option>
+                          <option value="increase_weight">Total weight (kg)</option>
+                          <option value="increase_reps">Reps</option>
                         </>
                       )}
                     </select>
                   </Label>
                   <Label className={fieldLabel}>
-                    {w.kind === 'deload' ? '감소량' : '증가량'}
+                    {w.kind === 'deload' ? 'Decrease amount' : 'Increase amount'}
                     <Input
                       className={touchText}
                       required
@@ -773,7 +775,7 @@ export function Routines() {
             <div className="mt-5 flex flex-wrap gap-2">
               <Button disabled={saving}>
                 {saving && <Spinner size="sm" aria-hidden />}
-                {saving ? '저장 중…' : '루틴 저장하기'}
+                {saving ? 'Saving…' : 'Save routine'}
               </Button>
               <Button
                 type="button"
@@ -781,7 +783,7 @@ export function Routines() {
                 disabled={saving}
                 onClick={() => setDraft(null)}
               >
-                취소
+                Cancel
               </Button>
             </div>
           </form>
@@ -802,27 +804,30 @@ export function Routines() {
               {selected.name}
             </CardTitle>
             <p className="mt-1.5 text-body-sm text-muted-foreground">
-              {selected.split_count === 1 ? '무분할' : `${selected.split_count}분할`} · 시작일{' '}
-              {selected.start_date} ·{' '}
+              {selected.split_count === 1 ? 'No split' : `${selected.split_count}-day split`} ·
+              Start date {selected.start_date} ·{' '}
               {selected.schedule_mode === 'cycle' && selected.cycle
-                ? `${selected.cycle.train_days}일 운동 · ${selected.cycle.rest_days}일 휴식 반복`
-                : `주 ${selected.weekly_workouts}회 · 휴식 ${
-                    selected.rest_days.map((d) => days[d]).join(', ') || '없음'
+                ? `Repeats ${selected.cycle.train_days} days on, ${selected.cycle.rest_days} days off`
+                : `${selected.weekly_workouts} workouts/week · Rest ${
+                    selected.rest_days.map((d) => days[d]).join(', ') || 'none'
                   }`}
             </p>
             {selected.splits.map((s, i) => (
               <section key={i} className="mt-4 border-t pt-3">
                 <h4 className="text-body-sm font-semibold [overflow-wrap:anywhere]">{s.name}</h4>
-                <p className="mt-1 text-meta text-muted-foreground">{s.body_parts.join(' → ')}</p>
+                <p className="mt-1 text-meta text-muted-foreground">
+                  {s.body_parts.map(bodyPartLabel).join(' → ')}
+                </p>
                 <ul className={list}>
                   {s.exercises.map((ex, j) => (
                     <li key={j} className="[overflow-wrap:anywhere]">
                       {ex.exercise}
                       {machineName(machines, ex.machine_id) &&
                         ` (${machineName(machines, ex.machine_id)})`}{' '}
-                      · {ex.sets}세트 · 총중량 {ex.weight} kg · {ex.reps}회
+                      · {plural(Number(ex.sets), 'set')} · total weight {ex.weight} kg ·{' '}
+                      {plural(Number(ex.reps), 'rep')}
                       {selected.progression === 'auto' &&
-                        ` · 반복 범위 ${ex.rep_min}~${ex.rep_max}회 · 증량 단위 ${stepOf(steps, ex.exercise)} kg`}
+                        ` · Rep range ${ex.rep_min}–${ex.rep_max} · Increase step ${stepOf(steps, ex.exercise)} kg`}
                     </li>
                   ))}
                 </ul>
@@ -830,12 +835,12 @@ export function Routines() {
             ))}
             {selected.progression === 'auto' ? (
               <>
-                <p className={cn(hint, 'mt-4')}>자동 · 이중 점진 과부하. {autoRule}</p>
+                <p className={cn(hint, 'mt-4')}>Auto · double progressive overload. {autoRule}</p>
                 <Preview plan={selected} steps={steps} />
               </>
             ) : (
               <section className="mt-4 border-t pt-3">
-                <h4 className="text-body-sm font-semibold">주차별 목표</h4>
+                <h4 className="text-body-sm font-semibold">Goals by week</h4>
                 <ol className={list}>
                   {selected.weeks?.map((w) => (
                     <li
@@ -843,7 +848,7 @@ export function Routines() {
                       data-deload={w.kind === 'deload' || undefined}
                       className="text-muted-foreground data-deload:font-medium data-deload:text-foreground"
                     >
-                      {w.week}주차 · {goalLabel(w)}
+                      Week {w.week} · {goalLabel(w)}
                     </li>
                   ))}
                 </ol>
@@ -851,7 +856,7 @@ export function Routines() {
             )}
             <section className="mt-4 border-t pt-3">
               <h4 className="text-body-sm font-semibold">
-                운동 일정 · 시작일부터 12주 (Asia/Seoul)
+                Workout schedule · 12 weeks from the start date (Asia/Seoul)
               </h4>
               <ul className={cn(list, 'md:columns-2 md:gap-6')}>
                 {selected.schedule?.map((day) => (
@@ -860,8 +865,8 @@ export function Routines() {
                     data-deload={day.is_deload || undefined}
                     className="break-inside-avoid [overflow-wrap:anywhere] text-muted-foreground data-deload:text-foreground"
                   >
-                    {day.date} · {day.week}주차 · {selected.splits[day.split_index].name}
-                    {day.is_deload ? ' · 디로딩' : ''}
+                    {day.date} · Week {day.week} · {selected.splits[day.split_index].name}
+                    {day.is_deload ? ' · Deload' : ''}
                   </li>
                 ))}
               </ul>

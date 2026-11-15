@@ -24,7 +24,7 @@ export const backupFormat = 'workout-memo-backup';
 export const backupVersion = 3;
 export const supportedBackupVersions = [1, 2, 3] as const;
 export const backupMaxBytes = 10 * 1024 * 1024;
-export const replaceConfirmation = '전체 교체';
+export const replaceConfirmation = 'Replace all';
 
 export class BackupInvalid extends Error {}
 
@@ -147,7 +147,7 @@ const backupSchema = z.object({
               start_date: date,
               deadline: date,
             })
-            .refine((g) => g.deadline >= g.start_date, '목표 종료일을 확인하세요'),
+            .refine((g) => g.deadline >= g.start_date, 'Check the goal end date'),
         )
         .max(5000),
       routines: z.array(z.object({ id, created_at: timestamp, plan: routineSchema })).max(1000),
@@ -169,38 +169,42 @@ const backupSchema = z.object({
       ] as const) {
         const seen = new Set<number>();
         for (const row of data[table] ?? []) {
-          if (seen.has(row.id)) issue(`${table}: 중복된 id ${row.id}`);
+          if (seen.has(row.id)) issue(`${table}: duplicate id ${row.id}`);
           seen.add(row.id);
         }
       }
       const brandIds = new Set(data.brands.map((b) => b.id));
       if (new Set(data.brands.map((b) => b.name)).size !== data.brands.length)
-        issue('브랜드 이름이 중복되었습니다');
+        issue('Brand name is duplicated');
       const machineIds = new Set(data.machines.map((m) => m.id));
       const machineKeys = new Set<string>();
       data.machines.forEach((m, i) => {
         if (!brandIds.has(m.brand_id))
-          issue(`machines[${i}]: 백업에 없는 브랜드 ${m.brand_id}를 참조합니다`);
+          issue(`machines[${i}]: references brand ${m.brand_id} that is not in the backup`);
         const key = m.brand_id + '\u0000' + m.name;
-        if (machineKeys.has(key)) issue(`같은 브랜드의 머신 이름이 중복되었습니다: ${m.name}`);
+        if (machineKeys.has(key)) issue(`Duplicate machine name within the same brand: ${m.name}`);
         machineKeys.add(key);
       });
       data.workouts.forEach((w, i) =>
         w.sets.forEach((s, j) => {
           if (s.machine_id !== null && !machineIds.has(s.machine_id))
-            issue(`workouts[${i}].sets[${j}]: 백업에 없는 머신 ${s.machine_id}를 참조합니다`);
+            issue(
+              `workouts[${i}].sets[${j}]: references machine ${s.machine_id} that is not in the backup`,
+            );
         }),
       );
       const workoutIds = new Set(data.workouts.map((w) => w.id));
       const externalIds = new Set<string>();
       (data.cardio_sessions ?? []).forEach((c, i) => {
         if (c.workout_id !== null && !workoutIds.has(c.workout_id))
-          issue(`cardio_sessions[${i}]: 백업에 없는 일지 ${c.workout_id}를 참조합니다`);
+          issue(
+            `cardio_sessions[${i}]: references workout ${c.workout_id} that is not in the backup`,
+          );
         if (c.external_id === null) return;
         const key = c.source + '\u0000' + c.external_id;
         if (externalIds.has(key))
           issue(
-            `같은 출처와 외부 ID의 유산소 기록이 중복되었습니다: ${c.source} / ${c.external_id}`,
+            `Duplicate cardio record with the same source and external ID: ${c.source} / ${c.external_id}`,
           );
         externalIds.add(key);
       });
@@ -208,7 +212,7 @@ const backupSchema = z.object({
         r.plan.splits.forEach((s) =>
           s.exercises.forEach((e) => {
             if (e.machine_id != null && !machineIds.has(e.machine_id))
-              issue(`routines[${i}]: 백업에 없는 머신 ${e.machine_id}를 참조합니다`);
+              issue(`routines[${i}]: references machine ${e.machine_id} that is not in the backup`);
           }),
         ),
       );
@@ -229,14 +233,12 @@ export type Backup = Omit<ParsedBackup, 'data'> & {
 export function parseBackup(value: unknown): Backup {
   const head = value as { format?: unknown; version?: unknown } | null;
   if (typeof head !== 'object' || head === null || Array.isArray(head))
-    throw new BackupInvalid('워크아웃 메모 백업 파일 형식이 아닙니다');
+    throw new BackupInvalid('Not a Workout Memo backup file');
   if (head.format !== backupFormat)
-    throw new BackupInvalid(
-      '워크아웃 메모 백업 파일 형식이 아닙니다 (분석용 CSV는 복원할 수 없습니다)',
-    );
+    throw new BackupInvalid('Not a Workout Memo backup file (CSV for analysis cannot be restored)');
   if (!(supportedBackupVersions as readonly unknown[]).includes(head.version))
     throw new BackupInvalid(
-      `지원하지 않는 백업 버전입니다 (v${String(head.version)}). 지원 버전: ${supportedBackupVersions.map((v) => 'v' + v).join(', ')}`,
+      `Unsupported backup version (v${String(head.version)}). Supported versions: ${supportedBackupVersions.map((v) => 'v' + v).join(', ')}`,
     );
   // v1 predates cardio sessions (#114) and v1·v2 predate cardio goals (#253): such stray keys in
   // an older file are ignored, not validated, so they never make an otherwise valid restore fail.
@@ -254,20 +256,21 @@ export function parseBackup(value: unknown): Backup {
     const { version, data } = parsed.data;
     const missing = [
       version >= 2 && !data.cardio_sessions
-        ? `data.cardio_sessions: v${version} 백업에는 유산소 기록 목록이 필요합니다`
+        ? `data.cardio_sessions: a v${version} backup needs a cardio records list`
         : null,
       version === 3 && !data.cardio_goals
-        ? 'data.cardio_goals: v3 백업에는 유산소 목표 목록이 필요합니다'
+        ? 'data.cardio_goals: a v3 backup needs a cardio goals list'
         : null,
     ].filter((m) => m !== null);
-    if (missing.length) throw new BackupInvalid('백업 검증 실패 — ' + missing.join(' / '));
+    if (missing.length)
+      throw new BackupInvalid('Backup validation failed — ' + missing.join(' / '));
   }
   if (!parsed.success) {
     const issues = parsed.error.issues.slice(0, 5).map((x) => {
       const path = x.path.join('.');
       return path ? `${path}: ${x.message}` : x.message;
     });
-    throw new BackupInvalid('백업 검증 실패 — ' + issues.join(' / '));
+    throw new BackupInvalid('Backup validation failed — ' + issues.join(' / '));
   }
   const { data, version } = parsed.data;
   // v1 predates cardio sessions (#114): it restores as a backup without any.
@@ -424,7 +427,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
         t.machines.conflicts++;
         if (summary.conflicts.length < 20)
           summary.conflicts.push(
-            `${brandName.get(m.brand_id)} / ${m.name}: 기존 값 유지 (기본중량 ${existing.base_weight ?? '미확인'}kg, 백업 ${m.base_weight ?? '미확인'}kg)`,
+            `${brandName.get(m.brand_id)} / ${m.name}: existing value kept (base weight ${existing.base_weight ?? 'unconfirmed'}kg, backup ${m.base_weight ?? 'unconfirmed'}kg)`,
           );
       }
       continue;
@@ -623,7 +626,7 @@ async function restoreCardio(
         t.conflicts++;
         if (summary.conflicts.length < 20)
           summary.conflicts.push(
-            `유산소 ${c.date} ${c.source} / ${c.external_id}: 기존 값 유지 (같은 외부 ID, 다른 내용)`,
+            `Cardio ${c.date} ${c.source} / ${c.external_id}: existing value kept (same external ID, different content)`,
           );
       }
       continue;
@@ -678,11 +681,11 @@ const seoulToday = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 export const exportQuery = z
   .object({ from: date.optional(), to: date.optional() })
-  .refine((v) => !v.from || !v.to || v.from <= v.to, '조회 종료일은 시작일 이후여야 합니다');
+  .refine((v) => !v.from || !v.to || v.from <= v.to, 'The end date must be after the start date');
 export const restoreRequest = z.object({
   mode: z.enum(['merge', 'replace']).default('merge'),
   confirm: z.string().optional(),
-  // Optional so a missing backup reaches parseBackup and its Korean message.
+  // Optional so a missing backup reaches parseBackup and its message.
   backup: z.unknown().optional(),
 });
 
@@ -839,7 +842,7 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         request.confirm !== replaceConfirmation
       ) {
         res.status(400).json({
-          error: `전체 교체는 기존 기록을 모두 삭제합니다. 확인 문구 "${replaceConfirmation}"을 정확히 입력하세요.`,
+          error: `Replace all deletes every existing record. Type the confirmation phrase "${replaceConfirmation}" exactly.`,
         });
         return;
       }
@@ -860,7 +863,8 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
           JSON.stringify({ event: 'backup_restore_error', action, message: (e as Error).message }),
         );
         res.status(500).json({
-          error: '복원 중 오류가 발생해 전체 취소했습니다. 기존 기록은 변경되지 않았습니다.',
+          error:
+            'An error occurred during the restore, so everything was rolled back. Existing records are unchanged.',
         });
       } finally {
         client.release();

@@ -1,16 +1,16 @@
-# #271 앱의 임시 Checkbox 누름 영역 덮어쓰기 제거
+# #271 Remove the app's temporary Checkbox tap area override
 
-## 문제
+## Problem
 
-공통 Checkbox의 터치 누름 영역은 42px이었습니다. `::after`가 1px 테두리 안쪽에서 `-inset-3.5`로 잡혔기 때문입니다. 그래서 앱은 머신 편집과 인바디 미리보기에서 `pointer-coarse:after:-inset-[15px]`로 덮어써 44px을 맞췄습니다. #258(중앙 project-standards#415·#433)로 공통 Checkbox가 같은 값을 갖게 되어 이 덮어쓰기는 필요 없습니다.
+The touch tap area of the shared Checkbox was 42px, because `::after` was set to `-inset-3.5` inside the 1px border. So the app overrode it in the machine edit and the InBody preview with `pointer-coarse:after:-inset-[15px]` to make it 44px. With #258 (central project-standards#415 and #433), the shared Checkbox has the same value, so this override is no longer needed.
 
-## 변경
+## Change
 
-- `app.tsx` 머신 편집 "단관절 운동" 체크박스와 `inbody-import.tsx` 행 저장 체크박스에서 `pointer-coarse:after:-inset-[15px]`를 지우고 주석을 고쳤습니다.
-- `pointer-coarse:min-h-4 pointer-coarse:min-w-4`는 그대로 둡니다. 옛 화면의 "모든 버튼 44px" 규칙이 상자를 키우지 않게 막는 값입니다.
-- 루틴 폼(`routines.tsx`)의 같은 덮어쓰기는 agent3의 루틴 단계별 입력 작업과 겹쳐 그 PR 뒤에 지웁니다.
+- I removed `pointer-coarse:after:-inset-[15px]` from the "단관절 운동" (single-joint exercise) checkbox of the machine edit in `app.tsx` and the row save checkbox in `inbody-import.tsx`, and fixed the comments.
+- `pointer-coarse:min-h-4 pointer-coarse:min-w-4` is left as it is. It is the value that stops the old screens' "all buttons 44px" rule from enlarging the box.
+- The same override in the routine form (`routines.tsx`) overlaps with agent3's step-by-step routine input work, so I delete it after that PR.
 
-## 검사
+## Checks
 
-- `e2e/ui-touch.spec.ts`가 체크박스 `::after` 누름 영역 44px 이상과 상자 24px 이하를 검사합니다(CI).
-- `npm run test -w frontend -- src/inbody src/machine src/components/ui/checkbox`: 통과(4파일 14개)
+- `e2e/ui-touch.spec.ts` checks that the checkbox `::after` tap area is at least 44px and the box is at most 24px (CI).
+- `npm run test -w frontend -- src/inbody src/machine src/components/ui/checkbox`: passed (4 files, 14 tests)

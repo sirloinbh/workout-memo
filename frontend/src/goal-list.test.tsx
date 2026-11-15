@@ -36,58 +36,58 @@ const card = (name: string) =>
 
 test('each goal card shows its state, target and period', async () => {
   const ui = mount([
-    goal(1, '벤치프레스', '2026-12-31', false),
-    goal(2, '레그프레스', '2026-10-10', false),
-    goal(3, '랫풀다운', '2026-10-10', true),
+    goal(1, 'Benchpress', '2026-12-31', false),
+    goal(2, 'Leg Press', '2026-10-10', false),
+    goal(3, 'Lat Pulldown', '2026-10-10', true),
   ]);
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await screen.findByRole('heading', { level: 2, name: '벤치프레스' });
+  await openPage('My Goals', ui.user);
+  await screen.findByRole('heading', { level: 2, name: 'Benchpress' });
 
-  const challenge = card('벤치프레스');
-  expect(within(challenge).getByText('도전 중')).toHaveAttribute('data-slot', 'badge');
-  expect(challenge.textContent).toMatch(/100 kg × 10 회/);
+  const challenge = card('Benchpress');
+  expect(within(challenge).getByText('In progress')).toHaveAttribute('data-slot', 'badge');
+  expect(challenge.textContent).toMatch(/100 kg × 10 reps/);
   expect(challenge.textContent).toMatch(/2026-10-01 — 2026-12-31/);
-  expect(challenge.textContent).toMatch(/같은 운동명으로 기록하면/);
-  expect(within(card('레그프레스')).getByText('기간 종료')).toBeInTheDocument();
-  const done = card('랫풀다운');
-  expect(within(done).getByText('달성 완료')).toBeInTheDocument();
-  expect(done.textContent).toMatch(/모두 달성했어요/);
+  expect(challenge.textContent).toMatch(/Log it under the same exercise name/);
+  expect(within(card('Leg Press')).getByText('Period ended')).toBeInTheDocument();
+  const done = card('Lat Pulldown');
+  expect(within(done).getByText('Achieved')).toBeInTheDocument();
+  expect(done.textContent).toMatch(/You hit both the weight and reps/);
 });
 
 test('deleting a goal asks first and removes only that card', async () => {
   const ui = mount([
-    goal(1, '벤치프레스', '2026-12-31', false),
-    goal(2, '스쿼트', '2026-12-31', false),
+    goal(1, 'Benchpress', '2026-12-31', false),
+    goal(2, 'Squat', '2026-12-31', false),
   ]);
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await ui.user.click(await screen.findByRole('button', { name: '벤치프레스 목표 삭제' }));
+  await openPage('My Goals', ui.user);
+  await ui.user.click(await screen.findByRole('button', { name: 'Delete Benchpress goal' }));
   await waitFor(() =>
-    expect(screen.queryByRole('heading', { level: 2, name: '벤치프레스' })).toBeNull(),
+    expect(screen.queryByRole('heading', { level: 2, name: 'Benchpress' })).toBeNull(),
   );
-  expect(screen.getByRole('heading', { level: 2, name: '스쿼트' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2, name: 'Squat' })).toBeInTheDocument();
   expect(ui.requests.filter((r) => r.method === 'DELETE').map((r) => r.url.pathname)).toEqual([
     '/api/goals/1',
   ]);
 });
 
 test('a cancelled delete sends nothing', async () => {
-  const ui = mount([goal(1, '벤치프레스', '2026-12-31', false)], false);
+  const ui = mount([goal(1, 'Benchpress', '2026-12-31', false)], false);
   render(<App />);
-  await openPage('나의 목표', ui.user);
-  await ui.user.click(await screen.findByRole('button', { name: '벤치프레스 목표 삭제' }));
+  await openPage('My Goals', ui.user);
+  await ui.user.click(await screen.findByRole('button', { name: 'Delete Benchpress goal' }));
   expect(ui.requests.some((r) => r.method === 'DELETE')).toBe(false);
-  expect(screen.getByRole('heading', { level: 2, name: '벤치프레스' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2, name: 'Benchpress' })).toBeInTheDocument();
 });
 
 test('without goals the empty state explains what to add', async () => {
   const ui = mount([]);
   render(<App />);
-  await openPage('나의 목표', ui.user);
+  await openPage('My Goals', ui.user);
   const empty = await screen.findByRole('heading', {
     level: 2,
-    name: '다음 운동의 목표를 세워보세요',
+    name: 'Set a goal for your next workout',
   });
-  expect(empty.closest('[data-slot="empty-state"]')!.textContent).toMatch(/10회 달성/);
+  expect(empty.closest('[data-slot="empty-state"]')!.textContent).toMatch(/10 reps achieved/);
 });

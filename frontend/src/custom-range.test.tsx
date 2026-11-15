@@ -10,7 +10,7 @@ import { openPage } from './test/nav';
 const workout = (id: number, date: string, weight: number) => ({
   id,
   date,
-  title: `기록 ${id}`,
+  title: `Record ${id}`,
   notes: '',
   sets: [{ exercise: 'Squat', machine_id: null, weight, reps: 10 }],
 });
@@ -36,7 +36,7 @@ function mount(url = '/') {
     api.requests.filter((r) => r.path.startsWith('/api/workouts?')).map((r) => r.path);
   return { user, workoutQueries };
 }
-const form = () => screen.getByRole('form', { name: '기간 직접 선택' });
+const form = () => screen.getByRole('form', { name: 'Custom range' });
 const field = (label: string) => within(form()).getByLabelText(label);
 const stat = (label: string) =>
   screen
@@ -47,10 +47,10 @@ const stat = (label: string) =>
     .querySelector('[data-slot=stat-value]')!.textContent;
 const chart = () => screen.getByRole('img').getAttribute('aria-label') ?? '';
 async function choose(ui: ReturnType<typeof mount>, from: string, to: string) {
-  await ui.user.click(screen.getByRole('radio', { name: '직접 선택' }));
-  fireEvent.change(field('시작일'), { target: { value: from } });
-  fireEvent.change(field('종료일'), { target: { value: to } });
-  await ui.user.click(within(form()).getByRole('button', { name: '적용' }));
+  await ui.user.click(screen.getByRole('radio', { name: 'Custom' }));
+  fireEvent.change(field('Start date'), { target: { value: from } });
+  fireEvent.change(field('End date'), { target: { value: to } });
+  await ui.user.click(within(form()).getByRole('button', { name: 'Apply' }));
 }
 
 test('a chosen range includes both ends and is kept in the address', async () => {
@@ -60,18 +60,18 @@ test('a chosen range includes both ends and is kept in the address', async () =>
     expect(ui.workoutQueries()).toContain('/api/workouts?from=2026-10-01&to=2026-10-10'),
   );
   expect(window.location.search).toBe('?from=2026-10-01&to=2026-10-10');
-  await waitFor(() => expect(stat('누적 볼륨')).toBe('3,000kg'));
-  expect(stat('운동한 날')).toBe('2일');
+  await waitFor(() => expect(stat('Total volume')).toBe('3,000kg'));
+  expect(stat('Workout days')).toBe('2 days');
   expect(document.body.textContent).toMatch(/2026-10-01 — 2026-10-10/);
   // Ten days are drawn as daily bars.
-  expect(chart()).toMatch(/^기간별 운동 볼륨: 10\/1 1,000kg, 10\/2 0kg/);
+  expect(chart()).toMatch(/^Volume by period: 10\/1 1,000kg, 10\/2 0kg/);
   expect(chart()).toMatch(/10\/10 2,000kg$/);
   // Moving to the journal keeps the range; a preset clears it.
-  await openPage('운동 일지', ui.user);
+  await openPage('Workout journal', ui.user);
   expect(window.location.search).toBe('?from=2026-10-01&to=2026-10-10');
-  await ui.user.click(screen.getByRole('radio', { name: '1주' }));
+  await ui.user.click(screen.getByRole('radio', { name: '1 week' }));
   await waitFor(() => expect(window.location.search).toBe(''));
-  expect(screen.getByLabelText('기준 날짜')).toHaveValue('2026-10-15');
+  expect(screen.getByLabelText('Reference date')).toHaveValue('2026-10-15');
 });
 
 test('opening an address with a range shows that range after a reload', async () => {
@@ -79,16 +79,16 @@ test('opening an address with a range shows that range after a reload', async ()
   await waitFor(() =>
     expect(ui.workoutQueries()).toContain('/api/workouts?from=2026-10-10&to=2026-10-11'),
   );
-  expect(field('시작일')).toHaveValue('2026-10-10');
-  expect(field('종료일')).toHaveValue('2026-10-11');
-  expect(screen.getByRole('radio', { name: '직접 선택' })).toBeChecked();
+  expect(field('Start date')).toHaveValue('2026-10-10');
+  expect(field('End date')).toHaveValue('2026-10-11');
+  expect(screen.getByRole('radio', { name: 'Custom' })).toBeChecked();
 });
 
 test('pressing the current preset clears an invalid range from the address', async () => {
   const ui = mount('/?from=bad&to=bad');
   await waitFor(() => expect(ui.workoutQueries().length).toBeGreaterThan(0));
   expect(window.location.search).toBe('?from=bad&to=bad');
-  const current = screen.getByRole('radio', { name: '1주' });
+  const current = screen.getByRole('radio', { name: '1 week' });
   expect(current).toBeChecked();
   await ui.user.click(current);
   await waitFor(() => expect(window.location.search).toBe(''));
@@ -99,13 +99,15 @@ test('invalid ranges are explained per field and not requested', async () => {
   await waitFor(() => expect(ui.workoutQueries().length).toBeGreaterThan(0));
   const before = ui.workoutQueries().length;
   await choose(ui, '2026-10-10', '2026-10-01');
-  expect(field('종료일')).toHaveAttribute('aria-invalid', 'true');
-  expect(field('종료일')).toHaveAccessibleDescription('종료일은 시작일과 같거나 이후여야 합니다');
-  fireEvent.change(field('시작일'), { target: { value: '2025-01-01' } });
-  fireEvent.change(field('종료일'), { target: { value: '2026-10-01' } });
-  await ui.user.click(within(form()).getByRole('button', { name: '적용' }));
+  expect(field('End date')).toHaveAttribute('aria-invalid', 'true');
+  expect(field('End date')).toHaveAccessibleDescription(
+    'The end date must be the same as or after the start date',
+  );
+  fireEvent.change(field('Start date'), { target: { value: '2025-01-01' } });
+  fireEvent.change(field('End date'), { target: { value: '2026-10-01' } });
+  await ui.user.click(within(form()).getByRole('button', { name: 'Apply' }));
   // The hint under the form also says 371 days, so check the message linked to the field.
-  expect(field('종료일')).toHaveAccessibleDescription('기간은 최대 371일까지 선택할 수 있습니다');
+  expect(field('End date')).toHaveAccessibleDescription('You can select up to 371 days');
   expect(ui.workoutQueries()).toHaveLength(before);
   expect(window.location.search).toBe('');
 });
@@ -113,7 +115,7 @@ test('invalid ranges are explained per field and not requested', async () => {
 test('a broken range in the address falls back to the default period with a notice', async () => {
   const ui = mount('/?from=2026-10-10&to=2026-10-01');
   await waitFor(() => expect(ui.workoutQueries().length).toBeGreaterThan(0));
-  expect(screen.getByRole('alert').textContent).toMatch(/주소의 기간이 올바르지 않아/);
+  expect(screen.getByRole('alert').textContent).toMatch(/period in the address is not valid/);
   expect(ui.workoutQueries()[0]).toBe('/api/workouts?from=2026-10-12&to=2026-10-18');
 });
 

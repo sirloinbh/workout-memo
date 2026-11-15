@@ -1,28 +1,28 @@
-# #118 가민·나이키 런 클럽 기록 가져오기 경로 조사
+# #118 Research on ways to import Garmin and Nike Run Club records
 
-- 이슈: [#118](https://github.com/sirloinbh/workout-memo/issues/118) (상위 #217)
-- 브랜치: `docs/118-activity-import`
+- Issue: [#118](https://github.com/sirloinbh/workout-memo/issues/118) (parent #217)
+- Branch: `docs/118-activity-import`
 
-## 목적
+## Purpose
 
-가민·NRC 러닝 기록을 개인 1인 앱이 합법적·안정적으로 가져올 경로를 정하기 위해 공식 API·내보내기·약관·비용·파일 형식을 조사했습니다. 코드는 바꾸지 않습니다.
+To decide how a personal single-user app can import Garmin and NRC running records legally and reliably, I researched official APIs, exports, terms, costs, and file formats. No code is changed.
 
-## 변경 — docs
+## Change — docs
 
-- 새 문서 [`docs/activity-import.md`](../activity-import.md): 경로별 가능 여부·제약·근거 링크, `cardio_sessions` 필드 대응과 버리는 값, 나중의 랩 형식(FIT·TCX·Health Connect), FIT 읽기·ZIP 처리 비교, 후속 이슈(#119·#120·#121) 범위 제안, 사용자 결정 항목 8개.
-- 핵심 발견: Garmin이 2026년에 공개한 Personal API로 본인 데이터를 승인 없이 읽을 수 있습니다(공식 페이지 직접 확인). NRC는 공식 API가 없습니다.
+- New document [`docs/activity-import.md`](../activity-import.md): for each route, whether it is possible, its limits, and source links; the mapping to `cardio_sessions` fields and the values that are dropped; later lap formats (FIT, TCX, Health Connect); a comparison of FIT reading and ZIP handling; a proposed scope for the follow-up issues (#119, #120, #121); and 8 items for the user to decide.
+- Key finding: with the Personal API that Garmin released in 2026, the user can read their own data without approval (checked directly on the official page). NRC has no official API.
 
-## 1차 리뷰
+## First review
 
-- 공식 문서 대조(Garmin Personal API FAQ 문구, Health Connect 30일 규칙, Strava 1인 모드·한도, TCX `Sport` 값)는 모두 맞았습니다.
-- 반영(필수): Strava로 받은 NRC 기록의 `source` 값(지금 `strava` 없음)을 #120 범위와 결정 항목에 적었습니다. 출처가 달라 생기는 중복(파일과 Personal API)을 막는 공통 규칙, 토큰·키 보관, 원본 파일·개인정보, 동기화 주기를 "7-1. 공통" 절로 더했습니다. 결정 항목은 8개가 됐습니다.
-- 반영(선택): 표의 "30일 제한"을 "권한 받기 30일 전보다 오래된 기록"으로, Strava "읽기" 한도를 "업로드 외 요청"으로 고치고, 공식 권한 이름을 함께 적었습니다.
+- A check against the official documents (the Garmin Personal API FAQ wording, the Health Connect 30-day rule, Strava single-user mode and limits, the TCX `Sport` values) found everything correct.
+- Applied (required): the `source` value of NRC records received through Strava (there is no `strava` now) was added to the scope of #120 and to the decision items. A section "7-1. Common" was added with the shared rule that prevents duplicates caused by different sources (file and Personal API), token and key storage, original files and personal data, and the sync interval. The decision items became 8.
+- Applied (optional): "30-day limit" in the table was changed to "records older than 30 days before the permission was granted", Strava "read" limit was changed to "requests other than uploads", and the official permission names were added.
 
-## 사용자 결정 반영
+## User decisions applied
 
-- 2026-11-08 사용자 결정 8개를 문서 10장에 표로 적었습니다(Personal API, `@garmin/fitsdk`·`fflate` 설치, NRC 보류, `total_timer_time`, Health Connect 보류, `source=nike`, 중복 ±2분·±1%와 하루 2회 동기화). #119·#120·#121 본문 범위도 이 결정대로 고쳤습니다.
+- The 8 user decisions of 2026-11-08 were written as a table in chapter 10 of the document (Personal API, installing `@garmin/fitsdk` and `fflate`, NRC on hold, `total_timer_time`, Health Connect on hold, `source=nike`, duplicates within ±2 minutes and ±1%, and syncing twice a day). The scope in the bodies of #119, #120, and #121 was also changed to match these decisions.
 
-## 검사
+## Checks
 
-- 근거 링크는 공식 문서를 우선했고, 공식 출처로 확인하지 못한 내용은 "확인 못 함"으로 표시했습니다. Garmin Personal API 페이지·FAQ는 직접 열어 문구를 확인했습니다.
-- prettier, `npm run test:docs`, 상대 링크 확인: 통과
+- For the source links I preferred official documents, and anything I could not confirm from an official source is marked "확인 못 함" (could not confirm). I opened the Garmin Personal API page and FAQ directly and checked the wording.
+- prettier, `npm run test:docs`, relative link check: passed

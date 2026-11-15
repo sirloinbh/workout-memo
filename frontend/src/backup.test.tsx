@@ -28,7 +28,7 @@ const summary = (mode: string, dry_run: boolean): Summary => ({
     cardio_sessions: { added: 2, skipped: 1, conflicts: 0, deleted: 0 },
     cardio_goals: { added: 1, skipped: 1, conflicts: 0, deleted: 0 },
   },
-  conflicts: mode === 'merge' ? ['Arsenal Strength / 레그 프레스: 기존 값 유지'] : [],
+  conflicts: mode === 'merge' ? ['Arsenal Strength / Leg Press: existing value kept'] : [],
   retry_keys_cleared: mode === 'replace' ? 3 : 0,
 });
 const backup = {
@@ -55,11 +55,12 @@ function mount(previewError?: string) {
     Object.defineProperty(value, 'size', { value: size });
     return value;
   };
-  const restoreButton = () => screen.queryByRole('button', { name: '복원 실행' });
+  const restoreButton = () => screen.queryByRole('button', { name: 'Run restore' });
   // Wait until the file input is enabled again (no preview in flight).
-  const idle = () => waitFor(() => expect(screen.getByLabelText('백업 파일 선택')).toBeEnabled());
+  const idle = () =>
+    waitFor(() => expect(screen.getByLabelText('Choose backup file')).toBeEnabled());
   async function choose(value: File) {
-    await user.upload(screen.getByLabelText('백업 파일 선택'), value);
+    await user.upload(screen.getByLabelText('Choose backup file'), value);
     await idle();
   }
   return { requests: api.requests, user, file, restoreButton, choose, idle };
@@ -68,7 +69,7 @@ function mount(previewError?: string) {
 const page = () => document.body.textContent ?? '';
 
 async function openBackup(ui: ReturnType<typeof mount>) {
-  await openPage('백업·내보내기', ui.user);
+  await openPage('Backup & Export', ui.user);
 }
 
 test('backup page separates the analysis CSV from the restore backup and states the policy', async () => {
@@ -81,15 +82,15 @@ test('backup page separates the analysis CSV from the restore backup and states 
   expect(backupLink).not.toBeNull();
   expect(csv).toHaveAttribute('download');
   expect(backupLink).toHaveAttribute('download');
-  expect(page()).toMatch(/분석용 CSV/);
-  expect(page()).toMatch(/복원용 백업/);
-  expect(page()).toMatch(/CSV는 복원에 사용할 수 없습니다/);
-  expect(page()).toMatch(/총중량/);
+  expect(page()).toMatch(/CSV for analysis/);
+  expect(page()).toMatch(/Backup for restore/);
+  expect(page()).toMatch(/CSV cannot be used for restore/);
+  expect(page()).toMatch(/total weight/);
   expect(page()).toMatch(/=, \+, -, @/);
-  expect(page()).toMatch(/추가만/);
-  expect(page()).toMatch(/동일한 기록은 건너뜁니다/);
-  expect(page()).toMatch(/전체 교체/);
-  expect(page()).toMatch(/재시도 키/);
+  expect(page()).toMatch(/Additions only/);
+  expect(page()).toMatch(/Identical records are skipped/);
+  expect(page()).toMatch(/Replace all/);
+  expect(page()).toMatch(/retry key/i);
   expect(ui.requests.filter((r) => r.method !== 'GET')).toHaveLength(0);
 });
 
@@ -97,17 +98,17 @@ test('choosing a file shows an add-only preview before anything is restored', as
   const ui = mount();
   await openBackup(ui);
   await ui.choose(ui.file(JSON.stringify(backup)));
-  await waitFor(() => expect(page()).toMatch(/미리보기/));
+  await waitFor(() => expect(page()).toMatch(/Preview/));
   const preview = ui.requests.filter((r) => r.path === '/api/backup/preview');
   expect(preview).toHaveLength(1);
   expect(preview[0].body).toEqual({ mode: 'merge', backup });
   expect(ui.requests.filter((r) => r.path === '/api/backup/restore')).toHaveLength(0);
-  expect(page()).toMatch(/운동 일지.*추가 7.*건너뜀 2/s);
-  expect(page()).toMatch(/세트.*추가 21/s);
-  expect(page()).toMatch(/Arsenal Strength \/ 레그 프레스: 기존 값 유지/);
-  expect(page()).not.toMatch(/삭제 5/);
+  expect(page()).toMatch(/Workout journals.*Added 7.*Skipped 2/s);
+  expect(page()).toMatch(/Sets.*Added 21/s);
+  expect(page()).toMatch(/Arsenal Strength \/ Leg Press: existing value kept/);
+  expect(page()).not.toMatch(/Deleted 5/);
   await ui.user.click(ui.restoreButton()!);
-  await waitFor(() => expect(page()).toMatch(/복원을 완료했습니다/));
+  await waitFor(() => expect(page()).toMatch(/Restore complete/));
   const restore = ui.requests.filter((r) => r.path === '/api/backup/restore');
   expect(restore).toHaveLength(1);
   expect(restore[0].body).toEqual({ mode: 'merge', backup });
@@ -120,52 +121,52 @@ test('replace mode previews deletions and requires the typed confirmation', asyn
   await openBackup(ui);
   await ui.choose(ui.file(JSON.stringify(backup)));
   await waitFor(() => expect(ui.restoreButton()).not.toBeNull());
-  await ui.user.selectOptions(screen.getByLabelText('복원 방식'), 'replace');
+  await ui.user.selectOptions(screen.getByLabelText('Restore mode'), 'replace');
   await ui.idle();
-  await waitFor(() => expect(page()).toMatch(/기존 기록이 삭제됩니다/));
+  await waitFor(() => expect(page()).toMatch(/Existing records will be deleted/));
   // #223: the deletion warning is an alert of its own, outside the live summary.
   const warning = screen.getByRole('alert');
-  expect(warning).toHaveTextContent(/기존 기록이 삭제됩니다/);
+  expect(warning).toHaveTextContent(/Existing records will be deleted/);
   expect(warning.closest('[role="status"]')).toBeNull();
   const previews = ui.requests.filter((r) => r.path === '/api/backup/preview');
   // Changing the mode refreshes the preview.
   expect(previews).toHaveLength(2);
   expect((previews[1].body as { mode: string }).mode).toBe('replace');
-  expect(page()).toMatch(/진행 중이던 저장 재시도 기록도\s*초기화됩니다\(3건\)/);
-  expect(page()).toMatch(/운동 일지.*삭제 5/s);
+  expect(page()).toMatch(/Save retry records in progress are also reset\s*\(3 records\)/);
+  expect(page()).toMatch(/Workout journals.*Deleted 5/s);
   // Replace is locked until confirmed.
   expect(ui.restoreButton()).toBeDisabled();
-  const typed = screen.getByLabelText('확인 문구');
-  await ui.user.type(typed, '전체교체');
+  const typed = screen.getByLabelText('Confirmation phrase');
+  await ui.user.type(typed, 'REPLACE ALL');
   expect(ui.restoreButton()).toBeDisabled();
   await ui.user.clear(typed);
-  await ui.user.type(typed, '전체 교체');
+  await ui.user.type(typed, 'Replace all');
   expect(ui.restoreButton()).toBeEnabled();
   await ui.user.click(ui.restoreButton()!);
   await waitFor(() =>
     expect(ui.requests.filter((r) => r.path === '/api/backup/restore')).toHaveLength(1),
   );
   const restore = ui.requests.filter((r) => r.path === '/api/backup/restore');
-  expect(restore[0].body).toEqual({ mode: 'replace', backup, confirm: '전체 교체' });
+  expect(restore[0].body).toEqual({ mode: 'replace', backup, confirm: 'Replace all' });
 });
 
 test('unreadable, oversized or rejected files never reach restore', async () => {
   const ui = mount();
   await openBackup(ui);
   await ui.choose(ui.file('{"format":'));
-  await waitFor(() => expect(page()).toMatch(/백업 파일을 읽을 수 없습니다/));
+  await waitFor(() => expect(page()).toMatch(/Could not read the backup file/));
   await ui.choose(ui.file('{}', 10 * 1024 * 1024 + 1));
-  await waitFor(() => expect(page()).toMatch(/10MB/));
-  expect(screen.getByRole('alert')).toHaveTextContent(/10MB/);
+  await waitFor(() => expect(page()).toMatch(/10 MB/));
+  expect(screen.getByRole('alert')).toHaveTextContent(/10 MB/);
   expect(ui.requests.filter((r) => r.method === 'POST')).toHaveLength(0);
   expect(ui.restoreButton()).toBeNull();
 
   // A second, independent app whose server rejects the preview.
   cleanup();
-  const rejected = mount('지원하지 않는 백업 버전입니다 (v4). 지원 버전: v1, v2, v3');
+  const rejected = mount('Unsupported backup version (v4). Supported versions: v1, v2, v3');
   await openBackup(rejected);
   await rejected.choose(rejected.file(JSON.stringify(backup)));
-  await waitFor(() => expect(page()).toMatch(/지원하지 않는 백업 버전입니다/));
+  await waitFor(() => expect(page()).toMatch(/Unsupported backup version/));
   expect(rejected.restoreButton()).toBeNull();
   expect(rejected.requests.filter((r) => r.path === '/api/backup/restore')).toHaveLength(0);
 });
@@ -173,35 +174,35 @@ test('unreadable, oversized or rejected files never reach restore', async () => 
 test('downloads are named links and the preview lists one row per table', async () => {
   const ui = mount();
   await openBackup(ui);
-  expect(screen.getByRole('link', { name: 'CSV 내려받기' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: 'Download CSV' })).toHaveAttribute(
     'href',
     '/api/export/workouts.csv',
   );
-  expect(screen.getByRole('link', { name: '백업 파일 내려받기' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: 'Download backup file' })).toHaveAttribute(
     'href',
     '/api/backup',
   );
   // Each section is a titled card.
-  for (const name of ['분석용 CSV', '복원용 백업 (JSON)', '백업에서 복원'])
+  for (const name of ['CSV for analysis', 'Backup for restore (JSON)', 'Restore from backup'])
     expect(screen.getByRole('heading', { level: 3, name })).toBeInTheDocument();
   await ui.choose(ui.file(JSON.stringify(backup)));
-  const rows = within(await screen.findByRole('list', { name: '변경 요약' })).getAllByRole(
+  const rows = within(await screen.findByRole('list', { name: 'Change summary' })).getAllByRole(
     'listitem',
   );
   expect(rows.map((r) => r.textContent)).toEqual([
-    '운동 일지 · 추가 7 · 건너뜀 2',
-    '세트 · 추가 21 · 건너뜀 6',
-    '목표 · 추가 1 · 건너뜀 0',
-    '루틴 · 추가 0 · 건너뜀 1',
-    '유산소 · 추가 2 · 건너뜀 1',
-    '유산소 목표 · 추가 1 · 건너뜀 1',
-    '머신 · 추가 1 · 건너뜀 0 · 충돌(기존 유지) 1',
-    '브랜드 · 추가 0 · 건너뜀 4',
+    'Workout journals · Added 7 · Skipped 2',
+    'Sets · Added 21 · Skipped 6',
+    'Goals · Added 1 · Skipped 0',
+    'Routines · Added 0 · Skipped 1',
+    'Cardio · Added 2 · Skipped 1',
+    'Cardio goals · Added 1 · Skipped 1',
+    'Machines · Added 1 · Skipped 0 · Conflicts (kept existing) 1',
+    'Brands · Added 0 · Skipped 4',
   ]);
   expect(
-    within(screen.getByRole('list', { name: '충돌' })).getByRole('listitem'),
-  ).toHaveTextContent('Arsenal Strength / 레그 프레스: 기존 값 유지');
-  expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('미리보기 · 추가만');
+    within(screen.getByRole('list', { name: 'Conflict' })).getByRole('listitem'),
+  ).toHaveTextContent('Arsenal Strength / Leg Press: existing value kept');
+  expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Preview · Additions only');
 });
 
 test('while a restore runs the status says it is restoring, not checking', async () => {
@@ -217,15 +218,15 @@ test('while a restore runs the status says it is restoring, not checking', async
   });
   const user = userEvent.setup();
   render(<App />);
-  await openPage('백업·내보내기', user);
+  await openPage('Backup & Export', user);
   await user.upload(
-    screen.getByLabelText('백업 파일 선택'),
+    screen.getByLabelText('Choose backup file'),
     new File([JSON.stringify(backup)], 'backup.json'),
   );
-  await user.click(await screen.findByRole('button', { name: '복원 실행' }));
-  expect(await screen.findByText('복원하는 중…')).toBeInTheDocument();
-  expect(screen.queryByText('백업을 확인하는 중…')).toBeNull();
+  await user.click(await screen.findByRole('button', { name: 'Run restore' }));
+  expect(await screen.findByText('Restoring…')).toBeInTheDocument();
+  expect(screen.queryByText('Checking backup…')).toBeNull();
   gate.resolve();
-  expect(await screen.findByText('복원을 완료했습니다.')).toBeInTheDocument();
-  expect(screen.queryByText('복원하는 중…')).toBeNull();
+  expect(await screen.findByText('Restore complete.')).toBeInTheDocument();
+  expect(screen.queryByText('Restoring…')).toBeNull();
 });

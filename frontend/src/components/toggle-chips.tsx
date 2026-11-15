@@ -10,9 +10,12 @@ export function ToggleChips({
   value,
   onValueChange,
   className,
+  renderOption = (option) => option,
 }: {
   label: string;
   options: readonly string[];
+  /** The text shown for an option; the option itself stays the stored value. */
+  renderOption?: (option: string) => string;
   value: readonly string[];
   onValueChange: (value: string[]) => void;
   className?: string;
@@ -32,7 +35,7 @@ export function ToggleChips({
           value={option}
           className="min-h-8 rounded-full border border-input px-3 text-body-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground pointer-coarse:min-h-11 pointer-coarse:min-w-11"
         >
-          {option}
+          {renderOption(option)}
         </ToggleGroup.Item>
       ))}
     </ToggleGroup.Root>

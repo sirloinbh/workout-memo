@@ -6,21 +6,21 @@ import type { Pool } from 'pg';
 import { createApp } from '../src/app.js';
 import { workoutSchema } from '../src/domain.js';
 
-const set = { exercise: '레그 프레스', machine_id: null, weight: 120.25, reps: 10 };
-const workout = { date: '2024-02-29', title: '하체', notes: '일지 메모', sets: [set] };
+const set = { exercise: 'Leg Press', machine_id: null, weight: 120.25, reps: 10 };
+const workout = { date: '2024-02-29', title: 'Lower body', notes: 'Journal memo', sets: [set] };
 
 test('workout validation retains independent notes for each set', () => {
   const parsed = workoutSchema.parse({
     ...workout,
     sets: [
-      { ...set, notes: '왼쪽 무릎 확인' },
-      { ...set, notes: '자세 유지' },
+      { ...set, notes: 'Check left knee' },
+      { ...set, notes: 'Hold position' },
     ],
   });
   // Sets without a state are stored as completed with no RPE (#31).
   assert.deepEqual(parsed.sets, [
-    { ...set, notes: '왼쪽 무릎 확인', completed: true, rpe: null },
-    { ...set, notes: '자세 유지', completed: true, rpe: null },
+    { ...set, notes: 'Check left knee', completed: true, rpe: null },
+    { ...set, notes: 'Hold position', completed: true, rpe: null },
   ]);
 });
 

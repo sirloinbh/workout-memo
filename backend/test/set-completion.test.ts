@@ -10,8 +10,8 @@ import { volume, workoutSchema } from '../src/domain.js';
 
 const workout = {
   date: '2026-10-15',
-  title: '하체',
-  sets: [{ exercise: '스쿼트', weight: 100, reps: 10 }],
+  title: 'Lower body',
+  sets: [{ exercise: 'Squat', weight: 100, reps: 10 }],
 };
 const invalidRpe = [0, 0.5, 10.5, 11, -1, 7.25, 8.1, '8', true, Number.NaN];
 
@@ -109,7 +109,7 @@ test(
       await client.query(
         'CREATE TEMP TABLE sets (id integer PRIMARY KEY, exercise text) ON COMMIT DROP',
       );
-      await client.query("INSERT INTO sets VALUES (1, '스쿼트')");
+      await client.query("INSERT INTO sets VALUES (1, 'Squat')");
       const migration = readFileSync(
         new URL('../../database/migrations/006_set_completion_rpe.sql', import.meta.url),
         'utf8',
@@ -130,7 +130,7 @@ test(
         );
         await client.query('ROLLBACK TO SAVEPOINT bad_rpe');
       }
-      await client.query("INSERT INTO sets(id, exercise) VALUES (3, '런지')");
+      await client.query("INSERT INTO sets(id, exercise) VALUES (3, 'Lunge')");
       assert.deepEqual((await rows()).at(-1), { id: 3, completed: true, rpe: null });
     } finally {
       await client.query('ROLLBACK');

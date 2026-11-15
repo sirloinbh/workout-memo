@@ -5,31 +5,31 @@ import type { CardioKind, Feedback } from '../contract';
 // pace_sec_per_km and speed_kmh are only a fallback); both stay null without a distance.
 
 export const cardioKindLabels: Record<CardioKind, string> = {
-  running: '러닝',
-  walking: '걷기',
-  outdoor_cycling: '실외 사이클',
-  indoor_cycling: '실내 자전거',
-  rowing: '로잉',
-  stairs: '계단',
-  elliptical: '일립티컬',
-  swimming: '수영',
-  other: '기타',
+  running: 'Running',
+  walking: 'Walking',
+  outdoor_cycling: 'Outdoor cycling',
+  indoor_cycling: 'Indoor cycling',
+  rowing: 'Rowing',
+  stairs: 'Stairs',
+  elliptical: 'Elliptical',
+  swimming: 'Swimming',
+  other: 'Other',
 };
 
 // The #83 workout feedback levels, reused for perceived effort.
 export const effortLabels: Record<Feedback, string> = {
-  hard: '힘듦',
-  medium: '중간',
-  easy: '쉬움',
+  hard: 'Hard',
+  medium: 'Medium',
+  easy: 'Easy',
 };
 
 // A plain decimal: digits with at most one decimal point, optionally negative so the schema's
-// range message answers "-1". A comma is never accepted: in Korean "1,000" is a thousands
+// range message answers "-1". A comma is never accepted: "1,000" uses it as a thousands
 // separator, and reading it as a decimal comma would save 1 m for a 1,000 m swim (#115 review).
 // Number() alone would also read "0x10", "1e3" or "Infinity" and send a value nobody typed.
 const plainNumber = /^-?(\d+(\.\d*)?|\.\d+)$/;
 // Empty stays null (not recorded, never 0); anything that is not a plain decimal becomes NaN
-// so the schema reports "숫자로 입력하세요" on that field.
+// so the schema reports "Enter ... as a number" on that field.
 export const optionalNumber = (value: string) => {
   const text = value.trim();
   if (text === '') return null;
@@ -39,17 +39,17 @@ export const optionalNumber = (value: string) => {
 type DurationParts = { hours: string; minutes: string; seconds: string };
 
 // Hours, minutes and seconds typed as text (hours may stay empty) → whole seconds.
-// Each field is empty or a whole number; minutes and seconds stay under 60 so "90분" is not
+// Each field is empty or a whole number; minutes and seconds stay under 60 so "90 min" is not
 // silently read as 1:30:00. A total of 0 is refused here; the 24-hour limit is the schema's.
 export function parseDuration(parts: DurationParts): { seconds: number } | { error: string } {
   const values = [parts.hours, parts.minutes, parts.seconds].map((text) => text.trim());
-  if (values.every((text) => text === '')) return { error: '운동 시간을 입력하세요' };
+  if (values.every((text) => text === '')) return { error: 'Enter a workout time' };
   if (values.some((text) => text !== '' && !/^\d+$/.test(text)))
-    return { error: '시·분·초는 0 이상의 정수로 입력하세요' };
+    return { error: 'Enter hours, minutes, and seconds as whole numbers 0 or more' };
   const [hours, minutes, seconds] = values.map(Number);
-  if (minutes > 59 || seconds > 59) return { error: '분과 초는 0~59로 입력하세요' };
+  if (minutes > 59 || seconds > 59) return { error: 'Enter minutes and seconds from 0 to 59' };
   const total = hours * 3600 + minutes * 60 + seconds;
-  if (total === 0) return { error: '운동 시간은 1초 이상이어야 합니다' };
+  if (total === 0) return { error: 'The workout time must be at least 1 second' };
   return { seconds: total };
 }
 
@@ -91,7 +91,7 @@ export function formatPace(secPerKm: number | null): string | null {
 }
 
 const number = (digits: number) =>
-  new Intl.NumberFormat('ko-KR', { maximumFractionDigits: digits });
+  new Intl.NumberFormat('en-US', { maximumFractionDigits: digits });
 
 // km/h with one decimal. Null without distance.
 export function formatSpeed(kmh: number | null): string | null {
@@ -114,7 +114,7 @@ export const metresToKm = (m: number) => clean(m / 1000);
 
 // Names a session for its buttons and the delete confirmation. Date and kind alone can repeat
 // within a day, so the start time is added when known, otherwise the duration:
-// "2026-11-07 07:30 러닝" or "2026-11-07 러닝 30:30".
+// "2026-11-07 07:30 Running" or "2026-11-07 Running 30:30".
 export function sessionLabel(s: {
   date: string;
   kind: CardioKind;

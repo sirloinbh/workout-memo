@@ -24,20 +24,20 @@ test('h/m/s fields become whole seconds and hours may stay empty', () => {
 
 test('empty, zero, negative, decimal and 60+ minute/second inputs are refused', () => {
   expect(parseDuration({ hours: '', minutes: '', seconds: '' })).toEqual({
-    error: '운동 시간을 입력하세요',
+    error: 'Enter a workout time',
   });
   expect(parseDuration({ hours: '0', minutes: '0', seconds: '0' })).toEqual({
-    error: '운동 시간은 1초 이상이어야 합니다',
+    error: 'The workout time must be at least 1 second',
   });
   for (const minutes of ['-1', '1.5', 'abc'])
     expect(parseDuration({ hours: '', minutes, seconds: '0' })).toEqual({
-      error: '시·분·초는 0 이상의 정수로 입력하세요',
+      error: 'Enter hours, minutes, and seconds as whole numbers 0 or more',
     });
   expect(parseDuration({ hours: '', minutes: '90', seconds: '0' })).toEqual({
-    error: '분과 초는 0~59로 입력하세요',
+    error: 'Enter minutes and seconds from 0 to 59',
   });
   expect(parseDuration({ hours: '', minutes: '1', seconds: '60' })).toEqual({
-    error: '분과 초는 0~59로 입력하세요',
+    error: 'Enter minutes and seconds from 0 to 59',
   });
 });
 
@@ -76,7 +76,7 @@ test('only plain decimals are read as numbers', () => {
   expect(optionalNumber('  ')).toBeNull();
   expect(optionalNumber('5')).toBe(5);
   expect(optionalNumber(' 5.02 ')).toBe(5.02);
-  // A comma is a thousands separator in Korean, never a decimal point.
+  // A comma is a thousands separator, never a decimal point.
   expect(optionalNumber('1,5')).toBeNaN();
   expect(optionalNumber('1,000')).toBeNaN();
   expect(optionalNumber('.5')).toBe(0.5);
@@ -95,8 +95,8 @@ test('km and m convert without float noise', () => {
 
 test('a session label adds the start time, or the duration without one', () => {
   const run = { date: '2026-11-07', kind: 'running', duration_sec: 1830 } as const;
-  expect(sessionLabel({ ...run, start_time: '07:30' })).toBe('2026-11-07 07:30 러닝');
-  expect(sessionLabel({ ...run, start_time: null })).toBe('2026-11-07 러닝 30:30');
+  expect(sessionLabel({ ...run, start_time: '07:30' })).toBe('2026-11-07 07:30 Running');
+  expect(sessionLabel({ ...run, start_time: null })).toBe('2026-11-07 Running 30:30');
 });
 
 test('distance is km for every kind except swimming, which shows metres', () => {

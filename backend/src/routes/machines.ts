@@ -63,11 +63,11 @@ export function registerMachineRoutes(app: express.Express, pool: Pool) {
         m.base_weight,
         m.notes,
         m.official_weight_id ?? null,
-        parseId(req.params.id, '머신'),
+        parseId(req.params.id, 'machine'),
         m.official_weight_id !== undefined,
         m.single_joint ?? null,
       ],
     );
-    res.status(r.rowCount ? 200 : 404).json(r.rows[0] ?? { error: '머신을 찾을 수 없습니다' });
+    res.status(r.rowCount ? 200 : 404).json(r.rows[0] ?? { error: 'Machine not found' });
   });
 }

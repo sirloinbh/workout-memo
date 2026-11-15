@@ -242,13 +242,13 @@ export function routeDescriptions(markdown: string) {
 }
 
 const statusText: Record<number, string> = {
-  200: '성공',
-  201: '생성됨',
-  400: '입력 검증 실패 또는 존재하지 않는 참조',
-  404: '대상 없음',
-  409: '중복·버전 충돌·재시도 키 불일치·날짜 조건 불일치',
-  413: '요청 크기 한도 초과',
-  500: '서버 오류',
+  200: 'Success',
+  201: 'Created',
+  400: 'Input validation failed or a referenced item does not exist',
+  404: 'No target',
+  409: 'Duplicate, version conflict, retry key mismatch, or date condition mismatch',
+  413: 'Request size limit exceeded',
+  500: 'Server error',
 };
 
 export function buildOpenApi(app: express.Express, descriptions: Record<string, string>) {
@@ -260,7 +260,7 @@ export function buildOpenApi(app: express.Express, descriptions: Record<string, 
   const schemas: Json = {
     Error: {
       type: 'object',
-      properties: { error: { type: 'string', description: '한국어 오류 메시지' } },
+      properties: { error: { type: 'string', description: 'English error message' } },
       required: ['error'],
     },
   };
@@ -284,7 +284,7 @@ export function buildOpenApi(app: express.Express, descriptions: Record<string, 
         name: 'Idempotency-Key',
         in: 'header',
         required: false,
-        description: '같은 요청을 7일 동안 한 번만 반영하는 재시도 키',
+        description: 'Retry key that applies the same request only once for 7 days',
         schema: { type: 'string', format: 'uuid' },
       });
     if (op.body) schemas[op.body[0]] = jsonSchema(op.body[1]);
@@ -327,7 +327,7 @@ export function buildOpenApi(app: express.Express, descriptions: Record<string, 
       title: 'Workout Memo API',
       version: '1.0.0',
       description:
-        '개인 운동 일지 API. 날짜는 YYYY-MM-DD(Asia/Seoul), 중량은 기본중량 포함 총중량 kg. 응답 본문과 교차 필드 규칙은 docs/api.md를 참고하세요.',
+        'Personal workout journal API. Dates are YYYY-MM-DD (Asia/Seoul) and weights are total weight in kg including the base weight. See docs/api.md for response bodies and cross-field rules.',
     },
     servers: [{ url: '/' }],
     paths,

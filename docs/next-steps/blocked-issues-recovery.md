@@ -1,111 +1,111 @@
-# 차단 이슈 #17·#19·#26 복구 절차
+# Recovery procedure for blocked issues #17, #19 and #26
 
-기준일: 2026-10-15 (Asia/Seoul). 문서 작업: [#38](https://github.com/sirloinbh/workout-memo/issues/38).
+As of: 2026-10-15 (Asia/Seoul). Documentation work: [#38](https://github.com/sirloinbh/workout-memo/issues/38).
 
-이 문서는 복구 방법을 기록한다. **이번 문서 작업에서 세 이슈의 차단을 해제하거나 워커를 재시작하지 않았다.** 상태는 확인 시점의 스냅샷이며 실행 전에 다시 조회한다.
+This document records how to recover. **This documentation work did not unblock any of the three issues or restart the worker.** The status is a snapshot from when it was checked; query it again before you act.
 
-## 현재 상태와 우선순위
+## Current status and priority
 
-| 이슈                                                                   | 중요도 | 차단 원인                                                                      | 다음 조치                            |
-| ---------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------ | ------------------------------------ |
-| [#17 통계](https://github.com/sirloinbh/workout-memo/issues/17)        | P0     | 구현 역할이 보호된 UI 테스트 파일에 회귀 테스트를 추가해 해시 불일치           | 테스트 역할의 정식 재검토·재인계     |
-| [#19 머신 관리](https://github.com/sirloinbh/workout-memo/issues/19)   | P0     | 실제 브라우저 검증 미완료, 과거 Chrome 제어 타임아웃                           | 호스트 브라우저 검증·증거 기록       |
-| [#26 토큰 최적화](https://github.com/sirloinbh/workout-memo/issues/26) | P1     | 제한된 실행 환경에서 esbuild 상위 경로 접근 실패, 최신 수정의 독립 재검토 필요 | 호스트 전체 검사 후 고위험 독립 검토 |
+| Issue                                                                         | Priority | Cause of the block                                                                                                                | Next action                                          |
+| ----------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [#17 Statistics](https://github.com/sirloinbh/workout-memo/issues/17)         | P0       | The implementation role added a regression test to a protected UI test file, which caused a hash mismatch                         | Formal re-review and handoff by the tests role       |
+| [#19 Machine management](https://github.com/sirloinbh/workout-memo/issues/19) | P0       | Real browser verification is not finished, and Chrome control timed out earlier                                                   | Host browser verification and recording the evidence |
+| [#26 Token optimization](https://github.com/sirloinbh/workout-memo/issues/26) | P1       | esbuild could not access a parent path in the restricted execution environment, and the latest fix needs an independent re-review | Full host check, then a high-risk independent review |
 
-권장 순서는 #17 → #19 → #26이다. #26은 개발 비용·복구 효율 개선 작업이지만 현재 미완료 MVP 검증을 대신하지 않는다.
+The recommended order is #17 → #19 → #26. #26 improves development cost and recovery efficiency, but it does not replace the MVP verification that is still unfinished.
 
-## 공통: 재개 전 확인
+## Common: checks before resuming
 
-1. 프로젝트 루트에서 현재 워커 상태를 확인하고, 상태를 바꾸는 명령 전에 중지를 요청한다. stop은 즉시 강제 종료가 아니라 현재 단계 종료 후 중지다. status의 worker.running이 false이며 해당 job의 running이 null인지 확인한다.
-2. 기존 이슈별 worktree·브랜치·미커밋 구현·테스트·로그를 보존한다. 같은 이슈를 다른 작업자가 동시에 구현하지 않는다.
-3. 개인 계정 sirloinbh의 프로젝트 래퍼로 최신 이슈 제목·본문·번호·URL·updatedAt을 기존 스냅샷과 비교한다. 중요도 라벨만 바뀌어도 updatedAt이 달라질 수 있다.
-4. 실제 요구사항이 달라졌다면 accept-requirements로 테스트 단계부터 정식 재인계한다. 라벨만 바뀐 경우도 동일성을 확인해야 한다. 현재 표준 명령만으로 처리하려면 accept-requirements를 사용하며 테스트 재실행 비용이 발생한다. 메타데이터만 갱신하는 코디네이터 복구는 동일성 확인과 감사 기록이 선행돼야 한다.
-5. Node 24.21.0·npm 11.19.0, 이슈별 의존성, 마이그레이션이 준비된 전용 테스트 DB를 확인한다. 운영 DB나 사용자 데이터를 검증에 사용하지 않는다. 연결 값은 docs·PR·로그에 기록하지 않는다.
-6. 이전 통과 결과는 당시 변경에 대한 증거다. 현재 소스·테스트·요구사항이 바뀌었다면 새 검증이 필요하다.
+1. From the project root, check the current worker status, and request a stop before any command that changes state. A stop is not an immediate kill; it stops after the current step ends. Confirm that `worker.running` in status is false and that `running` of the job is null.
+2. Keep each issue's existing worktree, branch, uncommitted implementation, tests and logs. Do not let another worker implement the same issue at the same time.
+3. With the project wrapper for the personal account sirloinbh, compare the latest issue title, body, number, URL and updatedAt with the existing snapshot. updatedAt can change even when only a priority label changed.
+4. If the actual requirements changed, formally hand off again from the test step with accept-requirements. Check identity even when only a label changed. To handle it with the current standard commands alone, use accept-requirements, which costs a test re-run. A coordinator recovery that updates only metadata needs an identity check and an audit record first.
+5. Check Node 24.21.0, npm 11.19.0, the per-issue dependencies, and a dedicated test DB with migrations applied. Do not use the production DB or user data for verification. Do not record connection values in docs, PRs or logs.
+6. An earlier pass is evidence for the change at that time. If the current source, tests or requirements changed, new verification is needed.
 
-현재 PC는 검증된 설치 실행기를 `.local/agent-workflow/agents.ps1`로 선택한다. `scripts/agents.ps1`과 버전이 다를 수 있으므로 섞어서 사용하지 않는다. 설치 실행기가 없는 환경의 일반 절차는 [로컬 에이전트 운영 문서](../local-agent-workflow.md)를 따른다. 아래 명령은 **복구 실행 시** 사용하며 이 문서를 작성하면서 실행한 명령이 아니다.
+The current PC selects the verified installed runner as `.local/agent-workflow/agents.ps1`. It may differ in version from `scripts/agents.ps1`, so do not mix them. In an environment without an installed runner, follow the general procedure in the [local agent operations doc](../local-agent-workflow.md). The commands below are for **when you run the recovery**; they are not commands that were run while writing this document.
 
 ```powershell
 ./.local/agent-workflow/agents.ps1 status
 ./.local/agent-workflow/agents.ps1 stop
-# status로 worker.running=false, 대상 job의 running=null 확인 후 진행
+# Check worker.running=false and the target job's running=null in status, then continue
 ./.local/agent-workflow/agents.ps1 status
 ```
 
-### #17: 보호 테스트의 정식 재인계
+### #17: formal handoff of the protected tests
 
-**원인:** 이전 리뷰는 삭제·편집 요청이 끝날 때 오래된 기간 조회가 현재 통계·그래프를 덮어쓰는 문제를 지적했다. 구현 역할은 이를 수정하며 `backend/test/period-ui.test.ts`에 회귀 테스트를 추가했다. 실행기의 파일 전체 해시 보호는 테스트 추가도 변경으로 판정한다.
+**Cause:** An earlier review pointed out that a stale period query overwrites the current statistics and graph when a delete or edit request finishes. The implementation role fixed this and added a regression test to `backend/test/period-ui.test.ts`. The runner's whole-file hash protection treats an added test as a change.
 
-현재 작업 기록은 앱 27개·워커 34개 통과를 보고한다. 이는 당시 기록이며 이번 문서 작업에서 재실행한 결과가 아니다. 과거 진단 후에도 테스트가 추가됐으므로 과거 해시를 현재 기준으로 복사하지 않는다.
+The current work record reports 27 app tests and 34 worker tests passing. That is a record from the time and not a result re-run for this documentation work. Tests were added after the earlier diagnosis, so do not copy the old hash as the current baseline.
 
-복구 단계:
+Recovery steps:
 
-1. 현재 테스트 diff를 이전 테스트 역할의 기준과 비교해 기존 assertion의 삭제·약화가 없는지 확인한다. 신규 회귀 테스트의 기대값도 고정 데이터와 일치하는지 검토한다.
-2. 준비된 수정과 회귀 테스트를 보존하고 현재 설치 실행기의 accept-requirements 경로로 테스트 역할부터 다시 넘긴다. 이 명령은 최신 이슈 스냅샷도 반영한다.
-3. 테스트 역할이 추가 회귀 테스트와 기존 assertion을 검토하고 정식 기준 해시를 생성한다. 이후 구현 역할은 보호 파일을 다시 수정하지 않는다. 추가 보강이 필요하면 다시 테스트 역할로 인계한다.
-4. 지정 Node/npm과 전용 DB로 전체 검사, 실제 브라우저에서 기간 선택·수정/삭제·그래프 갱신을 확인하고 기록한다.
-5. 독립 검토 → 호스트 최종 검사 → 커밋·PR·CI 순서로 진행한다.
+1. Compare the current test diff with the earlier tests role's baseline and check that no existing assertion was deleted or weakened. Also review that the expected values of the new regression test match the fixed data.
+2. Keep the prepared fix and the regression test, and hand off again from the tests role through the accept-requirements path of the currently installed runner. This command also picks up the latest issue snapshot.
+3. The tests role reviews the extra regression test and the existing assertions and generates the formal baseline hash. After that, the implementation role does not edit the protected files again. If more reinforcement is needed, hand off to the tests role again.
+4. With the specified Node/npm and the dedicated DB, run the full check, verify period selection, edit/delete and graph refresh in a real browser, and record it.
+5. Proceed in the order independent review → final host check → commit, PR, CI.
 
 ```powershell
-# 공통 점검 및 워커 종료 확인 후
+# After the common checks and confirming the worker has exited
 ./.local/agent-workflow/agents.ps1 accept-requirements -Issue 17
-# 현재 PC에서 전용 테스트 DB를 전달하는 기존 실행기
+# The existing runner that passes the dedicated test DB on this PC
 ./.local/agent-workflow/start-with-test-db.ps1
 ```
 
-**단순 retry만으로는 해결되지 않는다.** 현재 설치 버전은 구현 단계로 되돌아가 기존 보호 해시를 재사용한다. 해시만 수동 교체하거나 테스트를 삭제해서 통과시키지 않는다. #26에서 개발 중인 handoff-tests는 아직 활성화된 명령으로 가정하지 않는다.
+**A plain retry does not solve it.** The currently installed version goes back to the implementation step and reuses the existing protected hash. Do not make it pass by replacing the hash by hand or by deleting tests. Do not assume that handoff-tests, which is being developed in #26, is an active command yet.
 
-### #19: 실제 브라우저 검증
+### #19: real browser verification
 
-**원인:** 당시 npm run check는 앱 12개·워커 34개 및 DB 통합 검사를 통과했지만 실제 Chrome 제어가 타임아웃으로 멈췄다. 코드 검사를 통과했다는 이유만으로 화면 검증을 완료 처리할 수 없다.
+**Cause:** At that time `npm run check` passed the 12 app tests, 34 worker tests and the DB integration checks, but real Chrome control hung with a timeout. Screen verification cannot be marked complete just because the code checks passed.
 
-#16에서는 사용자 Chrome과 분리한 프로필, 호스트 실행 환경, loopback 검증 앱, 전용 테스트 DB로 브라우저 검증에 성공했다. **그 결과는 #19 자체의 검증을 대신하지 않는다.** [#16 PR](https://github.com/sirloinbh/workout-memo/pull/37)의 변경 기록을 참고해 같은 방법을 #19의 현재 빌드에 적용한다.
+In #16, browser verification succeeded with a profile separate from the user's Chrome, a host execution environment, a loopback verification app and a dedicated test DB. **That result does not replace the verification of #19 itself.** Use the change record of the [#16 PR](https://github.com/sirloinbh/workout-memo/pull/37) and apply the same method to the current build of #19.
 
-복구 단계:
+Recovery steps:
 
-1. 최신 #19 빌드·마이그레이션을 전용 테스트 환경에 준비한다. 사용자 브라우저 프로필과 실제 운동 기록을 사용하지 않는다.
-2. 화면에서 브랜드 선택 → 머신 등록 → 기본중량 저장 → 수정 → 재조회 흐름을 확인한다.
-3. 미확인 NULL, 확인된 0 kg, 양수 및 잘못된 입력을 구분해 확인한다.
-4. 머신을 운동 세트에 연결하고 총중량을 중복 가산하지 않는지 확인한다. 기본중량 수정 후 과거 세트의 총중량·볼륨이 유지되는지 비교한다.
-5. 실제 명령·결과·검증한 브라우저 범위와 증거를 `docs/changes/19-agent-task.md`에 기록한다. 새 테스트가 필요하면 테스트 역할로 재인계한다.
-6. 요구사항 스냅샷이 일치하면 retry로 재개한다. 불일치하면 먼저 공통 재인계 절차를 따른다.
+1. Prepare the latest #19 build and migrations in a dedicated test environment. Do not use the user's browser profile or real workout records.
+2. On the screen, check the flow: choose a brand → register a machine → save the base weight → edit → query again.
+3. Check separately an unconfirmed NULL, a confirmed 0 kg, positive values and invalid input.
+4. Link a machine to a workout set and check that the total weight is not added twice. After editing the base weight, compare that the total weight and volume of past sets stay the same.
+5. Record the actual commands, results, the browser scope you verified, and the evidence in `docs/changes/19-agent-task.md`. If a new test is needed, hand off to the tests role again.
+6. If the requirements snapshot matches, resume with retry. If it does not match, follow the common re-handoff procedure first.
 
 ```powershell
-# 호스트 브라우저 검증 완료, 워커 종료 및 스냅샷 일치 확인 후
+# After host browser verification is complete, the worker has exited and the snapshot matches
 ./.local/agent-workflow/agents.ps1 retry -Issue 19
 ./.local/agent-workflow/start-with-test-db.ps1
 ```
 
-검증용 프로세스만 정리하고 운영 서버·사용자 브라우저·테스트 DB 볼륨을 삭제하지 않는다.
+Clean up only the verification processes, and do not delete the production server, the user's browser, or the test DB volume.
 
-### #26: 호스트 검사와 독립 재검토
+### #26: host check and independent re-review
 
-**원인:** 구현 샌드박스에서 Vite/esbuild가 상위 디렉터리를 읽다가 Access is denied로 실패했다. 최신 구현 기록은 앱/DB 40개·워커 137개 통과를 보고하지만 전체 build/check 성공을 의미하지 않는다. 이전 128개 테스트 기준의 호스트 성공 결과도 이후 수정의 검증을 대신하지 않는다.
+**Cause:** In the implementation sandbox, Vite/esbuild failed with Access is denied while reading a parent directory. The latest implementation record reports 40 app/DB tests and 137 worker tests passing, but that does not mean the full build/check succeeded. A host success on the earlier 128-test baseline also does not replace verification of later fixes.
 
-복구 단계:
+Recovery steps:
 
-1. 코디네이터의 허용된 호스트 환경에서 현재 #26 worktree의 전용 테스트 DB 연결과 보호 테스트 해시를 확인한다.
-2. 해당 worktree에서 지정 Node/npm으로 `npm run check`를 실행한다. 앞 단계가 실패해 실행되지 않은 빌드는 미실행으로 구분한다. 원인 불명의 반복 실행 대신 환경 실패와 코드 실패를 분류한다.
-3. 통과한 현재 변경의 검증 결과를 `docs/changes/26-agent-task.md`에 남긴다. 실패하면 정확한 단계·코드·명령을 기록하고 필요한 환경만 복구한다. ACL 확대나 전역 보안 설정 변경으로 우회하지 않는다.
-4. 아래 이전 리뷰 지적 세 가지의 수정과 회귀 테스트를 독립적으로 재검토한다.
-   - npm 검사 중 권한 실패를 환경 오류로 분류하는가.
-   - 파일이 바뀌지 않은 review 사전검사 실패에서 유효한 구현 증거를 보존하는가.
-   - retry가 오류를 지우기 전에 실패 코드·회귀 조건을 제한된 요약으로 보존하는가.
-5. 기존 highRiskReview 라우팅(Astra high)을 유지한다. 구현 역할의 “수정 완료” 보고만으로 승인하지 않는다.
-6. 요구사항 스냅샷 일치 후 retry로 구현 확인·독립 검토·호스트 검사·PR을 진행한다. 제한 환경 오류가 반복되면 재시도만 반복하지 말고 현재 증거와 호스트 검증 경계를 검토한다.
-7. PR 검증과 사용자 검토가 끝난 버전을 코디네이터가 별도로 활성화한다. 미검토 작업 트리를 현재 실행기에 바로 덮어쓰지 않는다.
+1. In the coordinator's allowed host environment, check the dedicated test DB connection and the protected test hash of the current #26 worktree.
+2. In that worktree, run `npm run check` with the specified Node/npm. Mark a build that did not run because an earlier step failed as not run. Instead of repeating runs for an unknown cause, classify environment failures and code failures.
+3. Leave the verification result of the current change that passed in `docs/changes/26-agent-task.md`. If it fails, record the exact step, code and command, and recover only the environment that is needed. Do not work around it by widening ACLs or changing global security settings.
+4. Independently re-review the fixes and regression tests for the three earlier review findings below.
+   - Does it classify a permission failure during an npm check as an environment error?
+   - Does it keep valid implementation evidence when a review precheck fails while the files have not changed?
+   - Does retry keep the failure code and the regression condition in a bounded summary before it clears the error?
+5. Keep the existing highRiskReview routing (Astra high). Do not approve on the implementation role's "fix complete" report alone.
+6. After the requirements snapshot matches, proceed with retry through implementation check, independent review, host check and PR. If restricted-environment errors repeat, do not just repeat retries; review the current evidence and the boundary of host verification.
+7. The coordinator activates the version that has finished PR verification and user review separately. Do not overwrite the current runner with an unreviewed working tree.
 
 ```powershell
-# 호스트 전체 검사 완료, 워커 종료 및 스냅샷 일치 확인 후
+# After the full host check is complete, the worker has exited and the snapshot matches
 ./.local/agent-workflow/agents.ps1 retry -Issue 26
 ./.local/agent-workflow/start-with-test-db.ps1
 ```
 
-## 복구 완료의 판정
+## Deciding that recovery is complete
 
-- 실제 차단 원인을 해소하고 필요한 테스트·DB·브라우저 결과를 현재 변경 기준으로 기록했다.
-- 원래 요구사항·보호 테스트·독립 검토·게시 전 검사를 보존했다.
-- 워커 상태가 blocked를 벗어났다는 사실과 구현 완료·PR 생성·CI 통과를 구분한다.
-- PR의 필수 CI가 통과하면 병합한다. main과 충돌하면 merge 커밋으로 해결하고 CI를 다시 통과시킨다.
+- The actual cause of the block is resolved, and the needed test, DB and browser results are recorded against the current change.
+- The original requirements, the protected tests, the independent review and the pre-publish checks are preserved.
+- Distinguish the fact that the worker status left blocked from implementation being done, a PR being created and CI passing.
+- Merge when the PR's required CI passes. If it conflicts with main, resolve it with a merge commit and get CI passing again.
 
-PR의 후속 추천이 자동으로 이슈나 워커 작업이 되는 기능은 없다. 필수 수정은 현재 이슈에서, 별도 기능은 목적·완료 기준·의존성이 있는 새 이슈에서 관리한다. [서비스 조사 백로그](../fitness-app-research-2026.md)의 #31~#35도 등록 상태와 구현 착수를 구분한다. 최신 실행 순서는 [현재 다음 작업](README.md)에서 관리한다.
+There is no feature that turns a PR's follow-up recommendations into issues or worker jobs automatically. Manage required fixes in the current issue, and separate features in a new issue that has a purpose, completion criteria and dependencies. For #31 to #35 of the [service research backlog](../fitness-app-research-2026.md) too, distinguish being registered from starting implementation. The latest execution order is managed in [current next steps](README.md).

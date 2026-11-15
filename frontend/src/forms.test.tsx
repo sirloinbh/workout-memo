@@ -22,45 +22,47 @@ function mount() {
       api.requests.filter((r) => r.method === 'POST' && r.url.pathname === path),
   };
 }
-const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
+const loaded = () => waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
 // The message is linked to the field: aria-invalid plus aria-describedby.
 function expectInvalid(field: HTMLElement, message: string) {
   expect(field).toHaveAttribute('aria-invalid', 'true');
   expect(field).toHaveAccessibleDescription(message);
 }
 
-test('the goal form shows Korean per-field messages and sends nothing until valid', async () => {
+test('the goal form shows per-field messages and sends nothing until valid', async () => {
   const ui = mount();
   await loaded();
-  await openPage('나의 목표', ui.user);
-  await ui.user.click(screen.getByRole('button', { name: '목표 추가' }));
-  const dialog = screen.getByRole('dialog', { name: '점진적 과부하 목표' });
-  const save = within(dialog).getByRole('button', { name: '목표 저장하기' });
+  await openPage('My Goals', ui.user);
+  await ui.user.click(screen.getByRole('button', { name: 'Add goal' }));
+  const dialog = screen.getByRole('dialog', { name: 'Progressive overload goals' });
+  const save = within(dialog).getByRole('button', { name: 'Save goal' });
   await ui.user.click(save);
-  expectInvalid(await within(dialog).findByLabelText('운동명'), '운동명을 입력하세요');
+  expectInvalid(await within(dialog).findByLabelText('Exercise name'), 'Enter an exercise name');
   expectInvalid(
-    within(dialog).getByLabelText('목표 총중량 (kg)'),
-    '목표 총중량을 숫자로 입력하세요',
+    within(dialog).getByLabelText('Goal total weight (kg)'),
+    'Enter the goal total weight as a number',
   );
   expect(ui.posts('/api/goals')).toHaveLength(0);
 
-  await ui.user.type(within(dialog).getByLabelText('운동명'), '벤치프레스');
-  await ui.user.type(within(dialog).getByLabelText('목표 총중량 (kg)'), '80');
-  fireEvent.change(within(dialog).getByLabelText('시작일'), { target: { value: '2026-10-20' } });
-  fireEvent.change(within(dialog).getByLabelText('종료일'), { target: { value: '2026-10-19' } });
+  await ui.user.type(within(dialog).getByLabelText('Exercise name'), 'Benchpress');
+  await ui.user.type(within(dialog).getByLabelText('Goal total weight (kg)'), '80');
+  fireEvent.change(within(dialog).getByLabelText('Start date'), {
+    target: { value: '2026-10-20' },
+  });
+  fireEvent.change(within(dialog).getByLabelText('End date'), { target: { value: '2026-10-19' } });
   await ui.user.click(save);
   expectInvalid(
-    await within(dialog).findByLabelText('종료일'),
-    '종료일은 시작일과 같거나 이후여야 합니다',
+    await within(dialog).findByLabelText('End date'),
+    'The end date must be the same as or after the start date',
   );
-  expect(within(dialog).getByLabelText('운동명')).not.toHaveAttribute('aria-invalid');
+  expect(within(dialog).getByLabelText('Exercise name')).not.toHaveAttribute('aria-invalid');
   expect(ui.posts('/api/goals')).toHaveLength(0);
 
-  fireEvent.change(within(dialog).getByLabelText('종료일'), { target: { value: '2026-12-31' } });
+  fireEvent.change(within(dialog).getByLabelText('End date'), { target: { value: '2026-12-31' } });
   await ui.user.click(save);
   await waitFor(() => expect(ui.posts('/api/goals')).toHaveLength(1));
   expect(ui.posts('/api/goals')[0].body).toEqual({
-    exercise: '벤치프레스',
+    exercise: 'Benchpress',
     target_weight: 80,
     target_reps: 10,
     start_date: '2026-10-20',
@@ -72,29 +74,33 @@ test('the goal form shows Korean per-field messages and sends nothing until vali
 test('the journal form marks the invalid set fields and keeps the input unsent', async () => {
   const ui = mount();
   await loaded();
-  await ui.user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
-  const dialog = screen.getByRole('dialog', { name: '새로운 운동 기록' });
-  await ui.user.type(within(dialog).getByLabelText('일지 제목'), '하체');
-  const names = within(dialog).getAllByLabelText('운동명');
-  const weights = within(dialog).getAllByLabelText('총중량 kg');
-  fireEvent.change(names[0], { target: { value: '스쿼트' } });
+  await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
+  const dialog = screen.getByRole('dialog', { name: 'New workout record' });
+  await ui.user.type(within(dialog).getByLabelText('Journal title'), 'Lower body');
+  const names = within(dialog).getAllByLabelText('Exercise name');
+  const weights = within(dialog).getAllByLabelText('Total weight kg');
+  fireEvent.change(names[0], { target: { value: 'Squat' } });
   fireEvent.change(weights[0], { target: { value: '100000' } });
-  fireEvent.change(names[2], { target: { value: '런지' } });
+  fireEvent.change(names[2], { target: { value: 'Lunge' } });
   // Bypasses native constraints so the contract itself is what rejects the input.
   fireEvent.submit(dialog.querySelector('form')!);
   expectInvalid(
     await within(dialog)
-      .findAllByLabelText('총중량 kg')
+      .findAllByLabelText('Total weight kg')
       .then((w) => w[0]),
-    '총중량은 0~99999 kg으로 입력하세요',
+    'Enter a total weight from 0 to 99999 kg',
   );
-  expectInvalid(within(dialog).getAllByLabelText('운동명')[1], '운동명을 입력하세요');
-  expect(within(dialog).getAllByLabelText('운동명')[0]).not.toHaveAttribute('aria-invalid');
-  expect(within(dialog).getByRole('status')).toHaveTextContent('입력을 확인하세요');
+  expectInvalid(within(dialog).getAllByLabelText('Exercise name')[1], 'Enter an exercise name');
+  expect(within(dialog).getAllByLabelText('Exercise name')[0]).not.toHaveAttribute('aria-invalid');
+  expect(within(dialog).getByRole('status')).toHaveTextContent('Check your input');
   expect(ui.posts('/api/workouts')).toHaveLength(0);
 
-  fireEvent.change(within(dialog).getAllByLabelText('총중량 kg')[0], { target: { value: '100' } });
-  fireEvent.change(within(dialog).getAllByLabelText('운동명')[1], { target: { value: '스쿼트' } });
+  fireEvent.change(within(dialog).getAllByLabelText('Total weight kg')[0], {
+    target: { value: '100' },
+  });
+  fireEvent.change(within(dialog).getAllByLabelText('Exercise name')[1], {
+    target: { value: 'Squat' },
+  });
   fireEvent.submit(dialog.querySelector('form')!);
   await waitFor(() => expect(ui.posts('/api/workouts')).toHaveLength(1));
   expect((ui.posts('/api/workouts')[0].body as { sets: unknown[] }).sets).toHaveLength(3);
@@ -103,11 +109,11 @@ test('the journal form marks the invalid set fields and keeps the input unsent',
 test('the machine form requires a brand before registering', async () => {
   const ui = mount();
   await loaded();
-  await openPage('머신 라이브러리', ui.user);
-  await ui.user.click(screen.getByRole('button', { name: '머신 등록' }));
-  const dialog = screen.getByRole('dialog', { name: '머신 등록' });
+  await openPage('Machine Library', ui.user);
+  await ui.user.click(screen.getByRole('button', { name: 'Add machine' }));
+  const dialog = screen.getByRole('dialog', { name: 'Add machine' });
   fireEvent.submit(dialog.querySelector('form')!);
-  expectInvalid(await within(dialog).findByLabelText('브랜드'), '브랜드를 선택하세요');
-  expectInvalid(within(dialog).getByLabelText('머신 이름'), '머신 이름을 입력하세요');
+  expectInvalid(await within(dialog).findByLabelText('Brand'), 'Choose a brand');
+  expectInvalid(within(dialog).getByLabelText('Machine name'), 'Enter a machine name');
   expect(ui.posts('/api/machines')).toHaveLength(0);
 });

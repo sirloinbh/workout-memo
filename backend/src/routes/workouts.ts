@@ -25,7 +25,7 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
       const key = req.get('Idempotency-Key');
       // guid(), not uuid(): zod 4's uuid() also rejects keys with a nonstandard version digit.
       if (key !== undefined) z.guid().parse(key);
-      const target = method === 'put' ? parseId(req.params.id, '일지') : null;
+      const target = method === 'put' ? parseId(req.params.id, 'journal') : null;
       if (method === 'put') z.number().int().positive().parse(w.version);
       // A request without feedback keeps the fingerprint it had before #83, so a retry key
       // stored by an older server still replays instead of reporting different content.
@@ -47,11 +47,13 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
             const saved = previous.rows[0];
             await client.query('ROLLBACK');
             if (saved.expired)
-              res
-                .status(409)
-                .json({ error: '재시도 키의 7일 유효기간이 지났습니다. 서버 기록을 확인하세요.' });
+              res.status(409).json({
+                error: 'The 7-day validity of the retry key has passed. Check the server record.',
+              });
             else if (saved.fingerprint !== fingerprint)
-              res.status(409).json({ error: '같은 재시도 키의 요청 내용이 다릅니다.' });
+              res.status(409).json({
+                error: 'The request content differs from the one with the same retry key.',
+              });
             else res.status(saved.status).json(saved.response);
             return;
           }
@@ -73,13 +75,14 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
           );
           if (!existing.rowCount) {
             await client.query('ROLLBACK');
-            res.status(404).json({ error: '일지를 찾을 수 없습니다' });
+            res.status(404).json({ error: 'Journal not found' });
             return;
           }
           if (existing.rows[0].version !== w.version) {
             await client.query('ROLLBACK');
             res.status(409).json({
-              error: '다른 기기에서 수정된 기록입니다. 초안을 보관하고 최신 기록을 확인하세요.',
+              error:
+                'This record was edited on another device. Keep your draft and check the latest record.',
             });
             return;
           }
@@ -89,7 +92,7 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
           );
           if (!r.rowCount) {
             await client.query('ROLLBACK');
-            res.status(404).json({ error: '일지를 찾을 수 없습니다' });
+            res.status(404).json({ error: 'Journal not found' });
             return;
           }
           version = r.rows[0].version;
@@ -118,10 +121,10 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
     });
   app.delete('/api/workouts/:id', async (req, res) => {
     const r = await pool.query('DELETE FROM workouts WHERE id=$1', [
-      parseId(req.params.id, '일지'),
+      parseId(req.params.id, 'journal'),
     ]);
     res
       .status(r.rowCount ? 200 : 404)
-      .json(r.rowCount ? { ok: true } : { error: '일지를 찾을 수 없습니다' });
+      .json(r.rowCount ? { ok: true } : { error: 'Journal not found' });
   });
 }

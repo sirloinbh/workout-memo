@@ -62,26 +62,26 @@ function mount(initial: Workout[] = [], now = start) {
 }
 type UI = ReturnType<typeof mount>;
 const advance = (ms: number) => vi.setSystemTime(Date.now() + ms);
-const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
+const loaded = () => waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
 async function openNew(ui: UI) {
   await loaded();
-  await ui.user.click(screen.getAllByRole('button', { name: '운동 기록하기' })[0]);
+  await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
   fireEvent.change(document.querySelector('input[maxlength="120"]')!, {
-    target: { value: '하체' },
+    target: { value: 'Lower body' },
   });
   // Every one of the three starting sets needs a name: the shared contract (#64) checks
   // the whole journal before anything is sent, exactly as the server would.
   for (const name of document.querySelectorAll('input[role="combobox"][id$="-exercise"]'))
     fireEvent.change(name, { target: { value: 'Squat' } });
-  fireEvent.change(screen.getAllByRole('textbox', { name: '총중량 kg' })[0], {
+  fireEvent.change(screen.getAllByRole('textbox', { name: 'Total weight kg' })[0], {
     target: { value: '100' },
   });
   await loaded();
 }
-const completion = (i = 0) => screen.getAllByRole('button', { name: /세트 완료/ })[i];
+const completion = (i = 0) => screen.getAllByRole('button', { name: /Set \d+ done/ })[i];
 const pressed = (i = 0) => completion(i).getAttribute('aria-pressed');
-const autoStart = () => screen.getByRole('switch', { name: '세트 완료 시 자동 시작' });
-const duration = () => screen.getByRole('spinbutton', { name: '휴식 시간(초)' });
+const autoStart = () => screen.getByRole('switch', { name: 'Auto-start when a set is done' });
+const duration = () => screen.getByRole('spinbutton', { name: 'Rest time (sec)' });
 // #83: workout feedback replaced the per-set RPE input.
 const feedback = (label: string) => screen.getByRole('button', { name: label });
 const timer = () => document.querySelector('[data-slot=rest-timer]')?.textContent ?? '';
@@ -99,7 +99,7 @@ async function submit(ui: UI) {
   // Like the legacy onSubmit call, this bypasses native constraint validation.
   fireEvent.submit(document.querySelector('form')!);
   await waitFor(() => expect(ui.mutations()).toHaveLength(before + 1));
-  await waitFor(() => expect(screen.queryByText('저장 중…')).toBeNull());
+  await waitFor(() => expect(screen.queryByText('Saving…')).toBeNull());
 }
 
 test('new sets start not completed; completion and undo are sent explicitly', async () => {
@@ -108,11 +108,11 @@ test('new sets start not completed; completion and undo are sent explicitly', as
   expect(pressed()).toBe('false');
   await ui.user.click(completion());
   expect(pressed()).toBe('true');
-  expect(completion()).toHaveTextContent(/완료됨/);
+  expect(completion()).toHaveTextContent(/Done/);
   advance(1000);
   await ui.user.click(completion());
   expect(pressed(), 'completion can be undone').toBe('false');
-  await ui.user.click(screen.getByRole('button', { name: '세트 추가' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Add set' }));
   await ui.user.click(completion(1));
   advance(1000);
   await submit(ui);
@@ -133,7 +133,7 @@ test('auto-start is opt-in and a duplicate completion click starts one rest', as
   await openNew(ui);
   await ui.user.click(completion());
   expect(timer()).toMatch(/1:30/);
-  expect(timer(), 'auto-start is off by default').not.toMatch(/남음/);
+  expect(timer(), 'auto-start is off by default').not.toMatch(/left/);
   advance(1000);
   await ui.user.click(completion());
   await ui.user.click(autoStart());
@@ -150,10 +150,10 @@ test('auto-start is opt-in and a duplicate completion click starts one rest', as
   });
   ui.redraw();
   expect(pressed()).toBe('true');
-  expect(timer(), 'second click neither toggles nor restarts the rest').toMatch(/1:25 남음/);
+  expect(timer(), 'second click neither toggles nor restarts the rest').toMatch(/1:25 left/);
   await ui.user.click(completion());
   expect(pressed()).toBe('false');
-  expect(timer(), 'undoing completion does not restart the rest').toMatch(/1:25 남음/);
+  expect(timer(), 'undoing completion does not restart the rest').toMatch(/1:25 left/);
 });
 
 test('rest timer can be set, started, paused, resumed and cancelled', async () => {
@@ -167,38 +167,38 @@ test('rest timer can be set, started, paused, resumed and cancelled', async () =
   // fired deterministically (the legacy tick()) while keeping the same clock.
   vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'], now: Date.now() });
   // user-event waits on setTimeout, so clicks below are dispatched with fireEvent.
-  fireEvent.click(screen.getByRole('button', { name: '휴식 시작' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Start rest' }));
   // A foreground tick: the clock moves and the due redraw timeout fires once.
   act(() => {
     vi.advanceTimersByTime(1000);
   });
-  expect(timer()).toMatch(/0:59 남음/);
+  expect(timer()).toMatch(/0:59 left/);
   advance(9000);
-  fireEvent.click(screen.getByRole('button', { name: '일시정지' }));
-  expect(timer()).toMatch(/0:50 일시정지/);
+  fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+  expect(timer()).toMatch(/0:50 paused/);
   ui.returnToTab(120000);
-  expect(timer(), 'paused rest does not run').toMatch(/0:50 일시정지/);
-  fireEvent.click(screen.getByRole('button', { name: '재개' }));
+  expect(timer(), 'paused rest does not run').toMatch(/0:50 paused/);
+  fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
   advance(20000);
   ui.redraw();
-  expect(timer()).toMatch(/0:30 남음/);
-  fireEvent.click(screen.getByRole('button', { name: '휴식 취소' }));
+  expect(timer()).toMatch(/0:30 left/);
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel rest' }));
   expect(timer()).toMatch(/1:00/);
-  expect(timer()).not.toMatch(/남음|일시정지/);
+  expect(timer()).not.toMatch(/left|paused/);
 });
 
 test('returning from the background shows time left from the end timestamp', async () => {
   const ui = mount();
   await openNew(ui);
-  await ui.user.click(screen.getByRole('button', { name: '휴식 시작' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
   ui.returnToTab(30000);
-  expect(timer()).toMatch(/1:00 남음/);
+  expect(timer()).toMatch(/1:00 left/);
   ui.returnToTab(59999);
-  expect(timer(), 'rounds up until the real end').toMatch(/0:01 남음/);
+  expect(timer(), 'rounds up until the real end').toMatch(/0:01 left/);
   ui.returnToTab(1);
-  expect(timer()).toMatch(/휴식 종료/);
+  expect(timer()).toMatch(/Rest over/);
   ui.returnToTab(3600000);
-  expect(timer()).toMatch(/휴식 종료/);
+  expect(timer()).toMatch(/Rest over/);
   expect(timer(), 'never shows negative time').not.toMatch(/-/);
 });
 
@@ -207,16 +207,16 @@ test('refresh restores timer from its end time and set state from the draft', as
   await openNew(first);
   await first.user.click(autoStart());
   await first.user.click(completion());
-  await first.user.click(feedback('힘듦'));
+  await first.user.click(feedback('Hard'));
   // Reload: the same localStorage survives, the page is mounted again 45 s later.
   first.view.unmount();
   const second = mount([], start + 45000);
   await loaded();
-  expect(timer()).toMatch(/0:45 남음/);
-  await second.user.click(screen.getByRole('button', { name: /복구/ }));
+  expect(timer()).toMatch(/0:45 left/);
+  await second.user.click(screen.getByRole('button', { name: /Restore/ }));
   await loaded();
   expect(pressed()).toBe('true');
-  expect(feedback('힘듦')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Hard')).toHaveAttribute('aria-pressed', 'true');
   expect(autoStart(), 'auto-start preference persists').toBeChecked();
   await submit(second);
   expect(second.sentFeedback()).toBe('hard');
@@ -233,18 +233,18 @@ test('pressing the chosen feedback again sends null, and corrupt timer storage d
   await openNew(ui);
   expect(timer()).toMatch(/1:30/);
   expect(document.querySelector('input[step="0.5"]'), 'no RPE input').toBeNull();
-  await ui.user.click(feedback('중간'));
-  expect(feedback('중간')).toHaveAttribute('aria-pressed', 'true');
-  await ui.user.click(feedback('중간'));
-  expect(feedback('중간')).toHaveAttribute('aria-pressed', 'false');
-  await ui.user.click(feedback('쉬움'));
-  await ui.user.click(feedback('힘듦'));
-  expect(feedback('힘듦')).toHaveAttribute('aria-pressed', 'true');
-  expect(feedback('쉬움'), 'only one level stays selected').toHaveAttribute(
+  await ui.user.click(feedback('Medium'));
+  expect(feedback('Medium')).toHaveAttribute('aria-pressed', 'true');
+  await ui.user.click(feedback('Medium'));
+  expect(feedback('Medium')).toHaveAttribute('aria-pressed', 'false');
+  await ui.user.click(feedback('Easy'));
+  await ui.user.click(feedback('Hard'));
+  expect(feedback('Hard')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Easy'), 'only one level stays selected').toHaveAttribute(
     'aria-pressed',
     'false',
   );
-  await ui.user.click(feedback('힘듦'));
+  await ui.user.click(feedback('Hard'));
   await submit(ui);
   expect(ui.sentFeedback(), 'not recorded is null, never a default level').toBeNull();
 });
@@ -254,14 +254,14 @@ test('not-completed sets are excluded from volume, set count and workout days', 
     {
       id: 1,
       date: '2026-10-15',
-      title: '계획만 입력',
+      title: 'Plan only',
       notes: '',
       sets: [{ exercise: 'Squat', machine_id: null, weight: 200, reps: 10, completed: false }],
     },
     {
       id: 2,
       date: '2026-10-14',
-      title: '수행',
+      title: 'Performed',
       notes: '',
       sets: [
         { exercise: 'Squat', machine_id: null, weight: 100, reps: 10, completed: true, rpe: 8 },
@@ -272,10 +272,10 @@ test('not-completed sets are excluded from volume, set count and workout days', 
     },
   ]);
   await loaded();
-  await waitFor(() => expect(stat('완료한 세트')).toBe('2세트'));
-  expect(stat('누적 볼륨')).toBe('1,500kg');
-  expect(stat('운동한 날')).toBe('1일');
-  expect(content()).toMatch(/미완료 1/);
+  await waitFor(() => expect(stat('Completed sets')).toBe('2 sets'));
+  expect(stat('Total volume')).toBe('1,500kg');
+  expect(stat('Workout days')).toBe('1 day');
+  expect(content()).toMatch(/Incomplete 1/);
 });
 
 test('a rapid second tap in a later render does not undo completion or touch the rest', async () => {
@@ -287,11 +287,11 @@ test('a rapid second tap in a later render does not undo completion or touch the
   // Double click: the second click arrives after React re-rendered.
   await ui.user.click(completion());
   expect(pressed(), 'double click keeps completion').toBe('true');
-  expect(timer(), 'rest started once and keeps running').toMatch(/1:30 남음/);
+  expect(timer(), 'rest started once and keeps running').toMatch(/1:30 left/);
   advance(1000);
   await ui.user.click(completion());
   expect(pressed(), 'deliberate undo still works').toBe('false');
-  expect(timer(), 'undo does not cancel the rest').toMatch(/1:29 남음/);
+  expect(timer(), 'undo does not cancel the rest').toMatch(/1:29 left/);
   await submit(ui);
   expect(ui.sentSets()[0].completed).toBe(false);
 });
@@ -302,7 +302,7 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
       id: 3,
       version: 2,
       date: '2026-10-14',
-      title: '예전 기록',
+      title: 'Previous record',
       notes: '',
       feedback: 'easy',
       sets: [
@@ -311,10 +311,10 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
     },
   ]);
   await loaded();
-  await waitFor(() => expect(content()).toMatch(/체감 쉬움/));
-  await ui.user.click(screen.getByRole('button', { name: '수정' }));
-  expect(feedback('쉬움')).toHaveAttribute('aria-pressed', 'true');
-  await ui.user.click(feedback('힘듦'));
+  await waitFor(() => expect(content()).toMatch(/Effort Easy/));
+  await ui.user.click(screen.getByRole('button', { name: 'Edit' }));
+  expect(feedback('Easy')).toHaveAttribute('aria-pressed', 'true');
+  await ui.user.click(feedback('Hard'));
   await submit(ui);
   expect(ui.mutations().at(-1)!.method).toBe('PUT');
   expect(ui.sentFeedback()).toBe('hard');
@@ -329,19 +329,19 @@ test('a rest that ends while the app is open vibrates once, a long-past end stay
   try {
     const ui = mount();
     await openNew(ui);
-    await ui.user.click(screen.getByRole('button', { name: '휴식 시작' }));
+    await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
     ui.returnToTab(89000);
     expect(vibrate).not.toHaveBeenCalled();
     ui.returnToTab(2000);
-    expect(timer()).toMatch(/휴식 종료/);
+    expect(timer()).toMatch(/Rest over/);
     expect(vibrate).toHaveBeenCalledTimes(1);
     expect(vibrate).toHaveBeenCalledWith([200, 100, 200]);
     ui.returnToTab(1000);
     expect(vibrate, 'the same end alerts once').toHaveBeenCalledTimes(1);
     // A new rest that ends while the tab sat in the background for a minute after it.
-    await ui.user.click(screen.getByRole('button', { name: '휴식 시작' }));
+    await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
     ui.returnToTab(90000 + 60000);
-    expect(timer()).toMatch(/휴식 종료/);
+    expect(timer()).toMatch(/Rest over/);
     expect(vibrate, 'an end found a minute late is silent').toHaveBeenCalledTimes(1);
   } finally {
     delete (navigator as Partial<Navigator>).vibrate;
@@ -355,20 +355,20 @@ test('the rest countdown is a pinned bar apart from the rest settings', async ()
   const bar = document.querySelector<HTMLElement>('[data-slot=rest-timer]')!;
   expect(bar.parentElement).toHaveClass('sticky', 'top-0');
   expect(bar).toContainElement(screen.getByRole('timer'));
-  expect(bar).toContainElement(screen.getByRole('button', { name: '휴식 시작' }));
+  expect(bar).toContainElement(screen.getByRole('button', { name: 'Start rest' }));
   expect(bar).not.toContainElement(duration());
   expect(document.querySelector('[data-slot=rest-settings]')).toContainElement(duration());
 });
 
-// #105: pages with their own component (루틴짜기 etc.) show the running rest first, so it
+// #105: pages with their own component (Routine Builder etc.) show the running rest first, so it
 // can stick at the top instead of sitting under the whole page.
 test('a running rest comes first on a page drawn by its own component', async () => {
   const ui = mount();
   await openNew(ui);
-  await ui.user.click(screen.getByRole('button', { name: '휴식 시작' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
   await ui.user.keyboard('{Escape}');
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  await ui.user.click(screen.getAllByRole('link', { name: '루틴짜기' })[0]);
+  await ui.user.click(screen.getAllByRole('link', { name: 'Routine Builder' })[0]);
   const page = document.querySelector('.legacy')!;
   await waitFor(() => expect(page.querySelector('[data-slot=rest-timer]')).not.toBeNull());
   expect(page.firstElementChild).toContainElement(

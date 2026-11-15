@@ -50,22 +50,24 @@ function covered(page: Page) {
 for (const { width, height } of widths) {
   test.describe(`${width}px`, () => {
     test.use({ viewport: { width, height } });
-    test('모든 화면이 가로로 넘치지 않고 고정 요소가 조작 요소를 가리지 않는다', async ({
+    test('no screen overflows horizontally and fixed elements do not cover controls', async ({
       page,
     }) => {
       for (const { path } of pages) {
         await openPage(page, path);
-        expect(await overflow(page), `${path} 가로 넘침(px)`).toBeLessThanOrEqual(0);
-        expect(await covered(page), `${path} 고정 요소에 가려진 조작 요소`).toEqual([]);
+        expect(await overflow(page), `${path} horizontal overflow (px)`).toBeLessThanOrEqual(0);
+        expect(await covered(page), `${path} controls covered by fixed elements`).toEqual([]);
       }
     });
-    test('모달이 가로로 넘치지 않는다', async ({ page }) => {
+    test('the modal does not overflow horizontally', async ({ page }) => {
       for (const modal of modals) {
         const dialog = await openModal(page, modal);
-        expect(await overflow(page), `${modal.name} 가로 넘침(px)`).toBeLessThanOrEqual(0);
+        expect(await overflow(page), `${modal.name} horizontal overflow (px)`).toBeLessThanOrEqual(
+          0,
+        );
         const box = (await dialog.boundingBox())!;
-        expect(box.x, `${modal.name} 왼쪽`).toBeGreaterThanOrEqual(0);
-        expect(box.x + box.width, `${modal.name} 오른쪽`).toBeLessThanOrEqual(width);
+        expect(box.x, `${modal.name} left`).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, `${modal.name} right`).toBeLessThanOrEqual(width);
       }
     });
   });
@@ -73,9 +75,9 @@ for (const { width, height } of widths) {
 
 // #105: on a phone the workout editor fills the screen, and its save button stays on the
 // bottom edge while the long form scrolls; short forms sit on the bottom edge as a sheet.
-test.describe('390px 모바일 모달', () => {
+test.describe('390px mobile modal', () => {
   test.use({ viewport: { width: 390, height: 844 } });
-  test('일지 편집은 전체 화면이고 저장 버튼이 스크롤 중에도 화면 아래에 보인다', async ({
+  test('Journal editing is full screen and the save button stays at the bottom of the screen while scrolling', async ({
     page,
   }) => {
     const dialog = await openModal(page, modals[0]);
@@ -84,18 +86,24 @@ test.describe('390px 모바일 모달', () => {
     expect(box.y).toBeCloseTo(0, 0);
     expect(box.width).toBeCloseTo(390, 0);
     expect(box.height).toBeCloseTo(844, 0);
-    const save = dialog.getByRole('button', { name: '기록 저장하기' });
+    const save = dialog.getByRole('button', { name: 'Save record' });
     await expect(save).toBeInViewport();
     for (const position of ['middle', 'top'] as const) {
       await dialog.evaluate((el, at) => {
         el.scrollTop = at === 'top' ? 0 : el.scrollHeight / 2;
       }, position);
       const r = (await save.boundingBox())!;
-      expect(r.y + r.height, `${position} 저장 버튼 아래 끝`).toBeGreaterThan(844 - 80);
-      expect(r.y + r.height, `${position} 저장 버튼 아래 끝`).toBeLessThanOrEqual(844);
+      expect(
+        r.y + r.height,
+        `${position}: bottom of the page below the save button`,
+      ).toBeGreaterThan(844 - 80);
+      expect(
+        r.y + r.height,
+        `${position}: bottom of the page below the save button`,
+      ).toBeLessThanOrEqual(844);
     }
   });
-  test('짧은 폼은 화면 아래 시트로 뜬다', async ({ page }) => {
+  test('A short form opens as a sheet at the bottom of the screen', async ({ page }) => {
     const dialog = await openModal(page, modals[1]);
     const box = (await dialog.boundingBox())!;
     expect(box.x).toBeCloseTo(0, 0);
@@ -105,28 +113,30 @@ test.describe('390px 모바일 모달', () => {
 });
 
 // #105: the rest countdown stays at the top while the editor or the page scrolls.
-test.describe('390px 휴식 타이머', () => {
+test.describe('390px rest timer', () => {
   test.use({ viewport: { width: 390, height: 844 } });
-  test('편집 창과 대시보드를 스크롤해도 휴식 타이머가 위에 보인다', async ({ page }) => {
+  test('The rest timer stays on top even when you scroll the edit window and dashboard', async ({
+    page,
+  }) => {
     const dialog = await openModal(page, modals[0]);
-    await dialog.getByRole('button', { name: '휴식 시작' }).click();
+    await dialog.getByRole('button', { name: 'Start rest' }).click();
     const bar = (scope: typeof page | typeof dialog) =>
       scope.locator('[data-slot=rest-timer]').getByRole('timer');
     await dialog.evaluate((el) => (el.scrollTop = el.scrollHeight));
     const inEditor = (await bar(dialog).boundingBox())!;
-    expect(inEditor.y, '편집 창 위쪽').toBeGreaterThanOrEqual(0);
-    expect(inEditor.y, '편집 창 위쪽').toBeLessThan(80);
+    expect(inEditor.y, 'Top of the edit window').toBeGreaterThanOrEqual(0);
+    expect(inEditor.y, 'Top of the edit window').toBeLessThan(80);
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     // The editor opens from the dashboard; the check needs it to scroll well past the bar.
     const room = await page.evaluate(
       () => document.documentElement.scrollHeight - window.innerHeight,
     );
-    expect(room, '대시보드 스크롤 여유(px)').toBeGreaterThan(400);
+    expect(room, 'Dashboard scroll room (px)').toBeGreaterThan(400);
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const onPage = (await bar(page).boundingBox())!;
     // Below the 56px app header, near the top of the screen.
-    expect(onPage.y, '머리글 아래').toBeGreaterThanOrEqual(56);
-    expect(onPage.y, '머리글 아래').toBeLessThan(140);
+    expect(onPage.y, 'Below the header').toBeGreaterThanOrEqual(56);
+    expect(onPage.y, 'Below the header').toBeLessThan(140);
   });
 });

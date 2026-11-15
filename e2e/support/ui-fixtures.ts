@@ -30,7 +30,7 @@ export const now = new Date('2026-10-15T10:00:00+09:00');
 export const pages = [
   { path: '/', name: 'dashboard' },
   { path: '/journal', name: 'journal' },
-  // #115: the journal's 유산소 tab (list, statistics and personal records).
+  // #115: the journal's Cardio tab (list, statistics and personal records).
   { path: '/journal?tab=cardio', name: 'journal-cardio' },
   { path: '/goals', name: 'goals' },
   { path: '/analysis', name: 'analysis' },
@@ -42,9 +42,9 @@ export const pages = [
 
 // Each modal opens from the page header's primary button.
 export const modals = [
-  { path: '/', button: '운동 기록하기', dialog: '새로운 운동 기록', name: 'workout-editor' },
-  { path: '/goals', button: '목표 추가', dialog: '점진적 과부하 목표', name: 'goal-editor' },
-  { path: '/machines', button: '머신 등록', dialog: '머신 등록', name: 'machine-editor' },
+  { path: '/', button: 'Log workout', dialog: 'New workout record', name: 'workout-editor' },
+  { path: '/goals', button: 'Add goal', dialog: 'Progressive overload goals', name: 'goal-editor' },
+  { path: '/machines', button: 'Add machine', dialog: 'Add machine', name: 'machine-editor' },
 ] as const;
 
 export const widths = [
@@ -55,17 +55,17 @@ export const widths = [
 ] as const;
 
 const brands = [
-  { id: 1, name: '해머 스트렝스' },
-  { id: 2, name: '라이프 피트니스' },
+  { id: 1, name: 'Hammer Strength' },
+  { id: 2, name: 'Life Fitness' },
 ];
 const machines = [
   {
     id: 2,
     brand_id: 1,
-    brand: '해머 스트렝스',
-    name: '레그프레스',
+    brand: 'Hammer Strength',
+    name: 'Leg Press',
     base_weight: 50,
-    notes: '시트 4칸',
+    notes: 'Sheet 4 slots',
     official_weight_id: null,
     official_status: null,
     single_joint: false,
@@ -73,8 +73,8 @@ const machines = [
   {
     id: 1,
     brand_id: 2,
-    brand: '라이프 피트니스',
-    name: '랫풀다운',
+    brand: 'Life Fitness',
+    name: 'Lat Pulldown',
     base_weight: null,
     notes: '',
     official_weight_id: null,
@@ -98,67 +98,67 @@ const workouts = [
     id: 6,
     version: 1,
     date: '2026-10-15',
-    title: '10월 15일(목)',
+    title: 'Thu, Oct 15',
     notes: '',
     feedback: null,
     sets: [
-      set('벤치프레스', 100, 10),
-      set('벤치프레스', 100, 9),
-      set('벤치프레스', 100, 8, { completed: false }),
+      set('Benchpress', 100, 10),
+      set('Benchpress', 100, 9),
+      set('Benchpress', 100, 8, { completed: false }),
     ],
   },
   {
     id: 5,
     version: 2,
     date: '2026-10-13',
-    title: '하체',
-    notes: '무릎 컨디션 좋음',
+    title: 'Lower body',
+    notes: 'Knee felt good',
     feedback: 'medium',
     sets: [
-      set('레그프레스', 180, 12, { machine_id: 2 }),
-      set('레그프레스', 180, 10, { machine_id: 2 }),
-      set('루마니안 데드리프트', 80, 10),
+      set('Leg Press', 180, 12, { machine_id: 2 }),
+      set('Leg Press', 180, 10, { machine_id: 2 }),
+      set('Romanian Deadlift', 80, 10),
     ],
   },
   {
     id: 4,
     version: 1,
     date: '2026-10-09',
-    title: '상체',
+    title: 'Upper body',
     notes: '',
     feedback: 'hard',
     sets: [
-      set('벤치프레스', 97.5, 10),
-      set('랫풀다운', 60, 12, { machine_id: 1 }),
-      set('랫풀다운', 60, 11, { machine_id: 1, rpe: 9 }),
+      set('Benchpress', 97.5, 10),
+      set('Lat Pulldown', 60, 12, { machine_id: 1 }),
+      set('Lat Pulldown', 60, 11, { machine_id: 1, rpe: 9 }),
     ],
   },
   {
     id: 3,
     version: 1,
     date: '2026-10-06',
-    title: '하체',
+    title: 'Lower body',
     notes: '',
     feedback: 'easy',
-    sets: [set('레그프레스', 170, 12, { machine_id: 2 }), set('루마니안 데드리프트', 75, 10)],
+    sets: [set('Leg Press', 170, 12, { machine_id: 2 }), set('Romanian Deadlift', 75, 10)],
   },
   {
     id: 2,
     version: 1,
     date: '2026-09-29',
-    title: '상체',
+    title: 'Upper body',
     notes: '',
     feedback: null,
-    sets: [set('벤치프레스', 95, 10), set('랫풀다운', 55, 12, { machine_id: 1 })],
+    sets: [set('Benchpress', 95, 10), set('Lat Pulldown', 55, 12, { machine_id: 1 })],
   },
   {
     id: 1,
     version: 1,
     date: '2026-09-22',
-    title: '전신',
+    title: 'Full body',
     notes: '',
     feedback: null,
-    sets: [set('벤치프레스', 92.5, 10), set('레그프레스', 160, 12, { machine_id: 2 })],
+    sets: [set('Benchpress', 92.5, 10), set('Leg Press', 160, 12, { machine_id: 2 })],
   },
 ];
 // #116: cardio goals judged with the real server function on fixed sessions: a weekly running
@@ -184,7 +184,7 @@ const cardioRows = cardioSessions
     workout_id: null,
     source: 'manual',
     external_id: null,
-    memo: i === 2 ? '한강' : '',
+    memo: i === 2 ? 'Han River' : '',
     ...s,
     pace_sec_per_km:
       s.distance_km === null ? null : Math.round((s.duration_sec / s.distance_km) * 10) / 10,
@@ -258,7 +258,7 @@ const cardioGoals = [
 const goals = [
   {
     id: 2,
-    exercise: '벤치프레스',
+    exercise: 'Benchpress',
     target_weight: 110,
     target_reps: 5,
     start_date: '2026-10-01',
@@ -267,7 +267,7 @@ const goals = [
   },
   {
     id: 1,
-    exercise: '레그프레스',
+    exercise: 'Leg Press',
     target_weight: 180,
     target_reps: 10,
     start_date: '2026-09-01',
@@ -276,10 +276,10 @@ const goals = [
   },
 ];
 const bodyParts = [
-  { exercise: '벤치프레스', body_parts: ['가슴', '팔'] },
-  { exercise: '랫풀다운', body_parts: ['등'] },
-  { exercise: '레그프레스', body_parts: ['하체-앞'] },
-  { exercise: '루마니안 데드리프트', body_parts: ['하체-뒤'] },
+  { exercise: 'Benchpress', body_parts: ['가슴', '팔'] },
+  { exercise: 'Lat Pulldown', body_parts: ['등'] },
+  { exercise: 'Leg Press', body_parts: ['하체-앞'] },
+  { exercise: 'Romanian Deadlift', body_parts: ['하체-뒤'] },
 ];
 const body = [
   {
@@ -321,12 +321,12 @@ const body = [
 
 const plan = routineSchema.parse({
   ...autoRoutineInput(),
-  name: '상하체 12주 루틴',
+  name: 'Upper/lower 12-week routine',
   start_date: '2026-09-28',
 }) as RoutinePlan;
 const routine = { ...plan, id: 1, schedule: routineSchedule(plan) };
 // The server applies the user's weight steps before computing progress (#86).
-const weightSteps: Record<string, number> = { 벤치프레스: 2.5 };
+const weightSteps: Record<string, number> = { benchpress: 2.5 };
 const records: WorkoutRecord[] = workouts.flatMap((w) =>
   [...new Set(w.sets.map((s) => s.exercise))].map((exercise) => ({
     date: w.date,
@@ -339,7 +339,7 @@ const progress = {
   routine: { id: routine.id, name: plan.name, splits: plan.splits.length },
   ...routineProgress(withWeightSteps(plan, weightSteps), [], today, records),
   previous: {
-    벤치프레스: { date: '2026-10-09', sets: [{ weight: 97.5, reps: 10 }] },
+    benchpress: { date: '2026-10-09', sets: [{ weight: 97.5, reps: 10 }] },
   },
 };
 const analysisRows: AnalysisSet[] = workouts.flatMap((w) =>
@@ -451,7 +451,7 @@ export async function useFixtures(page: Page) {
     const body = route.request().method() === 'GET' ? respond(url) : undefined;
     await route.fulfill(
       body === undefined
-        ? { status: 404, json: { error: `UI 검사 고정 데이터 없음: ${url.pathname}` } }
+        ? { status: 404, json: { error: `No fixed UI check data: ${url.pathname}` } }
         : { json: body },
     );
   });
@@ -461,7 +461,7 @@ export async function useFixtures(page: Page) {
 export async function settle(page: Page) {
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
-  await expect(page.getByText(/불러오는 중/)).toHaveCount(0);
+  await expect(page.getByText(/Loading/)).toHaveCount(0);
   // #159: the common dialog fades and zooms in; checks run on the finished frame, not
   // through a half-transparent modal. Endless animations (spinners) are skipped.
   await page.evaluate(() =>

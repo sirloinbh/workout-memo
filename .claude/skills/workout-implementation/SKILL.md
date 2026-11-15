@@ -3,78 +3,78 @@ name: workout-implementation
 description: Follow the user's issue, numbered branch, implementation with docs, tests, PR, up to two automated review rounds, and merge-after-CI workflow for changes to the sirloinbh workout-memo project. Use for code, configuration, documentation, and skill edits; exclude read-only questions and recommendations. Review each PR at most twice with fix commits, split large fixes into new issues, merge once required CI passes, and resolve conflicts between stacked PRs.
 ---
 
-# Workout Memo 구현 절차
+# Workout Memo Implementation Procedure
 
-이 스킬은 `sirloinbh/workout-memo` 변경 작업에 적용한다. 다른 프로젝트에 이 계정·저장소·정책을 적용하지 않는다. 프로젝트 루트의 `AGENTS.md`와 관련 문서를 먼저 읽는다. 아래 순서를 지키고 자동 리뷰와 CI를 거친 PR을 병합까지 완료한다.
+This skill applies to changes in `sirloinbh/workout-memo`. Do not apply this account, repository, or policy to other projects. First read `AGENTS.md` at the project root and the related docs. Follow the order below and carry a PR that has gone through automatic review and CI all the way to merge.
 
-## 1. 이슈카드 등록
+## 1. Register an issue card
 
-- GitHub 원격 주소와 `gh api user --jq .login`을 확인한다. 기대 계정은 `sirloinbh`이며, 다른 계정이면 인증을 바로잡기 전 원격 변경을 진행하지 않는다.
-- 사용자가 지정한 이슈 또는 같은 요청으로 이미 등록한 이슈를 재사용한다. 재시도 전에 기존 결과를 확인해 중복 이슈를 만들지 않는다.
-- 새 이슈에는 문제·목적, 요청한 범위, 완료 기준과 검증 방법을 적는다. 이 프로젝트에서 이슈카드는 GitHub Issue를 의미한다. 별도 Projects 보드를 지정하지 않았다면 보드를 만들거나 연결하지 않는다.
-- 본문은 UTF-8 임시 파일로 작성해 `gh issue create --repo sirloinbh/workout-memo --title ... --body-file ...`로 등록한다. 토큰과 비밀값을 본문에 넣지 않는다.
-- 발급된 실제 이슈 번호와 URL을 보관한다. 이슈 등록이 실패하면 번호를 임의로 만들거나 코드 변경을 먼저 시작하지 않는다.
+- Check the GitHub remote URL and `gh api user --jq .login`. The expected account is `sirloinbh`; if it is another account, do not make remote changes until the authentication is fixed.
+- Reuse the issue the user named, or an issue already registered for the same request. Check the existing result before retrying so you do not create a duplicate issue.
+- In a new issue, write the problem and purpose, the requested scope, the done criteria, and how to verify. In this project an issue card means a GitHub Issue. Unless a separate Projects board is specified, do not create or link a board.
+- Write the body to a UTF-8 temporary file and register it with `gh issue create --repo sirloinbh/workout-memo --title ... --body-file ...`. Do not put tokens or secrets in the body.
+- Keep the real issue number and URL that were issued. If the issue registration fails, do not make up a number or start code changes first.
 
-## 2. 이슈 번호로 브랜치 생성
+## 2. Create a branch from the issue number
 
-- 작업 트리와 현재 브랜치를 확인한다. 다른 작업의 변경이 있으면 보존하고 작업 간 섞임을 피한다.
-- 기본 대상 브랜치는 `main`이다. 관련 없는 미병합 작업 브랜치에서 새 작업을 시작하지 않는다. 깨끗한 작업 트리에서 원격 main을 fetch하고 그 기준으로 분기한다. 사용자 변경이 있으면 보존 가능한 작업 공간을 준비한다.
-- 브랜치 이름: `<type>/<number>-<short-slug>`. 예: `feat/12-workout-editor`, `fix/13-goal-date`, `docs/14-project-skills`, `chore/15-ci`.
-- 같은 이슈 브랜치가 이미 있으면 상태를 확인하고 이어서 사용한다.
-- 변경과 커밋은 이 브랜치에서 수행한다. `main`에 직접 커밋하거나 푸시하지 않는다.
+- Check the working tree and the current branch. If there are changes from other work, preserve them and avoid mixing work.
+- The default target branch is `main`. Do not start new work from an unrelated unmerged work branch. In a clean working tree, fetch the remote main and branch from it. If there are user changes, prepare a workspace that can preserve them.
+- Branch name: `<type>/<number>-<short-slug>`. Examples: `feat/12-workout-editor`, `fix/13-goal-date`, `docs/14-project-skills`, `chore/15-ci`.
+- If a branch for the same issue already exists, check its state and continue with it.
+- Make changes and commits on this branch. Do not commit or push directly to `main`.
 
-## 3. 구현과 커밋별 docs 기록
+## 3. Implementation and a docs record for each commit
 
-- 구현·수정 시 프로젝트의 `skills/workout-testing/SKILL.md`를 읽고 관련 테스트를 함께 작성·수정한다. 버그 수정은 회귀 테스트를 추가한다. 구현·테스트·docs는 같은 작업 커밋에 포함하며 커밋 전에 관련 테스트를 실행한다.
-- 요청한 범위만 구현한다. 개발 기반 정리 작업은 `workout-foundation`을 함께 읽는다.
-- `docs/changes/<number>-<slug>.md`를 만들고 이슈 링크, 목적, 변경 내용, 검증, 제한·후속 작업을 기록한다.
-- **각 작업 커밋에 그 커밋에서 수행한 변경과 검증을 docs에 함께 기록한다.** 하나의 이슈 문서에 항목을 누적해도 된다. 문서만 수정한 커밋도 해당 작업 기록을 갱신한다.
-- 기록에는 변경 이유와 관찰된 결과를 남긴다. 실행하지 않은 검사나 배포를 완료했다고 쓰지 않는다. 커밋 자신을 가리키는 SHA를 미리 만들 필요는 없다. 커밋 제목 또는 작업 단위로 구분한다.
-- 커밋 제목은 `feat: ... (#12)`, `fix: ... (#13)`, `docs: ... (#14)`처럼 유형과 이슈 번호를 포함한다.
-- stage 전에 diff와 비밀정보 포함 여부를 확인하고 관련 파일만 명시해서 stage한다. 다른 사용자의 변경을 포함하지 않는다.
+- When implementing or fixing, read the project's `skills/workout-testing/SKILL.md` and write or update the related tests together. For a bug fix, add a regression test. Include the implementation, the tests, and the docs in the same work commit, and run the related tests before committing.
+- Implement only the requested scope. For development foundation work, read `workout-foundation` as well.
+- Create `docs/changes/<number>-<slug>.md` and record the issue link, the purpose, the changes, the verification, and the limits and follow-up work.
+- **Record in the docs, in each work commit, the changes and the verification done in that commit.** You may accumulate entries in one issue doc. A commit that only edits docs also updates the record of that work.
+- In the record, leave the reason for the change and the observed results. Do not write that a check or a deployment was done when it was not run. You do not need to create in advance the SHA that points at the commit itself. Tell them apart by commit title or by unit of work.
+- A commit title includes the type and the issue number, such as `feat: ... (#12)`, `fix: ... (#13)`, `docs: ... (#14)`.
+- Before staging, check the diff and whether it contains secrets, and stage only the related files, by name. Do not include another user's changes.
 
-## 4. 테스트 후 PR 생성
+## 4. Open a PR after testing
 
-- PR을 생성하거나 갱신하기 전에 최종 변경의 관련 테스트와 필수 검사를 실행한다. 추가·수정한 테스트 코드, 검증한 동작, 실제 실행 명령과 pass/fail/skip을 docs와 PR에 남긴다. 필수 명령과 DB 통합 테스트 조건은 프로젝트 `AGENTS.md`를 따른다. 단순 문서·스킬 수정에 불필요한 앱 테스트를 추가하지 않는다.
-- 실패를 수정하고, 실행하지 못한 검사·건너뛴 DB 테스트·미완료 브라우저 검증을 구분해 docs와 PR에 기록한다. 필요한 검증이 막히면 PR은 draft로 만든다.
-- 작업 브랜치만 푸시한다. PR 대상은 `sirloinbh/workout-memo`의 `main`이다. subtree 동기화 스크립트는 main과 하위 저장소를 푸시하므로 이 단계에서 사용하지 않는다.
-- 같은 head 브랜치의 PR이 있으면 업데이트하고 중복 생성하지 않는다.
-- PR 본문은 UTF-8 파일로 전달한다. 문제와 변경 후 동작, 주요 변경, 실제 검사 명령·결과, 화면 변경 시 가능한 증거, `Closes #<number>`를 포함한다. 이미지가 없으면 없는 이유와 검증 한계를 적는다.
-- GitHub Actions 결과를 확인하고 관련 실패를 해결한다. 아직 실행 중인 검사는 실행 중이라고 알린다. PR 생성 후 코드를 수정했으면 영향받는 검사를 다시 실행하고 docs·PR 결과를 갱신한다.
+- Before creating or updating a PR, run the related tests and the required checks on the final changes. Leave the test code you added or changed, the behavior you verified, the real commands you ran, and pass/fail/skip in the docs and the PR. The required commands and the conditions for DB integration tests follow the project `AGENTS.md`. Do not add app tests that a plain docs or skill edit does not need.
+- Fix failures, and separate checks you could not run, DB tests that were skipped, and browser verification that is unfinished in the docs and the PR. If a needed verification is blocked, make the PR a draft.
+- Push only the work branch. The PR target is `main` of `sirloinbh/workout-memo`. The subtree sync script pushes main and the sub-repositories, so do not use it in this step.
+- If a PR for the same head branch exists, update it and do not create a duplicate.
+- Pass the PR body as a UTF-8 file. Include the problem and the behavior after the change, the main changes, the real check commands and results, evidence where possible for a screen change, and `Closes #<number>`. If there are no images, give the reason and the limits of the verification.
+- Check the GitHub Actions results and fix related failures. Say so for checks that are still running. If you changed code after creating the PR, re-run the affected checks and update the results in the docs and the PR.
 
-## 5. PR 후 자동 코드 리뷰(최대 2회)
+## 5. Automatic code review after the PR (at most 2 rounds)
 
-- **1차 리뷰**: PR을 올린 뒤 작성 문맥과 분리된 읽기 전용 리뷰를 실행한다(별도 에이전트, 리뷰 도구 등). 이슈 완료 기준과 PR 전체 diff를 기준으로 정확성·회귀·보안·누락된 테스트·docs 기록을 본다.
-- **보완점이 없으면** 리뷰를 끝내고 6단계로 넘어간다.
-- **보완점이 있으면** 이 PR 범위에서 고칠 지적만 반영한다. 관련 테스트와 docs 기록을 함께 담아 추가 커밋을 만들고 push한다.
-- **2차 리뷰**: 1차 지적이 반영됐는지와 추가 diff를 확인하고, 최종 PR 전체 diff도 함께 본다. 보완점이 없으면 6단계로 넘어간다.
-- **2차 보완**: 2차 지적은 추가 커밋으로 반영한다. 리뷰는 최대 2회이므로 3차 리뷰는 하지 않고 6단계로 넘어간다.
-- **큰 수정은 분리**: 다음에 해당하는 지적은 이 PR에서 고치지 않는다. 대신 1단계 형식(문제·범위·완료 기준)으로 새 이슈카드를 만든다. PR 코멘트와 docs 기록에 이슈 링크를 남기고 이 PR은 계속 진행한다.
-  - 요청 범위 밖의 기능
-  - 설계·데이터 구조 변경
-  - 여러 모듈에 걸친 수정
-  - 별도 검증이 필요한 작업
-- **병합 보류**: 다음 결함이 남아 있으면 병합하지 않고 사용자에게 알린다.
-  - 분리하면 main이 깨지는 결함
-  - 보안·데이터 손상 위험이 있는 결함
-- **기록**: 각 리뷰 차수의 결과를 PR 코멘트와 `docs/changes` 기록에 남긴다. 지적 사항, 반영한 커밋, 분리한 이슈, 보완점 없음 여부를 적는다.
-- 로컬 워커 job은 게시 전 독립 검토(최대 2회)를 이 단계로 갈음한다. 두 번째 반려로 blocked된 job은 주 에이전트가 이 단계의 2차 보완 또는 이슈 분리 기준으로 처리한다.
+- **First review**: after opening the PR, run a read-only review that is separate from the authoring context (a separate agent, a review tool, and so on). Using the issue's done criteria and the whole PR diff as the baseline, look at correctness, regressions, security, missing tests, and the docs record.
+- **If there is nothing to fix**, end the review and go to step 6.
+- **If there is something to fix**, apply only the findings that belong in the scope of this PR. Make an additional commit that carries the related tests and docs record, and push.
+- **Second review**: check that the first findings were applied and look at the additional diff, and also look at the final whole PR diff. If there is nothing to fix, go to step 6.
+- **Second round of fixes**: apply the second findings in an additional commit. The review is at most 2 rounds, so do not do a third review; go to step 6.
+- **Split large fixes**: do not fix findings of the following kinds in this PR. Instead, create a new issue card in the step 1 format (problem, scope, done criteria). Leave the issue link in a PR comment and the docs record, and continue with this PR.
+  - Features outside the requested scope
+  - Design or data structure changes
+  - Changes that span several modules
+  - Work that needs separate verification
+- **Hold the merge**: if the following defects remain, do not merge and tell the user.
+  - A defect that would break main if split off
+  - A defect that risks security or data corruption
+- **Record**: leave the result of each review round in a PR comment and in the `docs/changes` record. Write the findings, the commit that applied them, the issues that were split off, and whether there was nothing to fix.
+- For a local worker job, the independent review before publishing (at most 2 rounds) stands in for this step. A job that is blocked by a second rejection is handled by the main agent under the second-round fix or issue-split rules of this step.
 
-## 6. CI 통과 후 병합
+## 6. Merge after CI passes
 
-- 리뷰 보완 커밋을 포함한 최종 커밋 기준으로 관련 테스트를 다시 실행한다. 리뷰 중 새 커밋이 생기면 이전 CI 결과로 병합하지 않는다.
-- **최종 head의 필수 CI 검사가 모두 통과하면 사용자 확인 없이 PR을 병합한다.** 프로젝트 GitHub 래퍼로 `pr merge <url> --merge --match-head-commit <검증한 head SHA>`를 실행한다. merge 커밋 방식은 연속 PR의 이력을 보존한다.
-- 실패하거나 진행 중인 검사가 있으면 병합하지 않는다. `--admin` 등 브랜치 보호 우회, 자기 PR 승인, main 직접 커밋·푸시, force push는 하지 않는다.
-- 병합 후 `Closes #<number>`로 이슈가 닫혔는지 확인한다. main 병합은 서버 timer가 CI 통과 후 자동 배포하므로(#75) 배포 결과를 확인하고, 실패하면 원인과 함께 알린다.
-- 이슈 URL, 브랜치 이름, PR URL, 검증 결과, 리뷰 차수별 결과, 분리한 이슈, 병합 커밋과 남은 작업을 전달한다.
+- Re-run the related tests on the final commit, including the review fix commits. If a new commit appears during the review, do not merge on the earlier CI result.
+- **When all the required CI checks on the final head pass, merge the PR without asking the user.** Run `pr merge <url> --merge --match-head-commit <verified head SHA>` with the project GitHub wrapper. The merge commit method preserves the history of stacked PRs.
+- If a check fails or is still running, do not merge. Do not bypass branch protection with `--admin` or the like, approve your own PR, commit or push directly to main, or force push.
+- After the merge, check that the issue was closed by `Closes #<number>`. A merge to main is deployed automatically by the server timer after CI passes (#75), so check the deployment result, and if it fails, report it with the cause.
+- Hand over the issue URL, the branch name, the PR URL, the verification results, the results of each review round, the issues that were split off, the merge commit, and the remaining work.
 
-### 연속 PR 병합
+### Merging stacked PRs
 
-- 병합 순서대로 하나씩 병합한다. 앞 PR이 병합되면 다음 PR 브랜치에 `origin/main`을 merge한다.
-- 충돌이 나면 두 변경의 의도를 모두 살려 해결한다. 의도가 서로 맞지 않아 판단이 필요하면 사용자에게 묻는다.
-- 해결 후 관련 테스트를 다시 실행하고 docs 기록을 갱신해 일반 push한다. CI가 다시 통과하면 병합하고, 스택 끝까지 반복한다.
-- 내용이 이미 main에 모두 반영된 PR은 사유를 남기고 닫는다.
+- Merge one at a time, in merge order. When an earlier PR is merged, merge `origin/main` into the next PR branch.
+- If there is a conflict, resolve it so that the intent of both changes survives. If the intents do not fit and a judgment is needed, ask the user.
+- After resolving, re-run the related tests, update the docs record, and do a normal push. When CI passes again, merge, and repeat to the end of the stack.
+- Close, with a reason, a PR whose content is already fully in main.
 
-## 인증·실패 처리
+## Authentication and failure handling
 
-이미 주어진 이슈·푸시·PR 권한을 불필요하게 재확인하지 않는다. 도구가 요구하는 실행 권한과 GitHub 인증은 준수한다. 실패 시 완료한 단계부터 재개하고, 원격 생성 결과가 불명확하면 조회한 뒤 재시도한다. 계정·인증 문제를 다른 계정으로 생성하는 방식으로 우회하지 않는다.
+Do not recheck already granted permission for issues, pushes, and PRs without need. Comply with the execution permissions the tool asks for and with GitHub authentication. On a failure, resume from the step you had completed, and if the result of a remote creation is unclear, look it up before retrying. Do not work around an account or authentication problem by creating things with another account.

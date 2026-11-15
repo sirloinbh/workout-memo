@@ -52,7 +52,7 @@ const invalid: [string, (input: RoutineInput) => unknown][] = [
   [
     'unknown body part',
     (p) => {
-      p.splits[0].body_parts.push('목');
+      p.splits[0].body_parts.push('Thu');
       return p;
     },
   ],
@@ -297,12 +297,12 @@ test('routine API rejects invalid selections, schedule and manual targets before
   }
 });
 
-test('a split without body parts is rejected with a Korean message, not a raw validator string', () => {
+test('a split without body parts is rejected with a plain message, not a raw validator string', () => {
   const input = routineInput(2);
   input.splits[1].body_parts = [];
   const result = domain.routineSchema.safeParse(input);
   assert.equal(result.success, false);
   const messages = result.success ? [] : result.error.issues.map((issue) => issue.message);
-  assert.ok(messages.includes('분할마다 운동 부위를 1개 이상 선택하세요'), messages.join(' / '));
+  assert.ok(messages.includes('Select at least 1 body part for each split'), messages.join(' / '));
   assert.ok(!messages.some((m) => /Array must contain/.test(m)));
 });

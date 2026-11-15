@@ -267,10 +267,11 @@ test('routine editor exposes all five splits and keeps a failed save available f
   ui.next();
   await ui.save();
   await waitFor(() => expect(ui.text()).toMatch(/Check the rest weekdays and workouts per week/));
-  // #102: the failure is an AlertBanner, announced at once.
+  // #102: the failure is an AlertBanner, announced at once. #105: inside the form, on step 4.
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Check the rest weekdays and workouts per week',
   );
+  expect(ui.form()[0]).toContainElement(screen.getByRole('alert'));
   await saveSettled();
   expect(ui.form()).toHaveLength(1);
   expect(screen.getByRole('button', { name: 'Save routine' })).toBeEnabled();
@@ -564,6 +565,10 @@ test('the routine form goes forward one checked step at a time and back to any e
   expect(screen.queryByRole('textbox', { name: 'Routine name' })).toBeNull();
   await ui.click('Next');
   expect(ui.heading()).toHaveTextContent('Step 3 of 4 · Splits and exercises');
+  // A new routine's exercise has no name yet, so step 3 holds too.
+  await ui.click('Next');
+  expect(ui.heading()).toHaveTextContent('Step 3 of 4');
+  expect(screen.getByRole('textbox', { name: 'Exercise name' })).toBeInvalid();
   await ui.click('2. Schedule');
   expect(ui.heading()).toHaveTextContent('Step 2 of 4');
   await ui.click('Previous');
@@ -603,6 +608,8 @@ test('opening a saved plan shows its button waiting (#173)', async () => {
   const button = screen.getByRole('button', { name: 'View plan' });
   expect(button).toBeDisabled();
   expect(button).toHaveAttribute('aria-busy', 'true');
+  // A draft opened now would be closed by the arriving plan.
+  expect(screen.getByRole('button', { name: 'Create new routine' })).toBeDisabled();
   read.resolve();
   await screen.findByRole('region', { name: 'Manual 12-week routine' });
   expect(screen.getByRole('button', { name: 'View plan' })).toBeEnabled();

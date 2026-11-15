@@ -318,7 +318,8 @@ export function Routines() {
       <p className="mb-4 text-body-sm text-muted-foreground">
         A plan is only a goal. Record what you actually did separately in the workout journal.
       </p>
-      {error && <AlertBanner>{error}</AlertBanner>}
+      {/* An open form shows its error beside its buttons, on whichever step it is. */}
+      {error && !draft && <AlertBanner>{error}</AlertBanner>}
       <Notice
         className="mb-3"
         notice={
@@ -326,7 +327,8 @@ export function Routines() {
         }
       />
       <Button
-        disabled={saving}
+        // A plan still opening would close the new draft when it arrives.
+        disabled={saving || opening !== null}
         onClick={() => {
           setDraft(newPlan());
           setStep(0);
@@ -855,6 +857,8 @@ export function Routines() {
                   </Label>
                 </fieldset>
               ))}
+            {/* #105: a server check can be about an earlier step, which the step list reaches. */}
+            {error && <AlertBanner className="mt-5 mb-0">{error}</AlertBanner>}
             <div className="mt-5 flex flex-wrap gap-2">
               {step > 0 && (
                 <Button

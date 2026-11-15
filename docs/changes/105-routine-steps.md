@@ -53,3 +53,19 @@ The routine form was one long page. The decision on #105:
 
 pm run test -w frontend: 63 files, 353 passed, 4 skipped. ormat:check, lint, ypecheck: passed. A full local
 pm run check was not run (it ran out of time earlier in this session); CI erify runs it.
+
+## Review round 1
+
+No blocking findings. Applied:
+
+- "Create new routine" is also disabled while a plan is opening. Before, a plan arriving after a new draft was opened closed that draft and lost its input (an old race that the #173 spinner made more likely to be hit). Test: the View plan waiting test checks it.
+- While the form is open, a save error shows inside the form above its buttons, not at the top of the page. A server check about an earlier step (for example rest weekdays) reaches the user on step 4, next to the step list. Test: the failed-save test checks the alert is inside the form.
+- Coverage: the step navigation test also checks that Next holds on step 3 while the exercise name is empty.
+
+Not applied:
+
+- The double-tap guard ignores an early save without a message. It only drops a save in the first 400ms on step 4, which is the double tap it is for.
+- Later steps in the step list have no "not yet available" cue for screen readers; they are plain text after the current step.
+- `save()` in the tests waits 450ms in real time; it cannot make a test flaky, only slower.
+
+Checks after the fixes: `npm run test -w frontend -- routines routine loading` 29 passed; `lint` and `typecheck` passed.

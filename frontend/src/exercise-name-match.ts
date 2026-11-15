@@ -1,4 +1,4 @@
-import { loose } from './components/combobox-filter';
+import { looseText as loose } from './components/ui/combobox-filter';
 
 // #124: exercise name candidates from GET /api/exercise-names (recent, then frequent).
 export type ExerciseName = { name: string; uses: number; last_used: string | null };

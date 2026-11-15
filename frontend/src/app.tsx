@@ -26,7 +26,6 @@ import { listCardioSessions } from './cardio/api';
 import { CardioSummaryCard, CardioTab } from './cardio/cardio-tab';
 import { CardioGoals } from './cardio-goals';
 import { AlertBanner } from './components/alert-banner';
-import { Combobox } from './components/combobox';
 import { DateStepper, RangeSummary } from './components/date-stepper';
 import { FieldError } from './components/field';
 import { invalidProps } from './components/field-props';
@@ -50,6 +49,7 @@ import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Checkbox } from './components/ui/checkbox';
+import { Combobox } from './components/ui/combobox';
 import { EmptyState } from './components/ui/empty-state';
 import { Input as CommonInput } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -1098,7 +1098,7 @@ function Workspace() {
         <div className="legacy">
           {/* Pages with their own component draw everything below, so the bar goes first. */}
           {ownPage && pageTimer}
-          {page === 'routines' && <Routines />}
+          {page === 'routines' && <Routines exerciseNames={exerciseNames} />}
           {page === 'backup' && <Backup onRestored={() => void refreshAll()} />}
           {page === 'body' && (
             <BodyMeasurements from={from} to={to} workouts={workouts} controls={periodControls} />

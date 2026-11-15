@@ -34,7 +34,6 @@ Last updated: **2026-11-10 (Asia/Seoul)**. Update the same file on every working
 
 ## Follow-up features and cleanup
 
-- When a shared Combobox exists centrally ([project-standards#437](https://github.com/sirloinbh/project-standards/issues/437)), replace the app-specific `components/combobox.tsx`.
 - Running the whole frontend test suite at once makes one long test in `routines.test.tsx` hit the 15-second limit (it passes when run alone). There is no issue yet.
 - If the live region of the shared `Notice` is drawn from the start, a screen reader may not read it (#223 review). It is a central component, so an issue is needed in `project-standards`. There is no issue yet.
 - Add a `NODE_AUTH_TOKEN` note to `docs/deployment.md`. There is no issue yet. A draft that never got into main is on the local branch `chore/145-standards-sync-prep` (closed PR #146), and after adding it, delete this branch. This branch is also not merged by history, so deleting it needs `-D` approval.

@@ -571,7 +571,7 @@ test('the routine form goes forward one checked step at a time and back to any e
   // A new routine's exercise has no name yet, so step 3 holds too.
   await ui.click('Next');
   expect(ui.heading()).toHaveTextContent('Step 3 of 4');
-  expect(screen.getByRole('textbox', { name: 'Exercise name' })).toBeInvalid();
+  expect(screen.getByRole('combobox', { name: 'Exercise name' })).toBeInvalid();
   await ui.click('2. Schedule');
   expect(ui.heading()).toHaveTextContent('Step 2 of 4');
   await ui.click('Previous');

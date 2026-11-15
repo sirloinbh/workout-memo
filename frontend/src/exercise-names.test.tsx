@@ -4,13 +4,17 @@ import { useState } from 'react';
 import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
-import { Combobox } from './components/combobox';
-import { filterOptions } from './components/combobox-filter';
+import { Combobox } from './components/ui/combobox';
+import { filterComboboxGroups } from './components/ui/combobox-filter';
 import { candidateNames, similarName } from './exercise-name-match';
 import { fixClock, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
 // #124: exercise name autocomplete (journal and goals) and similar-name hints.
+
+// #300: the app uses the shared Combobox; its filter takes groups, the app passes one plain list.
+const filterOptions = (options: readonly string[], value: string) =>
+  filterComboboxGroups([{ label: '', options }], value).flatMap((group) => group.options);
 
 test('options match ignoring spaces and case, skip the exact value and stop at eight', () => {
   const names = ['Benchpress', 'Incline Bench Press', 'Pec Deck', 'Squat'];
@@ -220,4 +224,30 @@ test('the similar-name live region exists before its message so the message is a
     expect(region.textContent).toMatch(/Replace with the existing name ‘Benchpress’/),
   );
   expect(region).not.toHaveClass('sr-only');
+});
+
+// #124: the routine's exercise field (step 3) gets the same suggestions and similar-name hint.
+test('routine exercises suggest earlier names and offer the existing spelling of a similar one', async () => {
+  const ui = mount();
+  render(<App />);
+  await openPage('Routine Builder', ui.user);
+  await ui.user.click(await screen.findByRole('button', { name: 'Create new routine' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Routine name' }), {
+    target: { value: 'Split' },
+  });
+  fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-10-19' } });
+  await ui.user.click(screen.getByRole('button', { name: 'Next' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getByRole('heading', { name: /^Step 3 of 4/ })).toBeInTheDocument();
+
+  const input = screen.getByRole('combobox', { name: 'Exercise name' });
+  await ui.user.type(input, 'Sq');
+  await ui.user.click(await screen.findByRole('option', { name: 'Squat' }));
+  expect(input).toHaveValue('Squat');
+
+  await ui.user.clear(input);
+  await ui.user.type(input, 'bench press');
+  await screen.findByText(/Replace with the existing name ‘Benchpress’\?/);
+  await ui.user.click(screen.getByRole('button', { name: 'Replace' }));
+  expect(input).toHaveValue('Benchpress');
 });

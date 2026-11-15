@@ -92,7 +92,12 @@ test('the journal form marks the invalid set fields and keeps the input unsent',
   );
   expectInvalid(within(dialog).getAllByLabelText('Exercise name')[1], 'Enter an exercise name');
   expect(within(dialog).getAllByLabelText('Exercise name')[0]).not.toHaveAttribute('aria-invalid');
-  expect(within(dialog).getByRole('status')).toHaveTextContent('Check your input');
+  // #300: each shared Combobox keeps its own (empty) status line, so find the form's by its text.
+  expect(
+    within(dialog)
+      .getAllByRole('status')
+      .find((el) => /Check your input/.test(el.textContent)),
+  ).toBeDefined();
   expect(ui.posts('/api/workouts')).toHaveLength(0);
 
   fireEvent.change(within(dialog).getAllByLabelText('Total weight kg')[0], {

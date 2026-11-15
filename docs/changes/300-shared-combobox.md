@@ -27,3 +27,9 @@
 ## Browser check (2026-11-16)
 
 Production build on localhost with a stub API (names: Benchpress, Squat, Front Squat), Chrome at 390x844 and 1440x900, routine form step 3: "sq" lists Squat and Front Squat; "bench press" offers Benchpress and the Replace hint; no horizontal overflow. At 1440 the name and Machine fields line up after the alignment fix.
+
+## Review round 1 (2026-11-16)
+
+- issue (blocking): `npm run test -w frontend` failed in `forms.test.tsx`: `getByRole('status')` in the journal dialog found several status regions, because the shared Combobox keeps an empty `role="status"` line for its optional empty message (the app copy had none). **Fixed:** the test finds the form's status line by its text, as `routines.test.tsx` and `workout-draft.test.tsx` already do. No other test or e2e spec queries a single status region on a screen with a Combobox.
+- issue (non-blocking): each Combobox adds that empty, `sr-only` live region. It announces nothing while `emptyMessage` is unset (not used here), and a live region has to exist before its message to be announced, so it stays as the shared component draws it.
+- After the fix: `npm run test -w frontend`: 65 files passed, 366 tests passed, 4 skipped.

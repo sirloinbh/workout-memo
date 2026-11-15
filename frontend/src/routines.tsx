@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { AlertBanner } from './components/alert-banner';
 import { Button } from './components/ui/button';
@@ -171,15 +171,8 @@ const withSteps = (plan: Plan, steps: Steps) => ({
 });
 // #102: native <details> stay (components/ui has no accordion); the deload weeks are marked
 // with data-deload and a stronger text colour instead of the old .deload class.
-function Preview({
-  plan,
-  steps,
-  heading: Heading = 'h4',
-}: {
-  plan: Plan;
-  steps: Steps;
-  heading?: 'h3' | 'h4';
-}) {
+// In the form it sits under the step's h3 (#105), in the plan view under the plan's h3.
+function Preview({ plan, steps }: { plan: Plan; steps: Steps }) {
   const preview = previewTargets(withSteps(plan, steps));
   if (!preview)
     return (
@@ -190,9 +183,9 @@ function Preview({
     );
   return (
     <section data-slot="routine-preview" className="my-5 rounded-xl border p-4">
-      <Heading className="mb-2 text-body-sm font-semibold">
+      <h4 className="mb-2 text-body-sm font-semibold">
         12-week projected goals · may change with your records
-      </Heading>
+      </h4>
       {preview.map((split, i) =>
         split
           .filter((ex) => ex.exercise.trim())
@@ -239,6 +232,10 @@ const machineName = (machines: Machine[], id: number | null | undefined) => {
   const m = id == null ? undefined : machines.find((v) => v.id === id);
   return m ? `${m.brand} · ${m.name}` : null;
 };
+// #105 (decided 2026-11-10): four steps over one draft; the save API is unchanged.
+const routineSteps = ['Basics', 'Schedule', 'Splits and exercises', 'Goals'] as const;
+const stepName = (name: (typeof routineSteps)[number], plan: Plan) =>
+  name !== 'Goals' ? name : plan.progression === 'auto' ? '12-week preview' : 'Weekly goals';
 const goalLabel = (w: Week) =>
   w.kind === 'deload'
     ? `Deload · ${w.deload_metric === 'weight' ? 'Total weight kg' : w.deload_metric === 'sets' ? 'Sets' : 'Reps'} -${w.amount}`
@@ -254,6 +251,23 @@ export function Routines() {
   const [savedId, setSavedId] = useState<number | null>(null);
   const [steps, setSteps] = useState<Steps>({});
   const [machines, setMachines] = useState<Machine[]>([]);
+  // #105: the form is entered one step at a time; only earlier steps can be revisited.
+  const [step, setStep] = useState(0);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  const moved = useRef(false);
+  const movedAt = useRef(0);
+  useEffect(() => {
+    // Focus follows a step change (not the form opening) so the new step is announced.
+    if (moved.current) stepHeading.current?.focus();
+    moved.current = false;
+  }, [step]);
+  const goTo = (next: number) => {
+    moved.current = true;
+    movedAt.current = performance.now();
+    setStep(next);
+  };
+  // #173: the plan being opened, so its button shows it is waiting.
+  const [opening, setOpening] = useState<number | null>(null);
   useEffect(() => {
     let active = true;
     void fetch('/api/exercise-weight-steps')
@@ -315,6 +329,7 @@ export function Routines() {
         disabled={saving}
         onClick={() => {
           setDraft(newPlan());
+          setStep(0);
           setSelected(null);
           setError('');
           setSavedId(null);
@@ -342,17 +357,21 @@ export function Routines() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={saving}
+                disabled={saving || opening !== null}
+                aria-busy={opening === p.id || undefined}
                 onClick={() => {
                   setError('');
+                  setOpening(p.id!);
                   void request<Plan>('/' + p.id)
                     .then((value) => {
                       setSelected(value);
                       setDraft(null);
                     })
-                    .catch((e) => setError(e.message));
+                    .catch((e) => setError(e.message))
+                    .finally(() => setOpening(null));
                 }}
               >
+                {opening === p.id && <Spinner size="sm" aria-hidden />}
                 View plan
               </Button>
             </li>
@@ -365,6 +384,14 @@ export function Routines() {
             onSubmit={(e) => {
               e.preventDefault();
               if (saving) return;
+              // Before the last step a submit (Next or Enter) only moves on. Only the current
+              // step's fields are rendered, so the browser checks just those first.
+              if (step < routineSteps.length - 1) {
+                goTo(step + 1);
+                return;
+              }
+              // Save takes Next's place, so a double tap on Next would save at once.
+              if (performance.now() - movedAt.current < 400) return;
               setSaving(true);
               setError('');
               void request<{ id: number }>('', payload(draft))
@@ -384,310 +411,366 @@ export function Routines() {
                 .finally(() => setSaving(false));
             }}
           >
-            <Label className={cn(fieldLabel, 'mb-3')}>
-              Weekly goal mode
-              <select
-                className={nativeSelect}
-                value={draft.progression ?? 'manual'}
-                onChange={(e) =>
-                  setDraft({ ...draft, progression: e.target.value as 'manual' | 'auto' })
-                }
-              >
-                <option value="auto">Auto · double progressive overload</option>
-                <option value="manual">Manual · Enter by week</option>
-              </select>
-            </Label>
-            {draft.progression === 'auto' && <p className={cn(hint, 'mb-3')}>{autoRule}</p>}
-            <Label className={cn(fieldLabel, 'mb-3')}>
-              Routine name
-              <Input
-                className={touchText}
-                required
-                maxLength={120}
-                value={draft.name}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              />
-            </Label>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
-              <Label className={fieldLabel}>
-                Start date
-                <Input
-                  className={touchText}
-                  required
-                  type="date"
-                  value={draft.start_date}
-                  onChange={(e) => setDraft({ ...draft, start_date: e.target.value })}
-                />
-              </Label>
-              <Label className={fieldLabel}>
-                Split type
-                <select
-                  className={nativeSelect}
-                  value={draft.split_count}
-                  onChange={(e) => setDraft(withSplitDefaults(draft, Number(e.target.value)))}
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {n === 1 ? 'No split' : `${n}-day split`}
-                    </option>
-                  ))}
-                </select>
-              </Label>
-              <Label className={fieldLabel}>
-                Workout schedule type
-                <select
-                  className={nativeSelect}
-                  value={draft.schedule_mode ?? 'weekday'}
-                  onChange={(e) =>
-                    setDraft({ ...draft, schedule_mode: e.target.value as 'weekday' | 'cycle' })
-                  }
-                >
-                  <option value="cycle">Cycle · N days on, then M days off</option>
-                  <option value="weekday">Weekdays · Set rest weekdays</option>
-                </select>
-              </Label>
-              {draft.schedule_mode === 'cycle' ? (
-                <>
-                  <Label className={fieldLabel}>
-                    Consecutive workout days
-                    <Input
-                      className={touchText}
-                      required
-                      type="number"
-                      min={1}
-                      max={7}
-                      value={draft.cycle?.train_days ?? ''}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          cycle: { rest_days: 1, ...draft.cycle, train_days: e.target.value },
-                        })
-                      }
-                    />
-                  </Label>
-                  <Label className={fieldLabel}>
-                    Consecutive rest days
-                    <Input
-                      className={touchText}
-                      required
-                      type="number"
-                      min={0}
-                      max={7}
-                      value={draft.cycle?.rest_days ?? ''}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          cycle: { train_days: 1, ...draft.cycle, rest_days: e.target.value },
-                        })
-                      }
-                    />
-                  </Label>
-                </>
-              ) : (
-                <Label className={fieldLabel}>
-                  Workouts per week
-                  <Input
-                    className={touchText}
-                    required
-                    type="number"
-                    min={1}
-                    max={7}
-                    value={draft.weekly_workouts || ''}
-                    onChange={(e) =>
-                      setDraft({ ...draft, weekly_workouts: Number(e.target.value) })
-                    }
-                  />
-                </Label>
-              )}
-            </div>
-            {draft.schedule_mode === 'cycle' ? (
-              <p className={cn(hint, 'mt-3')}>
-                Workout days and rest days repeat from the start date. Choosing a split type fills
-                in the default cycle and body parts, and you can change them.
-              </p>
-            ) : (
-              <fieldset className={box}>
-                <legend className={legend}>Rest weekdays · Workouts plus rest total 7 days</legend>
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  {days.map((day, i) => (
-                    <Label key={day} className="min-h-9 gap-2 text-body-sm pointer-coarse:min-h-11">
-                      <Checkbox
-                        id={`rest-day-${i}`}
-                        // Same as the machine form (#231): the box stays 16px against the legacy 44px button
-                        // rule and its ::after area is 44px. Drop once project-standards#415 lands.
-                        className="pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]"
-                        checked={draft.rest_days.includes(i)}
-                        onCheckedChange={(checked) =>
-                          setDraft({
-                            ...draft,
-                            rest_days:
-                              checked === true
-                                ? [...draft.rest_days, i].sort()
-                                : draft.rest_days.filter((d) => d !== i),
-                          })
-                        }
-                      />
-                      {day}
-                    </Label>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-            {draft.splits.map((s, i) => (
-              <fieldset key={i} className={box}>
-                <legend className={legend}>Split {i + 1}</legend>
-                <Label className={fieldLabel}>
-                  Split name
-                  <Input
-                    className={touchText}
-                    required
-                    value={s.name}
-                    maxLength={120}
-                    onChange={(e) => changeSplit(i, { ...s, name: e.target.value })}
-                  />
-                </Label>
-                <p className="mt-3 mb-2 text-meta text-muted-foreground">
-                  Each time you tap a body part button it is added in order. You can add the same
-                  part more than once.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {parts.map((p) => (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      key={p}
-                      onClick={() => changeSplit(i, { ...s, body_parts: [...s.body_parts, p] })}
-                    >
-                      Add {bodyPartLabel(p)}
-                    </Button>
-                  ))}
-                </div>
-                <ol data-slot="split-parts" className="mt-2 flex flex-wrap gap-2">
-                  {s.body_parts.map((p, j) => (
-                    <li
-                      key={j}
-                      className="flex items-center gap-1 rounded-full border pl-3 text-body-sm"
-                    >
-                      {bodyPartLabel(p)}{' '}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-full"
-                        aria-label={`Delete split ${i + 1} body part ${j + 1}`}
-                        onClick={() =>
-                          changeSplit(i, {
-                            ...s,
-                            body_parts: s.body_parts.filter((_, k) => j !== k),
-                          })
-                        }
-                      >
-                        Delete
+            <nav aria-label="Routine steps">
+              <ol data-slot="routine-steps" className="mb-4 flex flex-wrap gap-2">
+                {routineSteps.map((name, i) => (
+                  <li key={name}>
+                    {i < step ? (
+                      <Button type="button" variant="outline" size="sm" onClick={() => goTo(i)}>
+                        {i + 1}. {stepName(name, draft)}
                       </Button>
-                    </li>
-                  ))}
-                </ol>
-                {s.exercises.map((ex, j) => (
-                  <div
-                    data-slot="routine-exercise"
-                    className="mt-3 grid grid-cols-2 items-end gap-3 border-t pt-3 md:grid-cols-3"
-                    key={j}
-                  >
-                    <Label className={cn(fieldLabel, 'col-span-2 md:col-span-1')}>
-                      Exercise name
-                      <Input
-                        className={touchText}
-                        required
-                        maxLength={120}
-                        value={ex.exercise}
-                        onChange={(e) => setExercise(i, s, j, { exercise: e.target.value })}
-                      />
-                    </Label>
-                    <Label className={cn(fieldLabel, 'col-span-2')}>
-                      Machine
-                      <select
-                        className={nativeSelect}
-                        value={ex.machine_id ?? ''}
-                        onChange={(e) =>
-                          setExercise(i, s, j, {
-                            machine_id: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
+                    ) : (
+                      // The current and later steps are not links: later ones open through Next.
+                      <span
+                        aria-current={i === step ? 'step' : undefined}
+                        className={cn(
+                          'inline-flex min-h-8 items-center rounded-md px-3 text-body-sm',
+                          i === step
+                            ? 'bg-primary font-semibold text-primary-foreground'
+                            : 'text-muted-foreground',
+                        )}
                       >
-                        <option value="">Free workout</option>
-                        {machines.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.brand} · {m.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Label>
-                    {(draft.progression === 'auto'
-                      ? (['sets', 'weight', 'reps', 'rep_min', 'rep_max'] as const)
-                      : (['sets', 'weight', 'reps'] as const)
-                    ).map((key) => (
-                      <Label key={key} className={fieldLabel}>
-                        {draft.progression === 'auto'
-                          ? {
-                              sets: 'Number of sets',
-                              weight: 'Current total weight (kg, including machine base weight)',
-                              reps: 'Current reps',
-                              rep_min: 'Lower reps',
-                              rep_max: 'Upper reps',
-                            }[key]
-                          : key === 'sets'
-                            ? 'Reference sets'
-                            : key === 'weight'
-                              ? 'Reference total weight (kg, including machine base weight)'
-                              : 'Reference reps'}
+                        {i + 1}. {stepName(name, draft)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </nav>
+            <h3
+              ref={stepHeading}
+              tabIndex={-1}
+              className="mb-3 text-body font-semibold outline-none"
+            >
+              Step {step + 1} of {routineSteps.length} · {stepName(routineSteps[step], draft)}
+            </h3>
+            {step === 0 && (
+              <>
+                <Label className={cn(fieldLabel, 'mb-3')}>
+                  Weekly goal mode
+                  <select
+                    className={nativeSelect}
+                    value={draft.progression ?? 'manual'}
+                    onChange={(e) =>
+                      setDraft({ ...draft, progression: e.target.value as 'manual' | 'auto' })
+                    }
+                  >
+                    <option value="auto">Auto · double progressive overload</option>
+                    <option value="manual">Manual · Enter by week</option>
+                  </select>
+                </Label>
+                {draft.progression === 'auto' && <p className={cn(hint, 'mb-3')}>{autoRule}</p>}
+                <Label className={cn(fieldLabel, 'mb-3')}>
+                  Routine name
+                  <Input
+                    className={touchText}
+                    required
+                    maxLength={120}
+                    value={draft.name}
+                    onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                  />
+                </Label>
+                <Label className={fieldLabel}>
+                  Start date
+                  <Input
+                    className={touchText}
+                    required
+                    type="date"
+                    value={draft.start_date}
+                    onChange={(e) => setDraft({ ...draft, start_date: e.target.value })}
+                  />
+                </Label>
+              </>
+            )}
+            {step === 1 && (
+              <>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
+                  <Label className={fieldLabel}>
+                    Split type
+                    <select
+                      className={nativeSelect}
+                      value={draft.split_count}
+                      onChange={(e) => setDraft(withSplitDefaults(draft, Number(e.target.value)))}
+                    >
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <option key={n} value={n}>
+                          {n === 1 ? 'No split' : `${n}-day split`}
+                        </option>
+                      ))}
+                    </select>
+                  </Label>
+                  <Label className={fieldLabel}>
+                    Workout schedule type
+                    <select
+                      className={nativeSelect}
+                      value={draft.schedule_mode ?? 'weekday'}
+                      onChange={(e) =>
+                        setDraft({ ...draft, schedule_mode: e.target.value as 'weekday' | 'cycle' })
+                      }
+                    >
+                      <option value="cycle">Cycle · N days on, then M days off</option>
+                      <option value="weekday">Weekdays · Set rest weekdays</option>
+                    </select>
+                  </Label>
+                  {draft.schedule_mode === 'cycle' ? (
+                    <>
+                      <Label className={fieldLabel}>
+                        Consecutive workout days
                         <Input
                           className={touchText}
                           required
                           type="number"
-                          min={key === 'weight' ? 0 : 1}
-                          max={key === 'weight' ? 99999 : key === 'sets' ? 200 : 1000}
-                          step={key === 'weight' ? 'any' : 1}
-                          value={ex[key] ?? ''}
+                          min={1}
+                          max={7}
+                          value={draft.cycle?.train_days ?? ''}
                           onChange={(e) =>
-                            setExercise(i, s, j, {
-                              [key]: e.target.value === '' ? '' : Number(e.target.value),
+                            setDraft({
+                              ...draft,
+                              cycle: { rest_days: 1, ...draft.cycle, train_days: e.target.value },
                             })
                           }
                         />
                       </Label>
-                    ))}
-                    <div className="col-span-2 flex items-end md:col-span-3">
+                      <Label className={fieldLabel}>
+                        Consecutive rest days
+                        <Input
+                          className={touchText}
+                          required
+                          type="number"
+                          min={0}
+                          max={7}
+                          value={draft.cycle?.rest_days ?? ''}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              cycle: { train_days: 1, ...draft.cycle, rest_days: e.target.value },
+                            })
+                          }
+                        />
+                      </Label>
+                    </>
+                  ) : (
+                    <Label className={fieldLabel}>
+                      Workouts per week
+                      <Input
+                        className={touchText}
+                        required
+                        type="number"
+                        min={1}
+                        max={7}
+                        value={draft.weekly_workouts || ''}
+                        onChange={(e) =>
+                          setDraft({ ...draft, weekly_workouts: Number(e.target.value) })
+                        }
+                      />
+                    </Label>
+                  )}
+                </div>
+                {draft.schedule_mode === 'cycle' ? (
+                  <p className={cn(hint, 'mt-3')}>
+                    Workout days and rest days repeat from the start date. Choosing a split type
+                    fills in the default cycle and body parts, and you can change them.
+                  </p>
+                ) : (
+                  <fieldset className={box}>
+                    <legend className={legend}>
+                      Rest weekdays · Workouts plus rest total 7 days
+                    </legend>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {days.map((day, i) => (
+                        <Label
+                          key={day}
+                          className="min-h-9 gap-2 text-body-sm pointer-coarse:min-h-11"
+                        >
+                          <Checkbox
+                            id={`rest-day-${i}`}
+                            // The box stays 16px against the legacy 44px button rule; the common
+                            // Checkbox gives the 44px tap area (#271).
+                            className="pointer-coarse:min-h-4 pointer-coarse:min-w-4"
+                            checked={draft.rest_days.includes(i)}
+                            onCheckedChange={(checked) =>
+                              setDraft({
+                                ...draft,
+                                rest_days:
+                                  checked === true
+                                    ? [...draft.rest_days, i].sort()
+                                    : draft.rest_days.filter((d) => d !== i),
+                              })
+                            }
+                          />
+                          {day}
+                        </Label>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
+              </>
+            )}
+            {step === 2 &&
+              draft.splits.map((s, i) => (
+                <fieldset key={i} className={box}>
+                  <legend className={legend}>Split {i + 1}</legend>
+                  <Label className={fieldLabel}>
+                    Split name
+                    <Input
+                      className={touchText}
+                      required
+                      value={s.name}
+                      maxLength={120}
+                      onChange={(e) => changeSplit(i, { ...s, name: e.target.value })}
+                    />
+                  </Label>
+                  <p className="mt-3 mb-2 text-meta text-muted-foreground">
+                    Each time you tap a body part button it is added in order. You can add the same
+                    part more than once.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {parts.map((p) => (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={s.exercises.length === 1}
-                        onClick={() =>
-                          changeSplit(i, {
-                            ...s,
-                            exercises: s.exercises.filter((_, k) => k !== j),
-                          })
-                        }
+                        key={p}
+                        onClick={() => changeSplit(i, { ...s, body_parts: [...s.body_parts, p] })}
                       >
-                        Delete exercise
+                        Add {bodyPartLabel(p)}
                       </Button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="mt-3"
-                  onClick={() => changeSplit(i, { ...s, exercises: [...s.exercises, exercise()] })}
-                >
-                  <Plus aria-hidden />
-                  Add exercise
-                </Button>
-              </fieldset>
-            ))}
-            {draft.progression === 'auto' && <Preview plan={draft} steps={steps} heading="h3" />}
-            {draft.progression !== 'auto' &&
+                  <ol data-slot="split-parts" className="mt-2 flex flex-wrap gap-2">
+                    {s.body_parts.map((p, j) => (
+                      <li
+                        key={j}
+                        className="flex items-center gap-1 rounded-full border pl-3 text-body-sm"
+                      >
+                        {bodyPartLabel(p)}{' '}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full"
+                          aria-label={`Delete split ${i + 1} body part ${j + 1}`}
+                          onClick={() =>
+                            changeSplit(i, {
+                              ...s,
+                              body_parts: s.body_parts.filter((_, k) => j !== k),
+                            })
+                          }
+                        >
+                          Delete
+                        </Button>
+                      </li>
+                    ))}
+                  </ol>
+                  {s.exercises.map((ex, j) => (
+                    <div
+                      data-slot="routine-exercise"
+                      className="mt-3 grid grid-cols-2 items-end gap-3 border-t pt-3 md:grid-cols-3"
+                      key={j}
+                    >
+                      <Label className={cn(fieldLabel, 'col-span-2 md:col-span-1')}>
+                        Exercise name
+                        <Input
+                          className={touchText}
+                          required
+                          maxLength={120}
+                          value={ex.exercise}
+                          onChange={(e) => setExercise(i, s, j, { exercise: e.target.value })}
+                        />
+                      </Label>
+                      <Label className={cn(fieldLabel, 'col-span-2')}>
+                        Machine
+                        <select
+                          className={nativeSelect}
+                          value={ex.machine_id ?? ''}
+                          onChange={(e) =>
+                            setExercise(i, s, j, {
+                              machine_id: e.target.value ? Number(e.target.value) : null,
+                            })
+                          }
+                        >
+                          <option value="">Free workout</option>
+                          {machines.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.brand} · {m.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Label>
+                      {(draft.progression === 'auto'
+                        ? (['sets', 'weight', 'reps', 'rep_min', 'rep_max'] as const)
+                        : (['sets', 'weight', 'reps'] as const)
+                      ).map((key) => (
+                        <Label key={key} className={fieldLabel}>
+                          {draft.progression === 'auto'
+                            ? {
+                                sets: 'Number of sets',
+                                weight: 'Current total weight (kg, including machine base weight)',
+                                reps: 'Current reps',
+                                rep_min: 'Lower reps',
+                                rep_max: 'Upper reps',
+                              }[key]
+                            : key === 'sets'
+                              ? 'Reference sets'
+                              : key === 'weight'
+                                ? 'Reference total weight (kg, including machine base weight)'
+                                : 'Reference reps'}
+                          <Input
+                            className={touchText}
+                            required
+                            type="number"
+                            min={key === 'weight' ? 0 : 1}
+                            max={key === 'weight' ? 99999 : key === 'sets' ? 200 : 1000}
+                            step={key === 'weight' ? 'any' : 1}
+                            value={ex[key] ?? ''}
+                            onChange={(e) =>
+                              setExercise(i, s, j, {
+                                [key]: e.target.value === '' ? '' : Number(e.target.value),
+                              })
+                            }
+                          />
+                        </Label>
+                      ))}
+                      <div className="col-span-2 flex items-end md:col-span-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={s.exercises.length === 1}
+                          onClick={() =>
+                            changeSplit(i, {
+                              ...s,
+                              exercises: s.exercises.filter((_, k) => k !== j),
+                            })
+                          }
+                        >
+                          Delete exercise
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-3"
+                    onClick={() =>
+                      changeSplit(i, { ...s, exercises: [...s.exercises, exercise()] })
+                    }
+                  >
+                    <Plus aria-hidden />
+                    Add exercise
+                  </Button>
+                </fieldset>
+              ))}
+            {step === 3 && draft.progression === 'auto' && (
+              <>
+                {/* The rule from step 1 again, beside the targets it produces. */}
+                <p className={hint}>{autoRule}</p>
+                <Preview plan={draft} steps={steps} />
+              </>
+            )}
+            {step === 3 &&
+              draft.progression !== 'auto' &&
               draft.weeks?.map((w, i) => (
                 <fieldset key={w.week} className={cn(box, 'grid grid-cols-2 gap-3')}>
                   <legend className={legend}>
@@ -773,10 +856,24 @@ export function Routines() {
                 </fieldset>
               ))}
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button disabled={saving}>
-                {saving && <Spinner size="sm" aria-hidden />}
-                {saving ? 'Saving…' : 'Save routine'}
-              </Button>
+              {step > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => goTo(step - 1)}
+                >
+                  Previous
+                </Button>
+              )}
+              {step < routineSteps.length - 1 ? (
+                <Button>Next</Button>
+              ) : (
+                <Button disabled={saving}>
+                  {saving && <Spinner size="sm" aria-hidden />}
+                  {saving ? 'Saving…' : 'Save routine'}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"

@@ -91,4 +91,4 @@ The branch's Korean messages were translated after #277. The new ones: `Send the
 
 ### Visual baselines
 
-The four `journal-cardio-{360,390,768,1280}.png` files are main's. The "Import file" button changes this screen, so they probably need regenerating in the CI-pinned Playwright container as `skills/workout-testing/SKILL.md` describes; this was not done locally.
+CI run 43715168436 on 923671c failed only the four `journal-cardio` screens (360, 390, 768 and 1280px; for example 390px grew from 2360 to 2396px high). The difference is the intended "Import file" button in the cardio records header, with the English text from main. The four files were replaced with that run's `visual-baselines` artifact; no other baseline changed. At 390px the "Cardio records" title wraps to two lines next to the count badge; it stays readable, so it was accepted.

@@ -51,3 +51,10 @@ No blocking findings (the reviewer checked the rounding against integer arithmet
 Not applied: a hint when Add cardio is disabled at 10 items; previews of out-of-range typed values before Next's browser check blocks them; backup and route round-trip tests (the reviewer traced both paths and found `cardio` carried through).
 
 Checks: `npm run test -w backend` (throwaway DB) 380 passed, 0 skipped; `npm run test -w frontend -- routines` 15 passed; routine ui-touch e2e 3 passed; `lint` and `typecheck` passed.
+
+## Review round 2
+
+No blocking findings. The reviewer confirmed the round 1 fixes, including checking the rounding against exact integer arithmetic for every minutes base from 1 to 600 and every distance base from 0.1 to 500.0, with 0 differences. They also checked the `distance_km` decimal check over all 5000 valid values, that interval payloads and previews never carry a time or distance, and that the hidden field-name suffix keeps the e2e and Vitest label lookups working. Nitpicks left as they are:
+
+- A deload is 80% of the unrounded week before, so a shown pair can look like 81% (48 → 39).
+- The preview says "goes up 10% a week", but a short target can repeat a shown value (4, 4, 5) because of rounding. This record already notes it.

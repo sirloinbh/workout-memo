@@ -1,77 +1,94 @@
-# #119 활동 파일 가져오기 ① TCX·GPX, 미리보기, 중복 방지
+# #119 Activity file import (1): TCX and GPX, preview, duplicate prevention
 
-- 이슈: [#119](https://github.com/sirloinbh/workout-memo/issues/119)
-- 브랜치: `feat/119-activity-import`
-- 근거 조사: #118 [`docs/activity-import.md`](../activity-import.md)(PR #265)
-- 선행: #114(유산소 모델), #115(유산소 화면) 병합됨
+- Issue: [#119](https://github.com/sirloinbh/workout-memo/issues/119)
+- Branch: `feat/119-activity-import`
+- Research: #118 [`docs/activity-import.md`](../activity-import.md) (PR #265)
+- Preceded by: #114 (cardio model) and #115 (cardio screen), both merged
 
-## 목적
+## Purpose
 
-가민 커넥트 등에서 내보낸 활동 파일을 올려 유산소 기록으로 가져옵니다. 이번 PR ①은 새 패키지 없이 읽을 수 있는 TCX·GPX와 미리보기·중복 방지·일괄 저장을 만듭니다. FIT·ZIP은 패키지 설치(`@garmin/fitsdk`, `fflate`)가 필요해 PR ②로 나눕니다.
+Upload activity files exported from Garmin Connect or similar and bring them in as cardio records. This PR (1) reads TCX and GPX, which need no new package, and builds the preview, duplicate prevention and bulk save. FIT and ZIP need package installs (`@garmin/fitsdk`, `fflate`), so they go to PR (2).
 
-| PR  | 내용                                                                    |
-| --- | ----------------------------------------------------------------------- |
-| ①   | TCX·GPX 읽기, 미리보기(수정·제외·중복 표시), 일괄 저장 API, e2e         |
-| ②   | FIT(`@garmin/fitsdk`, `total_timer_time`)와 ZIP(`fflate`). 설치 승인 후 |
+| PR  | Content                                                                               |
+| --- | ------------------------------------------------------------------------------------- |
+| 1   | Read TCX and GPX, preview (edit, exclude, duplicate hints), bulk save API, e2e        |
+| 2   | FIT (`@garmin/fitsdk`, `total_timer_time`) and ZIP (`fflate`), after install approval |
 
-## 사용자 결정 (2026-11-08, #119 댓글)
+## User decisions (2026-11-08, #119 comment)
 
-1. 진입점: 유산소 탭 기록 카드 머리글의 "파일 가져오기" 버튼 → 목록 카드 아래 가져오기 카드
-2. 미리보기 편집: 표에서는 저장 체크·종류·날짜·시작 시각만. 나머지는 행의 "수정" → 유산소 입력 창(CardioForm)의 미리보기 수정 모드(서버에 보내지 않음)
-3. 저장: `POST /api/cardio-sessions/import`가 한 트랜잭션으로 전부 저장하거나 하나도 저장하지 않음. 거절한 행은 행 번호별 이유
-4. 중복: 같은 출처+외부 ID는 저장 불가. 출처가 다른 중복 후보(시작 ±2분, 시작 시각이 없으면 같은 날짜 · 거리 ±1%, 거리가 없으면 시간 ±1%)와 같은 묶음 안의 비슷한 행은 기본 해제와 안내, 사용자가 체크하면 저장
-5. GPX 시간은 첫~마지막 포인트(일시정지 포함, 미리보기에 안내). 외부 ID·종류 대응·거리 계산·상승 고도는 아래대로
+1. Entry point: the "Import file" button in the header of the cardio tab's record card opens an import card under the list card.
+2. Preview editing: the table edits only the save check, type, date and start time. Everything else goes through the row's "Edit" button, which opens the cardio form (CardioForm) in a preview edit mode that sends nothing to the server.
+3. Saving: `POST /api/cardio-sessions/import` saves everything in one transaction or nothing. A refused row comes back with its reason by row number.
+4. Duplicates: the same source and external ID cannot be saved. Duplicate candidates from a different source (start within 2 minutes, or the same date when there is no start time; distance within 1%, or duration within 1% when there is no distance) and look-alike rows in the same batch are unchecked by default with a hint, and are saved if the user checks them.
+5. GPX duration runs from the first to the last point (pauses included, with a note in the preview). The external ID, type mapping, distance calculation and elevation gain are as described below.
 
-## 변경 — feat: TCX·GPX 읽기
+## Change - feat: read TCX and GPX
 
-- `frontend/src/cardio/activity-file.ts`(새 파일): 브라우저 `DOMParser`로 읽습니다. 파일은 서버로 보내지 않고 저장하지도 않습니다(경로에 집 위치가 있음).
-  - TCX: 랩의 `TotalTimeSeconds`(타이머 시간, 일시정지 제외) 합, `DistanceMeters` 합, `Calories` 합, 평균 심박은 랩 시간 가중 평균, 최대 심박은 랩 최댓값입니다. `Notes`는 메모로 옮깁니다. 종류는 `Sport`의 Running→러닝, Biking→실외 사이클, Other→기타입니다.
-  - GPX: 요약값이 없어 포인트로 계산합니다. 시간은 첫~마지막 포인트, 거리는 세그먼트 안 포인트 사이의 하버사인 거리 합입니다. 세그먼트 사이(신호가 끊긴 구간)는 더하지 않습니다. 심박은 가민 `TrackPointExtension`의 `hr` 평균·최댓값입니다. 종류는 `trk/type`의 낱말(run·walk·hike·cycling·ride·swim·row 등)로 정하고, 모르면 기타입니다.
-  - 시작 시각은 UTC를 Asia/Seoul 날짜와 HH:MM으로 바꿉니다(자정을 넘으면 다음 날).
-  - 외부 ID는 시작 시각(UTC ISO, 초 단위, `2026-11-01T22:10:05Z`)이고 출처는 `file`입니다. 같은 파일을 다시 올리면 "이미 가져온 기록"으로 막힙니다. 같은 활동의 TCX와 GPX도 대개 ID가 같지만, GPX는 위치 없는 포인트가 빠져 시작이 몇 초 늦을 수 있습니다. 그때는 ID가 달라 시작 ±2분 중복 후보로만 묻고, GPX 거리(세그먼트 사이 제외)와 시간(일시정지 포함)이 TCX와 1% 넘게 다르면 후보로도 잡히지 않을 수 있습니다(리뷰 1회차). 시간대가 없는 시각은 UTC로 읽습니다.
-  - 읽지 않는 값: 상승 고도(TCX에는 요약이 없고 GPX는 계산 오차가 큼), 케이던스(러닝 케이던스 단위가 내보내는 곳마다 한 발·두 발로 다름. TCX 자전거 `Lap/Cadence`만 읽음), 랩·GPS 경로(#114 결정).
-  - 범위를 벗어난 값(예: 심박 300, 최대 심박이 평균보다 낮음)은 기기 오류로 보고 비워 둡니다. 그 행 전체를 막지 않습니다. 다만 저장 필수 값(운동 시간 0초·24시간 초과, 거리 1000 km 초과)은 비울 수 없어 값 오류 행으로 보이고, "수정"에서 고쳐야 저장할 수 있습니다.
-  - 손상된 XML, 다른 형식, 활동·시각이 없는 파일은 파일 이름과 이유를 보여 주고 나머지 파일은 계속 읽습니다.
+- `frontend/src/cardio/activity-file.ts` (new): reads with the browser `DOMParser`. The file is never sent to the server or stored (the track can show where the user lives).
+  - TCX: the sum of each lap's `TotalTimeSeconds` (timer time, pauses excluded), the sum of `DistanceMeters`, the sum of `Calories`, average heart rate as a lap-time-weighted average, and maximum heart rate as the largest lap maximum. `Notes` becomes the memo. The type comes from `Sport`: Running becomes Running, Biking becomes Outdoor cycling, Other becomes Other.
+  - GPX: there are no summary values, so they are computed from the points. Duration runs from the first to the last point. Distance is the sum of haversine distances between points inside a segment; gaps between segments (lost signal) are not added. Heart rate is the average and maximum of the Garmin `TrackPointExtension` `hr`. The type comes from a word in `trk/type` (run, walk, hike, cycling, ride, swim, row and so on); unknown words become Other.
+  - The start time converts UTC to an Asia/Seoul date and HH:MM (the next day after midnight).
+  - The external ID is the start time (UTC ISO, to the second, `2026-11-01T22:10:05Z`) and the source is `file`. Uploading the same file again is blocked as "Already imported". The TCX and GPX of the same activity usually share the ID, but the GPX drops points without a position, so its start can be a few seconds late. Then the IDs differ and it is only asked about as a start-within-2-minutes duplicate candidate, and if the GPX distance (gaps between segments excluded) or duration (pauses included) differs from the TCX by more than 1%, it may not be caught as a candidate either (review round 1). A time without a time zone is read as UTC.
+  - Values not read: elevation gain (TCX has no summary and GPX calculations are too inexact), cadence (running cadence is counted per foot or per both feet depending on the exporter; only TCX cycling `Lap/Cadence` is read), laps and GPS routes (decided in #114).
+  - Out-of-range values (for example heart rate 300, or a maximum heart rate below the average) are treated as device errors and left empty. They do not block the whole row. Required values that cannot be left empty (a workout time of 0 seconds or over 24 hours, a distance over 1000 km) show as an invalid-value row and must be fixed with "Edit" before saving.
+  - A damaged XML file, a file of another format, or a file with no activities or timestamps is shown with its file name and the reason, and the remaining files are still read.
 
-## 변경 — feat: 미리보기와 중복 방지
+## Change - feat: preview and duplicate prevention
 
-- `frontend/src/cardio/cardio-import.tsx`(새 파일): `CardioImport`. 인바디 가져오기(#89)와 같은 카드·가로 스크롤 표·저장 체크 모양입니다.
-  - 여러 파일을 한 번에 고르고, 활동을 시작 시각 순으로 보여 줍니다.
-  - 표의 열: 저장, 종류(선택), 날짜, 시작, 기록(시간·거리·평균 심박과 파일 이름, 읽기 전용), 확인, 수정
-  - 확인 칸: 저장 가능 / 값 오류(공통 계약 메시지) / 이미 가져온 기록 / N행과 같은 활동 / 중복 후보(기존 기록 이름 또는 N행). 앞의 셋은 체크할 수 없고, 중복 후보는 기본 해제이며 체크하면 저장합니다. 같은 ID의 행이 묶음에 둘 있으면 앞 행이 선택돼 있는 동안만 뒤 행을 막아, 일시정지를 뺀 TCX 쪽처럼 어느 쪽이든 고를 수 있습니다. 사용자가 뒤 행을 직접 골랐다면, 앞 행을 고쳐 저장 가능해져도 앞 행을 기본 선택하지 않습니다(리뷰 2회차).
-  - 기본 선택은 사용자가 직접 체크하거나 해제하지 않은 행에만 적용하고, 기존 기록을 다시 불러오거나 행 값을 고칠 때마다 다시 정합니다. 그래서 새로 중복 후보가 된 행이 선택된 채 남지 않습니다.
-  - 날짜를 고쳐도 파일에서 읽은 날짜 주변을 계속 불러와 "이미 가져온 기록"을 찾습니다. 저장이 409로 거절되면(예: 다른 탭에서 이미 가져옴) 기존 기록을 다시 불러옵니다.
-  - 카드를 열면 파일 선택으로, 닫거나 저장하면 "파일 가져오기" 버튼으로 포커스가 갑니다. 파일을 읽는 동안 비활성화된 파일 선택도 다 읽은 뒤 포커스를 되찾습니다.
-  - 수정 창의 "연결할 근력 일지"는 패널 기간의 일지만 고를 수 있습니다(기간 밖 날짜의 행은 목록이 비어 있음). 연결은 저장 뒤 목록에서 할 수 있습니다.
-  - 중복 확인은 행 날짜의 하루 앞뒤 기간을 `GET /api/cardio-sessions`로 불러와 화면에서 비교합니다. 날짜를 고쳐 범위가 바뀌면 다시 불러옵니다.
-  - GPX가 있으면 "일시정지 포함" 안내를 보여 줍니다.
-- `frontend/src/cardio/duplicates.ts`(새 파일): `isSameActivity`(같은 출처·외부 ID), `isSimilarActivity`(시작 ±2분, 한쪽에 시작 시각이 없으면 같은 날짜 / 거리 ±1%, 한쪽에 거리가 없으면 시간 ±1%). 나중의 가민·나이키 동기화도 같은 규칙을 씁니다.
-  - 손으로 입력한 기록에는 시작 시각이 없는 경우가 많아, 시작 시각이 없으면 같은 날짜로 비교합니다. 후보일 뿐이라 사용자가 체크하면 저장됩니다.
-- `frontend/src/cardio/cardio-form.tsx`: 선택 속성 `apply`. 있으면 제목이 "가져올 기록 수정", 버튼이 "미리보기에 반영"이고, 같은 검증을 거친 값을 돌려줄 뿐 서버에 보내지 않습니다. 출처·외부 ID는 그대로 둡니다.
-- `frontend/src/cardio/cardio-panel.tsx`: 머리글에 "파일 가져오기"(보조 버튼)를 두고, 누르면 목록 카드 아래에 가져오기 카드를 엽니다. 저장하면 카드를 닫고 "유산소 기록 N건을 가져왔습니다"를 알린 뒤 목록·통계·개인 기록·대시보드 요약을 다시 불러옵니다.
-- `frontend/src/cardio/api.ts`: `importCardioSessions`. 중앙 `requestJson`은 오류 메시지만 남겨 행별 이유(`rows`)를 읽지 못하므로, 이 요청은 응답을 직접 읽어 `CardioImportError.rows`로 넘깁니다(중앙 파일은 고치지 않음).
+- `frontend/src/cardio/cardio-import.tsx` (new): `CardioImport`. It has the same card, horizontally scrolling table and save check box look as the InBody import (#89).
+  - Several files can be chosen at once, and activities are shown in start-time order.
+  - Table columns: Save, Type (selectable), Date, Start, Record (duration, distance, average heart rate and the file name, read-only), Check, Edit.
+  - Check column: Ready to save / invalid value (the shared contract message) / Already imported / Same activity as row N / Possible duplicate (an existing record name or row N). The first three cannot be checked; a possible duplicate is unchecked by default and is saved once checked. When two rows in a batch share an ID, the earlier row blocks the later one only while the earlier row is selected, so either copy can be chosen (for example the TCX without pauses). If the user picked the later row by hand, the earlier row is not selected by default even after it is fixed and becomes savable (review round 2).
+  - The default selection applies only to rows the user has not checked or cleared, and is decided again whenever the existing records are reloaded or a row value is edited. A row that newly becomes a possible duplicate therefore does not stay selected.
+  - Editing a date keeps loading the range around the date read from the file, so "Already imported" is still found. If a save is refused with 409 (for example imported in another tab), the existing records are reloaded.
+  - Opening the card moves focus to the file input; closing or saving moves it back to the "Import file" button. The file input, disabled while files are read, also gets its focus back afterwards.
+  - The "Strength journal to link" field in the edit dialog offers only journals in the panel's period (the list is empty for a row dated outside it). The link can be made from the list after saving.
+  - The duplicate check loads the period one day either side of the row dates with `GET /api/cardio-sessions` and compares on screen. It loads again when a date edit changes the range.
+  - When a GPX file is present, a note says pauses are included.
+- `frontend/src/cardio/duplicates.ts` (new): `isSameActivity` (same source and external ID) and `isSimilarActivity` (start within 2 minutes, or the same date when one side has no start time; distance within 1%, or duration within 1% when one side has no distance). Later Garmin and Nike syncs will use the same rules.
+  - Hand-entered records often have no start time, so a missing start time is compared by date. These are only candidates, and they are saved if the user checks them.
+- `frontend/src/cardio/cardio-form.tsx`: an optional `apply` prop. When set, the title is "Edit imported record" and the button is "Apply to preview"; the form only returns the values that passed the same validation and does not send them to the server. The source and external ID are kept.
+- `frontend/src/cardio/cardio-panel.tsx`: the header gets an "Import file" (secondary) button that opens the import card under the list card. After saving, the card closes, "Imported N cardio records" is announced, and the list, statistics, personal records and dashboard summary are reloaded.
+- `frontend/src/cardio/api.ts`: `importCardioSessions`. The central `requestJson` keeps only the error message and cannot read the per-row reasons (`rows`), so this request reads the response itself and passes them on as `CardioImportError.rows` (the central file is not changed).
 
-## 변경 — feat: 일괄 저장 API
+## Change - feat: bulk save API
 
-- `backend/src/routes/cardio.ts`: `POST /api/cardio-sessions/import` `{ sessions: [...] }`(1~200건).
-  - 행마다 `POST /api/cardio-sessions`와 같은 스키마로 검증하고, 출처가 `manual`이 아니며 외부 ID가 있어야 합니다. 요청 안에서 같은 출처·외부 ID가 두 번 나오면 뒤의 행을 거절합니다. 하나라도 틀리면 400과 `rows: [{ index, message }]`입니다.
-  - 트랜잭션 안에서 이미 저장된 같은 출처·외부 ID를 찾고, 있으면 ROLLBACK 후 409와 그 행 번호입니다. 동시에 같은 활동을 가져와 고유 인덱스에 걸리거나 없는 근력 일지를 연결하면 기존 `appErrors` 메시지(409·400)로 답하고 아무것도 남기지 않습니다.
-  - 성공은 201 `{ sessions: [...] }`(보낸 순서)입니다.
-  - 413은 백업처럼 한도를 알려 줍니다: "요청 크기 제한을 초과했습니다 (가져오기는 한 번에 최대 2MB)."(`routes/shared.ts`)
-  - 200건 한도와 본문 2MB: 메모(최대 2000자, 한글 약 6KB)가 긴 행 200건도 담도록 이 경로만 자체 JSON 파서를 백업 경로처럼 전역 256kb 파서보다 먼저 등록합니다(`app.ts`). 화면은 200건을 넘게 고르면 저장 버튼을 막고 줄이라고 안내합니다. 계정 전체 내보내기(ZIP)는 PR ②에서 나눠 보내는 방식을 정합니다.
-- `backend/src/openapi.ts`, `docs/openapi.json`, `docs/api.md`: 새 경로와 응답 형식
+- `backend/src/routes/cardio.ts`: `POST /api/cardio-sessions/import` with `{ sessions: [...] }` (1 to 200 rows).
+  - Each row is validated with the same schema as `POST /api/cardio-sessions`, the source must not be `manual`, and an external ID is required. If the same source and external ID appear twice in the request, the later row is refused. If any row is wrong, the response is 400 with `rows: [{ index, message }]`.
+  - Inside the transaction it looks for an already saved same source and external ID; if one exists it rolls back and answers 409 with that row number. A concurrent import of the same activity that hits the unique index, or a link to a strength journal that does not exist, answers with the existing `appErrors` messages (409 and 400) and keeps nothing.
+  - Success is 201 `{ sessions: [...] }` in the order sent.
+  - A 413 states the limit, as the backup path does: "Request size limit exceeded (imports up to 2 MB at a time)." (`routes/shared.ts`)
+  - The 200-row limit and 2MB body: so that 200 rows with long memos (up to 2000 characters, about 6 KB of Hangul) fit, this path alone registers its own JSON parser before the global 256kb parser, like the backup path (`app.ts`). The screen disables the save button when more than 200 rows are selected and tells the user to deselect some. How to send a whole-account export (ZIP) in pieces is decided in PR (2).
+- `backend/src/openapi.ts`, `docs/openapi.json`, `docs/api.md`: the new path and response format.
 
-## 테스트
+### Server messages (English)
 
-- `frontend/src/cardio/activity-file.test.ts`: 가민 형식 TCX(랩 2개)·GPX(세그먼트 2개) 픽스처의 값, 서울 시각 변환(자정 넘김), 종류 대응, 범위 밖 값, 손상·다른 형식 파일 오류, 확장자 없는 파일
-- `frontend/src/cardio/duplicates.test.ts`: 같은 활동·중복 후보의 경계(2분·1%, 자정, 시작 시각·거리 없음)
-- `frontend/src/cardio/cardio-import.test.tsx`: 여러 파일 미리보기와 읽지 못한 파일 안내, 중복 후보 기본 해제, 이미 가져온 기록 체크 불가, 표·폼 수정이 저장 본문에 반영되고 폼은 요청하지 않음, 거절 시 행별 이유
-- `backend/test/cardio.test.ts`: 검증 실패 행 번호(질의 없이), 이미 저장된 활동 → ROLLBACK·409, 성공 시 BEGIN·SELECT·INSERT·COMMIT
-- `backend/test/cardio.integration.test.ts`: PostgreSQL에서 저장, 재가져오기 409와 0건 저장, 트랜잭션 안 실패의 전체 롤백
-- `e2e/cardio-import.spec.ts`: 390px에서 TCX 선택 → 미리보기 → 저장 → 목록 표시·새로고침 유지, 같은 파일은 체크할 수 없음
-- 픽스처(`frontend/src/cardio/fixtures/`)는 가민 내보내기 모양으로 직접 만든 파일입니다. 실제 사람·장소 정보가 없습니다. 실제 가민 파일이 필요해지면 사용자에게 요청합니다(2026-11-08 결정).
+The branch's Korean messages were translated after #277. The new ones: `Send the cardio records to import (sessions) as an array`, `Select at least 1 cardio record to import`, `You can import up to 200 cardio records at a time`, `Imported records need a source (file, garmin or nike) and an external ID`, `Same activity as row N`, `N records have problems, so nothing was saved` (`1 record has a problem, ...` for one), `This activity was already imported`, and the 413 message above.
 
-## 영향
+## Tests
 
-- 유산소 탭 목록 카드 머리글에 "파일 가져오기" 버튼이 생겨 `journal-cardio` 시각 기준선 4폭이 바뀝니다. 버튼 둘이 제목 옆에 있으면 390px에서 제목이 한 글자씩, 768px에서 기간이 줄바꿈돼, 머리글 폭이 36rem 미만이면 버튼을 제목 아래 줄로 내립니다(컨테이너 쿼리, CI 기준선 이미지로 확인).
-- DB 마이그레이션은 없습니다(#114의 `source='file'`, `external_id`, 고유 인덱스 사용).
+- `frontend/src/cardio/activity-file.test.ts`: values from Garmin-style TCX (2 laps) and GPX (2 segments) fixtures, the Seoul time conversion (across midnight), type mapping, out-of-range values, errors for damaged and other-format files, and a file with no extension.
+- `frontend/src/cardio/duplicates.test.ts`: the borders of same activity and duplicate candidates (2 minutes, 1%, midnight, no start time, no distance).
+- `frontend/src/cardio/cardio-import.test.tsx`: preview of several files and the note for an unreadable one, duplicate candidates unchecked by default, an already imported record that cannot be checked, table and form edits reaching the saved body while the form makes no request, and per-row reasons on refusal.
+- `backend/test/cardio.test.ts`: validation failure row numbers (without queries), an already saved activity leading to ROLLBACK and 409, and BEGIN, SELECT, INSERT, COMMIT on success.
+- `backend/test/cardio.integration.test.ts`: saving on PostgreSQL, re-import giving 409 with 0 rows saved, and a full rollback when something fails inside the transaction.
+- `e2e/cardio-import.spec.ts`: at 390px, choose a TCX file, preview, save, see it in the list and after a reload; the same file cannot be checked.
+- The fixtures (`frontend/src/cardio/fixtures/`) are hand-made files shaped like Garmin exports. They hold no real person or place information. If real Garmin files are needed, ask the user (2026-11-08 decision).
+
+## Impact
+
+- The cardio tab's list card header gets an "Import file" button, which changes the four `journal-cardio` visual baselines. With two buttons beside the title, the title wraps to one character per line at 390px and the period wraps at 768px, so under a header width of 36rem the buttons move to a row under the title (container query; confirmed with the CI baseline images).
+- No DB migration (it uses #114's `source='file'`, `external_id` and unique index).
+
+## Merging main (2026-11-15)
+
+`origin/main` was merged into this branch after #277 (English screen text and messages), #280 (English code comments) and #281 and #282 (English docs). Conflicts were in `docs/api.md`, `frontend/src/cardio/cardio-form.tsx` and the four `journal-cardio` baselines.
+
+- `docs/api.md` and `cardio-form.tsx` keep main's English text plus this branch's additions. The baselines take main's version; see Visual baselines below.
+- Everything this branch had added in Korean was translated to English in main's style: UI labels and aria-labels, the server and validation messages above, code comments, unit, backend and e2e tests, the two fixtures' user data, `docs/api.md` and this record. Behavior is unchanged. One test memo in `backend/test/cardio.test.ts` is built from a Hangul syllable (U+AC00), on purpose to test the UTF-8 size limit.
+- Accessible names changed with the text, for example `Save row N`, `Row N type`, `Row N date`, `Row N start time`, `Edit row N`, `Import file`, `Import activity file` and `Import preview`. They follow the pattern used elsewhere (`Edit cardio record ...`).
+- `docs/openapi.json` was regenerated with `npm run openapi`.
+
+### Visual baselines
+
+The four `journal-cardio-{360,390,768,1280}.png` files are main's. The "Import file" button changes this screen, so they probably need regenerating in the CI-pinned Playwright container as `skills/workout-testing/SKILL.md` describes; this was not done locally.

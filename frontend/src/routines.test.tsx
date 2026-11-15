@@ -5,7 +5,7 @@ import { expect, test, vi } from 'vitest';
 import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
 import { App } from './app';
 import { bodyPartLabel } from './labels';
-import { json, mockApi } from './test/api';
+import { deferred, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/routines-ui.test.ts (vm hook harness) to a real DOM.
@@ -67,19 +67,53 @@ function mount(failPost = false, failReadAfterPost = false, initialPlan: Plan = 
     expect(form()[0]).toBeTruthy();
     fireEvent.submit(form()[0]);
   }
+  // #105: the form has four steps. A submit before the last one moves on.
+  const heading = () => screen.getByRole('heading', { name: /^Step \d of 4/ });
+  function next() {
+    const before = heading().textContent;
+    submit();
+    expect(heading().textContent, 'Next moves to the following step').not.toBe(before);
+  }
+  async function toStep(n: number) {
+    while (Number(/^Step (\d)/.exec(heading().textContent)![1]) < n) next();
+    while (Number(/^Step (\d)/.exec(heading().textContent)![1]) > n) await click('Previous');
+  }
+  // Saving right after reaching the last step is ignored as a double tap on Next.
+  async function save() {
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    submit();
+  }
   const nonGet = () => requests.filter((r) => r.method !== 'GET');
-  return { requests, user, text, labels, click, change, submit, form, nonGet };
+  return {
+    requests,
+    user,
+    text,
+    labels,
+    click,
+    change,
+    submit,
+    form,
+    nonGet,
+    heading,
+    next,
+    toStep,
+    save,
+  };
 }
 async function openRoutines() {
   await openPage('Routine Builder');
   await screen.findByRole('button', { name: 'Create new routine' });
 }
 // #88: new routines start in cycle mode with default body parts. Tests of the weekday
-// form switch the mode and clear the prefilled parts of split 1 first.
-async function weekdayForm(ui: ReturnType<typeof mount>) {
-  await ui.change('Workout schedule type', 'weekday');
+// form switch the mode (step 2) and clear the prefilled parts of split 1 (step 3).
+async function clearParts() {
   while (screen.queryByRole('button', { name: 'Delete split 1 body part 1' }))
-    await ui.click('Delete split 1 body part 1');
+    await userEvent.click(screen.getByRole('button', { name: 'Delete split 1 body part 1' }));
+}
+async function weekdaySchedule(ui: ReturnType<typeof mount>) {
+  await ui.change('Workout schedule type', 'weekday');
+  await ui.change('Workouts per week', '3');
+  for (const day of ['Sun', 'Tue', 'Thu', 'Sat']) await ui.change(day, '', 0, true);
 }
 // The UI offers 이두·삼두 instead of the legacy 팔 (#88).
 const offered = (parts: string[]) => parts.map((p) => (p === '팔' ? '이두' : p));
@@ -139,11 +173,12 @@ for (const failRead of [false, true]) {
     await ui.click('Create new routine');
     // #28 rule change: new routines default to automatic targets; this test covers manual mode.
     await ui.change('Weekly goal mode', 'manual');
-    await weekdayForm(ui);
     await ui.change('Routine name', expected.name);
     await ui.change('Start date', expected.start_date);
-    await ui.change('Workouts per week', '3');
-    for (const day of ['Sun', 'Tue', 'Thu', 'Sat']) await ui.change(day, '', 0, true);
+    ui.next();
+    await weekdaySchedule(ui);
+    ui.next();
+    await clearParts();
     for (const part of expected.splits[0].body_parts) await ui.click(`Add ${bodyPartLabel(part)}`);
     await ui.click('Add exercise');
     for (const [i, ex] of expected.splits[0].exercises.entries()) {
@@ -156,6 +191,8 @@ for (const failRead of [false, true]) {
       );
       await ui.change('Reference reps', String(ex.reps), i);
     }
+    ui.next();
+    expect(ui.heading()).toHaveTextContent('Step 4 of 4 · Weekly goals');
     // Select inputs contain option text, so select the control within its week fieldset.
     for (const w of expected.weeks) {
       const field = [...document.querySelectorAll('fieldset')].filter((el) =>
@@ -171,7 +208,7 @@ for (const failRead of [false, true]) {
         w.kind === 'deload' ? w.week / 4 - 1 : w.week - 1 - Math.floor(w.week / 4),
       );
     }
-    ui.submit();
+    await ui.save();
     await saveSettled();
     const post = ui.requests.find((r) => r.method === 'POST');
     expect(post).toBeTruthy();
@@ -213,31 +250,43 @@ test('routine editor exposes all five splits and keeps a failed save available f
   const ui = mount(true);
   await openRoutines();
   await ui.click('Create new routine');
+  await ui.change('Routine name', 'Preserved after failure');
+  ui.next();
   for (const n of [1, 2, 3, 4, 5]) {
     await ui.change('Split type', String(n));
+    ui.next();
     expect(
       [...document.querySelectorAll('label')].filter((el) => ui.text(el).trim() === 'Split name'),
     ).toHaveLength(n);
+    await ui.click('Previous');
   }
-  await ui.change('Routine name', 'Preserved after failure');
+  ui.next();
   // #88: the 5-day split fills split 1 with Chest (가슴); the clicks add two more occurrences.
   await ui.click('Add Chest');
   await ui.click('Add Chest');
-  ui.submit();
+  ui.next();
+  await ui.save();
   await waitFor(() => expect(ui.text()).toMatch(/Check the rest weekdays and workouts per week/));
-  // #102: the failure is an AlertBanner, announced at once.
+  // #102: the failure is an AlertBanner, announced at once. #105: inside the form, on step 4.
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Check the rest weekdays and workouts per week',
   );
+  expect(ui.form()[0]).toContainElement(screen.getByRole('alert'));
   await saveSettled();
   expect(ui.form()).toHaveLength(1);
-  expect(
-    [...document.querySelectorAll('input')].filter((el) => el.value === 'Preserved after failure'),
-  ).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Save routine' })).toBeEnabled();
   const posted = ui.requests.find((r) => r.method === 'POST')!.body as Plan;
   expect(posted.split_count).toBe(5);
   expect(posted.splits[0].body_parts).toEqual(['가슴', '가슴', '가슴']);
-  expect(screen.getByRole('button', { name: 'Save routine' })).toBeEnabled();
+  // #105: earlier steps keep what was entered and are one tap away.
+  await ui.click('1. Basics');
+  expect(ui.heading()).toHaveTextContent('Step 1 of 4 · Basics');
+  expect(screen.getByRole('textbox', { name: 'Routine name' })).toHaveValue(
+    'Preserved after failure',
+  );
+  // Cancelling closes the draft and its error with it.
+  await ui.click('Cancel');
+  expect(screen.queryByRole('alert')).toBeNull();
 });
 
 test('new routine requires explicit manual amounts and removes only the selected duplicate body part', async () => {
@@ -245,6 +294,7 @@ test('new routine requires explicit manual amounts and removes only the selected
   await openRoutines();
   await ui.click('Create new routine');
   await ui.change('Weekly goal mode', 'manual');
+  await ui.toStep(4);
   for (let week = 1; week <= 12; week++) {
     const field = [...document.querySelectorAll('fieldset')].filter((el) =>
       ui.text(el).startsWith(`Week ${week}`),
@@ -257,7 +307,8 @@ test('new routine requires explicit manual amounts and removes only the selected
       expect(field.querySelector('select')!.value).toBe('');
     }
   }
-  await weekdayForm(ui);
+  await ui.toStep(3);
+  await clearParts();
   await ui.click('Add Chest');
   await ui.click('Add Back');
   await ui.click('Add Chest');
@@ -283,18 +334,13 @@ test('new routines default to automatic double progression with a 12-week previe
   expect(mode, 'the form offers a target mode').toBeTruthy();
   expect(mode.querySelector('select')!.value).toBe('auto');
   expect(ui.text(), 'the rule is explained on screen').toMatch(/Reps go up by 1 each session/);
-  expect(
-    [...document.querySelectorAll('label')].filter((el) =>
-      /^(Increase amount|Decrease amount)/.test(ui.text(el).trim()),
-    ),
-    'no manual per-week amounts in auto mode',
-  ).toHaveLength(0);
   await ui.change('Routine name', expected.name);
-  await ui.change('Split name', expected.splits[0].name);
   await ui.change('Start date', expected.start_date);
-  await weekdayForm(ui);
-  await ui.change('Workouts per week', '3');
-  for (const day of ['Sun', 'Tue', 'Thu', 'Sat']) await ui.change(day, '', 0, true);
+  ui.next();
+  await weekdaySchedule(ui);
+  ui.next();
+  await clearParts();
+  await ui.change('Split name', expected.splits[0].name);
   for (const part of expected.splits[0].body_parts) await ui.click(`Add ${bodyPartLabel(part)}`);
   await ui.click('Add exercise');
   await ui.click('Add exercise');
@@ -312,6 +358,14 @@ test('new routines default to automatic double progression with a 12-week previe
     );
     await ui.change('Current reps', String(ex.reps), i);
   }
+  ui.next();
+  expect(ui.heading()).toHaveTextContent('Step 4 of 4 · 12-week preview');
+  expect(
+    [...document.querySelectorAll('label')].filter((el) =>
+      /^(Increase amount|Decrease amount)/.test(ui.text(el).trim()),
+    ),
+    'no manual per-week amounts in auto mode',
+  ).toHaveLength(0);
   const preview = ui.text();
   // #28: targets advance per session of the split (here 3 sessions a week), grouped by week.
   expect(preview).toMatch(
@@ -328,7 +382,7 @@ test('new routines default to automatic double progression with a 12-week previe
   expect(preview).toMatch(/Week 12 deload: Session 1 0 kg × 12 reps \(Deload\)/);
   expect(preview, 'the per-session rule is explained').toMatch(/each session \(workout day\)/);
   expect(ui.nonGet(), 'preview sends nothing').toHaveLength(0);
-  ui.submit();
+  await ui.save();
   await saveSettled();
   const post = ui.requests.find((r) => r.method === 'POST');
   expect(post).toBeTruthy();
@@ -341,6 +395,9 @@ test('a new routine defaults to a cycle and fills each split count with its cycl
   const ui = mount();
   await openRoutines();
   await ui.click('Create new routine');
+  await ui.change('Routine name', 'Cycle routine');
+  await ui.change('Start date', '2026-10-21');
+  ui.next();
   const value = (label: string) =>
     ui.labels(label)[0].querySelector<HTMLInputElement | HTMLSelectElement>('input, select')!.value;
   expect(value('Workout schedule type')).toBe('cycle');
@@ -377,21 +434,24 @@ test('a new routine defaults to a cycle and fills each split count with its cycl
     await ui.change('Split type', String(count));
     expect(value('Consecutive workout days')).toBe(train);
     expect(value('Consecutive rest days')).toBe(rest);
+    ui.next();
     parts.forEach((expected, i) =>
       expect(listed(i), `${count}-day split ${i + 1}`).toEqual(expected.map(bodyPartLabel)),
     );
+    await ui.click('Previous');
   }
   await ui.change('Split type', '1');
+  ui.next();
   expect(listed(0)).toEqual(
     ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'].map(bodyPartLabel),
   );
   expect(screen.queryByRole('button', { name: 'Add Arms' })).toBeNull();
   // The defaults stay editable and the plan is sent as a cycle.
+  await ui.click('Previous');
   await ui.change('Split type', '3');
   await ui.change('Consecutive workout days', '2');
-  await ui.change('Routine name', 'Cycle routine');
-  await ui.change('Start date', '2026-10-21');
-  ui.submit();
+  await ui.toStep(4);
+  await ui.save();
   await saveSettled();
   const body = ui.requests.find((r) => r.method === 'POST')!.body as Plan & {
     schedule_mode: string;
@@ -409,11 +469,12 @@ test('a routine exercise can name a machine that the plan keeps (#82)', async ()
   await openRoutines();
   await ui.click('Create new routine');
   await ui.change('Routine name', expected.name);
-  await ui.change('Split name', expected.splits[0].name);
   await ui.change('Start date', expected.start_date);
-  await weekdayForm(ui);
-  await ui.change('Workouts per week', '3');
-  for (const day of ['Sun', 'Tue', 'Thu', 'Sat']) await ui.change(day, '', 0, true);
+  ui.next();
+  await weekdaySchedule(ui);
+  ui.next();
+  await clearParts();
+  await ui.change('Split name', expected.splits[0].name);
   await ui.click('Add Chest');
   await ui.click('Add exercise');
   for (const [i, ex] of expected.splits[0].exercises.slice(0, 2).entries()) {
@@ -429,7 +490,8 @@ test('a routine exercise can name a machine that the plan keeps (#82)', async ()
     expect(ui.labels('Machine')[0].querySelector('option[value="5"]')).not.toBeNull(),
   );
   await ui.change('Machine', '5', 0);
-  ui.submit();
+  ui.next();
+  await ui.save();
   await saveSettled();
   const post = ui.requests.find((r) => r.method === 'POST');
   const exercises = (post!.body as Plan).splits[0].exercises as Record<string, unknown>[];
@@ -458,7 +520,7 @@ test('the plan view is a region named by the routine with its deload weeks marke
   ).toBeInTheDocument();
 });
 
-test('the 12-week preview heading follows the page outline: h3 in the form, h4 in the plan view (#102)', async () => {
+test('the 12-week preview heading is an h4 under the plan or the step heading (#102, #105)', async () => {
   const ui = mount(false, false, autoRoutineInput() as unknown as Plan);
   await openRoutines();
   await ui.click('View plan');
@@ -469,11 +531,89 @@ test('the 12-week preview heading follows the page outline: h3 in the form, h4 i
 
   await ui.click('Create new routine');
   await ui.change('Start date', '2026-10-12');
+  await ui.toStep(3);
   await ui.change('Exercise name', 'Squat');
   await ui.change('Current total weight (kg, including machine base weight)', '100');
   await ui.change('Current reps', '8');
+  ui.next();
+  expect(ui.heading().tagName).toBe('H3');
   const inForm = await within(document.querySelector('form')!).findByRole('heading', {
     name: /12-week projected goals/,
   });
-  expect(inForm.tagName).toBe('H3');
+  expect(inForm.tagName).toBe('H4');
+});
+
+test('the routine form goes forward one checked step at a time and back to any earlier step (#105)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('Create new routine');
+  const steps = screen.getByRole('navigation', { name: 'Routine steps' });
+  expect(ui.heading()).toHaveTextContent('Step 1 of 4 · Basics');
+  expect(within(steps).getByText('1. Basics')).toHaveAttribute('aria-current', 'step');
+  // Later steps are not reachable from the step list, only through Next.
+  expect(within(steps).queryAllByRole('button')).toHaveLength(0);
+  expect(screen.queryByRole('button', { name: 'Previous' })).toBeNull();
+  expect(screen.queryByLabelText('Split type')).toBeNull();
+  // Next checks the current step's required fields in the browser first.
+  await ui.click('Next');
+  expect(ui.heading()).toHaveTextContent('Step 1 of 4');
+  expect(screen.getByRole('textbox', { name: 'Routine name' })).toBeInvalid();
+  await ui.change('Routine name', 'Steps');
+  await ui.change('Start date', '2026-10-21');
+  await ui.click('Next');
+  expect(ui.heading()).toHaveTextContent('Step 2 of 4 · Schedule');
+  // Focus moves to the new step so it is announced.
+  expect(ui.heading()).toHaveFocus();
+  expect(screen.getByLabelText('Split type')).toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: 'Routine name' })).toBeNull();
+  await ui.click('Next');
+  expect(ui.heading()).toHaveTextContent('Step 3 of 4 · Splits and exercises');
+  // A new routine's exercise has no name yet, so step 3 holds too.
+  await ui.click('Next');
+  expect(ui.heading()).toHaveTextContent('Step 3 of 4');
+  expect(screen.getByRole('textbox', { name: 'Exercise name' })).toBeInvalid();
+  await ui.click('2. Schedule');
+  expect(ui.heading()).toHaveTextContent('Step 2 of 4');
+  await ui.click('Previous');
+  expect(ui.heading()).toHaveTextContent('Step 1 of 4');
+  expect(screen.getByRole('textbox', { name: 'Routine name' })).toHaveValue('Steps');
+  expect(ui.nonGet()).toHaveLength(0);
+  // A new routine starts again at step 1.
+  await ui.toStep(3);
+  await ui.click('Cancel');
+  await ui.click('Create new routine');
+  expect(ui.heading()).toHaveTextContent('Step 1 of 4');
+});
+
+test('a double tap on Next does not save at once on the last step (#105)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('Create new routine');
+  await ui.toStep(4);
+  ui.submit();
+  expect(ui.nonGet(), 'a save right after reaching the last step is ignored').toHaveLength(0);
+  await ui.save();
+  await saveSettled();
+  expect(ui.nonGet()).toHaveLength(1);
+});
+
+test('opening a saved plan shows its button waiting (#173)', async () => {
+  const ui = mount();
+  const read = deferred();
+  const fetch = vi.mocked(globalThis.fetch);
+  const real = fetch.getMockImplementation()!;
+  fetch.mockImplementation(async (input, init) => {
+    if (String(input).endsWith('/api/routines/27')) await read.promise;
+    return real(input, init);
+  });
+  await openRoutines();
+  await ui.click('View plan');
+  const button = screen.getByRole('button', { name: 'View plan' });
+  expect(button).toBeDisabled();
+  expect(button).toHaveAttribute('aria-busy', 'true');
+  // A draft opened now would be closed by the arriving plan.
+  expect(screen.getByRole('button', { name: 'Create new routine' })).toBeDisabled();
+  read.resolve();
+  await screen.findByRole('region', { name: 'Manual 12-week routine' });
+  expect(screen.getByRole('button', { name: 'View plan' })).toBeEnabled();
 });

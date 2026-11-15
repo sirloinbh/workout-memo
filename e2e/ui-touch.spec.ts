@@ -127,18 +127,44 @@ for (const { width, height } of touchWidths) {
       expect(await overflow(page), 'Horizontal overflow (px)').toBeLessThanOrEqual(0);
     });
 
-    // #102: the routine form opens only on demand; the weekday mode adds the rest-day
-    // Checkboxes and the manual mode the 12 week fieldsets.
+    // #102: the routine form opens only on demand. #105: it has four steps, each checked;
+    // the weekday mode adds the rest-day Checkboxes and the manual mode the 12 week fieldsets.
     test('the Routine Builder form meets the standards', async ({ page }) => {
+      const form = page.locator('main .legacy');
+      const next = page.getByRole('button', { name: 'Next' });
+      const step = (n: number) =>
+        expect(page.getByRole('heading', { name: new RegExp(`^Step ${n} of 4`) })).toBeVisible();
       await openPage(page, '/routines');
       await page.getByRole('button', { name: 'Create new routine' }).click();
+      await page.getByRole('textbox', { name: 'Routine name' }).fill('Touch check');
+      await page.getByLabel('Start date').fill('2026-10-19');
+      expect(await violations(form), 'Step 1').toEqual([]);
+      await next.click();
+      await step(2);
       await page.getByLabel('Workout schedule type').selectOption('weekday');
-      // #198: the automatic mode shows the 12 week preview inside the form; check it first.
-      expect(await violations(page.locator('main .legacy')), 'Auto preview').toEqual([]);
-      await page.getByLabel('Weekly goal mode').selectOption('manual');
+      await page.getByLabel('Workouts per week').fill('3');
       await expect(page.getByRole('checkbox', { name: 'Mon' })).toBeVisible();
-      await openDetails(page.locator('main .legacy'));
-      expect(await violations(page.locator('main .legacy'))).toEqual([]);
+      expect(await violations(form), 'Step 2').toEqual([]);
+      await next.click();
+      await step(3);
+      await page.getByRole('textbox', { name: 'Exercise name' }).fill('Squat');
+      await page.getByLabel('Current total weight (kg, including machine base weight)').fill('100');
+      await page.getByLabel('Current reps').fill('8');
+      expect(await violations(form), 'Step 3').toEqual([]);
+      await next.click();
+      await step(4);
+      // #198: the automatic mode shows the 12 week preview inside the form.
+      await openDetails(form);
+      expect(await violations(form), 'Auto preview').toEqual([]);
+      expect(await overflow(page), 'Horizontal overflow (px)').toBeLessThanOrEqual(0);
+      await page.getByRole('button', { name: '1. Basics' }).click();
+      await page.getByLabel('Weekly goal mode').selectOption('manual');
+      for (const n of [2, 3, 4]) {
+        await next.click();
+        await step(n);
+      }
+      await expect(page.getByRole('group', { name: /^Week 12/ })).toBeVisible();
+      expect(await violations(form), 'Manual weeks').toEqual([]);
       expect(await overflow(page), 'Horizontal overflow (px)').toBeLessThanOrEqual(0);
     });
 

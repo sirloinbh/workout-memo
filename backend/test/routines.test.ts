@@ -336,9 +336,10 @@ test('a cardio item with a missing or doubled target is rejected with a plain me
   assert.deepEqual(messages({ ...steady, minutes: 20, distance_km: 5 }), [
     'Enter either a target time or a target distance',
   ]);
-  assert.deepEqual(messages({ ...steady, distance_km: 5.25 }), [
-    'Enter a target distance from 0.1 to 500 km with at most 1 decimal place',
-  ]);
+  for (const distance_km of [5.25, 5.00000001, 0.05])
+    assert.deepEqual(messages({ ...steady, distance_km }), [
+      'Enter a target distance from 0.1 to 500 km with at most 1 decimal place',
+    ]);
   assert.deepEqual(
     messages({ ...steady, minutes: 20, interval: { repeats: 4, work_sec: 30, recovery_sec: 30 } }),
     ['Only an interval item takes repeats'],
@@ -357,5 +358,17 @@ test('a cardio item with a missing or doubled target is rejected with a plain me
   );
   assert.deepEqual(messages({ ...steady, minutes: 20, kind: 'hiking' }), [
     'Choose a type: running, walking, outdoor cycling, indoor cycling, rowing, stairs, elliptical, swimming, or other',
+  ]);
+});
+
+test('a split takes at most 10 cardio items', () => {
+  const input = routineInput(1) as RoutineInput & { splits: { cardio?: unknown[] }[] };
+  const item = { kind: 'walking', intensity: 'recovery', minutes: 20 };
+  input.splits[0].cardio = Array.from({ length: 10 }, () => item);
+  assert.equal(domain.routineSchema.safeParse(input).success, true);
+  input.splits[0].cardio.push(item);
+  const result = domain.routineSchema.safeParse(input);
+  assert.deepEqual(result.success ? [] : result.error.issues.map((issue) => issue.message), [
+    'Add at most 10 cardio items to a split',
   ]);
 });

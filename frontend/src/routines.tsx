@@ -873,6 +873,16 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                         cardio: s.cardio!.map((v, k) => (k === j ? value : v)),
                       });
                     const number = (v: string) => (v === '' ? '' : Number(v));
+                    // The same names repeat per item and split; screen readers hear which one.
+                    // The space stays outside the hidden span, or the name reads "Intensity(split".
+                    const where = (
+                      <>
+                        {' '}
+                        <span className="sr-only">
+                          (split {i + 1}, cardio {j + 1})
+                        </span>
+                      </>
+                    );
                     return (
                       <div
                         data-slot="routine-cardio"
@@ -880,7 +890,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                         className="mt-3 grid grid-cols-2 items-end gap-3 border-t pt-3 md:grid-cols-3"
                       >
                         <Label className={fieldLabel}>
-                          Cardio type
+                          Cardio type{where}
                           <select
                             className={nativeSelect}
                             value={c.kind}
@@ -896,28 +906,32 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                           </select>
                         </Label>
                         <Label className={fieldLabel}>
-                          Intensity
+                          Intensity{where}
                           <select
                             className={nativeSelect}
                             value={c.intensity}
                             onChange={(e) => {
                               const intensity = e.target.value as RoutineCardioIntensity;
                               // An interval item has repeats instead of a time or distance.
-                              setCardio(
-                                intensity === 'interval'
-                                  ? {
-                                      kind: c.kind,
-                                      intensity,
-                                      interval: c.interval ?? {
-                                        repeats: 6,
-                                        work_sec: 60,
-                                        recovery_sec: 60,
-                                      },
-                                    }
-                                  : c.interval
-                                    ? { kind: c.kind, intensity, minutes: '' }
-                                    : { ...c, intensity },
-                              );
+                              // The typed target stays in the form (not sent while it is an
+                              // interval), so switching back does not lose it.
+                              if (intensity === 'interval')
+                                setCardio({
+                                  ...c,
+                                  intensity,
+                                  interval: c.interval ?? {
+                                    repeats: 6,
+                                    work_sec: 60,
+                                    recovery_sec: 60,
+                                  },
+                                });
+                              else {
+                                const next: Cardio = { ...c, intensity };
+                                delete next.interval;
+                                if (next.minutes === undefined && next.distance_km === undefined)
+                                  next.minutes = '';
+                                setCardio(next);
+                              }
                             }}
                           >
                             {routineCardioIntensities.map((v) => (
@@ -937,6 +951,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                                   recovery_sec: 'Recovery seconds',
                                 }[key]
                               }
+                              {where}
                               <Input
                                 className={touchText}
                                 required
@@ -956,7 +971,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                         ) : (
                           <>
                             <Label className={fieldLabel}>
-                              Target
+                              Target{where}
                               <select
                                 className={nativeSelect}
                                 value={c.minutes !== undefined ? 'time' : 'distance'}
@@ -974,7 +989,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                             </Label>
                             {c.minutes !== undefined ? (
                               <Label className={fieldLabel}>
-                                Week 1 minutes
+                                Week 1 minutes{where}
                                 <Input
                                   className={touchText}
                                   required
@@ -989,7 +1004,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                               </Label>
                             ) : (
                               <Label className={fieldLabel}>
-                                Week 1 km
+                                Week 1 km{where}
                                 <Input
                                   className={touchText}
                                   required

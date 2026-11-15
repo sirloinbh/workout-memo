@@ -442,7 +442,9 @@ export const routineCardioIntensities = ['zone2', 'tempo', 'interval', 'recovery
 export type RoutineCardioIntensity = (typeof routineCardioIntensities)[number];
 const cardioMinutesMessage = 'Enter a target time as a whole number from 1 to 600 minutes';
 const cardioKmMessage = 'Enter a target distance from 0.1 to 500 km with at most 1 decimal place';
-const oneDecimal = (v: number) => Math.abs(v * 10 - Math.round(v * 10)) < 1e-6;
+// Exact, so 5.00000001 is not stored as a week 1 target; out-of-range values get the
+// range message once.
+const oneDecimal = (v: number) => v < 0.1 || v > 500 || Math.round(v * 10) / 10 === v;
 const intervalInt = (label: string, min: number, max: number) => {
   const message = `Enter ${label} as a whole number from ${min} to ${max}`;
   return z
@@ -495,27 +497,26 @@ export const routineCardioSchema = z
     }
   });
 export type RoutineCardio = z.output<typeof routineCardioSchema>;
-// The 12 weekly targets of a steady item: each week is +10% on the week shown before it,
-// rounded to 1 minute or 0.1 km (so a very short target can step by more than 10%).
-// Weeks 4, 8 and 12 are deloads at 80% of the week before, and the next week continues
-// from the week before the deload. Interval items return null: their structure is fixed.
+// The 12 weekly targets of a steady item: +10% a week compounded from week 1 and shown
+// rounded to 1 minute or 0.1 km, so a short target still grows (4 → 4, 5, 5 … min) and a
+// shown step can differ a little from 10%. Weeks 4, 8 and 12 are deloads at 80% of the week
+// before, and the next week continues from the week before the deload. Interval items
+// return null: their structure is fixed.
 export function cardioWeeklyTargets(item: Pick<RoutineCardio, 'minutes' | 'distance_km'>) {
   const base = item.minutes ?? item.distance_km;
   if (base === undefined) return null;
   const step = item.minutes !== undefined ? 1 : 0.1;
   const max = item.minutes !== undefined ? 600 : 500;
-  const round = (v: number) => Math.min(max, Math.round(v / step) * step);
-  // Rounded to the step's decimals so 0.1 steps do not show as 1.2000000000000002.
-  const tidy = (v: number) => Number(v.toFixed(step < 1 ? 1 : 0));
+  // In whole steps, trimmed first so float noise (60.4999999) does not flip a half.
+  const show = (v: number) =>
+    Math.min(max, Math.round(Number((v / step).toFixed(6))) * step).toFixed(step < 1 ? 1 : 0);
   const weeks: { week: number; target: number; deload: boolean }[] = [];
   let progress = base;
   for (let week = 1; week <= 12; week++) {
     const deload = week % 4 === 0;
-    if (deload) weeks.push({ week, target: tidy(round(progress * 0.8)), deload });
-    else {
-      if (week > 1) progress = tidy(round(progress * 1.1));
-      weeks.push({ week, target: progress, deload });
-    }
+    // Capped as it grows, so a deload is still 80% of the capped week before.
+    if (!deload && week > 1) progress = Math.min(max, progress * 1.1);
+    weeks.push({ week, target: Number(show(deload ? progress * 0.8 : progress)), deload });
   }
   return weeks;
 }

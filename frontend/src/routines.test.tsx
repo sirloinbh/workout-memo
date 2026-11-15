@@ -671,8 +671,16 @@ test('removing a cardio item or switching it to distance keeps one target (#117)
   await ui.change('Target', 'distance');
   expect(ui.labels('Week 1 minutes')).toHaveLength(0);
   await ui.change('Week 1 km', '5');
+  // Trying Interval and coming back keeps the typed distance.
+  await ui.change('Intensity', 'interval');
+  await ui.change('Intensity', 'tempo');
+  expect(ui.labels('Week 1 km')[0].querySelector('input')).toHaveValue(5);
+  // Repeated field names carry their split and item for screen readers.
+  expect(
+    screen.getByRole('spinbutton', { name: /^Week 1 km \(split 1, cardio 1\)/ }),
+  ).toBeInTheDocument();
   ui.next();
-  expect(ui.text()).toContain('Week 2 5.5 km, Week 3 6.1 km, Week 4 deload 4.9 km');
+  expect(ui.text()).toContain('Week 2 5.5 km, Week 3 6.1 km, Week 4 deload 4.8 km');
   await ui.click('Previous');
   await ui.click('Delete split 1 cardio 1');
   ui.next();

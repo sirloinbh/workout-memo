@@ -307,12 +307,15 @@ const weightStep = 5;
 // #223: the save progress line ("Saving…", "Saved to server") as a polite Notice.
 const statusNotice = (text: string): NoticeValue | undefined =>
   text ? { kind: 'status', text } : undefined;
-// #109: the request never reached an answer (offline, server down or the 15 s deadline), as
-// opposed to an error the server returned. Its message replaces the browser's "Failed to fetch".
+// #109: the request never reached an answer from the app server (offline, server down behind the
+// proxy or the 15 s deadline), as opposed to an error the API returned. Its message replaces the
+// browser's "Failed to fetch".
 class Unreachable extends Error {}
 async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
+  const late = (cause: unknown) =>
+    controller.signal.aborted || (cause as Error).name === 'TimeoutError';
   try {
     let res: Response;
     try {
@@ -323,15 +326,24 @@ async function api<T>(path: string, method = 'GET', body?: unknown, key?: string
         body: body ? JSON.stringify(body) : undefined,
       });
     } catch (cause) {
-      const late = controller.signal.aborted || (cause as Error).name === 'TimeoutError';
       throw new Unreachable(
-        late
+        late(cause)
           ? 'The server did not answer within 15 seconds.'
           : 'Cannot reach the server. Check your connection.',
         { cause },
       );
     }
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (cause) {
+      if (late(cause))
+        throw new Unreachable('The server did not answer within 15 seconds.', { cause });
+      // A non-JSON error is the proxy's page (for example 502 while the API restarts).
+      if (!res.ok)
+        throw new Unreachable(`The server is not answering (HTTP ${res.status}).`, { cause });
+      throw cause;
+    }
     if (!res.ok) throw Error(data.error ?? 'The request failed');
     return data;
   } finally {

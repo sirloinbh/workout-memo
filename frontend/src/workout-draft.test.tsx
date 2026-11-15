@@ -49,7 +49,13 @@ function mount(
       getRandomValues: real.getRandomValues.bind(real),
     });
   }
-  const state = { offline: false, timeout: false, loseResponse: false, conflict: false };
+  const state = {
+    offline: false,
+    timeout: false,
+    loseResponse: false,
+    conflict: false,
+    badGateway: false,
+  };
   let records = structuredClone(initial);
   let holdMutation: Promise<void> | undefined;
   let signal: AbortSignal | undefined;
@@ -57,6 +63,11 @@ function mount(
     const requestSignal = signal;
     if (method === 'POST' || method === 'PUT') {
       if (state.offline) throw new TypeError('Failed to fetch');
+      if (state.badGateway)
+        return new Response('<html>502 Bad Gateway</html>', {
+          status: 502,
+          headers: { 'Content-Type': 'text/html' },
+        });
       if (state.timeout) throw new DOMException('Request timed out', 'TimeoutError');
       const pending = holdMutation;
       holdMutation = undefined;
@@ -105,6 +116,9 @@ function mount(
     },
     offline() {
       state.offline = true;
+    },
+    badGateway() {
+      state.badGateway = true;
     },
     timeout() {
       state.timeout = true;
@@ -463,6 +477,18 @@ test('an offline save explains the lost connection and the kept draft instead of
   mount();
   await loaded();
   expect(recoverButtons().length).toBeGreaterThan(0);
+});
+
+// #109: nginx answers with an HTML 502 page while the API is down or restarting.
+test('a proxy error page reads as an unreachable server and keeps the draft', async () => {
+  const ui = mount();
+  await fill(ui);
+  ui.badGateway();
+  submit();
+  await saveFailed();
+  expect(content()).toMatch(/The server is not answering \(HTTP 502\)\./);
+  expect(content()).toMatch(/kept as a draft on this device/);
+  expect(content()).not.toMatch(/Unexpected token|JSON/);
 });
 
 test('an offline save does not promise a draft when local storage failed', async () => {

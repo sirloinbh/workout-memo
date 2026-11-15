@@ -21,22 +21,25 @@ function container(controlled: boolean) {
   };
 }
 
-test('a page that already had a service worker is told once when a new version takes over', () => {
+test('a page that already had a service worker is told each time a new version takes over', () => {
   const sw = container(true);
   const onUpdate = vi.fn();
   void registerServiceWorker(onUpdate, sw);
   expect(sw.register).toHaveBeenCalledWith('/sw.js');
   sw.fire();
-  sw.fire();
   expect(onUpdate).toHaveBeenCalledTimes(1);
+  sw.fire();
+  expect(onUpdate).toHaveBeenCalledTimes(2);
 });
 
-test('the first install is not announced as a new version', () => {
+test('the first install is not announced, but a later deploy in the same tab is', () => {
   const sw = container(false);
   const onUpdate = vi.fn();
   void registerServiceWorker(onUpdate, sw);
   sw.fire();
   expect(onUpdate).not.toHaveBeenCalled();
+  sw.fire();
+  expect(onUpdate).toHaveBeenCalledTimes(1);
 });
 
 test('the new-version notice waits for the user and reloads only from its button', async () => {

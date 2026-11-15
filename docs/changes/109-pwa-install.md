@@ -33,7 +33,7 @@
   - The deadline test now also checks "The server did not answer within 15 seconds".
 - `npm run test -w frontend -- src/service-worker.test.tsx src/workout-draft.test.tsx`: 2 files, 28 tests passed.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: passed.
-- `npm run check` (full) was started but stopped before it finished when the session ended (2026-11-15); the rest of `npm test`, `test:skills`, `test:docs` and `build` still need a run. `npm run build -w frontend` passed on its own for the localhost check.
+- `npm run check` (full) was stopped before it finished on 2026-11-15; CI `verify`, which runs it, passed on `e26ddf1`. The final run is in the review section.
 
 ## Production build check on localhost (2026-11-15)
 
@@ -44,6 +44,17 @@
 - Caches hold only `/offline.html` and `/assets/` files; no `/api/` entry.
 - Offline navigation to `/journal` shows `offline.html`.
 - After changing `VERSION` in the built `sw.js` and calling `registration.update()`, the notice "A new version is available" with Reload appeared at 390x844 and 1440x900 without a reload.
+
+## Review round 1 (2026-11-16)
+
+An independent read-only review found nothing blocking. Applied in the review fix commit:
+
+- suggestion: a tab opened for the first time (no controller at load) never announced later deploys.
+  egisterServiceWorker now always listens and skips only the first takeover of an uncontrolled page. Tests: each takeover of a controlled page is announced; the first install is not, a later deploy in the same tab is.
+- issue (non-blocking): a non-JSON error page (nginx 502 while the API is down) showed "Unexpected token '<'" and no draft note, and a timeout while reading the body showed the abort text. pi() now maps both to Unreachable ("The server is not answering (HTTP 502)." / the 15-second message). Test: a 502 HTML answer on save shows the HTTP 502 message and the draft note.
+- nitpick not applied: the TimeoutError name check stays, because a fetch that times out on its own (and the test double) reports that name.
+- Related tests after the fix:
+  pm run test -w frontend -- src/service-worker.test.tsx src/workout-draft.test.tsx: 2 files, 29 tests passed.
 
 ## Limits and follow-up
 

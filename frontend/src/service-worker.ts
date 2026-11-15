@@ -8,10 +8,14 @@ export function registerServiceWorker(
   onUpdate: () => void = showUpdateNotice,
   container: Container = navigator.serviceWorker,
 ) {
-  // The first install also fires controllerchange (sw.js claims open pages), so only a page that
-  // was already controlled is running an older version when the new worker takes over.
-  if (container.controller)
-    container.addEventListener('controllerchange', onUpdate, { once: true });
+  // The first install also fires controllerchange (sw.js claims open pages). Only a takeover of a
+  // page that already had a worker means it runs an older version; later deploys while the tab
+  // stays open are announced too (the notice has a fixed id, so it does not stack).
+  let controlled = Boolean(container.controller);
+  container.addEventListener('controllerchange', () => {
+    if (controlled) onUpdate();
+    controlled = true;
+  });
   return container.register('/sw.js');
 }
 

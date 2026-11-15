@@ -102,6 +102,7 @@ import {
   withDuration,
 } from './rest-timer';
 import { Routines } from './routines';
+import { AccountActions, SignInGate } from './sign-in';
 const restKindLabels: Record<RestKind, string> = {
   lower: 'Lower body',
   upper: 'Upper body',
@@ -126,6 +127,11 @@ type SetRow = {
 };
 // Only completed sets are actual performance for statistics and goals.
 const done = (s: SetRow) => s.completed !== false;
+// #268: below 480px a set field's name sits beside it, not above, so a set card fits between
+// the pinned rest timer and save bar; a fixed width lines the fields up.
+const setFieldName = 'w-20 shrink-0 min-[480px]:w-auto';
+const setField =
+  'mb-0 text-meta max-[480px]:flex-row max-[480px]:items-center max-[480px]:[&>:last-child]:min-w-0 max-[480px]:[&>:last-child]:flex-1';
 const repeatTapWindow = 700;
 function readTimer(): RestTimer {
   try {
@@ -368,7 +374,9 @@ export function App() {
   return (
     <QueryClientProvider client={client}>
       <BrowserRouter>
-        <Workspace />
+        <SignInGate>
+          <Workspace />
+        </SignInGate>
       </BrowserRouter>
     </QueryClientProvider>
   );
@@ -1050,6 +1058,7 @@ function Workspace() {
       <AppShell
         appName="FORM · My Workout Log"
         nav={navItems}
+        actions={<AccountActions />}
         footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">
@@ -1751,8 +1760,8 @@ function Workspace() {
                   </div>
                   {/* The hint stays in the name's grid cell so Machine keeps its place beside it. */}
                   <div>
-                    <label htmlFor={`set-${i}-exercise`} className="mb-0 text-meta">
-                      Exercise name
+                    <label htmlFor={`set-${i}-exercise`} className={setField}>
+                      <span className={setFieldName}>Exercise name</span>
                       {/* #124: suggestions from earlier journals, goals, routines and machines. */}
                       <Combobox
                         id={`set-${i}-exercise`}
@@ -1771,8 +1780,8 @@ function Workspace() {
                       onReplace={(exercise) => renameSet(i, exercise)}
                     />
                   </div>
-                  <label className="mb-0 text-meta">
-                    Machine
+                  <label className={setField}>
+                    <span className={setFieldName}>Machine</span>
                     <select
                       className="h-9 px-2 py-0 text-body-sm pointer-coarse:text-base"
                       value={s.machine_id ?? ''}
@@ -1805,16 +1814,20 @@ function Workspace() {
                       ))}
                     </select>
                   </label>
-                  {/* Stacked on phones: two − / + fields side by side leave no room for the digits. */}
+                  {/* Stacked on phones: two − / + fields side by side leave no room for the digits.
+                      #268: there each label sits beside its field rather than above it. */}
                   <div className="grid gap-3 min-[480px]:grid-cols-2 md:col-span-2">
-                    <div className="flex min-w-0 flex-col gap-2">
-                      <label htmlFor={`set-${i}-weight`} className="mb-0 text-meta">
+                    <div className="flex min-w-0 items-center gap-2 min-[480px]:flex-col min-[480px]:items-stretch">
+                      <label
+                        htmlFor={`set-${i}-weight`}
+                        className={cn('mb-0 text-meta', setFieldName)}
+                      >
                         Total weight kg
                       </label>
                       <NumberValueInput
                         id={`set-${i}-weight`}
                         label="Total weight kg"
-                        className="md:pointer-coarse:[&_input]:text-base"
+                        className="min-w-0 max-[480px]:flex-1 md:pointer-coarse:[&_input]:text-base"
                         step={weightStep}
                         // A whole-number step would pick the digits-only keypad; 0.25 kg still needs a point.
                         inputMode="decimal"
@@ -1830,14 +1843,17 @@ function Workspace() {
                         {...invalid(`sets.${i}.weight`)}
                       />
                     </div>
-                    <div className="flex min-w-0 flex-col gap-2">
-                      <label htmlFor={`set-${i}-reps`} className="mb-0 text-meta">
+                    <div className="flex min-w-0 items-center gap-2 min-[480px]:flex-col min-[480px]:items-stretch">
+                      <label
+                        htmlFor={`set-${i}-reps`}
+                        className={cn('mb-0 text-meta', setFieldName)}
+                      >
                         Reps
                       </label>
                       <NumberValueInput
                         id={`set-${i}-reps`}
                         label="Reps"
-                        className="md:pointer-coarse:[&_input]:text-base"
+                        className="min-w-0 max-[480px]:flex-1 md:pointer-coarse:[&_input]:text-base"
                         min={1}
                         max={1000}
                         required
@@ -1854,12 +1870,15 @@ function Workspace() {
                   {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
                     <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
                   ))}
-                  <label className="mb-0 text-meta md:col-span-2">
-                    Set memo
+                  <label className={cn(setField, 'md:col-span-2')}>
+                    <span className={setFieldName}>Set memo</span>
+                    {/* #268: one line on phones, still a 44px target, growing with a longer memo. */}
                     <textarea
+                      className="max-md:field-sizing-content max-md:min-h-11"
+                      rows={1}
                       maxLength={4000}
                       value={s.notes}
-                      placeholder="Form, machine settings, one-sided records, etc."
+                      placeholder="Form, machine settings, etc."
                       onChange={(e) => {
                         const sets = [...editor.sets!];
                         sets[i] = { ...s, notes: e.target.value };

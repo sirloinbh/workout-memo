@@ -1144,6 +1144,36 @@
         }
       }
     },
+    "/api/me": {
+      "get": {
+        "summary": "The signed-in user. { \"user\": { id, email, name, image } }",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The shared sign-in service could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/official-machine-weights": {
       "get": {
         "summary": "Manufacturer official starting resistance reference values. ?brand= optional",

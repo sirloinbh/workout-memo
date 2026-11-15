@@ -139,6 +139,7 @@ const restBody = z.object({ date });
 // Every registered route must appear here exactly once (checked when building).
 export const operations: Record<string, Operation> = {
   'GET /api/health': { status: [200, 500] },
+  'GET /api/me': { status: [200, 401, 503] },
   'GET /api/brands': { status: [200] },
   'GET /api/official-machine-weights': { query: officialWeightQuery, status: [200, 400] },
   'GET /api/machines': { status: [200] },
@@ -250,10 +251,12 @@ const statusText: Record<number, string> = {
   200: 'Success',
   201: 'Created',
   400: 'Input validation failed or a referenced item does not exist',
+  401: 'Sign-in required (no session from the shared sign-in)',
   404: 'No target',
   409: 'Duplicate, version conflict, retry key mismatch, or date condition mismatch',
   413: 'Request size limit exceeded',
   500: 'Server error',
+  503: 'The shared sign-in service could not be reached',
 };
 
 export function buildOpenApi(app: express.Express, descriptions: Record<string, string>) {

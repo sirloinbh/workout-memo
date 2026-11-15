@@ -59,4 +59,8 @@ A set card is now 400px at 390px (−156px). The header row, the full-width 48px
 - `npm run test -w frontend`: 63 files, 350 passed, 4 skipped.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: passed.
 - Not finished: a full `npm run check` was stopped after 10 minutes when the session ended (no result); CI runs it on the PR.
-- Visual baselines (`ui-visual`, CI container only): the workout editor shots at 360 and 390px are expected to change; see the PR for the update.
+- Visual baselines: CI `e2e-visual` on 1b810ec passed with no baseline change, so none were updated (the workout-editor shots show the top of the dialog, above the set cards). CI `verify` (`npm run check`) passed.
+
+## Merging main
+
+- Merged origin/main (#309 review and merge-guard rules, docs and skill updates). No conflicts; no app code overlap.

@@ -584,3 +584,37 @@ test('without a pinned today the form uses the Seoul date, not the device date',
   expect(date).toHaveValue('2026-10-15');
   expect(date).toHaveAttribute('max', '2026-10-15');
 });
+
+// #173: the first load shows row placeholders in a named busy region with a hidden status line.
+test('the first load shows placeholders and a screen-reader status, then the list', async () => {
+  const answer = deferred<CardioSession[]>();
+  mount((request) => (request.method === 'GET' ? answer.promise : undefined));
+  const busy = document.querySelector('[aria-busy="true"]')!;
+  expect(busy).toHaveAttribute('aria-label', 'Cardio records');
+  expect(busy.querySelector('[data-slot="skeleton-list"]')).not.toBeNull();
+  expect(screen.getByText('Loading records…')).toHaveClass('sr-only');
+  for (const el of busy.querySelectorAll('[data-slot="skeleton"]'))
+    expect(el).toHaveAttribute('aria-hidden', 'true');
+  answer.resolve(fixture());
+  expect(await list()).toBeInTheDocument();
+  expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+});
+
+// #173: a save that is waiting shows a small spinner on its disabled button.
+test('the cardio save button shows a spinner while it saves', async () => {
+  const user = userEvent.setup();
+  const saved = deferred();
+  mount((request) =>
+    request.method === 'PUT' ? saved.promise.then(() => ({ ...base, id: 1 })) : undefined,
+  );
+  await list();
+  await user.click(
+    screen.getByRole('button', { name: 'Edit cardio record 2026-11-07 07:30 Running' }),
+  );
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
+  const saving = await within(dialog()).findByRole('button', { name: 'Saving…' });
+  expect(saving).toBeDisabled();
+  expect(saving.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
+  saved.resolve();
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Saving…' })).toBeNull());
+});

@@ -17,6 +17,7 @@ import { ToggleChips } from '../components/toggle-chips';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Spinner } from '../components/ui/spinner';
 import {
   type CardioKind,
   cardioKinds,
@@ -439,6 +440,7 @@ export function CardioForm({
         <ModalFooter>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={saving}>
+              {saving && <Spinner size="sm" aria-hidden />}
               {apply ? 'Apply to preview' : saving ? 'Saving…' : 'Save cardio record'}
             </Button>
             <Button type="button" variant="ghost" disabled={saving} onClick={close}>

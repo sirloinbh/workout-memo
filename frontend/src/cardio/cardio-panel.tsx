@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
 import { Notice } from '../components/ui/notice';
+import { SkeletonList } from '../components/ui/skeleton';
 import { seoulDate } from '../date';
 import { RequestError } from '../lib/api';
 import { type CardioSession, deleteCardioSession, listCardioSessions } from './api';
@@ -195,7 +196,13 @@ export function CardioPanel({
           </CardAction>
         </CardHeader>
         {loading ? (
-          <p className="px-6 py-14 text-center text-sm text-muted-foreground">Loading records…</p>
+          // #173: row placeholders while the records load; the hidden line keeps the status.
+          <div aria-busy="true" aria-label="Cardio records" className="px-4 pb-5 md:px-6 md:pb-6">
+            <p role="status" className="sr-only">
+              Loading records…
+            </p>
+            <SkeletonList />
+          </div>
         ) : sessions.length === 0 ? (
           <EmptyState
             className="m-4 md:m-6"

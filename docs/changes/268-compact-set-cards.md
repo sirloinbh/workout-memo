@@ -64,3 +64,15 @@ A set card is now 400px at 390px (−156px). The header row, the full-width 48px
 ## Merging main
 
 - Merged origin/main (#309 review and merge-guard rules, docs and skill updates). No conflicts; no app code overlap.
+
+## Review round 1
+
+No blocking findings. Applied:
+
+- Suggestion: the scroll assertion's failure message lists where each swipe happened, so an extra one (for example an exercise suggestion list left open over the weight field by data from another run) is easy to tell apart. Taps and keys use `toMatchObject`.
+
+Not applied:
+
+- "At exactly 480px both `max-[480px]` and `min-[480px]` match": checked in the installed Tailwind 4, `max-*` is `(width < 480px)`, so they do not overlap.
+- Nitpicks: the memo name stays vertically centred beside a grown memo, and the similar-name hint starts under the name column. Both are cosmetic and only below 480px.
+- The local 118px/148px and 5-scroll figures are from the runs recorded above; CI `e2e-visual` reruns the flow spec on each head.

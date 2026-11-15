@@ -126,6 +126,7 @@ test('enters, completes, and saves three sets in a new journal on a 390px touch 
   test.info().annotations.push({ type: '105-flow', description: JSON.stringify(result) });
   // #268: the set cards fit between the pinned bars again, so the flow takes no more swipes
   // than before #105 (3), with the same taps and keys.
-  expect(user.count).toEqual({ taps: 11, keys: 24, scrolls: expect.any(Number) });
-  expect(user.count.scrolls).toBeLessThanOrEqual(3);
+  // An extra swipe names its control (for example a suggestion list over the weight field).
+  expect(user.count).toMatchObject({ taps: 11, keys: 24 });
+  expect(user.count.scrolls, `scrolled at ${user.scrolledAt.join(', ')}`).toBeLessThanOrEqual(3);
 });

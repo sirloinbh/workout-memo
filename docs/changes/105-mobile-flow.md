@@ -1,78 +1,79 @@
-# #105 모바일 입력 흐름 최적화 4단계: 390px e2e와 탭 수·소요 시간 비교
+# #105 Mobile input flow, step 4: 390px e2e and tap count and time comparison
 
-- 이슈: [#105](https://github.com/sirloinbh/workout-memo/issues/105)
-- 브랜치: `test/105-mobile-flow`
-- 앞 단계: [1단계 세트 카드](105-set-cards.md)(#232), [2단계 모바일 모달](105-mobile-modal.md)(#237), [3단계 휴식 타이머](105-rest-timer.md)(#246)
+- Issue: [#105](https://github.com/sirloinbh/workout-memo/issues/105)
+- Branch: `test/105-mobile-flow`
+- Earlier steps: [step 1 set cards](105-set-cards.md) (#232), [step 2 mobile modal](105-mobile-modal.md) (#237), [step 3 rest timer](105-rest-timer.md) (#246)
 
-## 목적
+## Goal
 
-#105 완료 기준 두 가지를 채웁니다.
+This fills the two #105 completion criteria.
 
-1. 390px 실제 브라우저(e2e)에서 "새 일지 → 세트 3개 입력·완료 → 저장" 흐름이 통과한다.
-2. 탭 수와 소요 시간을 이전과 비교해 기록한다.
+1. The "new journal → enter and complete 3 sets → save" flow passes in a real 390px browser (e2e).
+2. The tap count and the time taken are recorded and compared with the earlier screen.
 
-## 변경 — test: 390px 터치 화면 흐름 e2e
+## Change — test: 390px touch screen flow e2e
 
-- 새 파일 `e2e/workout-mobile-flow.spec.ts`
-  - 일지 편집 전용 파일입니다. 일지 화면 코드(`app.tsx`·journal)는 고치지 않았습니다.
-  - 390×844, 터치(`hasTouch`)로 실제 서버·테스트 DB에 저장합니다.
-  - 흐름: 대시보드에서 "운동 기록하기" → 세트마다 운동명 "벤치프레스" 입력, 총중량 칸 오른쪽 끝을 눌러 0을 지우고 "60" 입력, "N세트 완료" → "기록 저장하기". 횟수는 기본값 10을 그대로 둡니다.
-  - 저장 뒤 일지 목록 API에서 세트 3개가 `벤치프레스 60kg × 10회, 완료`로 저장됐는지 확인하고, 테스트가 끝나면 그 일지를 지웁니다.
-  - 공유 테스트 DB에 다른 spec이 만든 "오늘 시작 루틴"이 있으면 새 일지가 루틴 세트로 시작합니다. 이 테스트에서만 `/api/routine-progress` 응답을 "루틴 없음"으로 바꿔, 늘 빈 세트 3개에서 시작합니다.
-  - 세는 값
-    - 탭: 누른 횟수
-    - 키: 입력한 글자 수와 Backspace(한글은 글자 하나를 1로 셉니다. 실제 자판 입력 수는 자모 수만큼 더 많습니다.)
-    - 스크롤: 실제로 누를 점이 화면 밖이거나 다른 요소(고정된 타이머 줄·저장 줄 등)에 가려 있으면 1회. 한 번에 닿지 않는 먼 거리도 1회로 세므로 최소치입니다. 어느 칸을 누르려다 스크롤했는지 `scrolledAt`에 남깁니다. 편집 창이 열리는 애니메이션이 끝난 뒤부터 봅니다.
-    - 소요 시간: 편집 창을 여는 탭부터 창이 닫힐 때까지. Playwright가 쉬지 않고 누르는 시간이고 테스트의 확인 대기도 들어 있어, 사람의 입력 시간이 아닙니다.
-- 이전 화면과 비교한 방법
-  - #105 1단계 병합 직전 main(7b900c1)에 이 spec만 더한 측정용 브랜치 `exp/105-flow-before`를 push해 CI에서 같은 스크립트를 돌렸습니다. 두 버전이 같은 라벨(운동명, 총중량 kg, N세트 완료, 기록 저장하기)을 써서 스크립트를 고치지 않고 돌았습니다. 1차 리뷰 보완 뒤 같은 방법으로 다시 쟀습니다(e9d241e). 측정 뒤 브랜치는 지웁니다.
-  - 이전 화면의 총중량 칸(`type="number"`)은 0을 지워도 0이 다시 들어가 "060"이 보였습니다(60으로 저장은 됨). 그래서 칸 글자 대신 숫자 값이 60인지로 비교합니다. 지금 화면은 "60"으로 보입니다.
-  - 한계: 이전 화면의 총중량 칸은 `type="number"`라 오른쪽 끝 6px이 Chrome의 숫자 증감 화살표 자리와 겹칠 수 있습니다. 측정은 통과했지만, "탭 1회 + Backspace 1회"가 이전 화면에서 정확히 같은 동작이었는지는 확인하지 못했습니다.
+- New file `e2e/workout-mobile-flow.spec.ts`
+  - The file is only for journal editing. The journal screen code (`app.tsx`, journal) is not changed.
+  - It saves to the real server and test DB at 390×844 with touch (`hasTouch`).
+  - Flow: "Log workout" on the dashboard → for each set, type the exercise name "벤치프레스" (bench press), tap the right end of the total weight field to clear the 0 and type "60", press "Set N done" → "Save record". Reps keep the default 10.
+  - After saving, it checks through the journal list API that 3 sets were saved as `벤치프레스 60kg × 10 reps, done`, and deletes that journal when the test ends.
+  - If another spec left a "routine starting today" in the shared test DB, a new journal starts with the routine's sets. Only this test replaces the `/api/routine-progress` response with "no routine", so it always starts with 3 blank sets.
+  - What is counted
+    - Taps: the number of presses.
+    - Keys: the number of typed characters plus Backspace. A Hangul syllable counts as 1; a real keyboard needs one key per jamo, so the real count is higher.
+    - Scrolls: 1 when the point to press is off screen or covered by another element (the pinned timer bar or save bar). A long distance that one swipe cannot cover also counts as 1, so this is a lower bound. `scrolledAt` records which control the scroll was for. Measuring starts after the editor's opening animation ends.
+    - Time: from the tap that opens the editor until it closes. This is Playwright pressing without pause, and it includes the test's assertion waits, so it is not a human's input time.
+- How the earlier screen was measured
+  - The branch `exp/105-flow-before`, made of main just before #105 step 1 (7b900c1) plus only this spec, was pushed and the same script ran in CI. Both versions used the same labels (exercise name, total weight kg, set N done, save record), so the script ran unchanged. After the first-review fixes it was measured again the same way (e9d241e). The branch is deleted after measuring.
+  - On the earlier screen, the total weight field (`type="number"`) put the 0 back after it was cleared and showed "060" (saved as 60). So the test compares the numeric value 60 instead of the field text. The current screen shows "60".
+  - Limit: the earlier total weight field was `type="number"`, so the rightmost 6px may overlap Chrome's number spin arrows. The measurement passed, but it was not confirmed that "1 tap + 1 Backspace" was exactly the same action on the earlier screen.
 
-## 비교 결과
+## Comparison result
 
-| 항목                 | #105 이전(7b900c1) | 지금(7f0126d) |
-| -------------------- | -----------------: | ------------: |
-| 탭                   |                 11 |            11 |
-| 키                   |                 24 |            24 |
-| 스크롤(최소)         |                  3 |             5 |
-| 소요 시간(자동화)    |            1,578ms |       1,964ms |
-| 소요 시간(직전 회차) |            2,072ms |       2,110ms |
-| 총중량 칸 표시       |        "060"(혼란) |          "60" |
+| Item                       | Before #105 (7b900c1) | Now (7f0126d) |
+| -------------------------- | --------------------: | ------------: |
+| Taps                       |                    11 |            11 |
+| Keys                       |                    24 |            24 |
+| Scrolls (lower bound)      |                     3 |             5 |
+| Time (automated)           |               1,578ms |       1,964ms |
+| Time (previous run)        |               2,072ms |       2,110ms |
+| Total weight field display |     "060" (confusing) |          "60" |
 
-- 탭: 일지 열기 1 + 세트마다 운동명·총중량·완료 3 × 3 + 저장 1 = 11. 두 버전이 같습니다. 이 흐름은 "칸 하나를 누르고 값을 친다"가 대부분이라 탭 수가 줄지 않았습니다. 증감 버튼은 같은 무게를 반복하는 세트에서는 쓰지 않았습니다(60kg을 + 버튼으로 맞추면 12번 눌러야 함).
-- 키: 세트마다 "벤치프레스" 5 + Backspace 1 + "60" 2 = 8, × 3 = 24. 같습니다. 이전 화면의 Backspace는 효과가 없었습니다.
-- 스크롤: 지금이 2회 더 많습니다. 스크롤한 곳은 다음과 같습니다.
-  - 이전: 1세트 운동명, 2세트 총중량, 3세트 완료
-  - 지금: 1세트 운동명, **1세트 완료**, 2세트 총중량, **3세트 운동명**, 3세트 완료
-  - 늘어난 두 곳은 같은 세트 안의 마지막 칸(1세트 완료)과 다음 세트의 첫 칸(3세트 운동명)입니다. 세트 카드가 커져(480px 미만에서 총중량·횟수를 위아래로 쌓음, 칸마다 44px 증감 버튼, 카드 너비 48px 완료 버튼, 카드 머리줄) 한 화면에 들어가는 칸이 줄었기 때문입니다.
-  - 저장은 두 버전 모두 스크롤 없이 눌렀습니다. 이전 화면은 3세트 완료로 스크롤한 뒤라 저장 버튼이 화면 안에 있었고, 지금은 저장 버튼이 아래에 고정돼 있습니다.
-- 소요 시간: 같은 스크립트로 두 번 잰 값이 회차마다 많게는 500ms 가까이 흔들립니다(이전 2,072→1,578ms, 지금 2,110→1,964ms). 회차마다 1회 측정이고 확인 대기가 들어 있어, 두 버전의 차이는 구분되지 않습니다.
-- 이 측정에 잡히지 않는 개선: 큰 완료 버튼(잘못 누를 여지), 소수·숫자 키패드(`inputmode`), 키보드에 가리지 않는 입력란(2단계, Playwright에는 화면 키보드가 없음), 위에 고정된 휴식 타이머(3단계), "060" 표시가 없어진 숫자 칸.
+- Taps: open journal 1 + exercise name, weight and done per set 3 × 3 + save 1 = 11. Both versions match. Most of this flow is "tap one field and type a value", so the tap count did not drop. The +/- buttons are not used for sets that repeat the same weight (reaching 60kg with + takes 12 presses).
+- Keys: per set "벤치프레스" 5 + Backspace 1 + "60" 2 = 8, × 3 = 24. They match. The Backspace had no effect on the earlier screen.
+- Scrolls: now there are 2 more. The scrolls were for:
+  - Before: set 1 exercise name, set 2 weight, set 3 done
+  - Now: set 1 exercise name, **set 1 done**, set 2 weight, **set 3 exercise name**, set 3 done
+  - The two new ones are the last control in a set (set 1 done) and the first control of the next set (set 3 exercise name). The set cards got bigger (weight and reps stacked below 480px, a 44px +/- button per field, a full-width done button with 48px height, a card header row), so fewer fields fit on one screen.
+  - Save was pressed without a scroll in both versions. On the earlier screen the save button was in view after scrolling to set 3 done; now the save button is pinned at the bottom.
+- Time: the same script measured twice varies by up to about 500ms between runs (before 2,072→1,578ms, now 2,110→1,964ms). Each run is a single measurement with assertion waits, so the difference between the versions cannot be told apart.
+- Improvements this measurement does not capture: the large done button (less room to mis-tap), decimal and numeric keypads (`inputmode`), input fields not hidden by the keyboard (step 2; Playwright has no on-screen keyboard), the rest timer pinned at the top (step 3), and number fields that no longer show "060".
 
-## 남은 일
+## Remaining work
 
-- 스크롤 2회 증가는 사용자 결정(2026-11-10)으로 이 PR에서 받아들이고, 줄이는 일은 [#268](https://github.com/sirloinbh/workout-memo/issues/268)(390px 세트 카드를 줄여 스크롤 3회 이하)로 나눴습니다. 세트 카드 높이를 줄이거나(예: 480px 미만에서 증감 버튼 크기, 머리줄) 완료 뒤 다음 세트 칸으로 포커스를 옮기는 방법이 있습니다.
+- The 2 extra scrolls were accepted for this PR by user decision (2026-11-10). Reducing them is split into [#268](https://github.com/sirloinbh/workout-memo/issues/268) (shrink the 390px set cards to 3 scrolls or fewer). Options are shrinking the set card height (for example the +/- button size and header row below 480px) or moving focus to the next set's field after done.
 
-## 테스트
+## Tests
 
-- 새 e2e 1개: 지금 화면 CI(102fca9, 7f0126d)에서 통과, 측정용 브랜치 CI(b1da813, e9d241e, 이전 화면)에서도 통과
-- 로컬: `e2e/workout-mobile-flow.spec.ts`의 eslint(`--max-warnings 0`)·prettier·`tsc -p e2e` 통과
-- 실행하지 않은 것: 로컬 e2e와 `npm run check`(메모리 부족, CI로 확인)
+- 1 new e2e: passed in current-screen CI (102fca9, 7f0126d) and in the measurement branch CI (b1da813, e9d241e, earlier screen)
+- Local: eslint (`--max-warnings 0`), prettier, and `tsc -p e2e` on `e2e/workout-mobile-flow.spec.ts` passed
+- Not run: local e2e and `npm run check` (out of memory; checked in CI)
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first-review follow-up
 
-1차 리뷰는 필수 지적 없이 권장 6건이었고 모두 반영했습니다.
+The first review had no required findings and 6 suggestions; all were applied.
 
-- 권장 1: 저장 응답이 201이면 바로 정리 대상에 올립니다. 이전에는 그 뒤 확인이 실패하면 오늘 날짜 일지가 공유 테스트 DB에 남을 수 있었습니다.
-- 권장 2: 저장된 일지를 POST 요청의 실제 날짜로 다시 읽습니다. 서버 "오늘"을 기다리던 프로미스를 없애, 자정을 넘기거나 응답 가로채기가 실패해도 멈추지 않습니다. 찾은 일지가 있는지 먼저 확인합니다.
-- 권장 3: 스크롤할 때 대상 칸 이름을 `scrolledAt`에 남기고, 두 버전을 다시 쟀습니다. 위 비교 결과의 스크롤 원인은 이 기록에 근거합니다. 리뷰가 짐작한 "이전 3회 중 1회가 저장 버튼" 경우는 아니었습니다.
-- 권장 4: 닿는지 보는 점을 실제로 누르는 점과 같게 했고, 편집 창의 여는 애니메이션이 끝난 뒤(`opacity: 1`) 측정합니다.
-- 권장 5: 이전 화면 숫자 칸의 증감 화살표 자리와 겹칠 수 있는 한계를 위에 적었습니다.
-- 권장 6: 소요 시간에 확인 대기가 들어 있고 1회 측정이라는 점, 회차 간 흔들림을 적고 "구분되지 않음"으로 고쳤습니다.
+- Suggestion 1: a 201 save response is registered for cleanup right away. Before, if a later check failed, a journal dated today could stay in the shared test DB.
+- Suggestion 2: the saved journal is read back by the POST request's real date. The promise that waited for the server's "today" is gone, so the test does not hang across midnight or when the response interception fails. It first checks that the journal was found.
+- Suggestion 3: each scroll records the target control in `scrolledAt`, and both versions were measured again. The scroll causes in the comparison above are based on this record. It was not the case the review guessed ("1 of the earlier 3 scrolls is the save button").
+- Suggestion 4: the point checked for reachability is the same point that is pressed, and measuring starts after the editor's opening animation ends (`opacity: 1`).
+- Suggestion 5: the limit about overlapping the earlier number field's spin arrows is written above.
+- Suggestion 6: the time now notes that it includes assertion waits and is a single measurement, notes the variation between runs, and says the versions "cannot be told apart".
 
-## main 병합
+## Merging main
 
-- 2차 리뷰 뒤 병합 직전 확인에서 main이 앞서 있었습니다(#261 유산소 탭, #264, #265). e2e·shared·`app.tsx` 변경이 있어 origin/main을 병합했습니다. 충돌은 없었고, `tsc -p e2e`가 통과했습니다. 병합 뒤 CI(59178b9)에서 새 e2e를 포함해 모두 통과했습니다.
-- 두 번째 병합: 그 사이 main에 #269(그래프 점, 시각 기준선 포함)가 들어와 e2e 쪽 변경 때문에 다시 병합했습니다. 겹치는 파일과 충돌은 없었습니다.
-- 세 번째 병합: 그 사이 main에 #124(운동명 자동완성, 일지 세트 운동명이 Combobox로 바뀜)·#173·#271·#258(중앙 표준 동기화, components 변경)이 들어와 다시 병합했습니다. 충돌은 없었습니다. 자동완성 후보 목록이 운동명 아래에 열리면 총중량 칸을 가려 스크롤 수가 달라질 수 있어, 병합 뒤 CI의 `[105-flow]` 값을 다시 확인합니다.
+- In the pre-merge check after the second review, main was ahead (#261 cardio tab, #264, #265). It had e2e, shared and `app.tsx` changes, so origin/main was merged in. There were no conflicts and `tsc -p e2e` passed. After the merge, CI (59178b9) passed, including the new e2e.
+- Second merge: #269 (graph dots, including visual baselines) landed on main in the meantime and changed the e2e side, so main was merged again. No overlapping files or conflicts.
+- Third merge: #124 (exercise name autocomplete; the journal set exercise name became a Combobox), #173, #271 and #258 (central standards sync, components changes) landed on main, so main was merged again. No conflicts. The autocomplete list opening under the exercise name may cover the weight field and change the scroll count, so the `[105-flow]` values in CI after the merge are checked again.
+- Fourth merge (2026-11-15): main had translated the app screens to English (#277), translated docs and records (#281, #282), applied the scaffold fixes (#295) and synced central standards (#296–#302). There were no conflicts, but the spec looked up controls by their Korean labels, so it now uses the English labels ("Log workout", "New workout record", "Exercise name", "Total weight kg", "Set N done", "Save record"). The typed exercise name "벤치프레스" is user data and stays Korean so that the key counts match the earlier measurement. This record was translated to English.

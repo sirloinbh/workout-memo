@@ -6,6 +6,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 // ran on the pre-#105 commit; it only uses names both versions share.
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
+// Korean user data, kept so the key counts match the earlier measurement.
 const exercise = '벤치프레스';
 const weight = '60';
 let saved: number | undefined;
@@ -55,7 +56,9 @@ function counter(page: Page) {
   };
 }
 
-test('390px 터치 화면에서 새 일지에 세트 3개를 입력·완료하고 저장한다', async ({ page }) => {
+test('enters, completes, and saves three sets in a new journal on a 390px touch screen', async ({
+  page,
+}) => {
   // Without today's routine a new journal starts with three blank sets; other specs may
   // leave a routine starting today in the shared test DB.
   await page.route('**/api/routine-progress', async (route) => {
@@ -64,39 +67,39 @@ test('390px 터치 화면에서 새 일지에 세트 3개를 입력·완료하�
     await route.fulfill({ response, json: { today, routine: null } });
   });
   await page.goto('/');
-  await expect(page.getByRole('button', { name: '운동 기록하기' }).first()).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Log workout' }).first()).toBeEnabled();
   const user = counter(page);
   const started = Date.now();
 
-  await user.tap('일지 열기', page.getByRole('button', { name: '운동 기록하기' }).first());
-  const editor = page.getByRole('dialog', { name: '새로운 운동 기록' });
+  await user.tap('open journal', page.getByRole('button', { name: 'Log workout' }).first());
+  const editor = page.getByRole('dialog', { name: 'New workout record' });
   const sets = editor.locator('[data-slot=set-row]');
   await expect(sets).toHaveCount(3);
   // Let the dialog's opening animation settle before checking what is on screen.
   await expect(editor).toHaveCSS('opacity', '1');
   for (let i = 0; i < 3; i++) {
     const set = sets.nth(i);
-    await user.tap(`${i + 1}세트 운동명`, set.getByLabel('운동명'));
+    await user.tap(`set ${i + 1} exercise`, set.getByLabel('Exercise name'));
     await user.type(exercise);
     // The weight starts at 0. Tapping the field's right end puts the caret after it in both
     // versions (left-aligned before #105, centred after), so one backspace clears it.
-    const field = set.getByLabel('총중량 kg', { exact: true });
+    const field = set.getByLabel('Total weight kg', { exact: true });
     const box = (await field.boundingBox())!;
-    await user.tap(`${i + 1}세트 총중량`, field, { x: box.width - 6, y: box.height / 2 });
+    await user.tap(`set ${i + 1} weight`, field, { x: box.width - 6, y: box.height / 2 });
     await user.press('Backspace');
     await user.type(weight);
     // Before #105 the number field put the 0 back after the backspace and showed "060",
     // still read as 60; the same script runs on both versions, so compare the number.
     await expect.poll(async () => Number(await field.inputValue())).toBe(Number(weight));
     // Reps keep the default 10.
-    const done = set.getByRole('button', { name: `${i + 1}세트 완료` });
-    await user.tap(`${i + 1}세트 완료`, done);
+    const done = set.getByRole('button', { name: `Set ${i + 1} done` });
+    await user.tap(`set ${i + 1} done`, done);
     await expect(done).toHaveAttribute('aria-pressed', 'true');
   }
   const response = page.waitForResponse(
     (r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/workouts',
   );
-  await user.tap('저장', editor.getByRole('button', { name: '기록 저장하기' }));
+  await user.tap('save', editor.getByRole('button', { name: 'Save record' }));
   const created = await response;
   // Registered for cleanup before any later check can fail.
   if (created.status() === 201) saved = ((await created.json()) as { id: number }).id;

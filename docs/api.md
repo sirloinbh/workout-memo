@@ -4,7 +4,7 @@ The request and response rules of the Workout Memo API (`backend`). The source o
 
 ## Common rules
 
-- The base path is `/api`. The nginx of the web app (8101) forwards `/api` to the API container (3101). There is no login, and it is used on a local address that only the user can reach.
+- The base path is `/api`. The nginx of the web app (8101) forwards `/api` to the API container (3101). Every `/api` path except `/api/health` needs a session from the shared sign-in (`https://auth.daysofme.com`, #303): without one the response is 401 `{ "error": "unauthorized" }`, and 503 `{ "error": "auth_unavailable" }` when the sign-in service cannot be reached. Local development without `AUTH_INTERNAL_URL` runs without the sign-in.
 - Request and response bodies are JSON (UTF-8), and the default request size limit is 256KB. Only the backup restore request accepts up to 10MB (+64KB).
 - Dates are `YYYY-MM-DD` strings, and only dates that really exist are accepted. "Today" is based on the service time zone `Asia/Seoul`.
 - Weight (`weight`, `target_weight`, `base_weight`) is the total weight in kg including the machine base weight. It is 0 or more and 99999 or less, and a base weight that could not be confirmed is `null`. Reps is an integer from 1 to 1000.
@@ -31,6 +31,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 | Method | Path                               | Description                                                                                                         |
 | ------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/api/health`                      | DB connection check. `{ "status": "ok" }`                                                                           |
+| GET    | `/api/me`                          | The signed-in user. `{ "user": { id, email, name, image } }`                                                        |
 | GET    | `/api/brands`                      | Brand list (by id)                                                                                                  |
 | GET    | `/api/official-machine-weights`    | Manufacturer official starting resistance reference values. `?brand=` optional                                      |
 | GET    | `/api/machines`                    | Machine list with the linked official reference values (newest first)                                               |

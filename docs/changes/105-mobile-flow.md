@@ -52,7 +52,7 @@ This fills the two #105 completion criteria.
 
 ## Remaining work
 
-- The 2 extra scrolls were accepted for this PR by user decision (2026-11-10). Reducing them is split into [#268](https://github.com/sirloinbh/workout-memo/issues/268) (shrink the 390px set cards to 3 scrolls or fewer). Options are shrinking the set card height (for example the +/- button size and header row below 480px) or moving focus to the next set's field after done.
+- The 2 extra scrolls were accepted for this PR by user decision (2026-11-10). Reducing them is split into [#268](https://github.com/sirloinbh/workout-memo/issues/268) (shrink the 390px set cards to 3 scrolls or fewer). Options are shrinking the set card height (for example the +/- button size and header row below 480px) or moving focus to the next set's field after done. Done in [#268](268-compact-set-cards.md): names beside the fields below 480px and a one-line memo bring it back to 3 scrolls.
 
 ## Tests
 

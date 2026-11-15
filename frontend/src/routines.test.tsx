@@ -284,6 +284,9 @@ test('routine editor exposes all five splits and keeps a failed save available f
   expect(screen.getByRole('textbox', { name: 'Routine name' })).toHaveValue(
     'Preserved after failure',
   );
+  // Cancelling closes the draft and its error with it.
+  await ui.click('Cancel');
+  expect(screen.queryByRole('alert')).toBeNull();
 });
 
 test('new routine requires explicit manual amounts and removes only the selected duplicate body part', async () => {

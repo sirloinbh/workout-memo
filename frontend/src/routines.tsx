@@ -882,7 +882,11 @@ export function Routines() {
                 type="button"
                 variant="outline"
                 disabled={saving}
-                onClick={() => setDraft(null)}
+                onClick={() => {
+                  // A failed save's error belongs to the closed draft.
+                  setError('');
+                  setDraft(null);
+                }}
               >
                 Cancel
               </Button>

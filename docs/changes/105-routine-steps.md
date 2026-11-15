@@ -69,3 +69,16 @@ Not applied:
 - `save()` in the tests waits 450ms in real time; it cannot make a test flaky, only slower.
 
 Checks after the fixes: `npm run test -w frontend -- routines routine loading` 29 passed; `lint` and `typecheck` passed.
+
+## Review round 2
+
+No blocking findings; the three round 1 fixes were confirmed (the two error banners never show together, and every error source still shows). Applied:
+
+- Cancel also clears the error, so a failed save's message does not move to the top of the page after the draft closes. Test: the failed-save test cancels and checks no alert is left.
+
+Not applied:
+
+- "View plan" while a draft is open still replaces the draft when the plan arrives, as before this PR. Blocking it or asking first changes how the page behaves and is left as a separate decision.
+- A server error stays in the form across Previous and Next until the next save; it may be about an earlier step.
+
+Checks: `npm run test -w frontend -- routines` 13 passed; `lint` and `typecheck` passed. No third review.

@@ -147,7 +147,7 @@ for (const { width, height } of touchWidths) {
       expect(await violations(form), 'Step 2').toEqual([]);
       await next.click();
       await step(3);
-      await page.getByRole('textbox', { name: 'Exercise name' }).fill('Squat');
+      await page.getByRole('combobox', { name: 'Exercise name' }).fill('Squat');
       await page.getByLabel('Current total weight (kg, including machine base weight)').fill('100');
       await page.getByLabel('Current reps').fill('8');
       expect(await violations(form), 'Step 3').toEqual([]);

@@ -5,12 +5,14 @@ import { AlertBanner } from './components/alert-banner';
 import { Button } from './components/ui/button';
 import { Card, CardTitle } from './components/ui/card';
 import { Checkbox } from './components/ui/checkbox';
+import { Combobox } from './components/ui/combobox';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { defaultWeightStep } from './contract';
+import { SimilarNameHint } from './exercise-names';
 import { bodyPartLabel, plural } from './labels';
 import { cn } from './lib/utils';
 import { byWeek, kindLabel, previewTargets } from './progression';
@@ -241,7 +243,8 @@ const goalLabel = (w: Week) =>
     ? `Deload · ${w.deload_metric === 'weight' ? 'Total weight kg' : w.deload_metric === 'sets' ? 'Sets' : 'Reps'} -${w.amount}`
     : `${w.kind === 'increase_weight' ? 'Total weight kg' : 'Reps'} +${w.amount}`;
 
-export function Routines() {
+// #124: exercise name candidates come from the page (GET /api/exercise-names plus local names).
+export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly string[] }) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selected, setSelected] = useState<Plan | null>(null);
   const [draft, setDraft] = useState<Plan | null>(null);
@@ -670,17 +673,30 @@ export function Routines() {
                       className="mt-3 grid grid-cols-2 items-end gap-3 border-t pt-3 md:grid-cols-3"
                       key={j}
                     >
-                      <Label className={cn(fieldLabel, 'col-span-2 md:col-span-1')}>
-                        Exercise name
-                        <Input
-                          className={touchText}
-                          required
-                          maxLength={120}
+                      {/* The hint stays in the name's grid cell. The row aligns cells at the bottom, so on
+                          wide screens name and Machine (one-line labels) align at the top instead and a
+                          shown hint does not lift the name field above Machine. */}
+                      <div className="col-span-2 md:col-span-1 md:self-start">
+                        <Label className={fieldLabel}>
+                          Exercise name
+                          {/* #124: the same suggestions as the journal and goals. */}
+                          <Combobox
+                            className={touchText}
+                            required
+                            maxLength={120}
+                            value={ex.exercise}
+                            options={exerciseNames}
+                            listLabel="Previously used names"
+                            onValueChange={(name) => setExercise(i, s, j, { exercise: name })}
+                          />
+                        </Label>
+                        <SimilarNameHint
                           value={ex.exercise}
-                          onChange={(e) => setExercise(i, s, j, { exercise: e.target.value })}
+                          names={exerciseNames}
+                          onReplace={(name) => setExercise(i, s, j, { exercise: name })}
                         />
-                      </Label>
-                      <Label className={cn(fieldLabel, 'col-span-2')}>
+                      </div>
+                      <Label className={cn(fieldLabel, 'col-span-2 md:self-start')}>
                         Machine
                         <select
                           className={nativeSelect}

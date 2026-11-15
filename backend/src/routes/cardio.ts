@@ -1,8 +1,8 @@
-import type express from 'express';
+import express from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
-import { cardioKinds, cardioSessionSchemaFor, date } from '../domain.js';
+import { cardioKinds, cardioSessionObject, cardioSessionSchemaFor, date } from '../domain.js';
 import { parseId, sendError } from '../standard/http.js';
 
 // #114: pace and speed are never stored. They are computed here from the stored duration (whole
@@ -153,5 +153,125 @@ export function registerCardioRoutes(app: express.Express, pool: Pool, today: ()
       return;
     }
     res.json({ ok: true });
+  });
+}
+
+// #119: activities read from files, saved together. Every row is checked first; if any row is
+// invalid or was imported before (same source and external id, in the table or twice in the
+// request), nothing is saved and each such row's reason comes back by its index, so the preview
+// can show it next to the row (2026-11-08 user decision 3). Cross-source look-alikes are only
+// candidates the preview asks about; they are not refused here.
+export const cardioImportLimit = 200;
+export const cardioImportRequest = z.object({
+  sessions: z
+    .array(z.unknown(), { error: 'Send the cardio records to import (sessions) as an array' })
+    .min(1, 'Select at least 1 cardio record to import')
+    .max(cardioImportLimit, `You can import up to ${cardioImportLimit} cardio records at a time`),
+});
+// The same body with the row schema spelled out, for the OpenAPI document.
+export const cardioImportDocument = z.object({
+  sessions: z.array(cardioSessionObject).min(1).max(cardioImportLimit),
+});
+export type CardioImportProblem = { index: number; message: string };
+const importedOnly = 'Imported records need a source (file, garmin or nike) and an external ID';
+const shownIssues = 3;
+
+function importRows(body: unknown, today: string) {
+  const { sessions } = cardioImportRequest.parse(body);
+  const schema = cardioSessionSchemaFor(today);
+  const rows: Cardio[] = [];
+  const problems: CardioImportProblem[] = [];
+  const seen = new Map<string, number>();
+  sessions.forEach((input, index) => {
+    const parsed = schema.safeParse(input);
+    if (!parsed.success) {
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      problems.push({ index, message: messages.slice(0, shownIssues).join(', ') });
+      return;
+    }
+    const row = parsed.data;
+    if (row.source === 'manual' || row.external_id === null) {
+      problems.push({ index, message: importedOnly });
+      return;
+    }
+    const key = `${row.source}\u0000${row.external_id}`;
+    const first = seen.get(key);
+    if (first !== undefined) {
+      problems.push({ index, message: `Same activity as row ${first + 1}` });
+      return;
+    }
+    seen.set(key, index);
+    rows[index] = row;
+  });
+  return { rows, problems };
+}
+
+function sendImportProblems(
+  res: express.Response,
+  status: number,
+  problems: CardioImportProblem[],
+) {
+  const rows = [...problems].sort((a, b) => a.index - b.index);
+  res.status(status).json({
+    error: `${rows.length} ${rows.length === 1 ? 'record has a problem' : 'records have problems'}, so nothing was saved`,
+    rows,
+  });
+}
+
+// A row may carry a 2000-character memo (about 6 KB of Hangul in JSON), so 200 rows do not fit
+// the app-wide 256kb body limit. This route parses its own body and is registered before that
+// parser (app.ts), like the backup routes.
+export const cardioImportMaxBytes = 2 * 1024 * 1024;
+export function registerCardioImportRoute(
+  app: express.Express,
+  pool: Pool,
+  today: () => string,
+  json = express.json({ limit: cardioImportMaxBytes }),
+) {
+  app.post('/api/cardio-sessions/import', json, async (req, res) => {
+    const { rows, problems } = importRows(req.body, today());
+    if (problems.length) {
+      sendImportProblems(res, 400, problems);
+      return;
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query<{ source: string; external_id: string }>(
+        `SELECT source, external_id FROM cardio_sessions
+          WHERE (source, external_id) IN (SELECT * FROM unnest($1::text[], $2::text[]))`,
+        [rows.map((r) => r.source), rows.map((r) => r.external_id)],
+      );
+      const taken = new Set(existing.rows.map((r) => `${r.source}\u0000${r.external_id}`));
+      const repeated = rows.flatMap((r, index) =>
+        taken.has(`${r.source}\u0000${r.external_id}`)
+          ? [{ index, message: 'This activity was already imported' }]
+          : [],
+      );
+      if (repeated.length) {
+        await client.query('ROLLBACK');
+        sendImportProblems(res, 409, repeated);
+        return;
+      }
+      const saved = [];
+      for (const row of rows)
+        saved.push(
+          (
+            await client.query(
+              `INSERT INTO cardio_sessions(${cardioFields}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING ${cardioColumns}`,
+              values(row),
+            )
+          ).rows[0],
+        );
+      await client.query('COMMIT');
+      res.status(201).json({ sessions: saved });
+    } catch (e) {
+      // A concurrent import of the same activity ends in the unique index (409 by appErrors);
+      // an unknown workout_id in its foreign key (400). Either way nothing is kept.
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw e;
+    } finally {
+      client.release();
+    }
   });
 }

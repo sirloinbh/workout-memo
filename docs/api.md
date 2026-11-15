@@ -64,6 +64,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 | GET    | `/api/cardio-sessions/records`     | Cardio personal records (all time): longest distance per kind, best running 5km and 10km times                      |
 | GET    | `/api/cardio-sessions/:id`         | One cardio record                                                                                                   |
 | POST   | `/api/cardio-sessions`             | Create a cardio record → 201. The same source and external ID is 409                                                |
+| POST   | `/api/cardio-sessions/import`      | Save imported cardio records in bulk (all or nothing) → 201. Rejected rows are in `rows`                            |
 | PUT    | `/api/cardio-sessions/:id`         | Replace a whole cardio record (transaction). Omitted optional values become `null`                                  |
 | DELETE | `/api/cardio-sessions/:id`         | Delete a cardio record → `{ ok: true }`                                                                             |
 | GET    | `/api/export/cardio.csv`           | CSV for cardio analysis (`?from&to` optional). Cannot be used for restore                                           |
@@ -179,6 +180,38 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 - The response is the saved fields plus `id`, `created_at`, `updated_at`, and the calculated values `pace_sec_per_km` (seconds per km, 1 decimal place) and `speed_kmh` (km/h, 2 decimal places). The calculated values are not stored and are calculated with SQL on query, and both are `null` if there is no distance.
 - The list `GET /api/cardio-sessions?from&to[&kind]` is ordered by date and start time, newest first. A record that does not exist is 404 "유산소 기록을 찾을 수 없습니다" (cardio record not found), and a bad path ID is 400 "유산소 기록 ID가 올바르지 않습니다" (the cardio record ID is not valid).
 - Laps (intervals) and GPS routes are not stored (summary values only).
+
+### Cardio record import `POST /api/cardio-sessions/import` (#119)
+
+```json
+{
+  "sessions": [
+    {
+      "date": "2026-11-02",
+      "start_time": "07:10",
+      "kind": "running",
+      "duration_sec": 1210,
+      "distance_km": 4.006,
+      "source": "file",
+      "external_id": "2026-11-01T22:10:05Z"
+    }
+  ]
+}
+```
+
+- Saves records read from activity files (TCX, GPX) in one request. The browser reads the file and sends only summary values; the original file is never sent to the server.
+- Each row is validated with the same rules as `POST /api/cardio-sessions`. The source must not be `manual`, and `external_id` is required. A request holds 1–200 rows. Only this path has a 2MB body limit (other paths: 256kb) so that rows with long notes (up to 2000 characters) fit. Over the limit, the response is 413 "Request size limit exceeded (imports up to 2 MB at a time).".
+- All rows are saved in one transaction, or none are (user decision 3, 2026-11-08). Success is 201 `{ "sessions": [saved records…] }`.
+- On rejection nothing is saved, and the reason is returned per row number (`index`, from 0). A validation failure or the same activity twice in the request (same `source` and `external_id`) is 400; a source and external ID that is already saved is 409.
+
+```json
+{
+  "error": "1 record has a problem, so nothing was saved",
+  "rows": [{ "index": 0, "message": "This activity was already imported" }]
+}
+```
+
+- Duplicate candidates from a different source (start within ±2 minutes, or the same date when there is no start time; distance within ±1%, or duration within ±1% when there is no distance) are not rejected. The screen asks about them in the preview, unchecked by default, and saves them if the user selects them.
 
 ### Cardio personal records `GET /api/cardio-sessions/records` (#115)
 

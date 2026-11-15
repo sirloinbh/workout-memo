@@ -418,3 +418,152 @@ test('records: registered before /:id, three queries, ±2% window in NUMERIC, lo
     },
   );
 });
+
+// #119: POST /api/cardio-sessions/import saves every row or none.
+const imported = (external_id: string, extra = {}) => ({
+  ...valid,
+  source: 'file',
+  external_id,
+  ...extra,
+});
+type ImportAnswer = { error?: string; rows?: { index: number; message: string }[] };
+
+test('an import refuses invalid rows by index before any query', async () => {
+  await withApi(
+    () => ({ rows: [], rowCount: 0 }),
+    async (base, calls) => {
+      const answer = await call(`${base}/import`, 'POST', {
+        sessions: [
+          imported('a'),
+          imported('b', { duration_sec: 0 }),
+          { ...valid },
+          imported('a'),
+          imported('c', { date: '2026-11-09' }),
+        ],
+      });
+      assert.deepEqual(answer, {
+        status: 400,
+        body: {
+          error: '4 records have problems, so nothing was saved',
+          rows: [
+            {
+              index: 1,
+              message:
+                'Enter a workout time as a whole number of seconds from 1 to 86400 (24 hours)',
+            },
+            {
+              index: 2,
+              message: 'Imported records need a source (file, garmin or nike) and an external ID',
+            },
+            { index: 3, message: 'Same activity as row 1' },
+            { index: 4, message: 'The cardio record date cannot be after today' },
+          ],
+        } satisfies ImportAnswer,
+      });
+      for (const [body, error] of [
+        [{}, 'Send the cardio records to import (sessions) as an array'],
+        [{ sessions: [] }, 'Select at least 1 cardio record to import'],
+        [
+          { sessions: Array.from({ length: 201 }, (_, i) => imported(`x${i}`)) },
+          'You can import up to 200 cardio records at a time',
+        ],
+      ] as const)
+        assert.deepEqual(await call(`${base}/import`, 'POST', body), {
+          status: 400,
+          body: { error },
+        });
+      assert.equal(calls.length, 0);
+    },
+  );
+});
+
+test('an import of an activity already saved rolls back and names the row', async () => {
+  await withApi(
+    (sql) =>
+      sql.includes('unnest')
+        ? { rows: [{ source: 'file', external_id: 'b' }], rowCount: 1 }
+        : { rows: [], rowCount: 0 },
+    async (base, calls, released) => {
+      const answer = await call(`${base}/import`, 'POST', {
+        sessions: [imported('a'), imported('b')],
+      });
+      assert.deepEqual(answer, {
+        status: 409,
+        body: {
+          error: '1 record has a problem, so nothing was saved',
+          rows: [{ index: 1, message: 'This activity was already imported' }],
+        },
+      });
+      assert.deepEqual(
+        calls.map((c) => c.sql.trim().split(/\s/)[0]),
+        ['BEGIN', 'SELECT', 'ROLLBACK'],
+      );
+      assert.deepEqual(calls[1].params, [
+        ['file', 'file'],
+        ['a', 'b'],
+      ]);
+      assert.equal(released(), 1);
+    },
+  );
+});
+
+test('an import saves every row in one transaction and answers them in order', async () => {
+  let id = 0;
+  await withApi(
+    (sql, params) =>
+      sql.startsWith('INSERT')
+        ? { rows: [{ id: ++id, external_id: params![13] }], rowCount: 1 }
+        : { rows: [], rowCount: 0 },
+    async (base, calls, released) => {
+      const answer = await call(`${base}/import`, 'POST', {
+        sessions: [imported('a'), imported('b', { distance_km: 4.006, start_time: '07:10' })],
+      });
+      assert.deepEqual(answer, {
+        status: 201,
+        body: {
+          sessions: [
+            { id: 1, external_id: 'a' },
+            { id: 2, external_id: 'b' },
+          ],
+        },
+      } as never);
+      assert.deepEqual(
+        calls.map((c) => c.sql.trim().split(/\s/)[0]),
+        ['BEGIN', 'SELECT', 'INSERT', 'INSERT', 'COMMIT'],
+      );
+      assert.equal(released(), 1);
+    },
+  );
+});
+
+test('an import of 200 rows with full memos fits its own body limit, beyond the app-wide 256kb', async () => {
+  let id = 0;
+  await withApi(
+    (sql) =>
+      sql.startsWith('INSERT') ? { rows: [{ id: ++id }], rowCount: 1 } : { rows: [], rowCount: 0 },
+    async (base) => {
+      // Three UTF-8 bytes per character (U+AC00, a Hangul syllable), the worst case for the size.
+      const memo = String.fromCodePoint(0xac00).repeat(2000);
+      const sessions = Array.from({ length: 200 }, (_, i) => imported(`m${i}`, { memo }));
+      // About 1.2 MB of UTF-8, over the app-wide 256kb limit.
+      assert.ok(Buffer.byteLength(JSON.stringify({ sessions })) > 1024 * 1024);
+      const answer = await call(`${base}/import`, 'POST', { sessions });
+      assert.equal(answer.status, 201);
+      assert.equal((answer.body as { sessions: unknown[] }).sessions.length, 200);
+    },
+  );
+});
+
+test('an import over its 2MB body limit names that limit', async () => {
+  await withApi(
+    () => ({ rows: [], rowCount: 0 }),
+    async (base, calls) => {
+      const sessions = [imported('big', { memo: 'x'.repeat(3 * 1024 * 1024) })];
+      assert.deepEqual(await call(`${base}/import`, 'POST', { sessions }), {
+        status: 413,
+        body: { error: 'Request size limit exceeded (imports up to 2 MB at a time).' },
+      });
+      assert.equal(calls.length, 0);
+    },
+  );
+});

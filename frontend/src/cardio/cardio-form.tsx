@@ -26,7 +26,7 @@ import {
   fieldErrors,
 } from '../contract';
 import { cn } from '../lib/utils';
-import { type CardioSession, saveCardioSession } from './api';
+import { type CardioBody, type CardioSession, saveCardioSession } from './api';
 import {
   cardioKindLabels,
   effortLabels,
@@ -36,6 +36,10 @@ import {
   parseDuration,
   splitDuration,
 } from './format';
+
+// What the form edits: a stored session, or (with `apply`) a row of the import preview that
+// has no id yet.
+type FormSession = CardioBody & { id?: number };
 
 // A strength workout the session can be linked to.
 export type LinkableWorkout = { id: number; date: string; title: string };
@@ -74,7 +78,7 @@ function convertDistance(text: string, from: CardioKind, to: CardioKind) {
   return String(distanceUnit(to) === 'm' ? kmToMetres(value) : metresToKm(value));
 }
 
-function initialDraft(session: CardioSession | undefined, date: string): Draft {
+function initialDraft(session: FormSession | undefined, date: string): Draft {
   if (!session)
     return {
       kind: 'running',
@@ -118,6 +122,8 @@ const moreKeys = [...extras.map((e) => e.key), 'start_time', 'workout_id'];
 // effort and memo show at first; "Show more fields" reveals the rest (decision 6). The input is
 // checked with the server's schema before sending, and a server refusal (409 duplicate, 400)
 // stays in the form so nothing typed is lost.
+// #119: with `apply` the form edits a row of the file import preview instead: it checks the
+// same rules, hands the values back and sends nothing (the preview saves all rows together).
 export function CardioForm({
   session,
   date,
@@ -125,14 +131,16 @@ export function CardioForm({
   workouts,
   close,
   onSaved,
+  apply,
 }: {
-  session?: CardioSession;
+  session?: FormSession;
   // The date a new session starts with.
   date: string;
   today: string;
   workouts: readonly LinkableWorkout[];
   close: () => void;
-  onSaved: (session: CardioSession) => void;
+  onSaved?: (session: CardioSession) => void;
+  apply?: (body: CardioBody) => void;
 }) {
   const [draft, setDraft] = useState(() => initialDraft(session, date));
   // An edited session that already has any of the hidden values opens with them shown.
@@ -206,10 +214,15 @@ export function CardioForm({
       return;
     }
     if (!checked.success) return;
+    if (apply) {
+      apply(checked.data);
+      return;
+    }
     setSaving(true);
     setServerError('');
     try {
-      onSaved(await saveCardioSession(checked.data, session?.id));
+      const saved = await saveCardioSession(checked.data, session?.id);
+      onSaved?.(saved);
     } catch (e) {
       setServerError((e as Error).message);
     } finally {
@@ -224,7 +237,10 @@ export function CardioForm({
   ] as const;
 
   return (
-    <Modal title={session ? 'Edit cardio record' : 'New cardio record'} close={close}>
+    <Modal
+      title={apply ? 'Edit imported record' : session ? 'Edit cardio record' : 'New cardio record'}
+      close={close}
+    >
       <form noValidate onSubmit={(e) => void submit(e)}>
         <fieldset disabled={saving} className="m-0 min-w-0 border-0 p-0">
           <div className="grid gap-x-3 sm:grid-cols-2">
@@ -423,7 +439,7 @@ export function CardioForm({
         <ModalFooter>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save cardio record'}
+              {apply ? 'Apply to preview' : saving ? 'Saving…' : 'Save cardio record'}
             </Button>
             <Button type="button" variant="ghost" disabled={saving} onClick={close}>
               Cancel

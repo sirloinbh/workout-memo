@@ -42,5 +42,10 @@ export function appErrors(
     sendError(res, 413, 'Request size limit exceeded (backup files up to 10 MB).');
     return;
   }
+  // #119: the cardio import has its own 2MB limit.
+  if (error.status === 413 && req.path === '/api/cardio-sessions/import') {
+    sendError(res, 413, 'Request size limit exceeded (imports up to 2 MB at a time).');
+    return;
+  }
   next(err);
 }

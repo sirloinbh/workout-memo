@@ -384,3 +384,56 @@ test(
     });
   },
 );
+
+test(
+  'PostgreSQL cardio import (#119): all rows or none, already imported rows named by index',
+  { skip: !url },
+  async () => {
+    await isolated(async (api, pool) => {
+      const file = (external_id: string, date = '2026-11-02') => ({
+        ...run,
+        date,
+        source: 'file',
+        external_id,
+      });
+      const count = async () =>
+        (await pool.query('SELECT count(*)::int n FROM cardio_sessions')).rows[0].n as number;
+
+      const first = await api('/cardio-sessions/import', 'POST', {
+        sessions: [file('2026-11-01T22:10:05Z'), file('2026-11-03T21:30:00Z', '2026-11-04')],
+      });
+      assert.equal(first.status, 201);
+      const saved = (first.data as unknown as { sessions: Row[] }).sessions;
+      assert.deepEqual(
+        saved.map((s) => [s.external_id, s.date, s.pace_sec_per_km]),
+        [
+          ['2026-11-01T22:10:05Z', '2026-11-02', 360],
+          ['2026-11-03T21:30:00Z', '2026-11-04', 360],
+        ],
+      );
+
+      // A new activity with one already imported: nothing is saved, the old row is named.
+      const again = await api('/cardio-sessions/import', 'POST', {
+        sessions: [file('2026-11-05T21:00:00Z', '2026-11-06'), file('2026-11-03T21:30:00Z')],
+      });
+      assert.deepEqual(again, {
+        status: 409,
+        data: {
+          error: '1 record has a problem, so nothing was saved',
+          rows: [{ index: 1, message: 'This activity was already imported' }],
+        },
+      });
+      assert.equal(await count(), 2);
+
+      // A failure inside the transaction (an unknown workout link) also keeps nothing.
+      const broken = await api('/cardio-sessions/import', 'POST', {
+        sessions: [file('2026-11-05T21:00:00Z', '2026-11-06'), { ...file('z'), workout_id: 999 }],
+      });
+      assert.deepEqual(broken, {
+        status: 400,
+        data: { error: 'The strength journal to link does not exist' },
+      });
+      assert.equal(await count(), 2);
+    });
+  },
+);

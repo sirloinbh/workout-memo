@@ -15,4 +15,5 @@
 ## Verification
 
 - `npm run check` steps run locally: format, lint, contract, typecheck, frontend tests (61 files, 333 pass, 4 skipped), skills, docs, build all pass. Backend: 253 tests pass, including `sign-in.test.ts` and `openapi.test.ts`; the tests that need PostgreSQL ran in CI only (no local database).
+- `node .standards/lockfiles.mjs --write` aligned `backend/` and `frontend/package-lock.json` (Docker builds); `node .standards/check.mjs` passes.
 - `/api/health` stays public, so `deploy/notify.sh` and `remote-deploy.sh` health checks keep working.

@@ -33,7 +33,7 @@ describe('activity files (#119)', () => {
         elevation_gain_m: null,
         // Lap/Cadence is absent; the running cadence extension is not read.
         avg_cadence: null,
-        memo: '아침 한강',
+        memo: 'Morning Han River',
       },
     ]);
   });
@@ -125,14 +125,14 @@ describe('activity files (#119)', () => {
   it('reports a damaged or foreign file by name', () => {
     expect(() => parseActivityFile('broken.tcx', broken)).toThrow(ActivityFileError);
     expect(() => parseActivityFile('broken.tcx', broken)).toThrow(
-      /broken\.tcx: 파일을 읽지 못했습니다/,
+      /broken\.tcx: Could not read the file/,
     );
-    expect(() => parseActivityFile('ride.gpx', run)).toThrow('ride.gpx: GPX 파일이 아닙니다.');
+    expect(() => parseActivityFile('ride.gpx', run)).toThrow('ride.gpx: Not a GPX file.');
     expect(() => parseActivityFile('a.fit', 'binary')).toThrow(
-      'a.fit: TCX·GPX 파일만 가져올 수 있습니다.',
+      'a.fit: Only TCX and GPX files can be imported.',
     );
     expect(() => parseActivityFile('empty.gpx', '<gpx><trk><trkseg></trkseg></trk></gpx>')).toThrow(
-      'empty.gpx: 기록 시각이 없습니다.',
+      'empty.gpx: No record timestamps found.',
     );
   });
 

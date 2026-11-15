@@ -419,8 +419,8 @@ test(
       assert.deepEqual(again, {
         status: 409,
         data: {
-          error: '1건에 문제가 있어 아무것도 저장하지 않았습니다',
-          rows: [{ index: 1, message: '이미 가져온 활동입니다' }],
+          error: '1 record has a problem, so nothing was saved',
+          rows: [{ index: 1, message: 'This activity was already imported' }],
         },
       });
       assert.equal(await count(), 2);
@@ -431,7 +431,7 @@ test(
       });
       assert.deepEqual(broken, {
         status: 400,
-        data: { error: '연결할 근력 일지가 존재하지 않습니다' },
+        data: { error: 'The strength journal to link does not exist' },
       });
       assert.equal(await count(), 2);
     });

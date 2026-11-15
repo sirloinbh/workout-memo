@@ -34,7 +34,7 @@
         <Intensity>Active</Intensity>
         <TriggerMethod>Manual</TriggerMethod>
       </Lap>
-      <Notes>아침 한강</Notes>
+      <Notes>Morning Han River</Notes>
       <Creator xsi:type="Device_t"><Name>Forerunner 265</Name></Creator>
     </Activity>
   </Activities>

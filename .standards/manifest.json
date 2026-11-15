@@ -1,5 +1,5 @@
 {
-  "centralSha": "33d737bf7d53689d3c16730036236f6cd4188aed",
+  "centralSha": "162da42858972a7a9e321c6b7d1c3b690f112105",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -175,7 +175,7 @@
     },
     ".standards/check.mjs": {
       "mode": "full",
-      "sha256": "91ac23ba0d4e95ad4fb673d9c5b533947f048d96da2092d16f69572b49d4aa08",
+      "sha256": "94ad732bfdb58d7abb249b3c70d4675f7e71d34192a47e670990569fb39e7f35",
       "source": "scripts/standards-check.mjs"
     },
     ".standards/ioc-scan.mjs": {
@@ -383,7 +383,7 @@
     },
     "frontend/nginx.conf": {
       "mode": "full",
-      "sha256": "a9ff45edef782750023ec77ccf019ca285aea310c39695073caf3b3b5e082b61",
+      "sha256": "32d08032b659e1735e7f58e866adb29ba15229d36cb74ea74f044cb5726d2656",
       "source": "templates/app/frontend/nginx.conf.tmpl"
     },
     "frontend/package.json": {
@@ -829,6 +829,7 @@
     "db": {
       "name": "workout",
       "testName": "workout_test"
-    }
+    },
+    "host": "workout-memo.daysofme.com"
   }
 }

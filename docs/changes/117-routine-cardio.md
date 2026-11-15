@@ -58,3 +58,13 @@ No blocking findings. The reviewer confirmed the round 1 fixes, including checki
 
 - A deload is 80% of the unrounded week before, so a shown pair can look like 81% (48 → 39).
 - The preview says "goes up 10% a week", but a short target can repeat a shown value (4, 4, 5) because of rounding. This record already notes it.
+
+## Merge with main
+
+Merged `origin/main` (#316 session notes, #318 sign-in spinner) with no conflicts. Checks on the merged tree:
+
+| Command                                               | Result                          |
+| ----------------------------------------------------- | ------------------------------- |
+| `npm run test -w backend` (throwaway DB)              | 380 passed, 0 skipped           |
+| `npm run test -w frontend`                            | 66 files, 370 passed, 4 skipped |
+| `typecheck`, `contract:check`, `format:check`, `lint` | passed                          |

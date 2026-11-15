@@ -82,3 +82,7 @@ Not applied:
 - A server error stays in the form across Previous and Next until the next save; it may be about an earlier step.
 
 Checks: `npm run test -w frontend -- routines` 13 passed; `lint` and `typecheck` passed. No third review.
+
+## Merging main
+
+- Merged origin/main with #303 (shared sign-in: `app.tsx`, a new `@sirloinbh/auth-client` dependency) and #305. No conflicts and no overlap with `routines.tsx`. After `npm ci --ignore-scripts`, `npm run test -w frontend -- routines routine loading` passed (29).

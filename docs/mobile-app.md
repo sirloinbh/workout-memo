@@ -19,10 +19,26 @@
 | Access                      | `http://<fixed IP>`, limited only by the Lightsail firewall IP allow list ([deployment and operations](deployment.md)). No domain or HTTPS (#106)                                                       |
 | Authentication              | None (#107). A phone's IP changes, so the phone cannot connect without login                                                                                                                            |
 | PWA files                   | `manifest.webmanifest` (standalone, 192, 512 and maskable icons), `sw.js` (pages go to the network, offline shows a notice, caches only `/assets/`, does not touch `/api/`), `offline.html`, Apple icon |
-| Service worker registration | `main.tsx` registers `/sw.js` in a production build, but HTTP+IP is not a secure context, so it is not actually registered                                                                              |
+| Service worker registration | `service-worker.ts` registers `/sw.js` in a production build and shows a "new version" notice with a Reload button (#109). HTTP+IP is not a secure context, so on the server it is not registered yet   |
 | Important features          | Rest timer end notification and vibration (including when the screen is off), offline use in the gym, and later Garmin and Nike data (Health Connect, #118)                                             |
 
 About offline: the current service worker does not cache pages, so when offline you only see `offline.html`. "Recording offline in the gym" is web-side work that is separate from the choice of approach: an app shell cache and a save queue (draft preservation, #34). All three approaches use the same web code, so this work is reused in any of them.
+
+## PWA check on a localhost production build (#109, 2026-11-15)
+
+Lighthouse 12 no longer has PWA audits, so #109 checked these once in Chrome on a `npm run build -w frontend` build served from `http://localhost:5391` (a secure context), with a persistent profile at 390x844 and 1440x900. The `/api/` requests were answered by a stub.
+
+| Check                                      | Result                                                                                        |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `Page.getInstallabilityErrors` (CDP)       | No errors. `Page.getAppManifest` reported no manifest errors                                  |
+| Service worker registration                | Registered with scope `/` and controls the page                                               |
+| Cache contents                             | Only `/offline.html` and hashed `/assets/` files. No `/api/` response is cached               |
+| Offline navigation to `/journal`           | `offline.html` ("You are offline") is shown                                                   |
+| New version (changed `sw.js` in the build) | "A new version is available" appears with a Reload button; the page does not reload by itself |
+
+- An offline save of a workout now says "Cannot reach the server. Check your connection." (or that the server did not answer within 15 seconds) and that the input is kept as a draft on this device, instead of the browser's "Failed to fetch".
+- Notes for the next check: a Playwright `newContext` reports only `in-incognito`, so use a persistent profile. Chrome did not keep the service worker registration for a profile under a long path (the session scratchpad); a short path such as `%TEMP%\pwa109` worked.
+- Not checked yet: installing on a real phone and the production address. Both need HTTPS (#106).
 
 ## Comparison of candidates
 

@@ -313,17 +313,45 @@ const weightStep = 5;
 // #223: the save progress line ("Saving…", "Saved to server") as a polite Notice.
 const statusNotice = (text: string): NoticeValue | undefined =>
   text ? { kind: 'status', text } : undefined;
+// #109: the request never reached an answer from the app server (offline, server down behind the
+// proxy or the 15 s deadline), as opposed to an error the API returned. Its message replaces the
+// browser's "Failed to fetch".
+class Unreachable extends Error {}
 async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
+  const late = (cause: unknown) =>
+    controller.signal.aborted || (cause as Error).name === 'TimeoutError';
   try {
-    const res = await fetch('/api' + path, {
-      method,
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
+    let res: Response;
+    try {
+      res = await fetch('/api' + path, {
+        method,
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (cause) {
+      throw new Unreachable(
+        late(cause)
+          ? 'The server did not answer within 15 seconds.'
+          : 'Cannot reach the server. Check your connection.',
+        { cause },
+      );
+    }
+    let data;
+    try {
+      data = await res.json();
+    } catch (cause) {
+      if (late(cause))
+        throw new Unreachable('The server did not answer within 15 seconds.', { cause });
+      // A non-JSON 5xx is the proxy's page (for example 502 while the API restarts). Other
+      // non-JSON errors (such as a 401 page) did reach a server, so they are not Unreachable.
+      if (res.status >= 500)
+        throw new Unreachable(`The server is not answering (HTTP ${res.status}).`, { cause });
+      if (!res.ok) throw Error(`The request failed (HTTP ${res.status}).`, { cause });
+      throw cause;
+    }
     if (!res.ok) throw Error(data.error ?? 'The request failed');
     return data;
   } finally {
@@ -553,10 +581,12 @@ function Workspace() {
       if (value) localStorage.setItem(draftKey, JSON.stringify(value));
       else localStorage.removeItem(draftKey);
       setStorageWarning('');
+      return true;
     } catch {
       setStorageWarning(
         'Local storage error: saving or clearing the draft failed. If you reload, you may lose your input or see an older draft again.',
       );
+      return false;
     }
   }
   function setEditor(value: Partial<Workout> | null) {
@@ -605,6 +635,7 @@ function Workspace() {
     setSaveError('');
     const path = '/workouts' + (editor.id ? '/' + editor.id : '');
     const method = editor.id ? 'PUT' : 'POST';
+    let kept = false;
     try {
       const body = JSON.stringify(editor);
       const old = draft.current?.request;
@@ -612,7 +643,7 @@ function Workspace() {
         old?.body === body && old.path === path && old.method === method
           ? old
           : { key: retryKey(), body, path, method };
-      persist({ format: 1, savedAt: draft.current?.savedAt ?? Date.now(), editor, request });
+      kept = persist({ format: 1, savedAt: draft.current?.savedAt ?? Date.now(), editor, request });
       await api(path, method, editor, request.key);
       persist(null);
       setRecovery(null);
@@ -624,7 +655,10 @@ function Workspace() {
       setSaveState('Save failed · Unknown whether the server saved it');
       setSaveError(
         (e as Error).message +
-          ' Your input stays on screen. Retry or check the server record. Saving after changing the content is handled as a separate request.',
+          ' Your input stays on screen. Retry or check the server record. Saving after changing the content is handled as a separate request.' +
+          (e instanceof Unreachable && kept
+            ? ' It is also kept as a draft on this device, so you can restore it after a reload.'
+            : ''),
       );
     } finally {
       workoutSaving.current = false;

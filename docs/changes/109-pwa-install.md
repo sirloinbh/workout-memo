@@ -1,0 +1,75 @@
+# #109 PWA install support: new-version notice, offline save message, install check
+
+- Issue: [#109](https://github.com/sirloinbh/workout-memo/issues/109)
+- Branch: `feat/109-pwa-install`
+
+## Decisions (user, 2026-11-10, recorded in the issue)
+
+- When a new service worker takes over a page that an older one controlled, show "A new version is available" with a Reload button. Do not reload automatically.
+- Pages are not cached; offline shows `offline.html` as before. A failed save explains the lost connection and the kept draft instead of "Failed to fetch". The app shell cache waits for #106 and #107 (now #303).
+- Keep the hand-written `sw.js` (centrally managed); no `vite-plugin-pwa`.
+- Check one production build on localhost and record it here and in `docs/mobile-app.md`.
+- `/api/` is never cached, so sign-in answers (#303) always come from the server.
+
+## Changes
+
+- `frontend/src/service-worker.ts` (new): registers `/sw.js` and calls the notice on `controllerchange` only when the page was already controlled at load (the first install also fires `controllerchange` because `sw.js` claims open pages). The notice is a sonner toast with no time limit, a fixed id so it does not stack, and a Reload button.
+- `frontend/src/main.tsx`: uses `registerServiceWorker()` in production builds.
+- `frontend/src/app.tsx`: `api()` turns a fetch that never got an answer into an `Unreachable` error: "Cannot reach the server. Check your connection." or "The server did not answer within 15 seconds." A failed workout save adds that the input is kept as a draft on this device only when the draft was really written to local storage.
+- `frontend/index.html`: `mobile-web-app-capable`, `apple-mobile-web-app-capable`, `apple-mobile-web-app-title` ("Workout Log", the manifest `short_name`) and a black status bar. `theme-color` stays `#0a0a0a`.
+- `docs/mobile-app.md`: service worker row and the localhost check results.
+- Not changed: `sw.js`, `manifest.webmanifest`, `offline.html` and `nginx.conf` are centrally managed files.
+
+## Tests
+
+- `frontend/src/service-worker.test.tsx` (new, 4 tests)
+  - A controlled page gets the notice once per takeover; `register('/sw.js')` is called.
+  - The first install is not announced.
+  - The notice does not reload by itself; its Reload button calls `location.reload()`.
+  - `public/sw.js` run with stubs: GET, POST and navigation requests to `/api/` get no `respondWith` and touch no cache; a page navigation and an `/assets/` file are handled.
+- `frontend/src/workout-draft.test.tsx`
+  - New: an offline save shows "Cannot reach the server", the kept-draft note, no "Failed to fetch", and a reload offers Restore.
+  - New: with local storage writes failing, the kept-draft note is not shown.
+  - The deadline test now also checks "The server did not answer within 15 seconds".
+- `npm run test -w frontend -- src/service-worker.test.tsx src/workout-draft.test.tsx`: 2 files, 28 tests passed.
+- `npm run format:check`, `npm run lint`, `npm run typecheck`: passed.
+- `npm run check` (full) was stopped before it finished on 2026-11-15; CI `verify`, which runs it, passed on `e26ddf1`. The final run is in the review section.
+
+## Production build check on localhost (2026-11-15)
+
+`npm run build -w frontend`, served from `http://localhost:5391` by a small Node static server with stubbed `/api/` answers, driven by Playwright with the installed Chrome and a persistent profile.
+
+- `Page.getInstallabilityErrors`: no errors. `Page.getAppManifest`: no errors.
+- Service worker: scope `/`, controls the page.
+- Caches hold only `/offline.html` and `/assets/` files; no `/api/` entry.
+- Offline navigation to `/journal` shows `offline.html`.
+- After changing `VERSION` in the built `sw.js` and calling `registration.update()`, the notice "A new version is available" with Reload appeared at 390x844 and 1440x900 without a reload.
+
+## Review round 1 (2026-11-16)
+
+An independent read-only review found nothing blocking. Applied in the review fix commit:
+
+- suggestion: a tab opened for the first time (no controller at load) never announced later deploys.
+  egisterServiceWorker now always listens and skips only the first takeover of an uncontrolled page. Tests: each takeover of a controlled page is announced; the first install is not, a later deploy in the same tab is.
+- issue (non-blocking): a non-JSON error page (nginx 502 while the API is down) showed "Unexpected token '<'" and no draft note, and a timeout while reading the body showed the abort text. pi() now maps both to Unreachable ("The server is not answering (HTTP 502)." / the 15-second message). Test: a 502 HTML answer on save shows the HTTP 502 message and the draft note.
+- nitpick not applied: the TimeoutError name check stays, because a fetch that times out on its own (and the test double) reports that name.
+- Related tests after the fix:
+  pm run test -w frontend -- src/service-worker.test.tsx src/workout-draft.test.tsx: 2 files, 29 tests passed.
+
+## Review round 2 (2026-11-16)
+
+Both round 1 fixes were confirmed correct and tested; nothing blocking. Applied in the final fix commit (no third review, per the 2-round rule):
+
+- suggestion: every non-JSON error page was called "not answering", so an HTML 401 (for example a session that expired during a save, now that #303 sign-in is in main) would mislead. Only a 5xx page is now Unreachable; a non-JSON 4xx shows "The request failed (HTTP 401)." without the draft note. Test added for the 401 page.
+- After merging main (#303 sign-in, #304, #305)
+  pm ci was needed for @sirloinbh/auth-client. Then
+  pm run typecheck passed and
+  pm run test -w frontend -- src/service-worker.test.tsx src/workout-draft.test.tsx passed.
+- The full local
+  pm run check was stopped once by the system for low memory during the backend tests (format, lint, contract and typecheck had passed). CI erify runs the full check on the final head.
+
+## Limits and follow-up
+
+- Installing on a real phone and the production address need HTTPS (#106).
+- `offline.html` itself cannot mention drafts here because it is centrally managed; the draft note is in the app's save failure message.
+- The manifest `description` is a long internal sentence that an install dialog can show; raised as [project-standards#594](https://github.com/sirloinbh/project-standards/issues/594).

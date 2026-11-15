@@ -49,7 +49,13 @@ function mount(
       getRandomValues: real.getRandomValues.bind(real),
     });
   }
-  const state = { offline: false, timeout: false, loseResponse: false, conflict: false };
+  const state = {
+    offline: false,
+    timeout: false,
+    loseResponse: false,
+    conflict: false,
+    errorPage: 0,
+  };
   let records = structuredClone(initial);
   let holdMutation: Promise<void> | undefined;
   let signal: AbortSignal | undefined;
@@ -57,6 +63,11 @@ function mount(
     const requestSignal = signal;
     if (method === 'POST' || method === 'PUT') {
       if (state.offline) throw new TypeError('Failed to fetch');
+      if (state.errorPage)
+        return new Response(`<html>${state.errorPage}</html>`, {
+          status: state.errorPage,
+          headers: { 'Content-Type': 'text/html' },
+        });
       if (state.timeout) throw new DOMException('Request timed out', 'TimeoutError');
       const pending = holdMutation;
       holdMutation = undefined;
@@ -105,6 +116,9 @@ function mount(
     },
     offline() {
       state.offline = true;
+    },
+    errorPage(status: number) {
+      state.errorPage = status;
     },
     timeout() {
       state.timeout = true;
@@ -373,6 +387,7 @@ test('the request deadline aborts pending transport and permits an explicit retr
   }
   await saveFailed();
   expect(storageSize(), 'aborted request keeps draft').toBeGreaterThan(0);
+  expect(content()).toMatch(/The server did not answer within 15 seconds/);
   pending.resolve();
   await ui.user.click(matchingButton(/Retry/));
   await waitFor(() => expect(ui.mutations()).toHaveLength(2));
@@ -446,6 +461,54 @@ test('a failed save offers Retry save inside its alert banner', async () => {
   await ui.user.click(retry);
   await waitFor(() => expect(ui.mutations()).toHaveLength(2));
   await saved();
+});
+
+// #109: offline, the user reads why the save failed and that the draft survives a reload.
+test('an offline save explains the lost connection and the kept draft instead of "Failed to fetch"', async () => {
+  const ui = mount();
+  await fill(ui);
+  ui.offline();
+  submit();
+  await saveFailed();
+  expect(content()).toMatch(/Cannot reach the server\. Check your connection\./);
+  expect(content()).toMatch(/kept as a draft on this device/);
+  expect(content()).not.toMatch(/Failed to fetch/);
+  // The claim holds: a reload offers the same input back.
+  mount();
+  await loaded();
+  expect(recoverButtons().length).toBeGreaterThan(0);
+});
+
+// #109: nginx answers with an HTML 502 page while the API is down or restarting.
+test('a proxy error page reads as an unreachable server and keeps the draft', async () => {
+  const ui = mount();
+  await fill(ui);
+  ui.errorPage(502);
+  submit();
+  await saveFailed();
+  expect(content()).toMatch(/The server is not answering \(HTTP 502\)\./);
+  expect(content()).toMatch(/kept as a draft on this device/);
+  expect(content()).not.toMatch(/Unexpected token|JSON/);
+});
+
+test('a non-JSON 4xx page is a request error, not an unreachable server', async () => {
+  const ui = mount();
+  await fill(ui);
+  ui.errorPage(401);
+  submit();
+  await saveFailed();
+  expect(content()).toMatch(/The request failed \(HTTP 401\)\./);
+  expect(content()).not.toMatch(/not answering|kept as a draft on this device/);
+});
+
+test('an offline save does not promise a draft when local storage failed', async () => {
+  const ui = mount([], 'write');
+  await fill(ui);
+  ui.offline();
+  submit();
+  await saveFailed();
+  expect(content()).toMatch(/Cannot reach the server/);
+  expect(content()).not.toMatch(/kept as a draft on this device/);
 });
 
 test('cleanup failure keeps server acknowledgment separate from the local storage warning', async () => {

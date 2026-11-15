@@ -42,13 +42,13 @@ This skill applies to changes in `sirloinbh/workout-memo`. Do not apply this acc
 - Pass the PR body as a UTF-8 file. Include the problem and the behavior after the change, the main changes, the real check commands and results, evidence where possible for a screen change, and `Closes #<number>`. If there are no images, give the reason and the limits of the verification.
 - Check the GitHub Actions results and fix related failures. Say so for checks that are still running. If you changed code after creating the PR, re-run the affected checks and update the results in the docs and the PR.
 
-## 5. Automatic code review after the PR (at most 2 rounds)
+## 5. Automatic code review after the PR (1 or 2 rounds, more only while blocking findings remain)
 
 - **First review**: after opening the PR, run a read-only review that is separate from the authoring context (a separate agent, a review tool, and so on). Using the issue's done criteria and the whole PR diff as the baseline, look at correctness, regressions, security, missing tests, and the docs record.
 - **If there is nothing to fix**, end the review and go to step 6.
 - **If there is something to fix**, apply only the findings that belong in the scope of this PR. Make an additional commit that carries the related tests and docs record, and push.
 - **Second review**: check that the first findings were applied and look at the additional diff, and also look at the final whole PR diff. If there is nothing to fix, go to step 6.
-- **Second round of fixes**: apply the second findings in an additional commit. The review is at most 2 rounds, so do not do a third review; go to step 6.
+- **Second round of fixes**: apply the second findings in an additional commit. Stop after round 2 unless a blocking finding remains. If one does, fix it on the same branch and review again, repeating only while blocking findings remain (std-code-review section 8), then go to step 6.
 - **Split large fixes**: do not fix findings of the following kinds in this PR. Instead, create a new issue card in the step 1 format (problem, scope, done criteria). Leave the issue link in a PR comment and the docs record, and continue with this PR.
   - Features outside the requested scope
   - Design or data structure changes
@@ -58,7 +58,7 @@ This skill applies to changes in `sirloinbh/workout-memo`. Do not apply this acc
   - A defect that would break main if split off
   - A defect that risks security or data corruption
 - **Record**: leave the result of each review round in a PR comment and in the `docs/changes` record. Write the findings, the commit that applied them, the issues that were split off, and whether there was nothing to fix.
-- For a local worker job, the independent review before publishing (at most 2 rounds) stands in for this step. A job that is blocked by a second rejection is handled by the main agent under the second-round fix or issue-split rules of this step.
+- For a local worker job, the independent review before publishing (1 or 2 rounds) stands in for this step. A job that is blocked by a second rejection is handled by the main agent under the second-round fix or issue-split rules of this step.
 
 ## 6. Merge after CI passes
 

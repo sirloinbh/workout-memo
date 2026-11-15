@@ -11,8 +11,9 @@ These rules apply only to workout-memo. The shared instructions are in [AGENTS.m
 
 ## Work procedure (in addition to the shared procedure)
 
-- After opening a PR, go through **automatic code review at most 2 times**. If the review finds improvements, apply them in an additional commit. After the first round of fixes, get one more review; after the second round of fix commits, do not review again. If there are no improvements, go straight to the next step. Split a fix that is too large for this PR into a new issue card.
+- After opening a PR, **review it yourself 1 or 2 times** (more only while blocking findings remain, per std-code-review section 8). Fix findings on the same branch in additional commits between rounds, and post each round as a PR comment. If there are no findings, go straight to the next step. File a new issue card for a big problem outside this PR's scope instead of growing the PR.
 - **When every required CI check on the final head passes, the agent merges the PR without asking the user** (`--merge --match-head-commit <the SHA you verified>`). Merging to main is a production deploy, so check the deploy result after merging. Merge consecutive PRs in order: after the earlier PR is merged, merge `origin/main` into the next branch, resolve conflicts, get the tests and CI passing again, and then merge. Do not merge while a check is failing or running, bypass protection rules (for example `--admin`), approve your own PR, push directly to main, or force-push.
+- **Merge guards (project-standards ADR-0016):** if the PR's "Check before merging" lists an item that needs the user's own decision, ask the user and do not merge. Merging is not applying: real production or AWS changes (for example `terraform apply` or a manual deploy action) still need the user's OK. Merging to `main` deploys to production here, so the PR body must say so.
 
 ## Accounts and tools
 

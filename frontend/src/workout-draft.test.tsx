@@ -54,7 +54,7 @@ function mount(
     timeout: false,
     loseResponse: false,
     conflict: false,
-    badGateway: false,
+    errorPage: 0,
   };
   let records = structuredClone(initial);
   let holdMutation: Promise<void> | undefined;
@@ -63,9 +63,9 @@ function mount(
     const requestSignal = signal;
     if (method === 'POST' || method === 'PUT') {
       if (state.offline) throw new TypeError('Failed to fetch');
-      if (state.badGateway)
-        return new Response('<html>502 Bad Gateway</html>', {
-          status: 502,
+      if (state.errorPage)
+        return new Response(`<html>${state.errorPage}</html>`, {
+          status: state.errorPage,
           headers: { 'Content-Type': 'text/html' },
         });
       if (state.timeout) throw new DOMException('Request timed out', 'TimeoutError');
@@ -117,8 +117,8 @@ function mount(
     offline() {
       state.offline = true;
     },
-    badGateway() {
-      state.badGateway = true;
+    errorPage(status: number) {
+      state.errorPage = status;
     },
     timeout() {
       state.timeout = true;
@@ -483,12 +483,22 @@ test('an offline save explains the lost connection and the kept draft instead of
 test('a proxy error page reads as an unreachable server and keeps the draft', async () => {
   const ui = mount();
   await fill(ui);
-  ui.badGateway();
+  ui.errorPage(502);
   submit();
   await saveFailed();
   expect(content()).toMatch(/The server is not answering \(HTTP 502\)\./);
   expect(content()).toMatch(/kept as a draft on this device/);
   expect(content()).not.toMatch(/Unexpected token|JSON/);
+});
+
+test('a non-JSON 4xx page is a request error, not an unreachable server', async () => {
+  const ui = mount();
+  await fill(ui);
+  ui.errorPage(401);
+  submit();
+  await saveFailed();
+  expect(content()).toMatch(/The request failed \(HTTP 401\)\./);
+  expect(content()).not.toMatch(/not answering|kept as a draft on this device/);
 });
 
 test('an offline save does not promise a draft when local storage failed', async () => {

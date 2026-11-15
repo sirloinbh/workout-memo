@@ -345,9 +345,11 @@ async function api<T>(path: string, method = 'GET', body?: unknown, key?: string
     } catch (cause) {
       if (late(cause))
         throw new Unreachable('The server did not answer within 15 seconds.', { cause });
-      // A non-JSON error is the proxy's page (for example 502 while the API restarts).
-      if (!res.ok)
+      // A non-JSON 5xx is the proxy's page (for example 502 while the API restarts). Other
+      // non-JSON errors (such as a 401 page) did reach a server, so they are not Unreachable.
+      if (res.status >= 500)
         throw new Unreachable(`The server is not answering (HTTP ${res.status}).`, { cause });
+      if (!res.ok) throw Error(`The request failed (HTTP ${res.status}).`, { cause });
       throw cause;
     }
     if (!res.ok) throw Error(data.error ?? 'The request failed');

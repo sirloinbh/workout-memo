@@ -56,6 +56,18 @@ An independent read-only review found nothing blocking. Applied in the review fi
 - Related tests after the fix:
   pm run test -w frontend -- src/service-worker.test.tsx src/workout-draft.test.tsx: 2 files, 29 tests passed.
 
+## Review round 2 (2026-11-16)
+
+Both round 1 fixes were confirmed correct and tested; nothing blocking. Applied in the final fix commit (no third review, per the 2-round rule):
+
+- suggestion: every non-JSON error page was called "not answering", so an HTML 401 (for example a session that expired during a save, now that #303 sign-in is in main) would mislead. Only a 5xx page is now Unreachable; a non-JSON 4xx shows "The request failed (HTTP 401)." without the draft note. Test added for the 401 page.
+- After merging main (#303 sign-in, #304, #305)
+  pm ci was needed for @sirloinbh/auth-client. Then
+  pm run typecheck passed and
+  pm run test -w frontend -- src/service-worker.test.tsx src/workout-draft.test.tsx passed.
+- The full local
+  pm run check was stopped once by the system for low memory during the backend tests (format, lint, contract and typecheck had passed). CI erify runs the full check on the final head.
+
 ## Limits and follow-up
 
 - Installing on a real phone and the production address need HTTPS (#106).

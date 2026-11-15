@@ -617,3 +617,64 @@ test('opening a saved plan shows its button waiting (#173)', async () => {
   await screen.findByRole('region', { name: 'Manual 12-week routine' });
   expect(screen.getByRole('button', { name: 'View plan' })).toBeEnabled();
 });
+
+test('a split takes cardio items with 12 weekly targets that the plan keeps (#117)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('Create new routine');
+  await ui.change('Routine name', 'Cardio routine');
+  await ui.change('Start date', '2026-10-19');
+  await ui.toStep(3);
+  await ui.change('Exercise name', 'Squat');
+  await ui.change('Current total weight (kg, including machine base weight)', '100');
+  await ui.change('Current reps', '8');
+  await ui.click('Add cardio');
+  await ui.change('Week 1 minutes', '30');
+  await ui.click('Add cardio');
+  await ui.change('Cardio type', 'rowing', 1);
+  await ui.change('Intensity', 'interval', 1);
+  // An interval item swaps the target for its structure.
+  expect(ui.labels('Week 1 minutes')).toHaveLength(1);
+  await ui.change('Repeats', '8');
+  await ui.change('Recovery seconds', '90');
+  ui.next();
+  const preview = screen.getByRole('heading', { name: 'Cardio · 12 weeks' }).closest('section')!;
+  expect(ui.text(preview)).toContain(
+    'Week 1 30 min, Week 2 33 min, Week 3 36 min, Week 4 deload 29 min, Week 5 40 min',
+  );
+  expect(ui.text(preview)).toContain('Rowing · Interval · 8 × 1:00 work / 1:30 recovery');
+  await ui.save();
+  await saveSettled();
+  const post = ui.requests.find((r) => r.method === 'POST')!.body as {
+    splits: { cardio?: unknown }[];
+  };
+  expect(post.splits[0].cardio).toEqual([
+    { kind: 'running', intensity: 'zone2', minutes: 30 },
+    {
+      kind: 'rowing',
+      intensity: 'interval',
+      interval: { repeats: 8, work_sec: 60, recovery_sec: 90 },
+    },
+  ]);
+  // Splits without cardio keep the older plan shape.
+  expect(post.splits.slice(1).every((s) => !('cardio' in s))).toBe(true);
+  await waitFor(() => expect(ui.text()).toMatch(/Cardio · Running · Zone 2 · 30 min/));
+});
+
+test('removing a cardio item or switching it to distance keeps one target (#117)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('Create new routine');
+  await ui.toStep(3);
+  await ui.click('Add cardio');
+  await ui.change('Week 1 minutes', '20');
+  await ui.change('Target', 'distance');
+  expect(ui.labels('Week 1 minutes')).toHaveLength(0);
+  await ui.change('Week 1 km', '5');
+  ui.next();
+  expect(ui.text()).toContain('Week 2 5.5 km, Week 3 6.1 km, Week 4 deload 4.9 km');
+  await ui.click('Previous');
+  await ui.click('Delete split 1 cardio 1');
+  ui.next();
+  expect(screen.queryByRole('heading', { name: 'Cardio · 12 weeks' })).toBeNull();
+});

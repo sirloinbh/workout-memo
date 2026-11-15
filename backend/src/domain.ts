@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import { date, limitLength } from './contract.js';
+import { date, limitLength, routineCardioSchema } from './contract.js';
 // Input schemas shared with the frontend live in contract.ts (synced from shared/contract.ts).
 export {
   type BodyMeasurementInput,
@@ -25,6 +25,7 @@ export {
   goalSchema,
   limitLength,
   machineSchema,
+  routineCardioSchema,
   weightStepSchema,
   workoutSchema,
 } from './contract.js';
@@ -107,6 +108,11 @@ export const routineSchema = z
             )
             .min(1)
             .max(100),
+          // #117: cardio after the split's strength work. Older plans omit it.
+          cardio: z
+            .array(routineCardioSchema)
+            .max(10, 'Add at most 10 cardio items to a split')
+            .optional(),
         }),
       )
       .min(1)

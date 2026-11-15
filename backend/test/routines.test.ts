@@ -306,3 +306,56 @@ test('a split without body parts is rejected with a plain message, not a raw val
   assert.ok(messages.includes('Select at least 1 body part for each split'), messages.join(' / '));
   assert.ok(!messages.some((m) => /Array must contain/.test(m)));
 });
+
+// #117: cardio items on a split (2026-11-16 decisions).
+test('a split keeps cardio items: steady ones take a time or a distance, intervals their repeats', () => {
+  const input = routineInput(2) as RoutineInput & { splits: { cardio?: unknown[] }[] };
+  input.splits[0].cardio = [
+    { kind: 'running', intensity: 'zone2', minutes: 30 },
+    { kind: 'indoor_cycling', intensity: 'recovery', distance_km: 10.5 },
+    {
+      kind: 'rowing',
+      intensity: 'interval',
+      interval: { repeats: 8, work_sec: 60, recovery_sec: 90 },
+    },
+  ];
+  const parsed = domain.routineSchema.safeParse(input);
+  assert.equal(parsed.success, true, parsed.success ? '' : parsed.error.message);
+  assert.deepEqual(parsed.data, input, 'cardio items survive; the other split has none');
+});
+
+test('a cardio item with a missing or doubled target is rejected with a plain message', () => {
+  const messages = (cardio: unknown) => {
+    const input = routineInput(1) as RoutineInput & { splits: { cardio?: unknown }[] };
+    input.splits[0].cardio = [cardio];
+    const result = domain.routineSchema.safeParse(input);
+    return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  };
+  const steady = { kind: 'running', intensity: 'tempo' };
+  assert.deepEqual(messages(steady), ['Enter either a target time or a target distance']);
+  assert.deepEqual(messages({ ...steady, minutes: 20, distance_km: 5 }), [
+    'Enter either a target time or a target distance',
+  ]);
+  assert.deepEqual(messages({ ...steady, distance_km: 5.25 }), [
+    'Enter a target distance from 0.1 to 500 km with at most 1 decimal place',
+  ]);
+  assert.deepEqual(
+    messages({ ...steady, minutes: 20, interval: { repeats: 4, work_sec: 30, recovery_sec: 30 } }),
+    ['Only an interval item takes repeats'],
+  );
+  assert.deepEqual(messages({ kind: 'running', intensity: 'interval' }), [
+    'Enter the repeats, work time and recovery time',
+  ]);
+  assert.deepEqual(
+    messages({
+      kind: 'running',
+      intensity: 'interval',
+      minutes: 20,
+      interval: { repeats: 4, work_sec: 30, recovery_sec: 30 },
+    }),
+    ['An interval item takes its repeats, not a time or distance'],
+  );
+  assert.deepEqual(messages({ ...steady, minutes: 20, kind: 'hiking' }), [
+    'Choose a type: running, walking, outdoor cycling, indoor cycling, rowing, stairs, elliptical, swimming, or other',
+  ]);
+});

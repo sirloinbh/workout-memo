@@ -435,6 +435,91 @@ export const cardioGoalSchema = cardioGoalObject.superRefine(checkCardioGoal);
 export type CardioGoalInput = z.input<typeof cardioGoalSchema>;
 export type CardioGoal = z.output<typeof cardioGoalSchema>;
 
+// #117: cardio items on a routine split (2026-11-16 user decisions), done after the split's
+// strength work on its days. Steady items target a time or a distance that grows each week;
+// interval items keep their structure. Stored in the routine plan JSON.
+export const routineCardioIntensities = ['zone2', 'tempo', 'interval', 'recovery'] as const;
+export type RoutineCardioIntensity = (typeof routineCardioIntensities)[number];
+const cardioMinutesMessage = 'Enter a target time as a whole number from 1 to 600 minutes';
+const cardioKmMessage = 'Enter a target distance from 0.1 to 500 km with at most 1 decimal place';
+const oneDecimal = (v: number) => Math.abs(v * 10 - Math.round(v * 10)) < 1e-6;
+const intervalInt = (label: string, min: number, max: number) => {
+  const message = `Enter ${label} as a whole number from ${min} to ${max}`;
+  return z
+    .number(numberError(`Enter ${label} as a number`, message))
+    .int(message)
+    .min(min, message)
+    .max(max, message);
+};
+export const routineCardioSchema = z
+  .object({
+    kind: z.enum(cardioKinds, {
+      error:
+        'Choose a type: running, walking, outdoor cycling, indoor cycling, rowing, stairs, elliptical, swimming, or other',
+    }),
+    intensity: z.enum(routineCardioIntensities, {
+      error: 'Choose an intensity: zone 2, tempo, interval, or recovery',
+    }),
+    // Week 1 targets for steady items: exactly one of time and distance.
+    minutes: z
+      .number(numberError('Enter the target time as a number', cardioMinutesMessage))
+      .int(cardioMinutesMessage)
+      .min(1, cardioMinutesMessage)
+      .max(600, cardioMinutesMessage)
+      .optional(),
+    distance_km: z
+      .number(numberError('Enter the target distance as a number', cardioKmMessage))
+      .min(0.1, cardioKmMessage)
+      .max(500, cardioKmMessage)
+      .refine(oneDecimal, cardioKmMessage)
+      .optional(),
+    interval: z
+      .object({
+        repeats: intervalInt('the repeat count', 1, 50),
+        work_sec: intervalInt('the work time in seconds', 5, 3600),
+        recovery_sec: intervalInt('the recovery time in seconds', 0, 3600),
+      })
+      .optional(),
+  })
+  .superRefine((v, ctx) => {
+    const issue = (message: string, path: string) =>
+      ctx.addIssue({ code: 'custom', message, path: [path] });
+    if (v.intensity === 'interval') {
+      if (!v.interval) issue('Enter the repeats, work time and recovery time', 'interval');
+      if (v.minutes !== undefined || v.distance_km !== undefined)
+        issue('An interval item takes its repeats, not a time or distance', 'minutes');
+    } else {
+      if (v.interval) issue('Only an interval item takes repeats', 'interval');
+      if ((v.minutes === undefined) === (v.distance_km === undefined))
+        issue('Enter either a target time or a target distance', 'minutes');
+    }
+  });
+export type RoutineCardio = z.output<typeof routineCardioSchema>;
+// The 12 weekly targets of a steady item: each week is +10% on the week shown before it,
+// rounded to 1 minute or 0.1 km (so a very short target can step by more than 10%).
+// Weeks 4, 8 and 12 are deloads at 80% of the week before, and the next week continues
+// from the week before the deload. Interval items return null: their structure is fixed.
+export function cardioWeeklyTargets(item: Pick<RoutineCardio, 'minutes' | 'distance_km'>) {
+  const base = item.minutes ?? item.distance_km;
+  if (base === undefined) return null;
+  const step = item.minutes !== undefined ? 1 : 0.1;
+  const max = item.minutes !== undefined ? 600 : 500;
+  const round = (v: number) => Math.min(max, Math.round(v / step) * step);
+  // Rounded to the step's decimals so 0.1 steps do not show as 1.2000000000000002.
+  const tidy = (v: number) => Number(v.toFixed(step < 1 ? 1 : 0));
+  const weeks: { week: number; target: number; deload: boolean }[] = [];
+  let progress = base;
+  for (let week = 1; week <= 12; week++) {
+    const deload = week % 4 === 0;
+    if (deload) weeks.push({ week, target: tidy(round(progress * 0.8)), deload });
+    else {
+      if (week > 1) progress = tidy(round(progress * 1.1));
+      weeks.push({ week, target: progress, deload });
+    }
+  }
+  return weeks;
+}
+
 // Issues keyed by their dotted path (e.g. "sets.0.weight") for per-field messages.
 export function fieldErrors(error: z.ZodError) {
   const errors: Record<string, string> = {};

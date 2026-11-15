@@ -1,9 +1,9 @@
-// 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/msw/frontend/src/test/에서
+// Managed file. Edit it in sirloinbh/project-standards templates/msw/frontend/src/test/
 // Screen tests without the backend (#281): MSW answers every operation in the OpenAPI contract
 // (docs/openapi.json) with a sample built from its response schema. Opt in per test file:
 //
 //   const api = setupContractApi({ emptyBody: [] });
-//   api.use(...contractHandlers({ 'GET /api/goals': [{ id: 1, exercise: '스쿼트' }] }));
+//   api.use(...contractHandlers({ 'GET /api/goals': [{ id: 1, exercise: 'Squat' }] }));
 //
 // When the contract gives a success response no JSON schema, the body is empty unless emptyBody
 // says what to answer (e.g. [] for list screens).
@@ -152,7 +152,7 @@ export function setupContractApi(options: ContractOptions = {}) {
   afterEach(() => {
     contractServer.resetHandlers(...base);
     const found = takeUnhandledRequests();
-    if (found.length) throw new Error(`계약(docs/openapi.json)에 없는 요청:\n${found.join('\n')}`);
+    if (found.length) throw new Error(`Requests not in the contract (docs/openapi.json):\n${found.join('\n')}`);
   });
   afterAll(() => contractServer.close());
   return contractServer;

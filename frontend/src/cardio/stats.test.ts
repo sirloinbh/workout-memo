@@ -58,9 +58,9 @@ test('monthly totals per calendar month, labelled with the year when the period 
     s('2026-11-30', 'swimming', 2400, 1.5),
   ];
   expect(pick(bucketsOf(sessions, '2026-10-15', '2026-12-05', 'month'))).toEqual([
-    { label: '10월', start: '2026-10-01', distance_km: 5.02, duration_sec: 1800, count: 1 },
-    { label: '11월', start: '2026-11-01', distance_km: 7.5, duration_sec: 4800, count: 2 },
-    { label: '12월', start: '2026-12-01', distance_km: 0, duration_sec: 0, count: 0 },
+    { label: 'Oct', start: '2026-10-01', distance_km: 5.02, duration_sec: 1800, count: 1 },
+    { label: 'Nov', start: '2026-11-01', distance_km: 7.5, duration_sec: 4800, count: 2 },
+    { label: 'Dec', start: '2026-12-01', distance_km: 0, duration_sec: 0, count: 0 },
   ]);
   expect(
     bucketsOf([], '2025-12-20', '2026-01-10', 'month').map((b) => [b.label, b.start, b.end]),

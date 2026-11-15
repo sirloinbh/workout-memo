@@ -1,11 +1,11 @@
-// 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/e2e/에서
+// Managed file. Edit it in sirloinbh/project-standards templates/e2e/
 import { defineConfig } from '@playwright/test';
 
 // Browser checks need a dedicated, migrated test database (never the personal DB).
 const database = process.env.E2E_DATABASE_URL ?? process.env.TEST_DATABASE_URL;
 if (!database)
   throw new Error(
-    'E2E_DATABASE_URL 또는 TEST_DATABASE_URL에 db:migrate로 준비한 테스트 DB를 지정하세요.',
+    'Set E2E_DATABASE_URL or TEST_DATABASE_URL to a test DB prepared with db:migrate.',
   );
 // e2e ports come from the central registry (slot 1, ADR-0006), apart from the dev servers.
 const apiPort = 3201;
@@ -30,7 +30,7 @@ export default defineConfig({
     // The installed Chrome is used outside the container; no browser download is needed.
     channel: visual ? undefined : 'chrome',
     timezoneId: 'Asia/Seoul',
-    locale: 'ko-KR',
+    locale: 'en-US',
     trace: 'retain-on-failure',
   },
   webServer: [

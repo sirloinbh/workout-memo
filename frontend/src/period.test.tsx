@@ -15,7 +15,7 @@ type Workout = {
 const workout = (id: number, date: string, weight: number | string = 100): Workout => ({
   id,
   date,
-  title: `기록 ${id}`,
+  title: `Record ${id}`,
   notes: '',
   sets: [{ exercise: 'Squat', machine_id: null, weight, reps: 10 }],
 });
@@ -71,7 +71,7 @@ function mount(initial: Workout[] = []) {
     async select(period: string, anchor: string) {
       const before = workoutQueries().length;
       // jsdom date inputs do not accept typed keys; set the value as the browser would.
-      fireEvent.change(screen.getByLabelText('기준 날짜'), { target: { value: anchor } });
+      fireEvent.change(screen.getByLabelText('Reference date'), { target: { value: anchor } });
       await user.click(screen.getByRole('radio', { name: period }));
       await waitFor(() => expect(workoutQueries().length).toBeGreaterThan(before));
     },
@@ -87,11 +87,11 @@ const stat = (label: string) => {
 };
 const chart = () => screen.getByRole('img').getAttribute('aria-label') ?? '';
 const rows = () => [...document.querySelectorAll('[data-slot=workout-row]')];
-const loaded = () => waitFor(() => expect(screen.queryByText('기록을 불러오는 중…')).toBeNull());
+const loaded = () => waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
 
 test('default date is today in Asia/Seoul even on a UTC device', async () => {
   mount();
-  expect(screen.getByLabelText('기준 날짜')).toHaveValue('2026-10-15');
+  expect(screen.getByLabelText('Reference date')).toHaveValue('2026-10-15');
   await loaded();
 });
 
@@ -99,21 +99,21 @@ for (const outcome of ['success', 'failure'] as const) {
   test(`an older period's delayed ${outcome} cannot overwrite the latest results`, async () => {
     const ui = mount([workout(1, '2024-02-29', 100), workout(2, '2024-03-01', 200)]);
     await loaded();
-    await ui.select('1일', '2024-02-28');
+    await ui.select('1 day', '2024-02-28');
     const older = ui.holdNextWorkouts();
-    await ui.select('1일', '2024-02-29');
-    await ui.select('1일', '2024-03-01');
-    await waitFor(() => expect(stat('누적 볼륨')).toBe('2,000kg'));
+    await ui.select('1 day', '2024-02-29');
+    await ui.select('1 day', '2024-03-01');
+    await waitFor(() => expect(stat('Total volume')).toBe('2,000kg'));
     if (outcome === 'success') older.resolve();
     else older.reject(new Error('Old period failed'));
     await older.promise.catch(() => undefined);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(stat('누적 볼륨')).toBe('2,000kg');
-    expect(stat('운동한 날')).toBe('1일');
-    expect(stat('완료한 세트')).toBe('1세트');
+    expect(stat('Total volume')).toBe('2,000kg');
+    expect(stat('Workout days')).toBe('1 day');
+    expect(stat('Completed sets')).toBe('1 set');
     expect(chart()).toMatch(/2,000kg/);
     expect(rows()).toHaveLength(1);
-    expect(rows()[0]).toHaveTextContent('기록 2');
+    expect(rows()[0]).toHaveTextContent('Record 2');
     expect(screen.queryByRole('alert')).toBeNull();
   });
 }
@@ -121,27 +121,27 @@ for (const outcome of ['success', 'failure'] as const) {
 test('an older response cannot clear loading while the latest period is still pending', async () => {
   const ui = mount([workout(1, '2024-02-29', 100), workout(2, '2024-03-01', 200)]);
   await loaded();
-  await ui.select('1일', '2024-02-28');
+  await ui.select('1 day', '2024-02-28');
   const older = ui.holdNextWorkouts();
-  await ui.select('1일', '2024-02-29');
+  await ui.select('1 day', '2024-02-29');
   const latest = ui.holdNextWorkouts();
-  await ui.select('1일', '2024-03-01');
+  await ui.select('1 day', '2024-03-01');
   older.resolve();
   await new Promise((resolve) => setTimeout(resolve, 20));
-  expect(screen.getAllByText('기록을 불러오는 중…')).toHaveLength(1);
+  expect(screen.getAllByText('Loading records…')).toHaveLength(1);
   latest.resolve();
-  await waitFor(() => expect(stat('누적 볼륨')).toBe('2,000kg'));
+  await waitFor(() => expect(stat('Total volume')).toBe('2,000kg'));
   expect(rows()).toHaveLength(1);
 });
 
 test('the records form a named list with edit and delete on each row', async () => {
   const ui = mount([workout(1, '2024-03-01', 200)]);
   await loaded();
-  await ui.select('1일', '2024-03-01');
-  const list = await screen.findByRole('list', { name: '운동 기록' });
+  await ui.select('1 day', '2024-03-01');
+  const list = await screen.findByRole('list', { name: 'Workout records' });
   const row = within(list).getAllByRole('listitem')[0];
-  expect(within(row).getByRole('button', { name: '수정' })).toBeEnabled();
-  expect(within(row).getByRole('button', { name: /삭제$/ })).toBeEnabled();
+  expect(within(row).getByRole('button', { name: 'Edit' })).toBeEnabled();
+  expect(within(row).getByRole('button', { name: /^Delete/ })).toBeEnabled();
 });
 
 // #159: an edit is saved from the modal, which blocks the page behind it and cannot be closed
@@ -154,49 +154,49 @@ for (const mutation of ['delete'] as const) {
       workout(3, '2024-03-02', 300),
     ]);
     await loaded();
-    await ui.select('1일', '2024-02-29');
+    await ui.select('1 day', '2024-02-29');
     await waitFor(() => expect(rows()).toHaveLength(1));
     const pending = ui.holdNextMutation();
     if (mutation === 'delete') {
-      await ui.user.click(screen.getByRole('button', { name: '기록 1 삭제' }));
+      await ui.user.click(screen.getByRole('button', { name: 'Delete Record 1' }));
     } else {
-      await ui.user.click(screen.getByRole('button', { name: '수정' }));
+      await ui.user.click(screen.getByRole('button', { name: 'Edit' }));
       const dialog = screen.getByRole('dialog');
       const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', {
-        name: '총중량 kg',
+        name: 'Total weight kg',
       })[0];
       await ui.user.clear(weight);
       await ui.user.type(weight, '150');
-      await ui.user.click(within(dialog).getByRole('button', { name: /저장/ }));
+      await ui.user.click(within(dialog).getByRole('button', { name: /Save/ }));
     }
-    const period = mutation === 'delete' ? '1일' : '1달';
+    const period = mutation === 'delete' ? '1 day' : '1 month';
     const expectedVolume = mutation === 'delete' ? '2,000kg' : '5,000kg';
     await ui.select(period, '2024-03-01');
-    await waitFor(() => expect(stat('누적 볼륨')).toBe(expectedVolume));
+    await waitFor(() => expect(stat('Total volume')).toBe(expectedVolume));
     const requestCount = ui.workoutQueries().length;
     pending.resolve();
     await waitFor(() => expect(ui.workoutQueries()).toHaveLength(requestCount + 1));
     expect(ui.workoutQueries().at(-1)).toBe(
       `/api/workouts?from=2024-03-01&to=${mutation === 'delete' ? '2024-03-01' : '2024-03-31'}`,
     );
-    await waitFor(() => expect(stat('누적 볼륨')).toBe(expectedVolume));
-    expect(stat('운동한 날')).toBe(mutation === 'delete' ? '1일' : '2일');
-    expect(stat('완료한 세트')).toBe(mutation === 'delete' ? '1세트' : '2세트');
+    await waitFor(() => expect(stat('Total volume')).toBe(expectedVolume));
+    expect(stat('Workout days')).toBe(mutation === 'delete' ? '1 day' : '2 days');
+    expect(stat('Completed sets')).toBe(mutation === 'delete' ? '1 set' : '2 sets');
     expect(chart()).toMatch(mutation === 'delete' ? /2,000kg/ : /5,000kg/);
     expect(rows()).toHaveLength(mutation === 'delete' ? 1 : 2);
-    expect(rows().every((row) => !row.textContent.includes('기록 1'))).toBe(true);
+    expect(rows().every((row) => !row.textContent.includes('Record 1'))).toBe(true);
     expect(screen.queryByRole('alert')).toBeNull();
   });
 }
 
 const ranges = [
-  ['1일', '2024-02-29', '2024-02-29', '2024-02-29'],
-  ['1주', '2024-12-30', '2024-12-30', '2025-01-05'],
-  ['1주', '2025-01-05', '2024-12-30', '2025-01-05'],
-  ['1달', '2024-02-29', '2024-02-01', '2024-02-29'],
-  ['1달', '2025-12-31', '2025-12-01', '2025-12-31'],
-  ['4주', '2024-03-01', '2024-02-03', '2024-03-01'],
-  ['12주', '2025-01-05', '2024-10-14', '2025-01-05'],
+  ['1 day', '2024-02-29', '2024-02-29', '2024-02-29'],
+  ['1 week', '2024-12-30', '2024-12-30', '2025-01-05'],
+  ['1 week', '2025-01-05', '2024-12-30', '2025-01-05'],
+  ['1 month', '2024-02-29', '2024-02-01', '2024-02-29'],
+  ['1 month', '2025-12-31', '2025-12-01', '2025-12-31'],
+  ['4 weeks', '2024-03-01', '2024-02-03', '2024-03-01'],
+  ['12 weeks', '2025-01-05', '2024-10-14', '2025-01-05'],
 ];
 for (const [period, anchor, from, to] of ranges) {
   test(`${period} at ${anchor} requests inclusive ${from} through ${to}`, async () => {
@@ -206,11 +206,11 @@ for (const [period, anchor, from, to] of ranges) {
     expect(ui.workoutQueries().at(-1)).toBe(`/api/workouts?from=${from}&to=${to}`);
     await loaded();
     expect(chart()).toMatch(/0kg/);
-    expect(stat('운동한 날')).toBe('0일');
-    expect(stat('완료한 세트')).toBe('0세트');
-    expect(stat('누적 볼륨')).toBe('0kg');
+    expect(stat('Workout days')).toBe('0 days');
+    expect(stat('Completed sets')).toBe('0 sets');
+    expect(stat('Total volume')).toBe('0kg');
     expect(
-      screen.getAllByRole('heading', { level: 3, name: '첫 번째 기록을 남겨보세요' }),
+      screen.getAllByRole('heading', { level: 3, name: 'Log your first record' }),
     ).toHaveLength(1);
   });
   test(`${period} graph and totals include both endpoints and exclude adjacent dates`, async () => {
@@ -227,9 +227,9 @@ for (const [period, anchor, from, to] of ranges) {
     ]);
     await loaded();
     await ui.select(period, anchor);
-    await waitFor(() => expect(stat('누적 볼륨')).toBe('3,000kg'));
-    expect(stat('운동한 날')).toBe(from === to ? '1일' : '2일');
-    expect(stat('완료한 세트')).toBe('2세트');
+    await waitFor(() => expect(stat('Total volume')).toBe('3,000kg'));
+    expect(stat('Workout days')).toBe(from === to ? '1 day' : '2 days');
+    expect(stat('Completed sets')).toBe('2 sets');
     const plotted = [...chart().matchAll(/([\d,.]+)kg/g)].reduce(
       (sum, match) => sum + Number(match[1].replaceAll(',', '')),
       0,
@@ -249,36 +249,38 @@ test('period statistics and graph combine same-day sessions and refresh after ed
     workout(4, '2024-03-01', 900),
   ]);
   await loaded();
-  await ui.select('1주', '2024-02-29');
+  await ui.select('1 week', '2024-02-29');
   // Move to a single month to exclude March 1 and include the leap day.
-  await ui.select('1달', '2024-02-29');
-  await waitFor(() => expect(stat('누적 볼륨')).toBe('2,002.5kg'));
-  expect(stat('운동한 날')).toBe('2일');
-  expect(stat('완료한 세트')).toBe('4세트');
+  await ui.select('1 month', '2024-02-29');
+  await waitFor(() => expect(stat('Total volume')).toBe('2,002.5kg'));
+  expect(stat('Workout days')).toBe('2 days');
+  expect(stat('Completed sets')).toBe('4 sets');
   expect(chart()).toMatch(/2,002.5kg/);
   expect(rows()).toHaveLength(3);
-  expect(rows()[0]).toHaveTextContent('기록 3');
-  await ui.user.click(within(rows()[0] as HTMLElement).getByRole('button', { name: '수정' }));
-  const dialog = screen.getByRole('dialog', { name: '운동 일지 수정' });
-  const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', { name: '총중량 kg' })[0];
+  expect(rows()[0]).toHaveTextContent('Record 3');
+  await ui.user.click(within(rows()[0] as HTMLElement).getByRole('button', { name: 'Edit' }));
+  const dialog = screen.getByRole('dialog', { name: 'Edit workout journal' });
+  const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', {
+    name: 'Total weight kg',
+  })[0];
   await ui.user.clear(weight);
   await ui.user.type(weight, '60');
-  await ui.user.click(within(dialog).getByRole('button', { name: /저장/ }));
-  await waitFor(() => expect(stat('누적 볼륨')).toBe('2,202.5kg'));
+  await ui.user.click(within(dialog).getByRole('button', { name: /Save/ }));
+  await waitFor(() => expect(stat('Total volume')).toBe('2,202.5kg'));
   expect(chart()).toMatch(/2,202.5kg/);
-  await ui.user.click(screen.getByRole('button', { name: '기록 3 삭제' }));
-  await waitFor(() => expect(stat('누적 볼륨')).toBe('1,602.5kg'));
-  expect(stat('운동한 날')).toBe('1일');
-  expect(stat('완료한 세트')).toBe('3세트');
+  await ui.user.click(screen.getByRole('button', { name: 'Delete Record 3' }));
+  await waitFor(() => expect(stat('Total volume')).toBe('1,602.5kg'));
+  expect(stat('Workout days')).toBe('1 day');
+  expect(stat('Completed sets')).toBe('3 sets');
   expect(chart()).toMatch(/1,602.5kg/);
   expect(rows()).toHaveLength(2);
   for (const id of [1, 2]) {
-    await ui.user.click(screen.getByRole('button', { name: `기록 ${id} 삭제` }));
+    await ui.user.click(screen.getByRole('button', { name: `Delete Record ${id}` }));
     await waitFor(() => expect(rows()).toHaveLength(2 - id));
   }
-  expect(stat('운동한 날')).toBe('0일');
-  expect(stat('완료한 세트')).toBe('0세트');
-  expect(stat('누적 볼륨')).toBe('0kg');
+  expect(stat('Workout days')).toBe('0 days');
+  expect(stat('Completed sets')).toBe('0 sets');
+  expect(stat('Total volume')).toBe('0kg');
   expect(chart()).not.toMatch(/[1-9][\d,.]*kg/);
 });
 
@@ -289,22 +291,24 @@ test('a delayed edit keeps the page blocked until it finishes, then the new peri
     workout(3, '2024-03-02', 300),
   ]);
   await loaded();
-  await ui.select('1일', '2024-02-29');
+  await ui.select('1 day', '2024-02-29');
   await waitFor(() => expect(rows()).toHaveLength(1));
   const pending = ui.holdNextMutation();
-  await ui.user.click(screen.getByRole('button', { name: '수정' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Edit' }));
   const dialog = screen.getByRole('dialog');
-  const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', { name: '총중량 kg' })[0];
+  const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', {
+    name: 'Total weight kg',
+  })[0];
   await ui.user.clear(weight);
   await ui.user.type(weight, '150');
-  await ui.user.click(within(dialog).getByRole('button', { name: /저장/ }));
-  expect(screen.queryByRole('radio', { name: '1달' })).toBeNull();
+  await ui.user.click(within(dialog).getByRole('button', { name: /Save/ }));
+  expect(screen.queryByRole('radio', { name: '1 month' })).toBeNull();
   await ui.user.keyboard('{Escape}');
   expect(screen.getByRole('dialog')).toBeInTheDocument();
   pending.resolve();
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  await ui.select('1달', '2024-03-01');
-  await waitFor(() => expect(stat('누적 볼륨')).toBe('5,000kg'));
+  await ui.select('1 month', '2024-03-01');
+  await waitFor(() => expect(stat('Total volume')).toBe('5,000kg'));
   expect(rows()).toHaveLength(2);
   expect(screen.queryByRole('alert')).toBeNull();
 });
@@ -313,8 +317,8 @@ test('a delayed edit keeps the page blocked until it finishes, then the new peri
 test('volume chart sizes bars against the largest bucket and highlights the latest', async () => {
   const ui = mount([workout(1, '2024-02-26', 100), workout(2, '2024-02-28', 200)]);
   await loaded();
-  await ui.select('1주', '2024-02-29');
-  await waitFor(() => expect(stat('누적 볼륨')).toBe('3,000kg'));
+  await ui.select('1 week', '2024-02-29');
+  await waitFor(() => expect(stat('Total volume')).toBe('3,000kg'));
   const bars = [...document.querySelectorAll<HTMLElement>('[data-slot=volume-bar]')];
   expect(bars.map((bar) => bar.style.height)).toEqual([
     '50%',
@@ -326,17 +330,17 @@ test('volume chart sizes bars against the largest bucket and highlights the late
     '0%',
   ]);
   expect(bars.map((bar) => bar.title)).toEqual([
-    '월: 1,000kg',
-    '화: 0kg',
-    '수: 2,000kg',
-    '목: 0kg',
-    '금: 0kg',
-    '토: 0kg',
-    '일: 0kg',
+    'Mon: 1,000kg',
+    'Tue: 0kg',
+    'Wed: 2,000kg',
+    'Thu: 0kg',
+    'Fri: 0kg',
+    'Sat: 0kg',
+    'Sun: 0kg',
   ]);
   expect(bars.at(-1)).toHaveClass('bg-primary');
   expect(bars.filter((bar) => bar.classList.contains('bg-primary'))).toHaveLength(1);
-  expect(screen.queryByText('첫 기록부터 그래프가 채워져요')).toBeNull();
+  expect(screen.queryByText('The chart fills in from your first record')).toBeNull();
 });
 
 // Labels thin out by the plot's width: every 4th always, every 2nd from 200px, all from 480px.
@@ -352,10 +356,10 @@ const labelTiers = () =>
 test('volume chart thins date labels by the plot width past a week', async () => {
   const ui = mount();
   await loaded();
-  expect(screen.getByText('첫 기록부터 그래프가 채워져요')).toBeInTheDocument();
+  expect(screen.getByText('The chart fills in from your first record')).toBeInTheDocument();
   // A week of weekday labels is short enough to show them all.
   expect(labelTiers()).toEqual(Array(7).fill('always'));
-  await ui.select('12주', '2025-01-05');
+  await ui.select('12 weeks', '2025-01-05');
   await loaded();
   await waitFor(() => expect(document.querySelectorAll('[data-slot=volume-bar]')).toHaveLength(12));
   const quarter = ['always', 'wide', 'medium', 'wide'];
@@ -366,18 +370,18 @@ test('volume chart thins date labels by the plot width past a week', async () =>
 test('workout list card names its count, links to the journal and starts a record when empty', async () => {
   const ui = mount([workout(1, '2026-10-13', 100), workout(2, '2026-10-15', 100)]);
   await loaded();
-  expect(screen.getByRole('heading', { level: 2, name: '운동 기록 2' })).toBeInTheDocument();
-  await ui.user.click(screen.getByRole('button', { name: '전체 기록' }));
+  expect(screen.getByRole('heading', { level: 2, name: 'Workout records 2' })).toBeInTheDocument();
+  await ui.user.click(screen.getByRole('button', { name: 'All records' }));
   await waitFor(() => expect(window.location.pathname).toBe('/journal'));
-  expect(screen.queryByRole('button', { name: '전체 기록' })).toBeNull();
-  await ui.select('1일', '2026-10-14');
+  expect(screen.queryByRole('button', { name: 'All records' })).toBeNull();
+  await ui.select('1 day', '2026-10-14');
   await loaded();
-  const empty = screen.getByRole('heading', { level: 3, name: '첫 번째 기록을 남겨보세요' });
-  expect(screen.getByRole('heading', { level: 2, name: '운동 기록 0' })).toBeInTheDocument();
+  const empty = screen.getByRole('heading', { level: 3, name: 'Log your first record' });
+  expect(screen.getByRole('heading', { level: 2, name: 'Workout records 0' })).toBeInTheDocument();
   await ui.user.click(
     within(empty.closest('[data-slot=empty-state]') as HTMLElement).getByRole('button', {
-      name: '운동 기록하기',
+      name: 'Log workout',
     }),
   );
-  expect(screen.getByRole('dialog', { name: '새로운 운동 기록' })).toBeInTheDocument();
+  expect(screen.getByRole('dialog', { name: 'New workout record' })).toBeInTheDocument();
 });

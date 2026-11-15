@@ -1,34 +1,34 @@
-# #104 터치 기기의 입력 글자와 누름 영역 맞추기
+# #104 Match input text and press areas on touch devices
 
-- 이슈: [#104](https://github.com/sirloinbh/workout-memo/issues/104)
-- 브랜치: `fix/104-mobile-touch-targets`
+- Issue: [#104](https://github.com/sirloinbh/workout-memo/issues/104)
+- Branch: `fix/104-mobile-touch-targets`
 
-## 목적
+## Purpose
 
-iOS는 입력 글자가 16px보다 작으면 포커스할 때 화면을 확대합니다. 기존 화면의 입력·버튼은 터치에 작았습니다(예: `.date-control input` 11px). 공통 컴포넌트는 이미 기준을 지킵니다.
+iOS zooms the screen on focus when the input text is smaller than 16px. The inputs and buttons on the existing screens were small for touch (for example `.date-control input` at 11px). The shared components already meet the standard.
 
-사용자가 하단 탭 없이 진행하기로 정했습니다(이슈 코멘트, 중앙 `docs/layout.md`). 768px 미만의 내비게이션은 공통 Sheet 메뉴를 그대로 씁니다. 안전 영역과 `viewport-fit=cover`는 `AppShell`과 `index.html`에 이미 있습니다.
+The user decided to go without a bottom tab bar (issue comment, central `docs/layout.md`). Navigation below 768px keeps using the shared Sheet menu. The safe area and `viewport-fit=cover` are already in `AppShell` and `index.html`.
 
-## 변경 — fix: 터치 기기 기준 적용
+## Change — fix: apply the touch device standard
 
-- `frontend/src/style.css`: 맨 끝에 `@media (pointer: coarse)` 규칙을 추가했습니다.
-  - 입력·선택: 글자 16px, 높이 44px 이상
-  - 여러 줄 입력: 글자 16px. 높이는 `.modal textarea`의 80px를 유지합니다.
-  - 버튼: 높이·너비 44px 이상. `.set-editor`의 삭제 버튼 칸도 26px에서 44px로 넓혔습니다.
-  - `summary`, 링크 버튼(`a.primary`), 체크박스가 든 `label`: 높이 44px 이상
-  - 인바디 미리보기의 체크박스: 라벨 없이 표 안에 있어 24px로만 키웠습니다. 44px는 #103에서 공통 `Checkbox`로 바꿀 때 맞춥니다.
-  - `.rest-timer .rest-actions button`은 더 구체적인 40px 규칙이 있어 따로 넣었습니다. 새 e2e가 "휴식 시작" 40px로 잡아낸 것입니다.
-  - `.form-grid`: 480px 이하에서 한 칸으로 쌓습니다. 16px 날짜 입력 두 칸이 목표 모달 안에서 54px(360px 폭) 넘쳐, 강화한 e2e가 잡아냈습니다.
-- 터치 기기에만 적용하므로 터치 없이 찍는 시각 기준선은 바뀌지 않습니다.
+- `frontend/src/style.css`: added an `@media (pointer: coarse)` rule at the very end.
+  - Inputs and selects: text 16px, height 44px or more
+  - Multi-line input: text 16px. The height keeps the 80px of `.modal textarea`.
+  - Buttons: height and width 44px or more. The delete button cell of `.set-editor` was also widened from 26px to 44px.
+  - `summary`, link buttons (`a.primary`), and a `label` that holds a checkbox: height 44px or more
+  - The checkbox in the InBody preview: it sits in the table without a label, so it was only enlarged to 24px. 44px is done in #103 when it is replaced with the shared `Checkbox`.
+  - `.rest-timer .rest-actions button` was added separately because a more specific 40px rule exists. The new e2e caught it as "휴식 시작" ("start rest") at 40px.
+  - `.form-grid`: stacks into one cell at 480px and below. Two 16px date input cells overflowed by 54px (at 360px width) inside the goal modal, which the strengthened e2e caught.
+- It applies only to touch devices, so the visual baselines, which are taken without touch, do not change.
 
-## 테스트
+## Tests
 
-- `e2e/ui-touch.spec.ts`(신규): 터치 에뮬레이션 360·390·768px에서 8개 페이지와 모달 3개의 글자 크기, 누름 영역, 문서와 모달의 가로 넘침을 확인합니다. 메뉴의 `aria-current`와 페이지 이동도 확인합니다.
-- 범위 한계: 화면을 열었을 때 보이는 요소만 검사합니다. 클릭해야 열리는 화면(루틴 폼, 신체 기록 폼, 인바디 미리보기)은 검사하지 않습니다. 후속 이슈는 #198입니다.
+- `e2e/ui-touch.spec.ts` (new): with touch emulation at 360, 390, and 768px, check the text size, the press areas, and horizontal overflow of the document and modals for 8 pages and 3 modals. It also checks `aria-current` of the menu and page navigation.
+- Scope limit: only elements visible when the screen is opened are checked. Screens that open only after a click (routine form, body record form, InBody preview) are not checked. The follow-up issue is #198.
 
-## 리뷰
+## Review
 
-- 1차 리뷰 반영: 체크박스 라벨이 세로로 쌓이던 문제(`inline-flex`), 세트 삭제 버튼 칸, 링크 버튼, 인바디 체크박스, 모달 안 넘침 검사.
-- 2차 리뷰: 보완점 없음. 이후 CI 실패로 `.form-grid`를 추가로 고쳤습니다. 2차 뒤의 수정이라 리뷰는 더 하지 않았습니다.
-- 분리: 클릭 후 화면까지 터치 검사 확대(#198).
-- 반영하지 않은 지적: 내부 가로 스크롤 영역(`.table-scroll` 등)은 의도된 스크롤이라 문서 전체와 모달만 검사합니다.
+- First review applied: checkbox labels stacking vertically (`inline-flex`), the set delete button cell, link buttons, the InBody checkbox, and the overflow check inside modals.
+- Second review: no follow-ups. Afterwards a CI failure led to an extra fix of `.form-grid`. It was a change after the second review, so no more review was done.
+- Split out: extending the touch check to screens after a click (#198).
+- Remarks not applied: internal horizontal scroll areas (`.table-scroll` and so on) are intended scrolling, so only the whole document and modals are checked.

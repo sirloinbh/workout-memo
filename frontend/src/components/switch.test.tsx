@@ -9,10 +9,12 @@ test('a switch is named by its label and toggles', () => {
   render(
     <>
       <Switch id="auto" onCheckedChange={onCheckedChange} />
-      <Label htmlFor="auto">세트 완료 시 자동 시작</Label>
+      <Label htmlFor="auto">Auto-start when a set is done</Label>
     </>,
   );
-  const control = screen.getByRole('switch', { name: '세트 완료 시 자동 시작' });
+  const control = screen.getByRole('switch', {
+    name: 'Auto-start when a set is done',
+  });
   expect(control).not.toBeChecked();
   fireEvent.click(control);
   expect(control).toBeChecked();
@@ -20,8 +22,8 @@ test('a switch is named by its label and toggles', () => {
 });
 
 test('a disabled switch does not toggle', () => {
-  render(<Switch aria-label="알림" disabled />);
-  const control = screen.getByRole('switch', { name: '알림' });
+  render(<Switch aria-label="Notifications" disabled />);
+  const control = screen.getByRole('switch', { name: 'Notifications' });
   fireEvent.click(control);
   expect(control).not.toBeChecked();
 });

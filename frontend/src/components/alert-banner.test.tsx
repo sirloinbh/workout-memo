@@ -11,22 +11,22 @@ test('the banner is announced as an alert and keeps its action inside', async ()
     <AlertBanner
       action={
         <Button type="button" onClick={onRetry}>
-          다시 연결
+          Reconnect
         </Button>
       }
     >
-      저장소 연결 실패
+      Storage connection failed
     </AlertBanner>,
   );
   const alert = screen.getByRole('alert');
   expect(alert).toHaveAttribute('data-slot', 'alert-banner');
-  expect(alert).toHaveTextContent('저장소 연결 실패');
-  await userEvent.click(within(alert).getByRole('button', { name: '다시 연결' }));
+  expect(alert).toHaveTextContent('Storage connection failed');
+  await userEvent.click(within(alert).getByRole('button', { name: 'Reconnect' }));
   expect(onRetry).toHaveBeenCalledOnce();
 });
 
 test('a banner without an action shows only its message, and className adds to the box', () => {
-  render(<AlertBanner className="mb-0">로컬 저장 공간 오류</AlertBanner>);
+  render(<AlertBanner className="mb-0">Local storage error</AlertBanner>);
   const alert = screen.getByRole('alert');
   expect(within(alert).queryByRole('button')).toBeNull();
   expect(alert).toHaveClass('mb-0', 'border-l-destructive');

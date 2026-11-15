@@ -1,59 +1,59 @@
-# #102 루틴짜기의 루틴 폼을 공통 컴포넌트로 교체 (3단계)
+# #102 Replace the routine form on the Routine planner with shared components (step 3)
 
-- 이슈: [#102](https://github.com/sirloinbh/workout-memo/issues/102)
-- 브랜치: `feat/102-routine-form`
-- 앞 단계: 1단계 나의 목표 [#227](https://github.com/sirloinbh/workout-memo/pull/227), 2단계 종목 분석 [#228](https://github.com/sirloinbh/workout-memo/pull/228)
+- Issue: [#102](https://github.com/sirloinbh/workout-memo/issues/102)
+- Branch: `feat/102-routine-form`
+- Earlier steps: step 1 My goals [#227](https://github.com/sirloinbh/workout-memo/pull/227), step 2 exercise analysis [#228](https://github.com/sirloinbh/workout-memo/pull/228)
 
-## 목적
+## Purpose
 
-루틴짜기 화면의 머리 안내, 오류·저장 안내, 루틴 목록, 루틴 폼(일정 방식·분할·부위·운동·주차 목표)을 공통 컴포넌트로 바꾸고, 폼만 쓰던 `style.css` 규칙을 지웁니다. 12주 미리보기(`Preview`)와 계획 보기(`selected` 상세)는 4단계에서 옮깁니다. 단계별 입력 흐름은 범위 밖이며 #102 뒤에 따로 합니다(조율 창 결정).
+Replace the header hint, the error and save notices, the routine list, and the routine form (schedule mode, split, body parts, exercises, weekly goals) of the Routine planner screen with shared components. Delete the `style.css` rules that only the form used. The 12-week preview (`Preview`) and the plan view (`selected` detail) move in step 4. A step-by-step input flow is out of scope and is done separately after #102 (coordination window decision).
 
-## 변경 — feat: 루틴 폼 교체
+## Change — feat: replace the routine form
 
 - `frontend/src/routines.tsx`
-  - 오류: `.error` 대신 #223의 `AlertBanner`입니다. 저장 완료와 불러오는 중은 `Notice`(`role="status"`)입니다.
-  - "새 루틴 만들기"는 공통 `Button`(아이콘 포함), 목록의 "계획 보기"는 `outline`·`sm`입니다. 목록은 테두리 상자 안에 줄로 나눴습니다.
-  - 폼은 `Card` 안에 둡니다. 이름표는 공통 `Label`, 글자·숫자·날짜 입력은 공통 `Input`(터치 768px 이상에서도 16px)입니다.
-  - 선택 칸(주차 목표 방식·분할 방식·운동 일정 방식·머신·주차 목표 대상)은 브라우저 기본 `select`를 유지하고 공통 입력과 같은 모양의 유틸리티를 붙였습니다. #101의 머신 선택과 같은 예외입니다. 공통 `Select`(Radix)는 "자유 운동"의 빈 값을 항목으로 쓸 수 없고, 화면 테스트가 기본 `select`를 직접 조작합니다.
-  - 휴식 요일: 기본 체크박스 대신 공통 `Checkbox`입니다. #231 머신 폼과 같은 className(`pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]`)으로, 터치 화면에서 상자는 16px로 두고 누름 영역(`::after`)을 44px로 맞췄습니다. 공통 파일의 근본 수정은 project-standards#415입니다.
-  - 분할 묶음·휴식 요일·주차 목표: `fieldset`은 유틸리티 테두리 상자, `legend`는 굵은 글자입니다.
-  - 부위 추가 버튼은 `outline`·`sm`, 추가된 부위는 둥근 칩 안의 "삭제"(`ghost`)입니다. 버튼 이름("가슴 추가", "분할 1 부위 1 삭제")은 그대로입니다.
-  - 운동 행은 2열(768px 이상 3열) 그리드이고 "운동 삭제"는 `outline`·`sm`, "운동 추가"는 `secondary`입니다.
-  - "루틴 저장하기"·"취소"는 한 줄에 둡니다.
-- `frontend/src/style.css`: `.routine-page fieldset`, `.routine-page button`, `.routine-page input[type='checkbox']`, `.routine-exercise`를 지웠습니다. `.routine-page li`는 4단계에서 옮길 미리보기·계획 보기 목록이 아직 써서 남겼습니다.
+  - Errors: #223's `AlertBanner` instead of `.error`. Save complete and loading are `Notice` (`role="status"`).
+  - "새 루틴 만들기" ("create new routine") is the shared `Button` (with an icon), and "계획 보기" ("view plan") in the list is `outline`, `sm`. The list is split into rows inside a bordered box.
+  - The form sits inside a `Card`. Labels are the shared `Label`, and text, number, and date inputs are the shared `Input` (16px on touch at 768px and wider too).
+  - Select fields (weekly goal mode, split mode, exercise schedule mode, machine, weekly goal target) keep the browser's default `select`, with utilities added to look like the shared input. This is the same exception as the machine select in #101. The shared `Select` (Radix) cannot use the empty value of "자유 운동" ("free workout") as an item, and the screen tests drive the default `select` directly.
+  - Rest days: the shared `Checkbox` instead of the default checkbox. It uses the same className as the #231 machine form (`pointer-coarse:min-h-4 pointer-coarse:min-w-4 pointer-coarse:after:-inset-[15px]`), so on touch screens the box stays at 16px and the press area (`::after`) is 44px. The root fix in the shared file is project-standards#415.
+  - Split groups, rest days, weekly goals: `fieldset` is a utility bordered box and `legend` is bold text.
+  - The add body-part button is `outline`, `sm`, and an added body part is a "삭제" ("delete", `ghost`) inside a rounded chip. The button names ("가슴 추가" ("add chest"), "분할 1 부위 1 삭제" ("delete split 1 body part 1")) are unchanged.
+  - The exercise row is a 2-column grid (3 columns at 768px and wider), "운동 삭제" ("delete exercise") is `outline`, `sm`, and "운동 추가" ("add exercise") is `secondary`.
+  - "루틴 저장하기" ("save routine") and "취소" ("cancel") sit on one line.
+- `frontend/src/style.css`: removed `.routine-page fieldset`, `.routine-page button`, `.routine-page input[type='checkbox']`, and `.routine-exercise`. `.routine-page li` stays because the preview and plan view lists that move in step 4 still use it.
 
-## 테스트
+## Tests
 
-- 수정: `frontend/src/routines.test.tsx`의 입력 도우미 `change()`가 공통 `Checkbox`(`role="checkbox"`)를 눌러 휴식 요일을 고르도록 했습니다. 기존 테스트의 검증 내용은 같습니다.
-- 추가: 같은 파일에서 저장 실패 오류가 `role="alert"`로, 저장 완료가 `role="status"`로 보이는지 확인합니다.
+- Changed: the input helper `change()` in `frontend/src/routines.test.tsx` now presses the shared `Checkbox` (`role="checkbox"`) to pick rest days. What the existing tests verify is the same.
+- Added: in the same file, a check that a save failure error shows as `role="alert"` and save complete shows as `role="status"`.
 - `npm run test -w frontend -- src/routines.test.tsx src/routine-progress.test.tsx`: 17 pass
-- `npm run typecheck -w frontend`, eslint·prettier(바꾼 파일): 통과
-- 시각 기준선과 e2e(반응형·axe·터치)는 PR CI로 확인합니다. 세 워크트리가 동시에 돌아 메모리가 부족해 로컬 전체 `npm run check`와 e2e는 돌리지 않았습니다.
+- `npm run typecheck -w frontend`, eslint and prettier (changed files): pass
+- Visual baselines and e2e (responsive, axe, touch) are checked by the PR CI. Three worktrees ran at the same time and memory ran out, so the full local `npm run check` and e2e were not run.
 
-## 변경 — main 병합과 터치 검사
+## Change — merge main and touch check
 
-- #231(머신 폼, `7db58af`)이 병합된 뒤 `origin/main`을 병합했습니다. 충돌은 없었습니다. #231의 터치 검사는 `[role="checkbox"]`를 일반 버튼 검사에서 빼고, `::after` 누름 영역이 44px 이상인지와 상자가 24px보다 커지지 않는지 봅니다. 휴식 요일 `Checkbox`에 #231과 같은 className을 붙였습니다.
-- `e2e/ui-touch.spec.ts`에 터치 360·390·768px에서 "새 루틴 만들기"를 열고 요일 방식·수동 목표로 바꾼 뒤(휴식 요일 체크박스와 12주 목표 묶음이 나오는 상태) 입력·버튼·체크박스 기준과 가로 넘침을 확인하는 검사를 추가했습니다. 고정 데이터의 루틴짜기 화면은 폼을 열지 않아 이전 검사에는 폼이 나오지 않았습니다.
-- 병합 뒤: `npm run test -w frontend -- src/routines.test.tsx` 8 pass, eslint(바꾼 파일)·`npm run typecheck` 통과. 추가한 e2e는 CI로 확인합니다.
+- After #231 (machine form, `7db58af`) was merged, `origin/main` was merged. There were no conflicts. The touch check from #231 excludes `[role="checkbox"]` from the plain button check, and checks that the `::after` press area is at least 44px and that the box does not grow beyond 24px. The rest-day `Checkbox` got the same className as #231.
+- Added a check to `e2e/ui-touch.spec.ts` that, at touch 360, 390, and 768px, opens "새 루틴 만들기" ("create new routine"), switches to the weekday mode and manual goals (so the rest-day checkboxes and the 12-week goal group show), and checks the input, button, and checkbox criteria and horizontal overflow. The Routine planner screen with fixed data does not open the form, so the earlier checks never showed the form.
+- After the merge: `npm run test -w frontend -- src/routines.test.tsx` 8 pass, eslint (changed files) and `npm run typecheck` pass. The added e2e is checked by CI.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review follow-up
 
-- 768px 미만(2열)에서 총중량 칸만 두 칸을 차지해 세트·반복 칸 옆, 즉 행 중간이 비었습니다. 총중량도 한 칸으로 두고 그리드를 `items-end`로 맞춰, 이름표가 두 줄인 칸과 한 줄인 칸의 입력이 같은 높이에 놓이게 했습니다. 리뷰가 제안한 `grid-flow-dense`는 화면 순서와 탭 순서가 달라져 쓰지 않았습니다.
-- 휴식 요일 `Checkbox`에 `id`(`rest-day-0`~`6`)를 붙여 터치 검사 실패 메시지에서 어느 요일인지 알 수 있게 했습니다.
-- 반영하지 않음: "17 pass를 확인하지 못했다"는 지적. 처음 커밋 때 두 파일을 함께 돌린 실제 결과입니다.
-- 1차 보완 후: `npm run test -w frontend -- src/routines.test.tsx` 8 pass. 같은 명령을 세 번 돌린 중 한 번은 1건이 실패했고 다시 돌린 두 번은 모두 통과했습니다. PC 메모리가 부족한 상태여서 시간 초과로 봅니다. eslint(바꾼 파일) 통과.
+- Below 768px (2 columns), only the total weight cell took two columns, so the spot next to the sets and reps cells, the middle of the row, was empty. The total weight is now one cell too, and the grid is `items-end` so inputs in cells whose label is two lines and cells whose label is one line sit at the same height. The `grid-flow-dense` that the review suggested was not used because it makes the screen order and the tab order differ.
+- Added an `id` (`rest-day-0` to `6`) to the rest-day `Checkbox` so the touch check failure message says which weekday it is.
+- Not applied: the remark that "17 pass was not confirmed". It is the actual result of running the two files together at the first commit.
+- After the first follow-up: `npm run test -w frontend -- src/routines.test.tsx` 8 pass. Of three runs of the same command, one failed 1 test and the two re-runs both passed. The PC was low on memory, so this is treated as a timeout. eslint (changed files) passes.
 
-## 2차 리뷰
+## Second review
 
-- 보완점 없음. 1차 보완(운동 행 빈칸, 체크박스 `id`)이 맞게 들어갔음을 확인했습니다. 칸 수가 홀수(수동 3칸, 자동 5칸)라 마지막 칸 옆 한 자리는 그리드 구조상 비며, 행 중간의 빈칸은 없습니다. 이 표현만 위 기록에 반영했습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
+- No follow-ups. Confirmed that the first follow-up (exercise row gap, checkbox `id`) went in correctly. The number of cells is odd (3 manual, 5 automatic), so one spot next to the last cell stays empty by the grid structure, and there is no empty spot in the middle of a row. Only this wording was applied to the record above. Two reviews are done, so there is no third review.
 
-## 변경 — test: 시각 기준선 갱신
+## Change — test: update visual baselines
 
-- `4576903`의 CI `e2e-visual`에서 `routines-360·390·768·1280` 4장만 실패했고, 새로 넣은 루틴 폼 터치 검사를 포함한 나머지 80건은 통과했습니다.
-- 1280px·360px 이미지를 이전 기준선과 나란히 보았습니다. 루틴 목록이 테두리 상자 안의 줄과 "계획 보기" 버튼으로, "새 루틴 만들기"가 아이콘 있는 공통 버튼으로 바뀌고 안내 글자가 커진 것 외에 배치 차이나 가로 넘침이 없어 `visual-baselines` 아티팩트로 4장을 갱신했습니다.
-- 한계: 고정 데이터 화면은 폼을 열지 않아 기준선 이미지에 폼은 나오지 않습니다. 폼은 화면 테스트와 터치 검사(요일 방식·수동 목표)로 확인했습니다.
+- In CI `e2e-visual` for `4576903`, only the 4 images `routines-360·390·768·1280` failed, and the other 80, including the newly added routine form touch check, passed.
+- The 1280px and 360px images were compared side by side with the old baselines. Apart from the routine list becoming rows inside a bordered box with a "계획 보기" ("view plan") button, "새 루틴 만들기" ("create new routine") becoming the shared button with an icon, and larger hint text, there is no layout difference or horizontal overflow, so the 4 images were updated with the `visual-baselines` artifact.
+- Limitation: the fixed-data screen does not open the form, so the form does not appear in the baseline images. The form was checked with the screen tests and the touch check (weekday mode, manual goals).
 
-## main 병합 (충돌 해결)
+## Merge main (conflict resolution)
 
-- 기준선 갱신 뒤 main에 #235(신체 기록, #103)와 #232(세트 카드, #105)가 병합돼 `origin/main`을 병합했습니다. `style.css`에서 충돌이 났습니다. main은 신체 기록 규칙(`.body-form`, `.body-trend*`, `.body-list`)을, 이 브랜치는 루틴 폼 규칙을 지운 같은 구역이었습니다. 두 쪽의 삭제를 모두 살렸고, 병합 결과의 `style.css`는 main과 비교해 루틴 폼 규칙 4개만 다릅니다.
-- 병합 뒤: `npm run typecheck` 통과, `npm run test -w frontend -- src/routines.test.tsx` 8 pass.
+- After the baseline update, #235 (body records, #103) and #232 (set cards, #105) were merged to main, so `origin/main` was merged. There was a conflict in `style.css`. In the same area, main removed the body record rules (`.body-form`, `.body-trend*`, `.body-list`) and this branch removed the routine form rules. Both deletions were kept, and the merged `style.css` differs from main only by the 4 routine form rules.
+- After the merge: `npm run typecheck` passes and `npm run test -w frontend -- src/routines.test.tsx` gives 8 pass.

@@ -1,65 +1,65 @@
-# #172 백엔드 오류 응답을 중앙 공통 HTTP 파일로 맞추기
+# #172 Align backend error responses with the central shared HTTP file
 
-- 이슈: [#172](https://github.com/sirloinbh/workout-memo/issues/172)
-- 브랜치: `fix/172-http-errors`
+- Issue: [#172](https://github.com/sirloinbh/workout-memo/issues/172)
+- Branch: `fix/172-http-errors`
 
-## 목적
+## Purpose
 
-다른 7개 앱과 같은 중앙 관리 파일 `backend/src/standard/http.ts`(sirloinbh/project-standards#309, 이미 동기화됨)로 오류 응답을 맞춥니다. 그동안 세 가지가 달랐습니다.
+Align error responses with the centrally managed file `backend/src/standard/http.ts` that the other 7 apps use (sirloinbh/project-standards#309, already synced). Until now three things differed.
 
-- 없는 `/api` 경로에 Express 기본 HTML 404가 나갔습니다.
-- 경로 ID를 `z.coerce.number()`로 읽어 `"1e3"`, `" 7 "`도 ID로 받았습니다.
-- 목표 삭제 대상이 없으면 `404 { ok: false }`였습니다. 다른 오류는 `{ error }` 형식입니다.
+- A path under `/api` that does not exist got the default Express HTML 404.
+- Path IDs were read with `z.coerce.number()`, so `"1e3"` and `" 7 "` were also accepted as IDs.
+- Deleting a goal that does not exist gave `404 { ok: false }`. Other errors use the `{ error }` format.
 
-## 변경 — fix: 중앙 오류 처리로 교체
+## Change — fix: switch to the central error handling
 
-- `backend/src/routes/shared.ts`: 앱 자체 `errorHandler`와 `id()`를 지웠습니다. 이 앱만의 메시지를 담당하는 `appErrors`만 남기고, 나머지는 `next(err)`로 중앙 `errorHandler`에 넘깁니다. 남긴 메시지는 세 가지입니다.
-  - `23503`(공식 참고값 FK): "선택한 공식 참고값이 존재하지 않습니다"
-  - `23503`(그 밖): "선택한 머신 또는 브랜드가 존재하지 않습니다"
-  - `413`(백업 경로만): "요청 크기 제한을 초과했습니다 (백업 파일은 최대 10MB)."
-- `backend/src/app.ts`: 모든 기능 라우트 뒤에 `app.use('/api', notFound)`, `appErrors`, 중앙 `errorHandler`를 차례로 둡니다.
-- `routes/body-measurements.ts`·`goals.ts`·`machines.ts`·`routines.ts`·`workouts.ts`: `id(req.params.id)` 9곳을 `parseId(req.params.id, '<대상>')`로 바꿨습니다. 대상은 신체 기록·목표·머신·루틴·일지입니다. 잘못된 ID는 DB 조회 전에 400 "<대상> ID가 올바르지 않습니다"가 됩니다.
-- `routes/goals.ts`: 삭제 대상이 없으면 404 `{ error: '목표를 찾을 수 없습니다' }`입니다. 성공은 그대로 200 `{ ok: true }`입니다.
-- `backend/src/openapi.ts`, `docs/openapi.json`: 경로 ID를 받는 작업 중 400이 빠져 있던 6곳에 400을 넣고 `npm run openapi`로 다시 만들었습니다. 6곳은 `DELETE` workouts·goals·body-measurements, `GET /api/routines/:id`, 루틴 휴식 두 작업입니다. 예전 `z.coerce`도 400을 냈지만 문서에 없었습니다.
-- `docs/api.md`: ID 규칙, 없는 `/api` 경로의 404, 500 메시지, 중앙 파일과 `appErrors`의 역할을 적고, `DELETE /api/goals/:id`의 `{ ok: false }` 예외 문단을 지웠습니다.
+- `backend/src/routes/shared.ts`: deleted the app's own `errorHandler` and `id()`. Only `appErrors`, which handles the messages specific to this app, is left, and everything else is passed to the central `errorHandler` with `next(err)`. Three messages are kept.
+  - `23503` (official reference value FK): "선택한 공식 참고값이 존재하지 않습니다" (the selected official reference value does not exist)
+  - `23503` (other): "선택한 머신 또는 브랜드가 존재하지 않습니다" (the selected machine or brand does not exist)
+  - `413` (backup path only): "요청 크기 제한을 초과했습니다 (백업 파일은 최대 10MB)." (the request size limit was exceeded (a backup file is at most 10MB))
+- `backend/src/app.ts`: after all feature routes, it puts `app.use('/api', notFound)`, `appErrors`, and the central `errorHandler` in order.
+- `routes/body-measurements.ts`, `goals.ts`, `machines.ts`, `routines.ts`, `workouts.ts`: changed 9 places of `id(req.params.id)` to `parseId(req.params.id, '<target>')`. The targets are body record, goal, machine, routine, and log. An invalid ID becomes a 400 "<target> ID가 올바르지 않습니다" (the <target> ID is not valid) before any DB query.
+- `routes/goals.ts`: deleting a goal that does not exist gives 404 `{ error: '목표를 찾을 수 없습니다' }` (goal not found). Success is still 200 `{ ok: true }`.
+- `backend/src/openapi.ts`, `docs/openapi.json`: added 400 to 6 operations that take a path ID and lacked 400, and regenerated with `npm run openapi`. The 6 are `DELETE` of workouts, goals, and body-measurements, `GET /api/routines/:id`, and the two routine rest operations. The old `z.coerce` also returned 400, but it was not in the document.
+- `docs/api.md`: wrote the ID rules, the 404 for a path under `/api` that does not exist, the 500 message, and the roles of the central file and `appErrors`, and deleted the paragraph about the `{ ok: false }` exception of `DELETE /api/goals/:id`.
 
-## 바뀌는 응답
+## Responses that change
 
-| 경우                                            | 이전                                                       | 이후                                               |
-| ----------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
-| 없는 `/api` 경로                                | 404 HTML                                                   | 404 `{ "error": "요청한 API를 찾을 수 없습니다" }` |
-| `1e3`, 앞뒤 공백이 붙은 `%207%20`, `07` 같은 ID | 통과(숫자로 바뀜) 또는 Zod 메시지                          | 400 `{ "error": "<대상> ID가 올바르지 않습니다" }` |
-| 없는 목표 삭제                                  | 404 `{ "ok": false }`                                      | 404 `{ "error": "목표를 찾을 수 없습니다" }`       |
-| 깨진 JSON 본문                                  | 400 "요청 형식을 확인하세요"                               | 400 "요청 본문의 JSON 형식이 올바르지 않습니다"    |
-| 서버 오류(DB 연결 등)                           | 500 "저장소에 연결할 수 없습니다. 서버 상태를 확인하세요." | 500 "서버 오류가 발생했습니다"                     |
+| Case                                                    | Before                                                                                                              | After                                                                                              |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| A path under `/api` that does not exist                 | 404 HTML                                                                                                            | 404 `{ "error": "요청한 API를 찾을 수 없습니다" }` (the requested API was not found)               |
+| An ID like `1e3`, `%207%20` with spaces around, or `07` | Accepted (turned into a number) or a Zod message                                                                    | 400 `{ "error": "<target> ID가 올바르지 않습니다" }` (the <target> ID is not valid)                |
+| Deleting a goal that does not exist                     | 404 `{ "ok": false }`                                                                                               | 404 `{ "error": "목표를 찾을 수 없습니다" }` (goal not found)                                      |
+| A broken JSON body                                      | 400 "요청 형식을 확인하세요" (check the request format)                                                             | 400 "요청 본문의 JSON 형식이 올바르지 않습니다" (the JSON format of the request body is not valid) |
+| A server error (DB connection and so on)                | 500 "저장소에 연결할 수 없습니다. 서버 상태를 확인하세요." (cannot connect to the storage; check the server status) | 500 "서버 오류가 발생했습니다" (a server error occurred)                                           |
 
-## 화면 영향
+## Effect on the screens
 
-- `shared/` 계약은 바꾸지 않았습니다. 화면 코드도 고치지 않았습니다.
-- 화면의 `api()`(`frontend/src/app.tsx`)는 실패하면 응답의 `error`를 그대로 보여 줍니다. 그래서 바뀌는 곳은 두 군데입니다.
-  - 나의 목표 화면: 이미 지워진 목표를 삭제하면 "요청에 실패했습니다" 대신 "목표를 찾을 수 없습니다"가 보입니다.
-  - 모든 화면: 서버 오류 때 보이는 문구가 "서버 오류가 발생했습니다"가 됩니다.
-- 이 문구들을 확인하는 화면 테스트는 없었습니다.
+- The `shared/` contract was not changed. The screen code was not changed either.
+- `api()` of the screen (`frontend/src/app.tsx`) shows the `error` of the response as it is when a request fails. So there are two places that change.
+  - My goals screen: deleting a goal that was already deleted shows "목표를 찾을 수 없습니다" (goal not found) instead of "요청에 실패했습니다" (the request failed).
+  - All screens: the text shown on a server error becomes "서버 오류가 발생했습니다" (a server error occurred).
+- There were no screen tests that check these texts.
 
-## 테스트
+## Tests
 
-- 추가: `backend/test/http-errors.test.ts`에 5개를 넣었습니다. DB 대신 가짜 pool을 써서 테스트 DB 없이도 돕니다.
-  - 없는 `/api` 경로가 JSON 404입니다.
-  - `1e3`·앞뒤 공백이 붙은 `%207%20`·`0`·`-1`·`1.5`·`abc`·`07` ID가 DB 조회 없이 대상 이름이 든 400입니다.
-  - 없는 목표 삭제는 404 `{ error }`이고, 있으면 200 `{ ok: true }`입니다.
-  - `23503` 두 메시지와 500 메시지가 나오고, 내부 메시지는 응답에 넣지 않습니다.
-  - 깨진 JSON 본문은 400입니다.
+- Added: 5 tests in `backend/test/http-errors.test.ts`. They use a fake pool instead of the DB, so they run without a test DB.
+  - A path under `/api` that does not exist gives a JSON 404.
+  - The IDs `1e3`, `%207%20` with spaces around, `0`, `-1`, `1.5`, `abc`, and `07` give a 400 that contains the target name, without a DB query.
+  - Deleting a goal that does not exist gives 404 `{ error }`, and deleting one that exists gives 200 `{ ok: true }`.
+  - The two `23503` messages and the 500 message come out, and the internal message is not put in the response.
+  - A broken JSON body gives 400.
 - `tsx --test test/http-errors.test.ts`: 5 pass
-- 관련 파일 묶음(`http-errors`, `api-contract`, `openapi`, `period-api`, `workout-validation`, `machines`, `body-measurements`, `goals`, `backup`): 86개 중 82 pass, 4 fail. 실패 4개는 `goals.test.ts`의 DB 통합 테스트입니다. 이 PC에 `TEST_DATABASE_URL`은 있지만 PostgreSQL이 떠 있지 않아 `ECONNREFUSED 127.0.0.1:5432`로 실패했습니다. 이 묶음에 넣지 않은 `backup.integration.test.ts`에는 바뀐 동작을 확인하는 단언이 있었습니다(아래 1차 리뷰 보완). DB 통합 테스트는 PostgreSQL 서비스가 있는 CI `verify`로 확인합니다.
-- `npm run typecheck -w backend`, eslint, prettier, `npm run standards:check`(통과, 경고 없음): 통과
-- 로컬 전체 `npm test`·`npm run check`는 메모리 부족 이력이 있어 끝까지 돌리지 않았습니다. 백엔드 전체 테스트를 한 번 시작했지만 10분이 넘어 멈췄습니다. 전체 검사는 CI로 확인합니다.
+- The related file group (`http-errors`, `api-contract`, `openapi`, `period-api`, `workout-validation`, `machines`, `body-measurements`, `goals`, `backup`): of 86, 82 pass, 4 fail. The 4 failures are DB integration tests in `goals.test.ts`. This PC has `TEST_DATABASE_URL`, but PostgreSQL is not running, so they failed with `ECONNREFUSED 127.0.0.1:5432`. `backup.integration.test.ts`, which was not in this group, had an assertion that checks the changed behavior (see the first review fix below). DB integration tests are confirmed with the CI `verify`, which has a PostgreSQL service.
+- `npm run typecheck -w backend`, eslint, prettier, `npm run standards:check` (passed, no warnings): passed
+- I did not run the full local `npm test` and `npm run check` to the end because of a history of running out of memory. I started the whole backend test once, but it stalled after more than 10 minutes. The full check is confirmed with CI.
 
-## 변경 — fix: 1차 리뷰 보완
+## Change — fix: first review fixes
 
-- (필수) `backend/test/backup.integration.test.ts`의 깨진 JSON 사례가 예전 문구(`/요청 형식/`)를 기대해, PostgreSQL이 있는 CI `verify`에서 실패할 상태였습니다. 이 PC에서는 DB가 꺼져 있어 놓쳤습니다. 중앙 문구 "요청 본문의 JSON 형식이 올바르지 않습니다"로 바꿨습니다. 위 테스트 절의 "바뀐 동작을 확인하는 단언이 없다"는 처음 기록도 바로잡았습니다. 다른 테스트·화면·e2e에서 예전 문구를 기대하는 곳은 없습니다.
-- (선택) 413: 예전에는 256kb 일반 요청에도 "백업 파일은 최대 10MB" 문구가 나갔습니다. 이제 `/api/backup/` 경로에만 앱 문구를 쓰고, 나머지는 중앙 "요청 본문이 너무 큽니다"로 넘깁니다. `docs/api.md`의 413 줄에도 적었습니다.
-- (선택) 문서의 ID 예시: 마크다운에서 앞뒤 공백이 사라져 `7`이 정상 ID인 `7`로 보였습니다. "앞뒤 공백이 붙은 `%207%20`"으로 풀어 썼습니다. "1로 시작하는"도 "0으로 시작하지 않는"으로 바로잡았습니다.
-- (선택) `http-errors.test.ts`에 2개를 더했습니다.
-  - 먼저 등록된 `/api/health`와 백업 라우트가 JSON 404에 가려지지 않는지 확인합니다. 백업 라우트는 깨진 본문이 와도 처리기까지 가야 합니다. 그 밖에 없는 백업 경로가 404인지, 루틴 휴식의 잘못된 ID가 400인지도 봅니다.
-  - 256kb를 넘는 일반 요청은 중앙 413 문구로 답하는지 확인합니다.
-- `tsx --test test/http-errors.test.ts test/api-contract.test.ts test/openapi.test.ts`: 13 pass. eslint, prettier 통과
+- (Required) The broken JSON case in `backend/test/backup.integration.test.ts` expected the old text (`/요청 형식/`), so it would have failed in the CI `verify`, which has PostgreSQL. I missed it because the DB is off on this PC. I changed it to the central text "요청 본문의 JSON 형식이 올바르지 않습니다". I also corrected the first record in the tests section above that said "there is no assertion that checks the changed behavior". No other test, screen, or e2e expects the old text.
+- (Optional) 413: before, even a 256kb ordinary request got the "백업 파일은 최대 10MB" (a backup file is at most 10MB) text. Now the app text is used only on `/api/backup/` paths, and the others go to the central "요청 본문이 너무 큽니다" (the request body is too large). I also wrote it in the 413 line of `docs/api.md`.
+- (Optional) ID examples in the document: in Markdown the spaces around disappeared, so `7` looked like the valid ID `7`. I wrote it out as "`%207%20` with spaces around". I also corrected "starting with 1" to "not starting with 0".
+- (Optional) Added 2 tests to `http-errors.test.ts`.
+  - They check that `/api/health` and the backup route, which are registered earlier, are not hidden by the JSON 404. The backup route must reach the handler even when a broken body comes. They also check that a backup path that does not exist is 404 and that an invalid ID of a routine rest is 400.
+  - They check that an ordinary request over 256kb is answered with the central 413 text.
+- `tsx --test test/http-errors.test.ts test/api-contract.test.ts test/openapi.test.ts`: 13 pass. eslint and prettier passed

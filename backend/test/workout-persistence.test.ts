@@ -42,17 +42,17 @@ test(
       const original = {
         date: '2024-02-29',
         title,
-        notes: '일지 메모',
+        notes: 'Journal memo',
         sets: [
           {
-            exercise: '레그 프레스',
+            exercise: 'Leg Press',
             machine_id: machineId,
             weight: 120.25,
             reps: 10,
-            notes: '첫 세트',
+            notes: 'First set',
           },
-          { exercise: '스쿼트', machine_id: null, weight: 0, reps: 12, notes: '맨몸 세트' },
-          { exercise: '런지', machine_id: null, weight: 20, reps: 10, notes: '삭제할 세트' },
+          { exercise: 'Squat', machine_id: null, weight: 0, reps: 12, notes: 'Bodyweight sets' },
+          { exercise: 'Lunge', machine_id: null, weight: 20, reps: 10, notes: 'Set to delete' },
         ],
       };
       const created = await call('/workouts', 'POST', original);
@@ -90,17 +90,17 @@ test(
         version: created.data.version,
         date: '2024-03-01',
         title: title + '-edited',
-        notes: '수정한 일지 메모',
+        notes: 'Edited journal memo',
         sets: [
           {
             ...original.sets[1],
-            exercise: '핵 스쿼트',
+            exercise: 'Hack Squat',
             machine_id: machineId,
             weight: 40.5,
             reps: 8,
-            notes: '순서 변경 및 세트 수정',
+            notes: 'Reorder and edit sets',
           },
-          { ...original.sets[0], weight: 130, notes: '두 번째로 이동' },
+          { ...original.sets[0], weight: 130, notes: 'Move to second' },
         ],
       };
       await t.test(
@@ -129,7 +129,7 @@ test(
             version: before.version,
             date: '2024-03-02',
             title: title + '-must-rollback',
-            notes: '저장되면 안 됨',
+            notes: 'Must not be saved',
             sets: [edited.sets[0], { ...edited.sets[1], machine_id: absentMachine }],
           };
           assert.equal((await call(`/workouts/${workoutId}`, 'PUT', failed)).status, 400);

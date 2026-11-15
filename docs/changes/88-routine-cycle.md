@@ -1,77 +1,77 @@
-# #88 루틴 운동일·휴식일 자동 선정과 분할별 기본 부위 구성
+# #88 Automatic workout day and rest day selection for routines, and default body parts per split
 
-- 이슈: [#88](https://github.com/sirloinbh/workout-memo/issues/88)
-- 브랜치: `feat/88-routine-cycle`
-  - `research/87-official-weights-followup` 위에서 시작했다. 마이그레이션 번호(010~014) 순서를 지키기 위해서다.
-  - #91 → #92 → #94 → #95 → 이 PR 순서로 병합해야 한다.
+- Issue: [#88](https://github.com/sirloinbh/workout-memo/issues/88)
+- Branch: `feat/88-routine-cycle`
+  - It started on top of `research/87-official-weights-followup`. This keeps the migration number order (010 to 014).
+  - The merge order must be #91 → #92 → #94 → #95 → this PR.
 
-## 결정 — 2026-10-21
+## Decisions — 2026-10-21
 
-- 기본 부위
-  - 무분할은 전신(선택 가능한 8개 부위 모두)이다.
-  - 5분할은 가슴 / 등 / 하체(앞·뒤) / 어깨 / 이두·삼두·복근이다.
-- 이두·삼두를 '팔'에서 분리한다.
-  - 이미 '팔'로 저장된 부위 지정·루틴은 그대로 유지한다.
-  - 새로 고를 때는 이두·삼두만 제시한다. 사용자가 종목 분석에서 '팔'을 직접 지울 수 있다. 데이터를 추측해서 바꾸지 않는다.
-- 표의 '하체'는 하체-앞·하체-뒤 둘 다로 채운다.
-- 새 루틴의 일정 기본값은 주기 방식이다. 요일 방식도 계속 고를 수 있다.
+- Default body parts
+  - No split is the full body (all 8 selectable body parts).
+  - The 5-split is chest / back / lower body (front and back) / shoulders / biceps, triceps, and abs.
+- Biceps and triceps are separated from 'arms'.
+  - Body part settings and routines already saved as '팔' (arms) stay as they are.
+  - When choosing anew, only biceps and triceps are offered. The user can clear '팔' directly in exercise analysis. We do not guess and change the data.
+- '하체' (lower body) in the table is filled with both 하체-앞 (lower body front) and 하체-뒤 (lower body back).
+- The default schedule of a new routine is the cycle method. The weekday method can still be chosen.
 
-## 변경
+## Change
 
-- 일정(`backend/src/domain.ts`, `frontend/src/progression.ts`)
-  - `routineSchema`에 `schedule_mode`(`weekday`|`cycle`, 생략 = 요일)와 `cycle { train_days 1~7, rest_days 0~7 }`을 추가했다.
-  - 주기 방식은 시작일부터 `offset % (N+M) < N`인 날을 운동일로 본다. 휴식 요일은 빈 배열이어야 한다. 요일 방식에 `cycle`을 보내면 거부한다.
-  - 계획은 jsonb이므로 마이그레이션이 필요 없다. 기존 루틴(모드 없음)은 그대로 요일 방식으로 계산한다.
-  - 일정이 `routineSchedule` 한 곳에서 나오므로, 오늘 휴식(#28)의 일정 밀기와 자동 이중 진행은 주기 방식에서도 같은 규칙으로 동작한다.
-  - 화면 미리보기도 같은 주기 규칙을 쓴다.
-- 부위
-  - 선택 부위 8개: 가슴·등·어깨·이두·삼두·하체-앞·하체-뒤·복근
-  - 검증·정렬은 `allBodyParts`(기존 '팔' 포함 9개)를 쓴다.
-  - `014_biceps_triceps.sql`: `exercise_body_parts`의 CHECK 제약을 이두·삼두 포함으로 교체한다. 007처럼 유니코드 이스케이프를 쓰고, 재실행해도 안전하다.
-  - 종목 분석의 주간 부위 표는 '팔'에 매핑된 운동이 있을 때만 '팔' 행을 보여 준다.
-  - 휴식 타이머(#84)는 이두·삼두를 상체로 분류한다.
-- 화면
-  - 루틴짜기: "운동 일정 방식"(주기·요일), 주기 방식의 "연속 운동일"·"이어지는 휴식일"을 추가했다.
-  - 분할 방식을 바꾸면 그 분할 수의 주기와 분할별 기본 부위를 채운다.
-    - 무분할·2분할 2+1, 3분할 3+1, 4분할 4+1, 5분할 5+2
-    - 부위는 이슈 표대로 채운다. '하체'는 하체-앞·하체-뒤, '이두'·'삼두'는 새 부위다.
-  - 저장된 계획 보기에 `N일 운동 · M일 휴식 반복`을 표시한다.
-  - 주기 방식은 서버에 `rest_days: []`, `weekly_workouts = min(7, 운동일)`(명목값)로 보낸다.
-  - 종목 분석의 부위 지정은 이두·삼두를 제시한다. 저장된 '팔'은 해제할 때까지 버튼으로 보이고, 저장해도 유지된다.
-- 문서: `docs/api.md`, `database/README.md`, `README.md`
+- Schedule (`backend/src/domain.ts`, `frontend/src/progression.ts`)
+  - I added `schedule_mode` (`weekday`|`cycle`, left out = weekday) and `cycle { train_days 1 to 7, rest_days 0 to 7 }` to `routineSchema`.
+  - The cycle method counts a day as a workout day when `offset % (N+M) < N` from the start date. The rest weekdays must be an empty array. Sending `cycle` with the weekday method is rejected.
+  - The plan is jsonb, so no migration is needed. Existing routines (no mode) are still calculated by the weekday method.
+  - The schedule comes from a single place, `routineSchedule`, so the schedule shift of resting today (#28) and the automatic double progression work by the same rule under the cycle method too.
+  - The screen preview also uses the same cycle rule.
+- Body parts
+  - The 8 selectable parts: 가슴 (chest), 등 (back), 어깨 (shoulders), 이두 (biceps), 삼두 (triceps), 하체-앞 (lower body front), 하체-뒤 (lower body back), and 복근 (abs)
+  - Validation and sorting use `allBodyParts` (9 including the existing '팔' (arms)).
+  - `014_biceps_triceps.sql`: it replaces the CHECK constraint of `exercise_body_parts` with one that includes biceps and triceps. Like 007, it uses Unicode escapes and is safe to re-run.
+  - The weekly body part table in exercise analysis shows the '팔' row only when there is an exercise mapped to '팔'.
+  - The rest timer (#84) classifies biceps and triceps as upper body.
+- Screen
+  - Routine planning: I added "운동 일정 방식" (workout schedule method) (cycle or weekday), and for the cycle method "연속 운동일" (consecutive workout days) and "이어지는 휴식일" (following rest days).
+  - When you change the split method, it fills in the cycle for that number of splits and the default body parts per split.
+    - No split and 2-split 2+1, 3-split 3+1, 4-split 4+1, and 5-split 5+2
+    - The body parts are filled as in the table of the issue. '하체' becomes 하체-앞 and 하체-뒤, and '이두' and '삼두' are the new parts.
+  - The saved plan view shows `N일 운동 · M일 휴식 반복` (N workout days, M rest days, repeating).
+  - For the cycle method, it sends the server `rest_days: []` and `weekly_workouts = min(7, workout days)` (a nominal value).
+  - The body part setting in exercise analysis offers biceps and triceps. A saved '팔' shows as a button until you clear it, and it is kept when saved.
+- Documents: `docs/api.md`, `database/README.md`, `README.md`
 
-## 테스트
+## Tests
 
-- `backend/test/routine-cycle.test.ts` (신규)
-  - 분할별 기본 주기 5종의 84일 일정이 주기 규칙과 같다. 분할 순환과 디로딩 주차도 확인한다.
-  - 스키마: 저장된 요일 루틴은 그대로이고, 주기·요일 필드를 섞으면 거부한다.
-  - 주기 루틴에서 오늘 휴식을 고르면 남은 목표가 다음 운동일로 밀린다.
-  - 화면 미리보기와 서버 일정이 같다.
-  - DB 통합
-    - 주기 루틴 저장·조회 일정
-    - 기존 '팔' 허용
-    - 014 이후 부위 지정에 이두·삼두 저장
+- `backend/test/routine-cycle.test.ts` (new)
+  - The 84-day schedules of the 5 default cycles per split match the cycle rule. It also checks the split rotation and the deload weeks.
+  - Schema: a saved weekday routine is unchanged, and mixing cycle and weekday fields is rejected.
+  - When you choose rest today in a cycle routine, the remaining targets shift to the next workout day.
+  - The screen preview and the server schedule are the same.
+  - DB integration
+    - Saving and reading the schedule of a cycle routine
+    - Allowing the existing '팔'
+    - Saving biceps and triceps in the body part setting after 014
 - `backend/test/analysis.test.ts`
-  - 빈 분석의 부위 목록(8개 + 미분류)
-  - 부위 이름으로 행 찾기
-  - '팔' 매핑의 집계와 정렬, 매핑 스키마
-- `backend/test/rest-by-exercise.test.ts`: 이두·삼두가 상체 휴식으로 분류되는지 확인한다.
+  - The body part list of an empty analysis (8 + unclassified)
+  - Finding a row by body part name
+  - The totals and sorting of the '팔' mapping, and the mapping schema
+- `backend/test/rest-by-exercise.test.ts`: checks that biceps and triceps are classified as an upper body rest.
 - `frontend/src/routines.test.tsx`
-  - 기본 주기 방식, 분할 수별 주기·부위 채움, '팔 추가' 버튼 없음
-  - 수정한 주기로 저장한 요청 본문
-  - 기존 요일 방식 테스트는 모드를 요일로 바꾸고 채워진 부위를 비운 뒤 같은 검증을 한다. UI에 없는 '팔'은 '이두'로 바꿔 입력한다.
-- `frontend/src/analysis.test.tsx`: 이두·삼두 제시, '팔'은 새 선택에 없음, 저장된 '팔' 유지·표시
+  - The default cycle method, the cycle and body part fill per number of splits, and no 'add 팔' button
+  - The request body saved with an edited cycle
+  - The existing weekday method tests change the mode to weekday, clear the filled body parts, and then verify the same things. A '팔' that is not in the UI is entered as '이두' instead.
+- `frontend/src/analysis.test.tsx`: offering biceps and triceps, '팔' is not in the new choices, and keeping and showing a saved '팔'
 
-## 검증 — 2026-10-21
+## Verification — 2026-10-21
 
-- `npm run check`(Node 24.21.0, `TEST_DATABASE_URL`=로컬 전용 테스트 DB) 통과
-  - 백엔드 303 pass, 0 skip(DB 통합 포함)
-  - 프론트 101 pass
-  - 워커 162, skills 4, docs 3, build 통과
-- `npm run test:e2e`(같은 테스트 DB): 4 passed
-- 첫 check는 typecheck에서 실패했다(TS2835). 새 테스트가 `frontend/src/progression.ts`를 직접 import해서 백엔드(node16 ESM) 검사 범위에 들어갔기 때문이다. 기존 동등성 테스트처럼 vm으로 불러오도록 바꿔 통과했다.
+- `npm run check` (Node 24.21.0, `TEST_DATABASE_URL`=the local dedicated test DB) passes
+  - Backend 303 pass, 0 skip (including the DB integration)
+  - Frontend 101 pass
+  - Workers 162, skills 4, docs 3, and build pass
+- `npm run test:e2e` (the same test DB): 4 passed
+- The first check failed in typecheck (TS2835). The new test imported `frontend/src/progression.ts` directly, so it fell into the backend (node16 ESM) check scope. I changed it to load it through a vm like the existing equivalence tests, and it passed.
 
-## 제한·후속
+## Limits and follow-up
 
-- 기존 '팔' 데이터는 자동으로 바꾸지 않는다. 종목 분석에서 운동마다 이두·삼두로 다시 지정해야 분리된 집계가 된다.
-- 주기 방식의 `weekly_workouts`는 계산에 쓰지 않는 명목값이다.
+- Existing '팔' data is not changed automatically. You must set each exercise to biceps or triceps again in exercise analysis to get the separated totals.
+- The `weekly_workouts` of the cycle method is a nominal value not used in the calculation.

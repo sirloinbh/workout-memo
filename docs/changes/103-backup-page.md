@@ -1,59 +1,59 @@
-# #103 백업·내보내기 화면을 공통 컴포넌트로 교체 (1단계)
+# #103 Replace the backup and export screen with shared components (step 1)
 
-- 이슈: [#103](https://github.com/sirloinbh/workout-memo/issues/103)
-- 브랜치: `feat/103-backup-page`
+- Issue: [#103](https://github.com/sirloinbh/workout-memo/issues/103)
+- Branch: `feat/103-backup-page`
 
-## 목적
+## Purpose
 
-#103(신체 기록·머신 라이브러리·백업 화면 교체)을 #101처럼 요소마다 PR 하나로 나눠 옮기는 첫 PR입니다. 가장 작은 백업·내보내기 화면부터 옮깁니다. 남은 단계는 머신 라이브러리 목록, 머신 등록·수정 폼과 공식 참고값, 신체 기록 추이와 기록 폼, 인바디 가져오기 미리보기 표, 마지막 `style.css` 정리입니다.
+This is the first PR in moving #103 (replacing the body records, machine library, and backup screens) over one element at a time, one PR each, as in #101. Start with the smallest screen, backup and export. The remaining steps are the machine library list, the machine create and edit form and the official reference values, the body record trend and record form, the InBody import preview table, and the final `style.css` cleanup.
 
-## 변경 — feat: 백업 화면 교체
+## Change — feat: replace the backup screen
 
 - `frontend/src/backup.tsx`
-  - 세 구역(분석용 CSV, 복원용 백업, 백업에서 복원)을 `section.card`에서 `Card`, `CardHeader`, `CardTitle`(h3), `CardContent`, `CardFooter`로 바꿨습니다. 설명 문단은 문단마다 유틸리티(`text-body-sm text-muted-foreground`)를 붙입니다.
-  - 내려받기 두 개는 `a.primary`에서 `Button asChild` 링크로 바꾸고 `Download` 아이콘을 붙였습니다. 주소와 `download` 속성은 그대로입니다.
-  - 복원 방식·백업 파일·확인 문구는 공통 `Label`(`htmlFor`)과 `Input`입니다. 복원 방식은 #101 세트 행처럼 브라우저 기본 `select`를 두고 `Input`과 같은 모양의 유틸리티를 줬습니다. 공통 `Select`(Radix)는 값을 고르는 방식이 달라 화면 테스트의 `selectOptions`를 모두 바꿔야 합니다.
-  - 진행·오류 문구는 공통 `Notice`입니다(`role="status"`, `role="alert"` 그대로).
-  - 복원 미리보기는 테두리 상자 안에 표별 한 줄 목록("변경 요약")과 충돌 목록("충돌")을 둡니다. 표 이름은 진하게, 개수는 흐린 글자입니다.
-  - 확인 단계: "전체 교체"를 고르면 "복원 실행"이 `destructive` 버튼이 됩니다. 확인 문구를 정확히 넣어야 켜지는 동작은 그대로입니다. 확인 문구 칸에 `autoComplete="off"`를 넣었습니다.
-  - 페이지 제목 `h2`는 종목 분석·루틴짜기의 제목과 같은 legacy `h2` 규칙을 그대로 씁니다. 페이지 머리글 정리는 #222 범위입니다.
-- `frontend/src/style.css`: `.backup-page .card`, `.backup-page a.primary`, `.backup-page label`, `.backup-page li`를 지웠습니다. `.card`, `.primary`, `.error`는 다른 화면이 아직 써서 남깁니다.
-- 화면 차이: 카드 사이 간격과 안쪽 여백이 공통 `Card` 값이 되고, 설명 글자가 12px에서 14px로 커집니다. 내려받기 버튼에 아이콘이 생기고, 복원 방식과 파일 선택이 768px 이상에서 한 줄 두 칸입니다.
+  - The three sections (CSV for analysis, backup for restore, restore from backup) changed from `section.card` to `Card`, `CardHeader`, `CardTitle` (h3), `CardContent`, and `CardFooter`. Each description paragraph gets a utility (`text-body-sm text-muted-foreground`).
+  - The two downloads changed from `a.primary` to `Button asChild` links with a `Download` icon. The address and the `download` attribute are unchanged.
+  - The restore mode, backup file, and confirmation text use the shared `Label` (`htmlFor`) and `Input`. The restore mode keeps the browser's default `select`, as in the #101 set row, with a utility that looks like `Input`. The shared `Select` (Radix) picks values in a different way, so every `selectOptions` in the screen tests would need to change.
+  - Progress and error text is the shared `Notice` (`role="status"` and `role="alert"` unchanged).
+  - The restore preview shows a one-line-per-table list ("변경 요약", "change summary") and a conflict list ("충돌", "conflicts") in a bordered box. The table name is bold and the count is in muted text.
+  - Confirmation step: when "전체 교체" ("replace all") is chosen, "복원 실행" ("run restore") becomes a `destructive` button. The behavior of turning on only when the confirmation text is entered exactly is unchanged. Added `autoComplete="off"` to the confirmation text field.
+  - The page title `h2` keeps using the same legacy `h2` rule as the titles of exercise analysis and the Routine planner. Cleaning up the page header is in the scope of #222.
+- `frontend/src/style.css`: removed `.backup-page .card`, `.backup-page a.primary`, `.backup-page label`, and `.backup-page li`. `.card`, `.primary`, and `.error` stay because other screens still use them.
+- Screen difference: the spacing between cards and the inner padding become the shared `Card` values, and the description text grows from 12px to 14px. The download buttons get an icon, and the restore mode and the file picker are two cells in one row at 768px and wider.
 
-## 테스트
+## Tests
 
-- 추가: `frontend/src/backup.test.tsx`에 2개.
-  - 내려받기가 이름 있는 링크인지, 세 카드 제목이 h3인지, 미리보기의 "변경 요약" 목록이 표마다 한 줄이고 충돌 목록이 따로 있는지, 미리보기 제목이 h4인지 확인합니다.
-  - 복원 중 문구(1차 보완): `deferred`로 복원 응답을 붙잡아 "복원하는 중…"만 보이고, 끝나면 사라지는지 확인합니다.
-- 기존 4개는 라벨·버튼 이름이 같아 그대로 통과합니다.
+- Added: 2 tests in `frontend/src/backup.test.tsx`.
+  - Check that the downloads are named links, that the three card titles are h3, that the "변경 요약" ("change summary") list in the preview has one line per table and the conflict list is separate, and that the preview heading is h4.
+  - Restoring text (first follow-up): hold the restore response with `deferred` and check that only "복원하는 중…" ("restoring...") shows and that it disappears when it finishes.
+- The existing 4 tests pass as they are because the label and button names are the same.
 - `npm run test -w frontend -- src/backup.test.tsx`: 6 pass
-- `npm run typecheck -w frontend`, eslint(바뀐 파일), prettier, `npm run test:docs`: 통과
-- 로컬 전체 `npm run check`와 e2e는 메모리 부족 이력이 있고 세 워크트리가 동시에 돌아 실행하지 않았습니다. e2e(반응형·axe·터치·시각 기준선)는 PR CI로 확인했습니다.
+- `npm run typecheck -w frontend`, eslint (changed files), prettier, `npm run test:docs`: pass
+- The full local `npm run check` and e2e were not run because there is a history of running out of memory and three worktrees ran at the same time. e2e (responsive, axe, touch, visual baselines) was checked by the PR CI.
 
-## 변경 — fix: 1차 리뷰 보완 (3668e6a)
+## Change — fix: first review follow-up (3668e6a)
 
-- 설명 글자 크기(필수): `text-body-sm`을 `CardContent`에만 붙여, `<p>`에 직접 걸리는 legacy `p` 규칙(12px) 때문에 글자가 커지지 않았습니다. 문단마다 붙였습니다.
-- 복원 방식 `select`: 옆 `Input`과 같도록 `dark:bg-input/30`, `text-base md:text-body-sm`, `disabled:cursor-not-allowed`를 넣었습니다.
-- 파일 입력란: 보이는 라벨을 "백업 파일"에서 "백업 파일 선택"으로 바꾸고 `aria-label`을 지워 이름을 라벨 하나로 정했습니다.
-- 진행 문구: 복원하는 동안에도 "백업을 확인하는 중…"이 떴습니다(교체 전부터 있던 동작). 미리보기가 있을 때는 "복원하는 중…"으로 보입니다.
-- 시각 기준선 미갱신(필수)은 CI 이미지를 확인한 뒤 아래 test 커밋으로 갱신했습니다.
+- Description text size (required): `text-body-sm` was applied only to `CardContent`, so the text did not grow because of the legacy `p` rule (12px) that applies directly to `<p>`. It is now applied to each paragraph.
+- Restore mode `select`: added `dark:bg-input/30`, `text-base md:text-body-sm`, and `disabled:cursor-not-allowed` to match the `Input` next to it.
+- File input: changed the visible label from "백업 파일" ("backup file") to "백업 파일 선택" ("choose backup file") and removed the `aria-label` so the name comes from the label alone.
+- Progress text: "백업을 확인하는 중…" ("checking the backup...") also showed while restoring (behavior from before the replacement). When a preview exists, it now shows "복원하는 중…" ("restoring...").
+- The un-updated visual baselines (required) were updated in the test commit below after checking the CI images.
 
-## 변경 — fix: 터치 768px 글자 크기와 2차 리뷰 (a5761d4)
+## Change — fix: touch 768px text size and second review (a5761d4)
 
-- 2차 리뷰: 코드는 보완점이 없었고, 이 기록의 테스트 수가 실제와 달라 바로잡았습니다. 리뷰 2회를 마쳐 3차 리뷰는 하지 않습니다.
-- `3668e6a`의 CI `e2e-visual`에서 `ui-touch` 768px이 실패했습니다. 공통 `Input`과 같은 모양으로 맞춘 `md:text-body-sm`이 터치 기기 768px 이상에서 16px(#104 기준, iOS 확대 방지)을 14px로 줄였습니다. #101 세트 행처럼 파일 입력란·확인 문구·복원 방식에 `md:pointer-coarse:text-base`를 넣었습니다. 같은 실행의 나머지 실패는 `backup` 시각 기준선 4장뿐이었습니다.
+- Second review: no code follow-ups, and the test count in this record differed from the actual count, so it was corrected. Two reviews are done, so there is no third review.
+- In CI `e2e-visual` for `3668e6a`, `ui-touch` at 768px failed. The `md:text-body-sm` that was added to match the shared `Input` shrank 16px (the #104 standard, preventing iOS zoom) to 14px on touch devices at 768px and wider. As in the #101 set row, added `md:pointer-coarse:text-base` to the file input, the confirmation text, and the restore mode. The only other failures in the same run were the 4 `backup` visual baselines.
 
-## 변경 — fix: 카드 제목 크기 (c5a3205)
+## Change — fix: card title size (c5a3205)
 
-- `a5761d4`의 CI 이미지를 보니 카드 제목(공통 `h3` 기본 크기)이 페이지 제목 `h2`(15px)보다 컸습니다. 대시보드 카드와 같이 `CardTitle`에 `text-body font-semibold`를 줬습니다.
+- The CI images for `a5761d4` showed the card title (the default size of the shared `h3`) larger than the page title `h2` (15px). As with the dashboard cards, gave `CardTitle` `text-body font-semibold`.
 
-## 변경 — test: 시각 기준선 갱신 (787731d)
+## Change — test: update visual baselines (787731d)
 
-- `c5a3205`의 CI `e2e-visual`에서 `backup` 360·390·768·1280 4건만 실패했습니다. axe·반응형·터치 포함 74건은 통과했습니다. 360·768·1280 이미지를 직접 보고 카드, 내려받기 버튼 아이콘, 두 칸 입력 외에 차이가 없음을 확인했습니다. 그 뒤 `visual-baselines` 아티팩트로 4장을 갱신했습니다. 다른 이미지는 기존 기준선과 바이트 단위로 같았습니다.
-- `787731d`의 CI는 모두 통과했습니다.
-- 한계: e2e 고정 데이터에는 백업 파일을 고르는 단계가 없어 미리보기·확인 문구·복원 버튼은 이미지에 나오지 않습니다. 이 부분은 화면 테스트(`backup.test.tsx`)로만 확인했습니다.
+- In CI `e2e-visual` for `c5a3205`, only the 4 `backup` 360, 390, 768, 1280 images failed. 74, including axe, responsive, and touch, passed. The 360, 768, and 1280 images were viewed directly and showed no difference apart from the cards, the download button icon, and the two-cell input. After that the 4 images were updated with the `visual-baselines` artifact. The other images were byte-for-byte the same as the existing baselines.
+- CI for `787731d` all passed.
+- Limitation: the e2e fixed data has no step that picks a backup file, so the preview, the confirmation text, and the restore button do not appear in the images. They were checked only with the screen tests (`backup.test.tsx`).
 
-## main 병합
+## Merge main
 
-- 병합 직전 main이 #226(#224 기간 선택 줄), #227(#102 나의 목표)만큼 앞서 있어 `origin/main`을 merge했습니다. 충돌은 없었습니다. 병합 뒤 `npm run test -w frontend -- src/backup.test.tsx` 6 pass, `npm run typecheck -w frontend` 통과
-- 위 fix 커밋들에 넣으려던 기록이 셸의 `python` 스텁 때문에 파일에 들어가지 않았던 것을 이때 발견해 이 기록을 다시 썼습니다.
+- Just before the merge, main was ahead by #226 (#224 period selection row) and #227 (#102 My goals), so `origin/main` was merged. There were no conflicts. After the merge, `npm run test -w frontend -- src/backup.test.tsx` gave 6 pass and `npm run typecheck -w frontend` passed.
+- At this point it was found that the record meant for the fix commits above never made it into the file because of the shell's `python` stub, so this record was rewritten.

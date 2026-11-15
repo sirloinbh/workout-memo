@@ -1,8 +1,8 @@
 {
-  "name": "FORM · 나의 운동 기록",
-  "short_name": "운동 기록",
-  "description": "나 한 명의 운동 일지를 기록하고, 기간별 훈련량과 점진적 과부하 목표를 확인하는 개인 서비스. 사용자는 본인 한 명이며 로그인은 없다. 외부 공개 전에는 사설 접속 또는 인증을 먼저 설계한다.",
-  "lang": "ko",
+  "name": "FORM · My Workout Log",
+  "short_name": "Workout Log",
+  "description": "A personal service for logging my own workouts and checking training volume and progressive overload goals by period. There is one user (me) and no login. Before any public exposure, design private access or authentication first.",
+  "lang": "en",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

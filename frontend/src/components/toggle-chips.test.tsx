@@ -5,12 +5,12 @@ import { expect, test } from 'vitest';
 import { ToggleChips } from './toggle-chips';
 
 function Parts() {
-  const [value, setValue] = useState<string[]>(['가슴']);
+  const [value, setValue] = useState<string[]>(['Chest']);
   return (
     <>
       <ToggleChips
-        label="부위"
-        options={['가슴', '등', '어깨']}
+        label="Body part"
+        options={['Chest', 'Back', 'Shoulders']}
         value={value}
         onValueChange={setValue}
       />
@@ -21,32 +21,32 @@ function Parts() {
 
 test('each chip reports whether it is pressed', () => {
   render(<Parts />);
-  expect(screen.getByRole('group', { name: '부위' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '가슴' })).toHaveAttribute('aria-pressed', 'true');
-  expect(screen.getByRole('button', { name: '등' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('group', { name: 'Body part' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Chest' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'Back' })).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('the result follows the option order, not the click order', () => {
   render(<Parts />);
-  fireEvent.click(screen.getByRole('button', { name: '가슴' }));
-  fireEvent.click(screen.getByRole('button', { name: '어깨' }));
-  fireEvent.click(screen.getByRole('button', { name: '가슴' }));
-  expect(screen.getByRole('status')).toHaveTextContent('가슴,어깨');
+  fireEvent.click(screen.getByRole('button', { name: 'Chest' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Shoulders' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Chest' }));
+  expect(screen.getByRole('status')).toHaveTextContent('Chest,Shoulders');
 });
 
 test('arrow keys move focus between chips', async () => {
   render(<Parts />);
-  const first = screen.getByRole('button', { name: '가슴' });
+  const first = screen.getByRole('button', { name: 'Chest' });
   first.focus();
   fireEvent.keyDown(first, { key: 'ArrowRight' });
-  await waitFor(() => expect(screen.getByRole('button', { name: '등' })).toHaveFocus());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Back' })).toHaveFocus());
 });
 
 test('several chips can be on, and all can be turned off', () => {
   render(<Parts />);
-  fireEvent.click(screen.getByRole('button', { name: '등' }));
-  expect(screen.getByRole('status')).toHaveTextContent('가슴,등');
-  fireEvent.click(screen.getByRole('button', { name: '가슴' }));
-  fireEvent.click(screen.getByRole('button', { name: '등' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+  expect(screen.getByRole('status')).toHaveTextContent('Chest,Back');
+  fireEvent.click(screen.getByRole('button', { name: 'Chest' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(screen.getByRole('status')).toBeEmptyDOMElement();
 });

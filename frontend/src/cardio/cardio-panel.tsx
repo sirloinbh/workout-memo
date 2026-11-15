@@ -43,7 +43,7 @@ export function CardioPanel({
 }) {
   const [sessions, setSessions] = useState<CardioSession[]>([]);
   const [loading, setLoading] = useState(true);
-  // A failed load (with "다시 연결") and a failed delete are shown apart: a reload clears only
+  // A failed load (with "Reconnect") and a failed delete are shown apart: a reload clears only
   // the first, so a delete failure stays until the next action.
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -99,20 +99,20 @@ export function CardioPanel({
   }, [load]);
 
   async function remove(session: CardioSession) {
-    if (busy || !confirm(`${sessionLabel(session)} 유산소 기록을 삭제할까요?`)) return;
+    if (busy || !confirm(`Delete the ${sessionLabel(session)} cardio record?`)) return;
     setBusy(true);
     setStatus('');
     setActionError('');
     let reload = true;
     try {
       await deleteCardioSession(session.id);
-      setStatus('유산소 기록을 삭제했습니다');
+      setStatus('Cardio record deleted');
       onChanged?.();
     } catch (e) {
       // Already deleted elsewhere: the reload below shows the list without it. Any other
       // failure leaves the row in place (it may still exist) and needs no reload.
       if (e instanceof RequestError && e.status === 404) {
-        setStatus('이미 삭제된 기록입니다');
+        setStatus('This record was already deleted');
         onChanged?.();
       } else {
         setActionError((e as Error).message);
@@ -134,7 +134,7 @@ export function CardioPanel({
         <AlertBanner
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load(true)}>
-              다시 연결
+              Reconnect
             </Button>
           }
         >
@@ -146,7 +146,7 @@ export function CardioPanel({
       <Card className="gap-0 py-0 shadow-none">
         <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
           <CardTitle asHeading="h2" className="flex items-center gap-2 text-body font-semibold">
-            유산소 기록{' '}
+            Cardio records{' '}
             <Badge variant="secondary" className="text-xs">
               {sessions.length}
             </Badge>
@@ -164,21 +164,19 @@ export function CardioPanel({
               }}
             >
               <Plus aria-hidden />
-              유산소 기록 추가
+              Add cardio record
             </Button>
           </CardAction>
         </CardHeader>
         {loading ? (
-          <p className="px-6 py-14 text-center text-sm text-muted-foreground">
-            기록을 불러오는 중…
-          </p>
+          <p className="px-6 py-14 text-center text-sm text-muted-foreground">Loading records…</p>
         ) : sessions.length === 0 ? (
           <EmptyState
             className="m-4 md:m-6"
             headingLevel="h3"
             icon={<Activity />}
-            title="선택한 기간에 유산소 기록이 없습니다"
-            description="러닝·걷기·자전거처럼 한 번의 유산소 운동을 시간과 거리로 남겨 보세요."
+            title="No cardio records in the selected period"
+            description="Log a cardio session by time and distance, like a run, walk, or bike ride."
           />
         ) : (
           <CardioList
@@ -202,7 +200,7 @@ export function CardioPanel({
           close={() => setEditing(undefined)}
           onSaved={() => {
             setEditing(undefined);
-            setStatus('유산소 기록을 저장했습니다');
+            setStatus('Cardio record saved');
             onChanged?.();
             void load();
           }}

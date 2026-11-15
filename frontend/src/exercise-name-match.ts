@@ -18,7 +18,7 @@ export function candidateNames(server: readonly ExerciseName[], local: readonly 
 }
 
 // An existing name that differs from the typed one only in spaces or letter case, e.g.
-// "벤치 프레스" for "벤치프레스". An exact match is not a suggestion.
+// "Bench Press" for "Benchpress". An exact match is not a suggestion.
 export function similarName(value: string, names: readonly string[]) {
   const typed = value.trim();
   if (!typed || names.includes(typed)) return null;

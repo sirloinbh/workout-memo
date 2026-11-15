@@ -5,7 +5,7 @@
 // screens validate with them before sending, so both report the same rules.
 import { z } from 'zod/v4';
 
-// A missing value gets the Korean message; any other wrong type keeps zod's own message.
+// A missing value gets the app's own message; any other wrong type keeps zod's own message.
 const whenMissing = (message: string) => ({
   error: (issue: { input?: unknown }) => (issue.input === undefined ? message : undefined),
 });
@@ -35,44 +35,38 @@ export const limitLength = (schema: z.ZodString, { min, max, tooShort, tooLong }
 };
 
 export const date = z
-  .string(whenMissing('날짜를 입력하세요'))
-  .regex(/^\d{4}-\d{2}-\d{2}$/, '날짜는 YYYY-MM-DD 형식으로 입력하세요')
+  .string(whenMissing('Enter a date'))
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter the date as YYYY-MM-DD')
   .refine((v) => {
     const d = new Date(v + 'T00:00:00Z');
     return !Number.isNaN(+d) && d.toISOString().slice(0, 10) === v;
-  }, '올바른 날짜를 입력하세요');
+  }, 'Enter a valid date');
 
-// Korean particles follow the label's last syllable: 운동명을 / 반복 수를, 운동명은 / 반복 수는.
-const batchim = (word: string) => (word.charCodeAt(word.length - 1) - 0xac00) % 28 > 0;
-const obj = (word: string) => word + (batchim(word) ? '을' : '를');
-const topic = (word: string) => word + (batchim(word) ? '은' : '는');
-
+// Labels are noun phrases with their article ("an exercise name"), so "Enter ${label}" reads well.
 const text = (label: string, max: number) =>
-  limitLength(z.string(whenMissing(`${obj(label)} 입력하세요`)).trim(), {
+  limitLength(z.string(whenMissing(`Enter ${label}`)).trim(), {
     min: 1,
     max,
-    tooShort: `${obj(label)} 입력하세요`,
-    tooLong: `${topic(label)} ${max}자 이하로 입력하세요`,
+    tooShort: `Enter ${label}`,
+    tooLong: `Enter ${label} of ${max} characters or fewer`,
   });
 const memo = (max: number) =>
-  limitLength(z.string(), { max, tooLong: `메모는 ${max}자 이하로 입력하세요` });
+  limitLength(z.string(), { max, tooLong: `Enter a memo of ${max} characters or fewer` });
 // Weight always means the total moved load in kg, including a machine's base weight.
 const kg = (label: string) =>
   z
-    .number(
-      numberError(`${obj(label)} 숫자로 입력하세요`, `${topic(label)} 0~99999 kg으로 입력하세요`),
-    )
-    .min(0, `${topic(label)} 0~99999 kg으로 입력하세요`)
-    .max(99999, `${topic(label)} 0~99999 kg으로 입력하세요`);
+    .number(numberError(`Enter ${label} as a number`, `Enter ${label} from 0 to 99999 kg`))
+    .min(0, `Enter ${label} from 0 to 99999 kg`)
+    .max(99999, `Enter ${label} from 0 to 99999 kg`);
 const reps = (label: string) =>
   z
     .number(
-      numberError(`${obj(label)} 숫자로 입력하세요`, `${topic(label)} 1~1000의 정수로 입력하세요`),
+      numberError(`Enter ${label} as a number`, `Enter ${label} as a whole number from 1 to 1000`),
     )
-    .int(`${topic(label)} 1~1000의 정수로 입력하세요`)
-    .min(1, `${topic(label)} 1~1000의 정수로 입력하세요`)
-    .max(1000, `${topic(label)} 1~1000의 정수로 입력하세요`);
-const rpeMessage = 'RPE는 1~10 사이 0.5 단위로 입력하세요';
+    .int(`Enter ${label} as a whole number from 1 to 1000`)
+    .min(1, `Enter ${label} as a whole number from 1 to 1000`)
+    .max(1000, `Enter ${label} as a whole number from 1 to 1000`);
+const rpeMessage = 'RPE must be entered in 0.5 steps from 1 to 10';
 
 export const feedbackLevels = ['hard', 'medium', 'easy'] as const;
 export type Feedback = (typeof feedbackLevels)[number];
@@ -80,20 +74,20 @@ export type Feedback = (typeof feedbackLevels)[number];
 export const workoutSchema = z.object({
   version: z.number().int().positive().optional(),
   date,
-  title: text('일지 제목', 120),
+  title: text('a journal title', 120),
   notes: memo(4000).default(''),
   // #83: how the whole workout felt. Missing stays NULL and is never a default level.
   feedback: z
-    .enum(feedbackLevels, { error: '체감 피드백은 힘듦·중간·쉬움 중에서 선택하세요' })
+    .enum(feedbackLevels, { error: 'Choose effort feedback: hard, medium, or easy' })
     .nullable()
     .default(null),
   sets: z
     .array(
       z.object({
-        exercise: text('운동명', 120),
+        exercise: text('an exercise name', 120),
         machine_id: z.number().int().positive().nullable().default(null),
-        weight: kg('총중량'),
-        reps: reps('반복 수'),
+        weight: kg('a total weight'),
+        reps: reps('reps'),
         notes: memo(4000).default(''),
         // Older clients only sent performed sets, so a missing state means completed.
         completed: z.boolean().default(true),
@@ -107,38 +101,35 @@ export const workoutSchema = z.object({
           .default(null),
       }),
     )
-    .min(1, '세트를 1개 이상 입력하세요')
-    .max(200, '세트는 200개 이하로 입력하세요'),
+    .min(1, 'Enter at least 1 set')
+    .max(200, 'Enter at most 200 sets'),
 });
 export type WorkoutInput = z.input<typeof workoutSchema>;
 
 export const machineSchema = z.object({
-  brand_id: z
-    .number({ error: '브랜드를 선택하세요' })
-    .int('브랜드를 선택하세요')
-    .positive('브랜드를 선택하세요'),
-  name: text('머신 이름', 120),
+  brand_id: z.number({ error: 'Choose a brand' }).int('Choose a brand').positive('Choose a brand'),
+  name: text('a machine name', 120),
   // Unknown base weight stays null; a confirmed 0 kg is a different value.
-  base_weight: kg('기본중량').nullable(),
+  base_weight: kg('a base weight').nullable(),
   notes: memo(2000).default(''),
   // A link to a manufacturer reference row; it never sets or changes base_weight.
   // Omitted keeps the stored link on update (none on create); explicit null unlinks.
   official_weight_id: z.number().int().positive().max(2147483647).nullable().optional(),
   // #84: single-joint machines use the single-joint rest. Omitted keeps the stored value
   // on update (false on create), so older clients do not clear it.
-  single_joint: z.boolean({ error: '단관절 여부를 확인하세요' }).optional(),
+  single_joint: z.boolean({ error: 'Check whether it is single-joint' }).optional(),
 });
 
 export const goalSchema = z
   .object({
-    exercise: text('운동명', 120),
-    target_weight: kg('목표 총중량'),
-    target_reps: reps('목표 반복 수'),
+    exercise: text('an exercise name', 120),
+    target_weight: kg('the goal total weight'),
+    target_reps: reps('the goal reps'),
     start_date: date,
     deadline: date,
   })
   .refine((v) => v.deadline >= v.start_date, {
-    error: '종료일은 시작일과 같거나 이후여야 합니다',
+    error: 'The end date must be the same as or after the start date',
     path: ['deadline'],
   });
 export type GoalInput = z.input<typeof goalSchema>;
@@ -148,22 +139,27 @@ export type GoalInput = z.input<typeof goalSchema>;
 const twoDecimals = (v: number) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
 const metric = (label: string, min: number, max: number, minInclusive: boolean) =>
   z
-    .number(numberError(`${label}은 숫자로 입력하세요`, `${label}은 유한한 숫자여야 합니다`))
-    .refine((v) => (minInclusive ? v >= min : v > min) && v <= max, `${label} 범위를 확인하세요`)
-    .refine(twoDecimals, `${label}은 소수점 둘째 자리까지 입력하세요`)
+    .number(
+      numberError(`Enter ${label.toLowerCase()} as a number`, `${label} must be a finite number`),
+    )
+    .refine(
+      (v) => (minInclusive ? v >= min : v > min) && v <= max,
+      `Check the ${label.toLowerCase()} range`,
+    )
+    .refine(twoDecimals, `Enter ${label.toLowerCase()} with at most 2 decimal places`)
     .nullable()
     .default(null);
 export const bodyMeasurementSchema = z
   .object({
     date,
-    body_weight_kg: metric('체중', 0, 999.99, false),
-    body_fat_percent: metric('체지방률', 0, 100, true),
-    skeletal_muscle_kg: metric('골격근량', 0, 999.99, false),
+    body_weight_kg: metric('Weight', 0, 999.99, false),
+    body_fat_percent: metric('Body fat', 0, 100, true),
+    skeletal_muscle_kg: metric('Skeletal muscle mass', 0, 999.99, false),
   })
   .refine(
     (v) =>
       v.body_weight_kg !== null || v.body_fat_percent !== null || v.skeletal_muscle_kg !== null,
-    '체중, 체지방률, 골격근량 중 하나 이상을 입력하세요',
+    'Enter at least one of weight, body fat, or skeletal muscle mass',
   );
 export type BodyMeasurementInput = z.infer<typeof bodyMeasurementSchema>;
 
@@ -171,23 +167,23 @@ export type BodyMeasurementInput = z.infer<typeof bodyMeasurementSchema>;
 // the default; null in a request resets the exercise back to the default.
 export const defaultWeightStep = 5;
 export const weightStepSchema = z.object({
-  exercise: text('운동명', 120),
+  exercise: text('an exercise name', 120),
   weight_step: z
     .number(
       numberError(
-        '증량 단위를 숫자로 입력하세요',
-        '증량 단위는 100 kg 이하로 입력하세요',
-        '증량 단위는 0보다 커야 합니다',
+        'Enter the increase step as a number',
+        'Enter an increase step of 100 kg or less',
+        'The increase step must be greater than 0',
       ),
     )
-    .positive('증량 단위는 0보다 커야 합니다')
-    .max(100, '증량 단위는 100 kg 이하로 입력하세요')
-    .refine(twoDecimals, '증량 단위는 소수점 둘째 자리까지 입력하세요')
+    .positive('The increase step must be greater than 0')
+    .max(100, 'Enter an increase step of 100 kg or less')
+    .refine(twoDecimals, 'Enter an increase step with at most 2 decimal places')
     .nullable(),
 });
 export type WeightStepInput = z.infer<typeof weightStepSchema>;
 
-// #114: cardio sessions. Labels: 러닝·걷기·실외 사이클·실내 자전거·로잉·계단·일립티컬·수영·기타.
+// #114: cardio sessions. Labels: Running, Walking, Outdoor cycling, Indoor cycling, Rowing, Stairs, Elliptical, Swimming, Other.
 export const cardioKinds = [
   'running',
   'walking',
@@ -206,17 +202,18 @@ export type CardioSource = (typeof cardioSources)[number];
 
 // An optional whole number in [min, max]; missing stays null and never becomes 0.
 const optionalInt = (label: string, min: number, max: number, unit: string) => {
-  const message = `${topic(label)} ${min}~${max}${unit} 정수로 입력하세요`;
+  const message = `Enter ${label} as a whole number from ${min} to ${max}${unit}`;
   return z
-    .number(numberError(`${obj(label)} 숫자로 입력하세요`, message))
+    .number(numberError(`Enter ${label} as a number`, message))
     .int(message)
     .min(min, message)
     .max(max, message)
     .nullable()
     .default(null);
 };
-const durationMessage = '운동 시간은 1~86400초(24시간) 사이의 정수 초로 입력하세요';
-const distanceMessage = '거리는 0 km보다 크고 1000 km 이하로 입력하세요';
+const durationMessage =
+  'Enter a workout time as a whole number of seconds from 1 to 86400 (24 hours)';
+const distanceMessage = 'Enter a distance greater than 0 km and at most 1000 km';
 // NUMERIC(8,3): 1 m precision. More decimals are rejected instead of silently rounded.
 const threeDecimals = (v: number) => Math.abs(v * 1000 - Math.round(v * 1000)) < 1e-6;
 
@@ -225,58 +222,58 @@ export const cardioSessionObject = z.object({
   date,
   // Local start time in Asia/Seoul. Missing is null (not recorded).
   start_time: z
-    .string({ error: '시작 시각은 HH:MM 형식으로 입력하세요' })
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, '시작 시각은 00:00~23:59의 HH:MM 형식으로 입력하세요')
+    .string({ error: 'Enter the start time as HH:MM' })
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Enter the start time as HH:MM from 00:00 to 23:59')
     .nullable()
     .default(null),
   kind: z.enum(cardioKinds, {
     error:
-      '종류는 러닝·걷기·실외 사이클·실내 자전거·로잉·계단·일립티컬·수영·기타 중에서 선택하세요',
+      'Choose a type: running, walking, outdoor cycling, indoor cycling, rowing, stairs, elliptical, swimming, or other',
   }),
   // Whole seconds; pace and speed are computed from this and distance, never stored.
   duration_sec: z
     .number({
       error: (issue: { input?: unknown }) =>
         issue.input === undefined
-          ? '운동 시간을 입력하세요'
-          : numberError('운동 시간을 숫자로 입력하세요', durationMessage).error(issue),
+          ? 'Enter a workout time'
+          : numberError('Enter the workout time as a number', durationMessage).error(issue),
     })
     .int(durationMessage)
     .min(1, durationMessage)
     .max(86400, durationMessage),
   distance_km: z
-    .number(numberError('거리를 숫자로 입력하세요', distanceMessage))
+    .number(numberError('Enter the distance as a number', distanceMessage))
     .positive(distanceMessage)
     .max(1000, distanceMessage)
-    .refine(threeDecimals, '거리는 소수점 셋째 자리(1 m)까지 입력하세요')
+    .refine(threeDecimals, 'Enter a distance with at most 3 decimal places (1 m)')
     .nullable()
     .default(null),
-  avg_heart_rate: optionalInt('평균 심박', 30, 250, ' bpm의'),
-  max_heart_rate: optionalInt('최대 심박', 30, 250, ' bpm의'),
-  calories_kcal: optionalInt('칼로리', 0, 20000, ' kcal의'),
-  elevation_gain_m: optionalInt('상승 고도', 0, 10000, ' m의'),
-  avg_cadence: optionalInt('케이던스', 1, 300, '의'),
+  avg_heart_rate: optionalInt('an average heart rate', 30, 250, ' bpm'),
+  max_heart_rate: optionalInt('a max heart rate', 30, 250, ' bpm'),
+  calories_kcal: optionalInt('calories', 0, 20000, ' kcal'),
+  elevation_gain_m: optionalInt('elevation gain', 0, 10000, ' m'),
+  avg_cadence: optionalInt('cadence', 1, 300, ''),
   // #83 levels reused for perceived effort.
   effort: z
-    .enum(feedbackLevels, { error: '체감 강도는 힘듦·중간·쉬움 중에서 선택하세요' })
+    .enum(feedbackLevels, { error: 'Choose perceived effort: hard, medium, or easy' })
     .nullable()
     .default(null),
   // Optional link to a strength workout of the app.
   workout_id: z
-    .number({ error: '연결할 근력 일지를 다시 선택하세요' })
-    .int('연결할 근력 일지를 다시 선택하세요')
-    .positive('연결할 근력 일지를 다시 선택하세요')
-    .max(2147483647, '연결할 근력 일지를 다시 선택하세요')
+    .number({ error: 'Choose the strength journal to link again' })
+    .int('Choose the strength journal to link again')
+    .positive('Choose the strength journal to link again')
+    .max(2147483647, 'Choose the strength journal to link again')
     .nullable()
     .default(null),
   source: z
-    .enum(cardioSources, { error: '출처는 manual·garmin·nike·file 중 하나여야 합니다' })
+    .enum(cardioSources, { error: 'The source must be one of manual, garmin, nike, or file' })
     .default('manual'),
-  external_id: limitLength(z.string({ error: '외부 ID는 문자열이어야 합니다' }).trim(), {
+  external_id: limitLength(z.string({ error: 'The external ID must be a string' }).trim(), {
     min: 1,
     max: 200,
-    tooShort: '외부 ID를 입력하거나 null로 보내세요',
-    tooLong: '외부 ID는 200자 이하로 입력하세요',
+    tooShort: 'Enter an external ID or send null',
+    tooLong: 'Enter an external ID of 200 characters or fewer',
   })
     .nullable()
     .default(null),
@@ -294,13 +291,13 @@ export function checkCardioSession(
   if (v.avg_heart_rate !== null && v.max_heart_rate !== null && v.max_heart_rate < v.avg_heart_rate)
     ctx.addIssue({
       code: 'custom',
-      message: '최대 심박은 평균 심박보다 낮을 수 없습니다',
+      message: 'Max heart rate cannot be lower than average heart rate',
       path: ['max_heart_rate'],
     });
   if (v.source === 'manual' && v.external_id !== null)
     ctx.addIssue({
       code: 'custom',
-      message: '직접 입력한 기록(manual)에는 외부 ID를 넣지 않습니다',
+      message: 'Do not set an external ID for a manually entered record (manual)',
       path: ['external_id'],
     });
 }
@@ -311,7 +308,7 @@ export type CardioSessionInput = z.input<typeof cardioSessionSchema>;
 // the server (createApp's today) and tests use the same rule.
 export const cardioSessionSchemaFor = (today: string) =>
   cardioSessionSchema.refine((v) => v.date <= today, {
-    error: '유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다',
+    error: 'The cardio record date cannot be after today',
     path: ['date'],
   });
 // #116: cardio goals (2026-11-08 user decisions). Period totals repeat every week (Mon~Sun,
@@ -327,9 +324,10 @@ export const cardioGoalTypes = [
 export type CardioGoalType = (typeof cardioGoalTypes)[number];
 export const cardioGoalPeriods = ['week', 'month'] as const;
 export type CardioGoalPeriod = (typeof cardioGoalPeriods)[number];
-const goalDistanceMessage = '목표 거리는 0 km보다 크고 10000 km 이하로 입력하세요';
-const goalDurationMessage = '목표 시간은 1초~744시간(31일) 사이의 정수 초로 입력하세요';
-const goalCountMessage = '목표 횟수는 1~1000회 정수로 입력하세요';
+const goalDistanceMessage = 'Enter a goal distance greater than 0 km and at most 10000 km';
+const goalDurationMessage =
+  'Enter the goal time as a whole number of seconds from 1 second to 744 hours (31 days)';
+const goalCountMessage = 'Enter a goal session count as a whole number from 1 to 1000';
 const goalMaxDays = 1826;
 const goalTargets = {
   distance: ['target_distance_km'],
@@ -339,42 +337,42 @@ const goalTargets = {
   longest_distance: ['target_distance_km'],
 } as const satisfies Record<CardioGoalType, readonly string[]>;
 const goalTargetLabels = {
-  target_distance_km: '목표 거리',
-  target_duration_sec: '목표 시간',
-  target_count: '목표 횟수',
+  target_distance_km: 'the goal distance',
+  target_duration_sec: 'the goal time',
+  target_count: 'the goal session count',
 } as const;
 // Field rules without the cross-field checks, so the backup format can add its id (#253).
 export const cardioGoalObject = z.object({
   goal_type: z.enum(cardioGoalTypes, {
-    error: '목표 종류는 거리·시간·횟수·기록 시간·최장 거리 중에서 선택하세요',
+    error: 'Choose a goal type: distance, time, count, record time, or longest distance',
   }),
   kind: z
     .enum(cardioKinds, {
       error:
-        '운동 종류는 러닝·걷기·실외 사이클·실내 자전거·로잉·계단·일립티컬·수영·기타 중에서 선택하세요',
+        'Choose a workout type: running, walking, outdoor cycling, indoor cycling, rowing, stairs, elliptical, swimming, or other',
     })
     .nullable()
     .default(null),
   period: z
-    .enum(cardioGoalPeriods, { error: '기간 단위는 주간·월간 중에서 선택하세요' })
+    .enum(cardioGoalPeriods, { error: 'Choose weekly or monthly for the period unit' })
     .nullable()
     .default(null),
   target_distance_km: z
-    .number(numberError('목표 거리를 숫자로 입력하세요', goalDistanceMessage))
+    .number(numberError('Enter the goal distance as a number', goalDistanceMessage))
     .positive(goalDistanceMessage)
     .max(10000, goalDistanceMessage)
-    .refine(threeDecimals, '목표 거리는 소수점 셋째 자리(1 m)까지 입력하세요')
+    .refine(threeDecimals, 'Enter a goal distance with at most 3 decimal places (1 m)')
     .nullable()
     .default(null),
   target_duration_sec: z
-    .number(numberError('목표 시간을 숫자로 입력하세요', goalDurationMessage))
+    .number(numberError('Enter the goal time as a number', goalDurationMessage))
     .int(goalDurationMessage)
     .min(1, goalDurationMessage)
     .max(2678400, goalDurationMessage)
     .nullable()
     .default(null),
   target_count: z
-    .number(numberError('목표 횟수를 숫자로 입력하세요', goalCountMessage))
+    .number(numberError('Enter the goal session count as a number', goalCountMessage))
     .int(goalCountMessage)
     .min(1, goalCountMessage)
     .max(1000, goalCountMessage)
@@ -391,44 +389,44 @@ export function checkCardioGoal(
   if (v.deadline < v.start_date)
     ctx.addIssue({
       code: 'custom',
-      message: '종료일은 시작일과 같거나 이후여야 합니다',
+      message: 'The end date must be the same as or after the start date',
       path: ['deadline'],
     });
   // Period goals list every week or month of the goal, so the span is capped at five years.
   else if (Date.parse(v.deadline) - Date.parse(v.start_date) > goalMaxDays * 86400000)
     ctx.addIssue({
       code: 'custom',
-      message: '목표 기간은 5년(1826일) 이하로 정하세요',
+      message: 'Keep the goal period to 5 years (1826 days) or less',
       path: ['deadline'],
     });
   const record = v.goal_type === 'record_time' || v.goal_type === 'longest_distance';
   if (record && v.kind === null)
     ctx.addIssue({
       code: 'custom',
-      message: '기록 목표는 운동 종류를 하나 선택하세요',
+      message: 'Choose one exercise type for a record goal',
       path: ['kind'],
     });
   if (!record && v.period === null)
     ctx.addIssue({
       code: 'custom',
-      message: '누적 목표는 주간·월간 중 기간 단위를 선택하세요',
+      message: 'Choose weekly or monthly for a cumulative goal period unit',
       path: ['period'],
     });
   if (record && v.period !== null)
     ctx.addIssue({
       code: 'custom',
-      message: '기록 목표에는 기간 단위를 넣지 않습니다',
+      message: 'Record goals do not take a period unit',
       path: ['period'],
     });
   const wanted: readonly string[] = goalTargets[v.goal_type];
   for (const [field, label] of Object.entries(goalTargetLabels)) {
     const value = v[field as keyof typeof goalTargetLabels];
     if (wanted.includes(field) && value === null)
-      ctx.addIssue({ code: 'custom', message: `${obj(label)} 입력하세요`, path: [field] });
+      ctx.addIssue({ code: 'custom', message: `Enter ${label}`, path: [field] });
     if (!wanted.includes(field) && value !== null)
       ctx.addIssue({
         code: 'custom',
-        message: `이 목표 종류에는 ${obj(label)} 넣지 않습니다`,
+        message: `Do not set ${label} for this goal type`,
         path: [field],
       });
   }

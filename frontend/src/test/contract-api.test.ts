@@ -1,4 +1,4 @@
-// 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/msw/frontend/src/test/에서
+// Managed file. Edit it in sirloinbh/project-standards templates/msw/frontend/src/test/
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 
@@ -12,7 +12,7 @@ describe('sample', () => {
         properties: { id: { type: 'integer', minimum: 1 }, done: { type: 'boolean' } },
       },
     };
-    expect(sample({ type: 'string', example: '스쿼트' })).toBe('스쿼트');
+    expect(sample({ type: 'string', example: 'Squat' })).toBe('Squat');
     expect(sample({ type: 'string', enum: ['weight', 'reps'] })).toBe('weight');
     expect(sample({ type: 'string', format: 'date' })).toBe('2026-01-01');
     expect(sample({ type: ['integer', 'null'] })).toBe(0);

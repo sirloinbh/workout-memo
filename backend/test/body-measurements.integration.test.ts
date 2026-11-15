@@ -65,7 +65,7 @@ test(
       // A second record for the same date is a conflict; the original is unchanged.
       const duplicate = await call('', 'POST', { date: '2072-02-29', body_fat_percent: 18.5 });
       assert.equal(duplicate.status, 409);
-      assert.match(duplicate.data.error, /이미.*기록/);
+      assert.match(duplicate.data.error, /already.*record|record.*already/i);
       let list = (await call(`?from=2072-02-29&to=2072-02-29`)).data as Row[];
       assert.equal(list.length, 1);
       assert.equal(list[0].body_fat_percent, null);

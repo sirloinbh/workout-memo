@@ -3,17 +3,17 @@
 export const bodyParts = ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'];
 export function routineInput(splitCount = 2) {
   return {
-    name: '수동 12주 루틴',
+    name: 'Manual 12-week routine',
     start_date: '2024-02-29',
     split_count: splitCount,
     weekly_workouts: 3,
     rest_days: [0, 2, 4, 6], // Sunday=0; train Monday, Wednesday, Friday.
     splits: Array.from({ length: splitCount }, (_, index) => ({
-      name: `분할 ${index + 1}`,
+      name: `Split ${index + 1}`,
       body_parts: index === 0 ? [...bodyParts, '가슴'] : ['등', '가슴'],
       exercises: [
-        { exercise: '스쿼트', sets: 3, weight: 100.25, reps: 10 },
-        { exercise: '맨몸 런지', sets: 2, weight: 0, reps: 12 },
+        { exercise: 'Squat', sets: 3, weight: 100.25, reps: 10 },
+        { exercise: 'Bodyweight Lunge', sets: 2, weight: 0, reps: 12 },
       ],
     })),
     weeks: Array.from({ length: 12 }, (_, index) => {
@@ -38,7 +38,7 @@ export type SavedRoutine = RoutineInput & {
 // Starts Monday 2024-03-04, trains Mon/Wed/Fri, one split (3 sessions a week).
 export function autoRoutineInput() {
   return {
-    name: '자동 12주 루틴',
+    name: 'Auto 12-week routine',
     progression: 'auto' as const,
     start_date: '2024-03-04',
     split_count: 1,
@@ -46,12 +46,12 @@ export function autoRoutineInput() {
     rest_days: [0, 2, 4, 6],
     splits: [
       {
-        name: '전신',
+        name: 'Full body',
         body_parts: ['가슴', '등', '팔'],
         exercises: [
-          { exercise: '벤치프레스', sets: 3, weight: 100, reps: 10, rep_min: 8, rep_max: 12 },
-          { exercise: '맨몸 풀업', sets: 3, weight: 0, reps: 10, rep_min: 8, rep_max: 12 },
-          { exercise: '덤벨 컬', sets: 3, weight: 40, reps: 12, rep_min: 8, rep_max: 12 },
+          { exercise: 'Benchpress', sets: 3, weight: 100, reps: 10, rep_min: 8, rep_max: 12 },
+          { exercise: 'Bodyweight Pull-up', sets: 3, weight: 0, reps: 10, rep_min: 8, rep_max: 12 },
+          { exercise: 'Dumbbell Curl', sets: 3, weight: 40, reps: 12, rep_min: 8, rep_max: 12 },
         ],
       },
     ],

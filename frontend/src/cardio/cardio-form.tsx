@@ -40,13 +40,13 @@ import {
 // A strength workout the session can be linked to.
 export type LinkableWorkout = { id: number; date: string; title: string };
 
-// Whole numbers shown under "더 입력하기", in the schema's field names.
+// Whole numbers shown under "Show more fields", in the schema's field names.
 const extras = [
-  { key: 'avg_heart_rate', label: '평균 심박 bpm' },
-  { key: 'max_heart_rate', label: '최대 심박 bpm' },
-  { key: 'calories_kcal', label: '칼로리 kcal' },
-  { key: 'elevation_gain_m', label: '상승 고도 m' },
-  { key: 'avg_cadence', label: '케이던스 회/분' },
+  { key: 'avg_heart_rate', label: 'Average heart rate bpm' },
+  { key: 'max_heart_rate', label: 'Max heart rate bpm' },
+  { key: 'calories_kcal', label: 'Calories kcal' },
+  { key: 'elevation_gain_m', label: 'Elevation gain m' },
+  { key: 'avg_cadence', label: 'Cadence /min' },
 ] as const;
 type ExtraKey = (typeof extras)[number]['key'];
 
@@ -115,7 +115,7 @@ function initialDraft(session: CardioSession | undefined, date: string): Draft {
 const moreKeys = [...extras.map((e) => e.key), 'start_time', 'workout_id'];
 
 // #115: create or edit one cardio session in a Modal. Only kind, date, duration, distance,
-// effort and memo show at first; "더 입력하기" reveals the rest (decision 6). The input is
+// effort and memo show at first; "Show more fields" reveals the rest (decision 6). The input is
 // checked with the server's schema before sending, and a server refusal (409 duplicate, 400)
 // stays in the form so nothing typed is lost.
 export function CardioForm({
@@ -190,16 +190,16 @@ export function CardioForm({
     // For the same reason the cross-field rules are checked here too, with the schema's
     // messages, so they show even while another field fails.
     if (!found.date && draft.date > today)
-      found.date = '유산소 기록 날짜는 오늘 이후로 입력할 수 없습니다';
+      found.date = 'The cardio record date cannot be after today';
     const { avg_heart_rate: avg, max_heart_rate: max } = extraValues;
     if (!found.max_heart_rate && !found.avg_heart_rate && avg !== null && max !== null && max < avg)
-      found.max_heart_rate = '최대 심박은 평균 심박보다 낮을 수 없습니다';
+      found.max_heart_rate = 'Max heart rate cannot be lower than average heart rate';
     // Metres must be whole (the schema keeps 1 m precision) and the messages speak in metres.
     if (
       swimMetres &&
       (!Number.isInteger(typedDistance) || typedDistance <= 0 || typedDistance > 1_000_000)
     )
-      found.distance_km = '수영 거리는 1~1,000,000 m의 정수로 입력하세요';
+      found.distance_km = 'Enter a swimming distance as a whole number from 1 to 1,000,000 m';
     setIssues(found);
     if (Object.keys(found).length) {
       if (moreKeys.some((key) => found[key])) setMore(true);
@@ -218,19 +218,19 @@ export function CardioForm({
   }
 
   const durationFields = [
-    { key: 'hours', label: '운동 시간 시', short: '시', max: 24 },
-    { key: 'minutes', label: '운동 시간 분', short: '분', max: 59 },
-    { key: 'seconds', label: '운동 시간 초', short: '초', max: 59 },
+    { key: 'hours', label: 'Workout time hours', short: 'hr', max: 24 },
+    { key: 'minutes', label: 'Workout time minutes', short: 'min', max: 59 },
+    { key: 'seconds', label: 'Workout time seconds', short: 'sec', max: 59 },
   ] as const;
 
   return (
-    <Modal title={session ? '유산소 기록 수정' : '새 유산소 기록'} close={close}>
+    <Modal title={session ? 'Edit cardio record' : 'New cardio record'} close={close}>
       <form noValidate onSubmit={(e) => void submit(e)}>
         <fieldset disabled={saving} className="m-0 min-w-0 border-0 p-0">
           <div className="grid gap-x-3 sm:grid-cols-2">
             <div>
               <Label className={fieldLabel}>
-                종류
+                Type
                 <select
                   className={selectField}
                   value={draft.kind}
@@ -248,7 +248,7 @@ export function CardioForm({
             </div>
             <div>
               <Label className={fieldLabel}>
-                날짜
+                Date
                 <Input
                   className={touchText}
                   type="date"
@@ -262,7 +262,7 @@ export function CardioForm({
             </div>
           </div>
           <fieldset className="m-0 mb-4 min-w-0 border-0 p-0">
-            <legend className="mb-2 text-meta text-muted-foreground">운동 시간</legend>
+            <legend className="mb-2 text-meta text-muted-foreground">Workout time</legend>
             <div className="grid gap-2 sm:grid-cols-3">
               {durationFields.map((f) => (
                 <div key={f.key} className="flex items-center gap-2">
@@ -287,30 +287,32 @@ export function CardioForm({
           </fieldset>
           <div className="mb-4 flex flex-col gap-2">
             <label htmlFor="cardio-distance" className="mb-0 text-meta text-muted-foreground">
-              거리 {unit} (선택)
+              Distance {unit} (optional)
             </label>
             <NumberInput
               id="cardio-distance"
-              label={`거리 ${unit}`}
+              label={`Distance ${unit}`}
               className="md:pointer-coarse:[&_input]:text-base"
               step={unit === 'm' ? 25 : 0.5}
               min={0}
               max={unit === 'm' ? 1_000_000 : 1000}
               inputMode={unit === 'm' ? 'numeric' : 'decimal'}
-              placeholder="미입력"
+              placeholder="Not entered"
               value={draft.distance}
               onValueChange={(value) => set('distance', value)}
               {...invalid('distance_km')}
             />
             {issue('distance_km')}
             {unit === 'm' && (
-              <p className={formHint}>수영 거리는 m로 입력합니다. 저장할 때 km로 바꿉니다.</p>
+              <p className={formHint}>
+                Enter swimming distance in m. It is converted to km when saved.
+              </p>
             )}
           </div>
           <div className="mb-4 flex flex-col items-start gap-2 text-meta text-muted-foreground">
-            <span>체감 강도 (선택)</span>
+            <span>Perceived effort (optional)</span>
             <ToggleChips
-              label="체감 강도"
+              label="Perceived effort"
               options={feedbackLevels.map((level) => effortLabels[level])}
               value={draft.effort ? [effortLabels[draft.effort]] : []}
               // At most one level: a new press replaces the old one, and pressing the selected
@@ -327,7 +329,7 @@ export function CardioForm({
             {issue('effort')}
           </div>
           <Label className={fieldLabel}>
-            메모 (선택)
+            Memo (optional)
             <textarea
               className={textareaField}
               maxLength={2000}
@@ -345,7 +347,7 @@ export function CardioForm({
             aria-controls="cardio-more"
             onClick={() => setMore(!more)}
           >
-            더 입력하기
+            Show more fields
             <ChevronDown aria-hidden className={cn('transition-transform', more && 'rotate-180')} />
           </Button>
           {more && (
@@ -353,11 +355,11 @@ export function CardioForm({
               {extras.map((e) => (
                 <div key={e.key}>
                   <Label className={fieldLabel}>
-                    {e.label} (선택)
+                    {e.label} (optional)
                     <Input
                       className={touchText}
                       inputMode="numeric"
-                      placeholder="미입력"
+                      placeholder="Not entered"
                       value={draft[e.key]}
                       onChange={(event) => set(e.key, event.target.value)}
                       {...invalid(e.key)}
@@ -368,7 +370,7 @@ export function CardioForm({
               ))}
               <div>
                 <Label className={fieldLabel}>
-                  시작 시각 (선택)
+                  Start time (optional)
                   <Input
                     className={touchText}
                     type="time"
@@ -381,14 +383,14 @@ export function CardioForm({
               </div>
               <div className="sm:col-span-2">
                 <Label className={fieldLabel}>
-                  연결할 근력 일지
+                  Strength journal to link
                   <select
                     className={selectField}
                     value={draft.workout_id}
                     onChange={(e) => set('workout_id', e.target.value)}
                     {...invalid('workout_id')}
                   >
-                    <option value="">연결 안 함</option>
+                    <option value="">Not linked</option>
                     {linkable.map((w) => (
                       <option key={w.id} value={String(w.id)}>
                         {w.title}
@@ -398,7 +400,7 @@ export function CardioForm({
                       <option value={String(linkedElsewhere.id)}>
                         {linkedElsewhere.title
                           ? `${linkedElsewhere.date.slice(0, 10)} ${linkedElsewhere.title}`
-                          : `근력 일지 #${linkedElsewhere.id}`}
+                          : `Strength journal #${linkedElsewhere.id}`}
                       </option>
                     )}
                   </select>
@@ -407,11 +409,11 @@ export function CardioForm({
                 <p className={cn(formHint, 'mb-4')}>
                   {linkedElsewhere
                     ? linkedElsewhere.date
-                      ? `다른 날짜(${linkedElsewhere.date.slice(0, 10)})의 근력 일지에 연결돼 있습니다.`
-                      : '다른 날짜의 근력 일지에 연결돼 있습니다.'
+                      ? `Linked to the strength journal for another date (${linkedElsewhere.date.slice(0, 10)}).`
+                      : 'Linked to the strength journal for another date.'
                     : linkable.length
-                      ? '같은 날짜의 근력 일지 중에서 고릅니다.'
-                      : '이 날짜에는 연결할 근력 일지가 없습니다.'}
+                      ? 'Choose from the strength journals on the same date.'
+                      : 'There is no strength journal to link on this date.'}
                 </p>
               </div>
             </div>
@@ -421,10 +423,10 @@ export function CardioForm({
         <ModalFooter>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={saving}>
-              {saving ? '저장 중…' : '유산소 기록 저장'}
+              {saving ? 'Saving…' : 'Save cardio record'}
             </Button>
             <Button type="button" variant="ghost" disabled={saving} onClick={close}>
-              취소
+              Cancel
             </Button>
           </div>
         </ModalFooter>

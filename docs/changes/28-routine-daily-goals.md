@@ -1,199 +1,199 @@
-# #28 feat: 루틴 기반 일·주·12주 목표와 휴식 일정 이동·간편 일지 입력
+# #28 feat: Routine-based daily, weekly, and 12-week goals, with rest-day schedule shifting and quick log entry
 
-- 이슈: https://github.com/sirloinbh/workout-memo/issues/28
-- 브랜치: feat/28-routine-daily-goals
-- 확정 규칙: 이슈 코멘트 "구현 착수 및 확정 규칙 — 2026-10-19"
+- Issue: https://github.com/sirloinbh/workout-memo/issues/28
+- Branch: feat/28-routine-daily-goals
+- Confirmed rules: issue comment "구현 착수 및 확정 규칙 — 2026-10-19" (Implementation start and confirmed rules — 2026-10-19)
 
-## 변경 내용 — 2026-10-19 (Asia/Seoul)
+## Changes — 2026-10-19 (Asia/Seoul)
 
-### 서버
+### Server
 
-- `backend/src/progress.ts` (신규): 루틴 진행 계산을 순수 함수로 분리했다.
-  - `planTargets`: #27의 84일 일정(`routineSchedule`) 순서대로 목표 1~N번을 만든다. 각 목표는 원래 주차·디로딩 여부·분할과 종목별 세트·총중량 kg·반복 수(기준값 포함)를 가진다.
-  - `arrangeTargets`: 휴식 날짜 목록을 받아 운동일 슬롯에 목표를 계획 순서대로 다시 배치한다. 휴식한 슬롯은 비우고 이후 목표가 한 운동일씩 밀린다. 운동일 날짜·휴식 요일·12주 종료일(시작일+83일)은 바뀌지 않으며, 넘친 마지막 목표는 삭제하지 않고 `excluded`(제외됨)로 반환한다.
-  - `restUnavailable` / `restPreview` / `routineProgress`: 휴식 가능 여부(이미 휴식, 루틴 기간 밖, 계획된 운동일 아님), 실행 전 미리보기(이동 일정 `from → to`, 새로 제외될 목표), 오늘·이번 주·12주 표 데이터를 만든다. 미리보기와 실제 적용은 같은 `arrangeTargets`로 계산한다.
+- `backend/src/progress.ts` (new): split the routine progress calculation into pure functions.
+  - `planTargets`: builds targets 1 to N in the order of the 84-day schedule from #27 (`routineSchedule`). Each target has its original week, whether it is a deload, the split, and the sets, total weight in kg, and reps per exercise (including the baseline).
+  - `arrangeTargets`: takes a list of rest dates and rearranges the targets into workout-day slots in plan order. A slot where the user rested is left empty and the later targets move back by one workout day. The workout-day dates, the rest weekdays, and the 12-week end date (start date + 83 days) do not change, and the last target that overflows is not deleted but returned as `excluded`.
+  - `restUnavailable` / `restPreview` / `routineProgress`: build whether resting is possible (already resting, outside the routine period, not a planned workout day), the preview before running (moved schedule `from → to`, targets that would newly be excluded), and the data for today, this week, and the 12-week table. The preview and the actual application are calculated with the same `arrangeTargets`.
 - `backend/src/app.ts`
-  - `GET /api/routine-progress`: 시작일이 오늘(Asia/Seoul) 이하인 루틴 중 시작일이 가장 늦은 1개(동률이면 최신 ID)를 진행 중 루틴으로 선택한다. 없으면 `{ today, routine: null }`. 오늘 목표 종목별로 오늘 이전의 가장 최근 실제 일지 세트를 `previous`(참고값)로 함께 반환한다. 운동명 비교는 기존 목표 판정과 같이 `lower(trim())`이다.
-  - `POST /api/routines/:id/rests` `{ date }`: `date`가 서버의 Asia/Seoul 오늘이 아니면 409. 트랜잭션에서 루틴 행을 `FOR UPDATE`로 잠그고, 진행 중 루틴인지·휴식 가능한 날인지 검사한 뒤 `routine_rests`에 한 행을 넣는다. 이미 같은 날 휴식이면 아무것도 쓰지 않고 200 `applied:false`(중복 클릭/재전송 무시). 응답은 COMMIT 성공 후에만 보낸다.
-  - `DELETE /api/routines/:id/rests/:date`: 당일(서버 오늘)만 허용, 다른 날은 409. 반복 취소는 200 `applied:false`.
-  - `createApp(pool, { today })`: 테스트에서 오늘 날짜를 주입할 수 있다. 기본값은 Asia/Seoul 오늘.
-- `database/migrations/005_routine_progress.sql` (신규): `routine_rests(routine_id → routines ON DELETE CASCADE, rest_date, created_at, PK(routine_id, rest_date))`, `IF NOT EXISTS`로 재실행 안전. 적용 방법은 `database/README.md`에 추가했다.
-- 휴식은 날짜만 저장하고 일정은 파생 계산하므로 저장된 일지·세트·루틴 계획을 수정하지 않는다.
+  - `GET /api/routine-progress`: among the routines whose start date is on or before today (Asia/Seoul), picks the one with the latest start date (latest ID on a tie) as the active routine. If there is none, `{ today, routine: null }`. For each of today's target exercises, it also returns the most recent real log set before today as `previous` (reference value). Exercise names are compared with `lower(trim())`, as in the existing goal evaluation.
+  - `POST /api/routines/:id/rests` `{ date }`: 409 if `date` is not today in Asia/Seoul on the server. In a transaction it locks the routine row with `FOR UPDATE`, checks that the routine is the active one and that the day can be rested, and inserts one row into `routine_rests`. If the same day is already a rest day, it writes nothing and returns 200 `applied:false` (a duplicate click or resend is ignored). The response is sent only after COMMIT succeeds.
+  - `DELETE /api/routines/:id/rests/:date`: allowed only for the current day (server today), 409 for other days. A repeated cancel returns 200 `applied:false`.
+  - `createApp(pool, { today })`: tests can inject today's date. The default is today in Asia/Seoul.
+- `database/migrations/005_routine_progress.sql` (new): `routine_rests(routine_id → routines ON DELETE CASCADE, rest_date, created_at, PK(routine_id, rest_date))`, safe to re-run thanks to `IF NOT EXISTS`. Added how to apply it to `database/README.md`.
+- A rest stores only the date and the schedule is derived by calculation, so it does not modify saved logs, sets, or the routine plan.
 
-### 화면
+### Screen
 
-- `frontend/src/progress.tsx` (신규, hook 없는 표시 컴포넌트와 도우미): 운동 일지 화면의 "루틴 목표" 카드.
-  - 오늘 목표: `N주차(디로딩) · 분할 · 해당 주 계획 변화`, 종목별 `세트 · 총중량 kg · 반복 수`, 기준값, 같은 종목 직전 기록(없으면 "직전 기록 없음"). 서로 다른 종목의 중량은 합산하지 않는다.
-  - 이번 주 운동일 목록, 12주 전체 목표 표(주차별 행, 목표의 원래 주차 기준, 제외됨 표시).
-  - 진행 중 루틴이 없으면 루틴짜기 안내.
-  - "오늘 하루 휴식하기" → 이동될 일정과 제외될 마지막 목표를 보여주는 확인 영역 → "휴식 확정". 휴식 후 "휴식 취소"(당일).
-  - "오늘 루틴으로 기록하기": 오늘 목표의 세트 수만큼 세트 행(종목·총중량·반복 수, 머신 미선택)을 채운 일지 편집기를 연다.
+- `frontend/src/progress.tsx` (new, hook-free display components and helpers): the "루틴 목표" (Routine goal) card on the workout log screen.
+  - Today's goal: `Week N (deload) · split · that week's planned change` (shown in Korean as `N주차(디로딩) · 분할 · 해당 주 계획 변화`), per exercise `sets · total weight kg · reps`, the baseline, and the most recent previous record of the same exercise ("직전 기록 없음" (No previous record) if none). Weights of different exercises are not summed.
+  - The list of this week's workout days, and the whole 12-week target table (one row per week, based on each target's original week, with an excluded marker "제외됨").
+  - If there is no active routine, guidance to build a routine (루틴짜기).
+  - "오늘 하루 휴식하기" (Rest today) → a confirmation area that shows the schedule that will move and the last target that will be excluded → "휴식 확정" (Confirm rest). After resting, "휴식 취소" (Cancel rest, same day only).
+  - "오늘 루틴으로 기록하기" (Log with today's routine): opens a log editor filled with as many set rows (exercise, total weight, reps, no machine selected) as today's target has sets.
 - `frontend/src/main.tsx`
-  - 간편 입력은 기존 `setEditor` → localStorage 초안 → `saveWorkout`(Idempotency-Key 재시도) 흐름을 그대로 사용한다. 저장 전에는 서버 요청이 없고 기존 초안 복구 중에는 버튼이 비활성화된다.
-  - 편집기 세트 행에 오늘 루틴 종목이면 "오늘 목표 · 직전 기록" 참고 문구를 표시한다(초안 본문에는 넣지 않음).
-  - "다른 운동 추가" 버튼으로 루틴 외 종목의 빈 세트 행을 추가할 수 있다. 기존 날짜·머신·메모·총중량 입력과 편집, "세트 추가"는 유지했다. 운동명 자동완성에 오늘 루틴 종목을 추가했다.
-  - 휴식 요청 중에는 ref 잠금으로 중복 클릭을 막는다. 일지 저장 성공 후 루틴 목표(직전 기록)를 다시 불러온다.
-- `frontend/src/style.css`: 카드·확인 영역·12주 표·세트 참고 문구 스타일, 760px 이하에서 표 가로 스크롤.
-- `README.md`: 기능 설명 추가.
+  - Quick entry uses the existing flow of `setEditor` → localStorage draft → `saveWorkout` (Idempotency-Key retry) as it is. No server request is made before saving, and the button is disabled while an existing draft is being restored.
+  - In the editor's set rows, if the exercise is in today's routine, a reference text "오늘 목표 · 직전 기록" (Today's goal · previous record) is shown (not put into the draft body).
+  - The "다른 운동 추가" (Add another exercise) button can add an empty set row for an exercise outside the routine. The existing date, machine, memo, and total weight inputs, editing, and "세트 추가" (Add set) are kept. Today's routine exercises were added to the exercise-name autocomplete.
+  - While a rest request is in flight, a ref lock prevents duplicate clicks. After a log is saved successfully, the routine goal (previous record) is fetched again.
+- `frontend/src/style.css`: styles for the card, the confirmation area, the 12-week table, and the set reference text, and horizontal scrolling of the table at 760px and below.
+- `README.md`: added a feature description.
 
-## 판단 사항 (확정 규칙 밖에서 보수적으로 선택)
+## Judgment calls (conservative choices outside the confirmed rules)
 
-1. **주차별 목표값 계산**: #27은 운동별 기준값과 주차별 수동 변화량만 저장한다. 오늘 목표값은 "기준값 + 해당 주차 변화량 1회 적용"(디로딩은 감소)으로 계산했고, 주차 간 누적하지 않는다. 화면에 기준값과 주차 변화를 함께 보여 계산 근거를 확인할 수 있다. 누적 방식이 의도라면 `weekExercises` 한 곳만 바꾸면 된다. **사용자 확인 필요.**
-2. 감소 결과는 일지 입력 범위로 제한한다: 총중량 0~99999 kg(소수 둘째 자리 반올림), 세트·반복 최소 1.
-3. 휴식은 오늘이 루틴 기간 내의 계획된 운동일이고 목표가 남아 있을 때만 허용한다. 휴식 요일·기간 밖에는 버튼을 표시하지 않고 서버도 409로 거부한다. 지난 날짜에 대한 휴식 추가는 지원하지 않는다.
-4. 진행 중이 아닌 루틴(더 늦게 시작한 루틴이 있는 경우)에는 휴식을 거부한다. 취소는 당일 해당 루틴의 휴식 행만 삭제한다.
-5. 이미 오늘 일지를 저장했더라도 휴식은 허용한다(일지는 바뀌지 않음).
-6. 직전 기록은 오늘 이전 날짜(`date < 오늘`)의 가장 최근 일지 한 건에서 같은 종목 세트를 모두 보여준다. 오늘 이미 저장한 기록은 참고값에서 제외한다.
-7. 간편 입력 일지 제목은 `루틴명 · 분할명`, 머신은 미선택(null)으로 둔다. 루틴에 머신 정보가 없어 기본중량을 임의로 더하지 않는다. 세트 행은 일지 상한 200개로 자른다.
-8. 목표 카드는 운동 일지 화면에만 표시한다(대시보드에는 추가하지 않음).
-9. 루틴 수정·삭제 API는 여전히 없다(#27 범위 밖). 루틴을 DB에서 삭제하면 휴식 기록도 CASCADE 삭제된다.
+1. **Weekly target calculation**: #27 stores only per-exercise baselines and manual weekly changes. Today's target is calculated as "baseline + that week's change applied once" (a decrease for deloads), and is not accumulated across weeks. The screen shows the baseline and the weekly change together so the basis of the calculation can be checked. If accumulation is intended, only `weekExercises` needs to change. **User confirmation needed.**
+2. A decreased result is limited to the log input range: total weight 0 to 99999 kg (rounded to two decimals), sets and reps at least 1.
+3. A rest is allowed only when today is a planned workout day within the routine period and targets remain. The button is not shown on rest weekdays or outside the period, and the server also rejects it with 409. Adding a rest for a past date is not supported.
+4. A rest is rejected for a routine that is not the active one (when a routine that started later exists). A cancel deletes only that routine's rest row for the day.
+5. A rest is allowed even if today's log is already saved (the log does not change).
+6. The previous record shows all sets of the same exercise from the most recent log on a date before today (`date < today`). A record already saved today is excluded from the reference.
+7. The title of a quick-entry log is `routine name · split name`, and the machine is left unselected (null). The routine has no machine information, so no official weight is added arbitrarily. Set rows are cut at the log limit of 200.
+8. The goal card is shown only on the workout log screen (not added to the dashboard).
+9. There is still no routine edit or delete API (outside #27's scope). If a routine is deleted from the DB, its rest records are also deleted by CASCADE.
 
-## 테스트
+## Tests
 
-추가/수정한 테스트:
+Added or changed tests:
 
-- `backend/test/routine-progress.test.ts` (신규, 13건): 주차 변화 1회 적용·비누적·디로딩 하한, 휴식 없음, 1회 휴식 시 이동과 마지막 목표 제외(종료일·날짜 고정), 서로 다른 날 연속 휴식, 같은 날 중복, 주차·디로딩 귀속(3주차 목표가 4주차 날짜로 밀려도 3주차, 디로딩 목표는 디로딩 유지), 마지막 운동일 휴식, 운동일 아님/기간 밖 거부, 모든 운동일·이전 휴식 조합에서 미리보기 = 적용 결과, 오늘·이번 주·12주 표. API(가짜 pool): 서버 오늘과 다른 날짜/잘못된 날짜/ID 400·409이며 저장소 미접근, 당일 외 취소 409, 1회 적용 후 중복은 INSERT 없음, 비운동일 ROLLBACK, COMMIT 실패 시 500·ROLLBACK·성공 응답 없음, 루틴 없음 안내.
-- `backend/test/routine-progress.integration.test.ts` (신규, 전용 DB 필요, 하위 테스트 6건): 가장 최근 시작 루틴 선택·계획값·직전 기록 참고값, 진행 중이 아닌 루틴 휴식 거부, 실제 DB에서 COMMIT 실패 시 휴식 행 미저장, 동시 중복 POST 2건 → 201/200 및 행 1개, 적용 결과 = 미리보기, 종료일 고정, 저장된 세트 불변, 다른 날 취소 409·당일 취소 복원·반복 취소 no-op, 다른 날 연속 휴식 누적. 다른 테스트 파일과 같은 DB를 쓰므로 2097년 시작일을 사용하고 생성한 루틴·일지만 정리한다.
-- `backend/test/routine-progress-ui.test.ts` (신규, 5건): 기존 렌더링 어댑터 방식으로 실제 `main.tsx`/`progress.tsx` 실행. 서버 응답은 실제 `routineProgress`로 계산. 일지 화면의 종목별 목표·기준값·직전 기록·합산 없음·12주 표, 루틴 없음 안내, 초안 채우기 → 저장 전 요청 없음 → 그대로 저장(Idempotency-Key, 본문 확인, 초안 정리, 목표 재조회), 반복 수 수정 + 루틴 외 종목 추가 후 저장, 휴식 미리보기(이동·제외됨) → 같은 렌더의 연속 클릭에도 POST 1회 → 휴식 표시·제외됨 행 → 당일 취소 복원, 일지 미생성.
-- `backend/test/workout-draft-ui.test.ts` (수정): 새 `./progress` import를 실제 모듈로 불러오는 로더 분기만 추가했다. 기존 assertion은 변경하지 않았다.
+- `backend/test/routine-progress.test.ts` (new, 13 tests): a weekly change applied once, non-accumulation, and the deload lower bound; no rest; with one rest, the shift and exclusion of the last target (end date and dates fixed); consecutive rests on different days; a duplicate on the same day; week and deload attribution (a week 3 target pushed to a week 4 date is still week 3, and a deload target stays a deload); resting on the last workout day; rejecting a non-workout day or outside the period; preview = applied result for every workout day and prior-rest combination; and the data for today, this week, and the 12-week table. API (fake pool): a date different from server today, an invalid date, or an invalid ID gives 400 or 409 with no repository access; cancel on a day other than today gives 409; after one application a duplicate does no INSERT; a non-workout day does ROLLBACK; a COMMIT failure gives 500, ROLLBACK, and no success response; and the no-routine guidance.
+- `backend/test/routine-progress.integration.test.ts` (new, dedicated DB required, 6 subtests): choosing the most recently started routine, the planned values, and the previous-record reference values; rejecting a rest for a routine that is not active; on a real DB, no rest row stored when COMMIT fails; two concurrent duplicate POSTs → 201/200 and one row; applied result = preview; end date fixed; saved sets unchanged; cancel on another day 409, same-day cancel restores, repeated cancel is a no-op; and consecutive rests on different days accumulate. It shares the DB with other test files, so it uses a start date in 2097 and cleans up only the routines and logs it created.
+- `backend/test/routine-progress-ui.test.ts` (new, 5 tests): runs the real `main.tsx`/`progress.tsx` with the existing rendering-adapter method. The server response is calculated with the real `routineProgress`. It checks per-exercise goals, baselines, previous records, no summing, and the 12-week table on the log screen; the no-routine guidance; fill the draft → no request before saving → save as is (Idempotency-Key, body check, draft cleanup, goal re-fetch); edit reps and add an exercise outside the routine, then save; and rest preview (shift and excluded) → one POST even with consecutive clicks in the same render → rest marker and excluded row → same-day cancel restores, with no log created.
+- `backend/test/workout-draft-ui.test.ts` (changed): added only a loader branch that loads the new `./progress` import as the real module. Existing assertions were not changed.
 
-순서 기록: 구현(`progress.ts`, API)을 먼저 작성한 뒤 같은 작업 안에서 테스트를 작성했다. 구현 전 실패 재현은 하지 않았다. 대신 UI 연속 클릭 테스트는 `restPending` 잠금을 임시 제거하면 실패(4 pass / 1 fail)하고 복원하면 통과하는 것을 확인했다.
+Order record: I wrote the implementation (`progress.ts`, the API) first, then wrote the tests in the same task. I did not reproduce a failure before implementation. Instead, I confirmed that the UI consecutive-click test fails (4 pass / 1 fail) when the `restPending` lock is temporarily removed and passes when it is restored.
 
-### 실제 실행 명령과 결과
+### Commands actually run and results
 
-- `node node_modules/tsx/dist/cli.mjs --test test/routine-progress.test.ts` (backend, Node 24.21.0): 첫 실행 11 pass / 2 fail(테스트 기대값 오류: 미리보기 제외 목표 비교 방식, 실패 주입 지점). 테스트를 고친 뒤 **13 pass / 0 fail / 0 skip**.
+- `node node_modules/tsx/dist/cli.mjs --test test/routine-progress.test.ts` (backend, Node 24.21.0): first run 11 pass / 2 fail (test expectation errors: how the preview-excluded target is compared, and where the failure is injected). After fixing the tests, **13 pass / 0 fail / 0 skip**.
 - `node node_modules/tsx/dist/cli.mjs --test test/workout-draft-ui.test.ts test/period-ui.test.ts test/routines-ui.test.ts`: **43 pass / 0 fail / 0 skip**.
-- `node node_modules/tsx/dist/cli.mjs --test test/routine-progress-ui.test.ts`: **5 pass / 0 fail / 0 skip**. 잠금 제거 변이 시 4 pass / 1 fail.
-- `issue-check.ps1 -Issue 28 -Script test -Migrate` (전용 DB `workout_test_28`에 001~005 적용 후 `npm test`): **229 pass / 0 fail / 0 skip** (UI 테스트 추가 전). 통합 테스트 하위 6건 모두 실행·통과 확인.
-- 첫 `issue-check.ps1 -Issue 28 -Migrate` (`npm run check`): format:check 단계에서 `README.md`, `database/README.md` Prettier 경고로 EXIT=1. Prettier로 포맷 후 재실행.
-- 두 번째 `issue-check.ps1 -Issue 28 -Migrate`: **EXIT=0**. format:check, lint, typecheck 통과. 앱 테스트 **234 pass / 0 fail / 0 skip**(전용 DB 통합 포함), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, frontend(vite) 및 backend 빌드 통과.
+- `node node_modules/tsx/dist/cli.mjs --test test/routine-progress-ui.test.ts`: **5 pass / 0 fail / 0 skip**. With the lock-removal mutation, 4 pass / 1 fail.
+- `issue-check.ps1 -Issue 28 -Script test -Migrate` (apply 001 to 005 to the dedicated DB `workout_test_28`, then `npm test`): **229 pass / 0 fail / 0 skip** (before adding the UI tests). Confirmed that all 6 integration subtests ran and passed.
+- First `issue-check.ps1 -Issue 28 -Migrate` (`npm run check`): EXIT=1 at the format:check step because of Prettier warnings on `README.md` and `database/README.md`. Formatted with Prettier and re-ran.
+- Second `issue-check.ps1 -Issue 28 -Migrate`: **EXIT=0**. format:check, lint, and typecheck passed. App tests **234 pass / 0 fail / 0 skip** (including dedicated-DB integration), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, frontend (vite) and backend builds passed.
 
-## 제한·후속
+## Limits and follow-up
 
-- 실제 브라우저 확인은 하지 않았다. 레이아웃(특히 760px 이하 12주 표·세트 참고 문구), 포커스, 네이티브 유효성 검사, React 스케줄링은 렌더링 어댑터 범위 밖이다.
-- 기존 직접 입력 대비 조작 수: 오늘 목표와 같으면 "오늘 루틴으로 기록하기" → "기록 저장하기" 2회 클릭으로 저장된다(제목·종목·세트별 중량·반복 입력 불필요). 절감률은 측정하지 않았다.
-- 판단 사항 1(주차 목표 계산 방식)은 사용자 확인이 필요하다.
-- 휴식 미리보기와 확정 사이에 다른 기기에서 휴식이 적용되면 확정은 중복으로 처리되어(200) 최신 일정을 표시한다. 자정을 넘기면 날짜 불일치 409로 다시 확인을 요구한다.
-- 이 변경 기록 작성 후 최종 `issue-check.ps1 -Issue 28 -Migrate`: **EXIT=0**. 앱 테스트 234 pass / 0 fail / 0 skip, `test:agents` 162 pass / 0 fail / 0 skip, `test:skills` 4 pass / 0 fail / 0 skip, 빌드 통과.
+- No real browser check was done. Layout (especially the 12-week table and the set reference text at 760px and below), focus, native validation, and React scheduling are outside the rendering adapter's scope.
+- Number of operations compared with direct entry: if the log matches today's goal, it is saved with 2 clicks, "오늘 루틴으로 기록하기" (Log with today's routine) → "기록 저장하기" (Save record), with no need to enter the title, exercises, or per-set weight and reps. The saving rate was not measured.
+- Judgment call 1 (how the weekly goal is calculated) needs user confirmation.
+- If a rest is applied from another device between the rest preview and the confirmation, the confirmation is handled as a duplicate (200) and shows the latest schedule. If midnight passes, a date mismatch 409 asks for confirmation again.
+- Final `issue-check.ps1 -Issue 28 -Migrate` after writing this change record: **EXIT=0**. App tests 234 pass / 0 fail / 0 skip, `test:agents` 162 pass / 0 fail / 0 skip, `test:skills` 4 pass / 0 fail / 0 skip, builds passed.
 
-## 코디네이터 검토·실제 브라우저 확인 — 2026-10-19
+## Coordinator review and real-browser check — 2026-10-19
 
-- 독립 검토(읽기 전용): 차단 지적 없음. 분할 순환(운동일만 진행), 휴식 시 원래 순서 유지·종료일 고정·넘친 목표 '제외됨' 보관, 여러 휴식 조합과 취소 복원, `FOR UPDATE`+PK+`ON CONFLICT` 멱등성, 파라미터 쿼리, 직전 기록 조회(오늘 제외, `lower(trim())`), 빠른 기록이 저장 전 기록을 만들지 않음을 확인했다.
-- 검토 참고(P3): ① 주차 목표는 "기준값 + 해당 주 변경량"(누적 아님)으로 계산한다. #27 화면 문구("총중량 kg N 증가")만으로는 누적 여부가 명확하지 않아 **사용자 확인이 필요**하다. ② 오늘 일지를 이미 저장한 뒤에도 휴식을 적용할 수 있다(저장한 일지는 바뀌지 않음). ③ 휴식 취소는 진행 중 루틴 여부를 다시 확인하지 않는다(당일 행만 삭제).
-- 실제 브라우저(Playwright, 전용 DB `workout_test_28`의 dev 서버, 시작일 2026-10-12·월수금·2분할 루틴):
-  - 모바일 390px 일지 화면: 오늘(10/19, 2주차) 하체 목표 "스쿼트 4세트 · 80 kg · 7회(기준 6회 +1)", 이번 주 운동일 3개, 분할 순환(10/12 상체 → 10/14 하체 → 10/16 상체 → 10/19 하체)이 맞다.
-  - "오늘 하루 휴식하기" → 미리보기: 남은 목표가 원래 주차·디로딩 표시를 유지한 채 한 운동일씩 이동(예: 2주차 하체 10/19 → 10/21, 4주차 디로딩 하체 11/02 → 11/04). "휴식 확정" 더블클릭 → 휴식일 1개, 제외 목표 1개(12주차 디로딩 하체)만 생겼다. "휴식 취소" → 휴식일 0개, 제외 0개, 오늘 목표가 복원됐다.
-  - "오늘 루틴으로 기록하기" → 초안에 스쿼트 4세트(80 kg × 7회), "목표 80 kg × 7회 · 직전 기록 없음" 표시. 저장 전 서버 기록 0건, 저장 후 1건(4세트), 상태 "서버 저장 완료". 가로 스크롤 없음.
-  - PC 1440px: 루틴 목표 카드·통계·기록 목록 배치 정상.
+- Independent review (read-only): no blocking findings. Confirmed split rotation (advances only on workout days), keeping the original order on rest, fixed end date, and overflow targets kept as "제외됨" (excluded), combinations of several rests and cancel restore, idempotency by `FOR UPDATE` + PK + `ON CONFLICT`, parameterized queries, the previous-record lookup (excludes today, `lower(trim())`), and that quick log does not create a record before saving.
+- Review notes (P3): (1) The weekly target is calculated as "baseline + that week's change" (not accumulated). The #27 screen wording ("total weight kg N increase") alone does not make it clear whether it accumulates, so **user confirmation is needed**. (2) A rest can be applied even after today's log is already saved (the saved log does not change). (3) A rest cancel does not re-check whether the routine is the active one (it deletes only the row for the day).
+- Real browser (Playwright, dev server on the dedicated DB `workout_test_28`, routine with start date 2026-10-12, Mon/Wed/Fri, 2 splits):
+  - Mobile 390px log screen: today (10/19, week 2) lower-body goal "스쿼트 4세트 · 80 kg · 7회(기준 6회 +1)" (Squat 4 sets · 80 kg · 7 reps (baseline 6 reps +1)), 3 workout days this week, and the split rotation (10/12 upper → 10/14 lower → 10/16 upper → 10/19 lower) are correct.
+  - "오늘 하루 휴식하기" (Rest today) → preview: the remaining targets keep their original week and deload marker while moving back by one workout day each (for example week 2 lower 10/19 → 10/21, week 4 deload lower 11/02 → 11/04). Double-clicking "휴식 확정" (Confirm rest) produced only 1 rest day and 1 excluded target (the week 12 deload lower). "휴식 취소" (Cancel rest) → 0 rest days, 0 excluded, and today's goal was restored.
+  - "오늘 루틴으로 기록하기" (Log with today's routine) → the draft has Squat 4 sets (80 kg × 7 reps) and shows "목표 80 kg × 7회 · 직전 기록 없음" (Goal 80 kg × 7 reps · no previous record). 0 server records before saving, 1 after (4 sets), and the status "서버 저장 완료" (Saved to server). No horizontal scrolling.
+  - PC 1440px: the routine goal card, statistics, and record list layout is normal.
 
-## 규칙 변경: 자동 점진 과부하와 기본 3세트 — 2026-10-19 (Asia/Seoul)
+## Rule change: automatic progressive overload and a default of 3 sets — 2026-10-19 (Asia/Seoul)
 
-이슈 코멘트 "규칙 변경 — 자동 점진 과부하와 기본 3세트"(사용자 요청)를 반영했다. #27의 "주차 목표 수동 입력·자동 계산 안 함" 규칙은 새 루틴에 한해 자동 계산으로 바뀐다.
+Reflects the issue comment "규칙 변경 — 자동 점진 과부하와 기본 3세트" (Rule change — automatic progressive overload and default 3 sets) (the user's request). #27's rule "weekly targets entered manually, not calculated automatically" changes to automatic calculation for new routines only.
 
-### 변경 내용
+### Changes
 
-- `backend/src/domain.ts`: 루틴 JSON에 `progression: 'manual' | 'auto'`(선택), 운동별 `rep_min`/`rep_max`(선택)를 추가했다. `auto`는 반복 범위(하한 ≤ 상한)가 필수이며 `weeks`를 넣으면 거부한다. 필드가 없으면 기존 #27 수동 루틴으로 보고 12주 `weeks`를 그대로 요구한다. DB 마이그레이션은 추가하지 않았다(JSONB 문서 안의 필드).
-- `backend/src/progress.ts`: 자동 목표 계산을 추가했다.
-  - 증량폭 `incrementFor`: 현재 중량 × 5%를 2.5 kg 단위로 반올림, 최소 2.5 kg. 디로딩 `deloadWeight`: 직전 주 목표 중량 × 0.9를 2.5 kg 단위로 반올림, 같은 반복 수.
-  - 단계 `progressionStep`: 반복 +1, 상한을 넘으면 중량 +증량폭·반복 하한. 0 kg은 상한까지 반복만 늘리고 이후 유지.
-  - 실제 기록 반영: 종목마다 분할이 배치된 주차를 순서대로 보며, 그 주 첫 운동일부터 다음 주차의 첫 운동일 전날까지를 판정 구간으로 둔다. 구간 안 한 번의 일지에서 목표 중량·반복 이상인 세트가 계획 세트 수 이상이면 `achieved`로 진행한다. 구간이 끝났는데 없으면 `missed`로 같은 목표를 유지하고 남은 주차를 다시 계산한다. 아직 열린 구간은 달성한다고 가정해 이후를 예상한다. 오늘 이후 날짜와 제외된 목표는 `projected: true`(예상)이다.
-  - 디로딩 주차는 판정하지 않고 진행을 멈춘다. 다음 주는 디로딩 직전 목표의 판정 결과에서 이어간다.
-  - `arrangeTargets(plan, rests, records, today)`: 휴식 이동(계획 순서, 종료일 고정, 제외 목표 보관)을 먼저 정한 뒤 이동된 날짜로 판정 구간을 계산한다. 미리보기와 적용은 같은 기록으로 계산한다.
-- `backend/src/app.ts`: 자동 루틴이면 루틴 기간의 시작일~오늘(종료일 이하) 사이, 계획 종목의 저장 세트를 읽어 판정에 쓴다. 세트 행을 `to_jsonb(s)->'completed'`로 읽어 `completed` 열(PR #51, 미병합)이 없어도 동작하며, 열이 생기면 `false`인 세트만 제외한다.
-- `frontend/src/progression.ts`(신규): 루틴 폼 미리보기용으로 같은 계산을 기록 없이 수행한다. 백엔드 테스트가 두 구현의 결과를 비교한다.
-- `frontend/src/routines.tsx`: "주차 목표 방식" 선택(기본 자동, 수동 유지). 자동이면 종목별 세트 수(기본 3)·현재 총중량·현재 반복 수·반복 하한(8)·상한(12)을 입력하고 규칙 설명과 12주 예상 목표(반복 +1, 증량 +X kg, 유지, 디로딩)를 보여준다. 주차별 수동 입력은 수동 방식에서만 표시한다. 상세 화면도 자동 루틴은 규칙과 예상 목표를 보여준다. 저장 본문은 선택한 방식의 필드만 보낸다(수동은 `progression: 'manual'`과 기존 필드).
-- `frontend/src/progress.tsx`: 자동 루틴의 주차 변화 표시("자동 · 이중 점진 과부하", 디로딩 "자동 (직전 주 중량 90%)"), 종목별 "달성"/"미달성(유지)"/"예상" 표시와 안내 문구.
-- `frontend/src/main.tsx`: "운동 기록하기" 편집기가 빈 세트 3개로 시작한다. 루틴 폼의 운동 추가 기본 세트 수도 3이다. 초안·재시도 키 흐름은 그대로다.
-- `README.md`: 자동 목표·기본 3세트 설명 추가.
+- `backend/src/domain.ts`: added `progression: 'manual' | 'auto'` (optional) and per-exercise `rep_min`/`rep_max` (optional) to the routine JSON. `auto` requires a rep range (lower ≤ upper) and rejects `weeks` if given. If the field is absent, it is treated as an existing #27 manual routine and still requires the 12-week `weeks`. No DB migration was added (the fields are inside the JSONB document).
+- `backend/src/progress.ts`: added the automatic target calculation.
+  - Increment `incrementFor`: current weight × 5% rounded to 2.5 kg units, at least 2.5 kg. Deload `deloadWeight`: the previous week's target weight × 0.9 rounded to 2.5 kg units, same reps.
+  - Step `progressionStep`: reps +1; when it exceeds the upper bound, weight + increment and reps reset to the lower bound. For 0 kg, only reps go up to the upper bound and are then held.
+  - Reflecting real records: for each exercise, it goes through the weeks where the split is placed in order, and takes from that week's first workout day to the day before the next week's first workout day as the evaluation window. If a set at or above the target weight and reps, in a single log within the window, is at least the planned number of sets, it progresses as `achieved`. If the window ends with none, it is `missed`, keeps the same target, and recalculates the remaining weeks. A window that is still open is assumed achieved and the later targets are projected. Dates after today and excluded targets are `projected: true` (projected).
+  - A deload week is not evaluated and progression pauses. The next week continues from the evaluation result of the target before the deload.
+  - `arrangeTargets(plan, rests, records, today)`: first decides the rest shift (plan order, fixed end date, keeping excluded targets), then calculates the evaluation windows with the moved dates. The preview and the application are calculated from the same records.
+- `backend/src/app.ts`: for an automatic routine, reads the saved sets of the planned exercises between the routine period's start date and today (up to the end date) and uses them for evaluation. It reads the set row with `to_jsonb(s)->'completed'` so it works even without the `completed` column (PR #51, not merged), and when the column appears it excludes only sets that are `false`.
+- `frontend/src/progression.ts` (new): does the same calculation without records, for the routine form preview. Backend tests compare the results of the two implementations.
+- `frontend/src/routines.tsx`: a "주차 목표 방식" (Weekly goal method) selector (default automatic, manual kept). For automatic, it takes sets per exercise (default 3), current total weight, current reps, rep lower bound (8), and upper bound (12), and shows the rule description and the 12-week projected targets (reps +1, increase +X kg, hold, deload). The weekly manual input is shown only in the manual method. The detail screen also shows the rule and projected targets for an automatic routine. The save body sends only the fields of the chosen method (manual sends `progression: 'manual'` and the existing fields).
+- `frontend/src/progress.tsx`: for an automatic routine, shows the weekly change ("자동 · 이중 점진 과부하" (Automatic · double progressive overload), deload "자동 (직전 주 중량 90%)" (Automatic (90% of the previous week's weight))), per-exercise "달성" (achieved) / "미달성(유지)" (missed (held)) / "예상" (projected) markers, and guidance text.
+- `frontend/src/main.tsx`: the "운동 기록하기" (Log workout) editor starts with 3 empty sets. The default number of sets when adding an exercise in the routine form is also 3. The draft and retry-key flow is unchanged.
+- `README.md`: added a description of automatic targets and the default 3 sets.
 
-### 판단 사항
+### Judgment calls
 
-1. 1주차 목표는 입력한 현재 수행 능력 그대로이며 2주차부터 진행한다(첫 주에 현재 능력을 확인).
-2. 진행 단위는 "종목이 배치된 주차"다. 분할이 해당 주에 배치되지 않으면 그 주는 건너뛰고 단계를 올리지 않는다. 같은 주에 같은 분할이 여러 번 있으면 같은 목표이며, 그중 한 번만 달성해도 된다.
-3. 달성 판정은 한 번의 일지에서 계획 세트 수 이상을 채워야 하며 여러 일지의 세트를 합치지 않는다. 계획보다 많은 세트는 허용한다. 운동명은 `lower(trim())`로 비교하므로 여러 분할에 같은 운동명이 있으면 같은 기록을 공유한다.
-4. 기록이 하나도 없는 지난 주는 미달성으로 보고 유지한다(휴식하기를 쓰지 않고 운동을 거른 경우).
-5. 기존 저장 루틴과 `progression`이 없는 API 요청은 수동으로 처리한다(호환성). "새 루틴 기본 자동"은 화면 기본값으로 적용했다.
-6. 시작 중량이 2.5 kg 배수가 아니면 증량은 그대로 더하고, 디로딩만 2.5 kg 단위로 맞춘다. 결과는 일지 범위(0~99999 kg)로 제한한다.
-7. 현재 반복 수가 범위 밖이어도 그대로 시작한다(하한 미만이면 매주 +1, 상한 초과면 다음 주 증량·하한).
-8. 판정은 저장된 일지에서 매번 다시 계산한다. 지난 일지를 수정하면 이후 목표도 다시 계산된다. 이력을 따로 저장하지 않으므로 새 마이그레이션이 필요 없다.
+1. The week 1 target is the entered current performance as it is, and progression starts in week 2 (the first week confirms current ability).
+2. The progression unit is "a week in which the exercise is placed". If the split is not placed in that week, the week is skipped and the step is not raised. If the same split appears several times in the same week, it is the same target, and achieving it just once among them is enough.
+3. Achievement is judged within a single log that fills at least the planned number of sets, and sets from several logs are not combined. More sets than planned are allowed. Exercise names are compared with `lower(trim())`, so if the same exercise name is in several splits, they share the same records.
+4. A past week with no records at all is treated as missed and held (the case where the user skipped a workout without using rest).
+5. Existing saved routines and API requests without `progression` are handled as manual (compatibility). "New routines default to automatic" is applied as the screen default.
+6. If the starting weight is not a multiple of 2.5 kg, the increment is added as it is, and only the deload is rounded to 2.5 kg units. The result is limited to the log range (0 to 99999 kg).
+7. If the current reps are outside the range, it starts as is (below the lower bound it goes +1 every week; above the upper bound it increases weight and resets to the lower bound the next week).
+8. The evaluation is recalculated from the saved logs each time. If a past log is edited, later targets are recalculated too. No history is stored separately, so no new migration is needed.
 
-### 테스트
+### Tests
 
-- `backend/test/routine-progression.test.ts`(신규, 9건): 스키마(자동은 반복 범위 필수·weeks 거부, 기존 수동 호환), 증량폭 반올림·최소값·디로딩 반올림, 12주 예상(반복 +1·하한 재설정·디로딩·재개, 덤벨 2.5 kg 증량, 맨몸 상한 유지, 기본 3세트·예상 표시), 달성 시 진행·미달성 유지와 이후 재계산·기록 없음 유지·오늘 목표 확정, `completed` 플래그(false 제외, 추가 세트, 열 없음/null), 열린 주 예상, 디로딩 후 미기록 유지, 휴식 이동과 주차·값 유지 및 이동된 날 기록의 판정, 프런트 미리보기와 서버 계산 일치.
-- `backend/test/routine-progression.integration.test.ts`(신규, 전용 DB): 자동 루틴 저장(`weeks` 없음), 실제 일지로 벤치 달성→진행, 컬 1세트 부족→유지와 이후 주 재계산, 기록 없음→유지, 결과 표시, 미래 예상, 휴식 적용 후 주차·값 유지, 저장 세트 불변.
-- `backend/test/routines-ui.test.ts`: 신규 자동 폼 테스트(기본 자동, 규칙 설명, 수동 변화량 미표시, 기본 3세트·8~12회, 예상 목표 표시, 요청 없음, 저장 본문, 상세 화면). 기존 수동 폼 테스트 2건은 "주차 목표 방식"을 수동으로 바꾼 뒤 같은 검증을 하며, 저장 본문 기대값에 `progression: 'manual'`만 추가했다.
-- `backend/test/routine-progress-ui.test.ts`: 자동 루틴 카드(오늘 확정값, 미래 '예상', 디로딩 자동 표시, 5주차 105 kg × 8회, 간편 입력 9세트) 추가. 모의 서버가 `routineProgress`의 새 인자를 사용한다.
-- `backend/test/workout-draft-ui.test.ts`: 새 편집기의 빈 세트 3개·로컬 초안 테스트 추가. 기존 `fill()`은 세트 2개를 삭제해 한 세트 저장 시나리오를 그대로 검증한다.
+- `backend/test/routine-progression.test.ts` (new, 9 tests): schema (automatic requires a rep range and rejects weeks, existing manual compatibility), increment rounding, minimum, and deload rounding; the 12-week projection (reps +1, reset to the lower bound, deload, resume; dumbbell 2.5 kg increment; bodyweight holding at the upper bound; default 3 sets and the projected marker); progress on achievement, hold on a miss and the recalculation afterward, hold with no records, today's target confirmed; the `completed` flag (false excluded, extra sets, column absent or null); projection of an open week; hold after a deload with no records; rest shift keeping weeks and values, and the evaluation of a record on the moved day; and the frontend preview matching the server calculation.
+- `backend/test/routine-progression.integration.test.ts` (new, dedicated DB): saving an automatic routine (no `weeks`), bench achieved → progress with real logs, curl one set short → hold and the recalculation of later weeks, no records → hold, result display, future projection, weeks and values kept after applying a rest, and saved sets unchanged.
+- `backend/test/routines-ui.test.ts`: new automatic form test (default automatic, rule description, manual changes not shown, default 3 sets and 8 to 12 reps, projected target display, no request, save body, detail screen). The two existing manual form tests make the same checks after switching "주차 목표 방식" (Weekly goal method) to manual, and I only added `progression: 'manual'` to the expected save body.
+- `backend/test/routine-progress-ui.test.ts`: added the automatic routine card (today's confirmed value, future "예상" (projected), automatic deload display, week 5 105 kg × 8 reps, quick entry with 9 sets). The mock server uses the new arguments of `routineProgress`.
+- `backend/test/workout-draft-ui.test.ts`: added tests for the new editor's 3 empty sets and the local draft. The existing `fill()` deletes 2 sets and so still checks the one-set save scenario as before.
 
-### 실제 실행 명령과 결과
+### Commands actually run and results
 
-- 구현 전 `issue-check.ps1 -Issue 28 -Script test -Migrate`(테스트만 추가한 상태): **247 tests / 231 pass / 16 fail / 0 skip**, EXIT=1. 실패는 자동 진행 미구현(스키마·증량·예상·판정·패리티·통합·UI)과 기본 1세트 때문이다.
-- 구현 중 관련 파일 실행에서 발견해 고친 문제: 요일 체크박스 라벨 '목'이 "목표 방식" 라벨과 앞부분이 겹쳐 라벨을 "주차 목표 방식"으로 변경했다. 테스트 어댑터의 기본 ES5 변환에서 Set 전개가 빈 배열이 되어 `Array.from`으로 바꿨다. 0 kg이 어댑터에서 빈 문자열로 보여 `String()`으로 표시했다. vm 배열 비교는 JSON 왕복으로 바꿨다.
-- 첫 `issue-check.ps1 -Issue 28 -Migrate`: format:check에서 `workout-draft-ui.test.ts` Prettier 경고로 EXIT=1. 포맷 후 재실행.
-- 최종 `issue-check.ps1 -Issue 28 -Migrate`: **EXIT=0**. 앱 테스트 **247 pass / 0 fail / 0 skip**(전용 DB 통합 포함, 신규 자동 통합 테스트 실행 확인), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, lint·typecheck·frontend/backend 빌드 통과.
+- `issue-check.ps1 -Issue 28 -Script test -Migrate` before implementation (only tests added): **247 tests / 231 pass / 16 fail / 0 skip**, EXIT=1. The failures are from the unimplemented automatic progression (schema, increment, projection, evaluation, parity, integration, UI) and the default of 1 set.
+- Problems found and fixed while running related files during implementation: the weekday checkbox label '목' (Thu) overlapped at the start with the "목표 방식" (goal method) label, so I changed the label to "주차 목표 방식". In the test adapter's default ES5 transform, a Set spread became an empty array, so I changed it to `Array.from`. 0 kg appeared as an empty string in the adapter, so I displayed it with `String()`. I changed vm array comparison to a JSON round trip.
+- First `issue-check.ps1 -Issue 28 -Migrate`: EXIT=1 from a Prettier warning on `workout-draft-ui.test.ts` in format:check. Formatted and re-ran.
+- Final `issue-check.ps1 -Issue 28 -Migrate`: **EXIT=0**. App tests **247 pass / 0 fail / 0 skip** (including dedicated-DB integration; confirmed the new automatic integration test ran), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, lint, typecheck, and frontend/backend builds passed.
 
-### 제한
+### Limits
 
-- 이 변경의 실제 브라우저 확인은 하지 않았다(렌더링 어댑터 범위).
-- PR #51의 `completed` 열은 실제 DB에서 검증하지 못했다(미병합). 열이 있을 때의 동작은 단위 테스트로만 확인했다.
-- 변경 기록 작성 후 최종 `issue-check.ps1 -Issue 28 -Migrate` 재실행: **EXIT=0** (앱 247/0/0, agents 162/0/0, skills 4/0/0, 빌드 통과).
+- No real browser check was done for this change (rendering adapter scope).
+- The `completed` column of PR #51 could not be verified on a real DB (not merged). The behavior when the column exists was confirmed only by unit tests.
+- Re-ran the final `issue-check.ps1 -Issue 28 -Migrate` after writing the change record: **EXIT=0** (app 247/0/0, agents 162/0/0, skills 4/0/0, builds passed).
 
-## 코디네이터 검토·실제 브라우저 확인 — 자동 진행과 기본 3세트 (2026-10-19)
+## Coordinator review and real-browser check — automatic progression and default 3 sets (2026-10-19)
 
-- 독립 검토(읽기 전용): 차단 지적 없음. 증량폭(20 kg→2.5, 80 kg→5, 최소 2.5), 0 kg 종목 반복만 증가, 디로딩이 직전 비디로딩 목표를 기준으로 하고 다음 주에 이어서 진행, 주차 창(휴식 이동 반영, 서울 날짜 문자열 비교), `completed` 컬럼 유무 모두 동작(`to_jsonb(s)->'completed'`), 수동 루틴 하위 호환, Zod의 `rep_min <= rep_max`·자동 모드 `weeks` 거부, 미리보기와 서버 계산의 일치를 확인했다. 기본 3세트에 맞춘 초안 테스트 변경은 확정 규칙을 반영한 것이며 판정 약화가 아니다.
-- 검토 참고(P3, 문서화로 처리): ① 현재 반복 수가 반복 범위 밖이어도 거부하지 않는다. 상한보다 크면(예: 15회, 범위 8~12) 2주차에 바로 증량하고 하한으로 내려가고, 하한보다 작으면 1회씩 올라간다. 현재 그 중량으로 상한 이상을 수행한다면 증량하는 것이 규칙 취지에 맞다고 보아 유지한다. ② 휴식으로 주차 첫 운동일이 뒤로 밀리면, 그 날짜보다 먼저 저장한 일지는 해당 주차 달성으로 세지 않는다.
-- 실제 브라우저(Playwright, 전용 DB `workout_test_28`의 dev 서버):
-  - 모바일 390px 루틴짜기: 기본값이 "자동 · 이중 점진 과부하", 세트 3, 반복 하한 8·상한 12다. 규칙 설명이 표시된다. 벤치프레스 60 kg × 10회, 월·수·금 입력 시 12주 미리보기는 60×10 → 60×11 → 60×12 → 4주차 디로딩 55×12 → 62.5×8(증량 +2.5) → 62.5×9 → 62.5×10 → 8주차 디로딩 57.5×10 → 62.5×11 → 62.5×12 → 65×8(증량 +2.5) → 12주차 디로딩 57.5×8로 규칙과 일치한다.
-  - 호스트 `npm run check`(수정 포함): exit 0 — 앱·DB 248, 워커 162, 스킬 4 pass, fail·skip 0.
-  - 저장 후 일지: 오늘 목표 "벤치프레스 3세트 · 60 kg · 10회"와 자동 목표 설명. 기존 수동 루틴도 목록·카드에서 그대로 열린다(하위 호환).
-  - "운동 기록하기"는 세트 3개로 시작한다.
-  - **발견·수정:** 루틴짜기에서 새 루틴을 저장한 뒤 일지로 돌아오면 목표 카드가 이전 루틴을 계속 보여줬다(새로고침해야 반영). 화면을 바꿀 때마다 진행 중 루틴을 다시 불러오도록 고쳤다. 회귀 UI 테스트는 수정 전 실패(0 pass / 1 fail), 수정 후 `routine-progress-ui.test.ts` 7 pass.
+- Independent review (read-only): no blocking findings. Confirmed the increment (20 kg → 2.5, 80 kg → 5, minimum 2.5), reps-only increase for 0 kg exercises, a deload based on the previous non-deload target and progression continuing the next week, the week window (reflecting rest shifts, Seoul date string comparison), working both with and without the `completed` column (`to_jsonb(s)->'completed'`), backward compatibility with manual routines, Zod's `rep_min <= rep_max` and rejecting `weeks` in automatic mode, and that the preview matches the server calculation. The draft test change to fit the default 3 sets reflects the confirmed rule and is not a weakening of the check.
+- Review notes (P3, handled by documenting): (1) A current rep count outside the rep range is not rejected. If it is above the upper bound (for example 15 reps, range 8 to 12), it increases weight in week 2 and drops to the lower bound; if it is below the lower bound, it rises by 1 each time. If the user can currently do the upper bound or more at that weight, increasing fits the intent of the rule, so I keep it. (2) If a rest pushes the week's first workout day later, a log saved before that date is not counted as achieving that week.
+- Real browser (Playwright, dev server on the dedicated DB `workout_test_28`):
+  - Mobile 390px Build routine (루틴짜기): the defaults are "자동 · 이중 점진 과부하" (Automatic · double progressive overload), 3 sets, rep lower bound 8, upper bound 12. The rule description is shown. With Bench press 60 kg × 10 reps and Mon/Wed/Fri entered, the 12-week preview is 60×10 → 60×11 → 60×12 → week 4 deload 55×12 → 62.5×8 (increase +2.5) → 62.5×9 → 62.5×10 → week 8 deload 57.5×10 → 62.5×11 → 62.5×12 → 65×8 (increase +2.5) → week 12 deload 57.5×8, matching the rule.
+  - Host `npm run check` (including fixes): exit 0 — app and DB 248, worker 162, skills 4 pass, 0 fail and skip.
+  - Log after saving: today's goal "벤치프레스 3세트 · 60 kg · 10회" (Bench press 3 sets · 60 kg · 10 reps) and the automatic goal description. An existing manual routine still opens in the list and card (backward compatibility).
+  - "운동 기록하기" (Log workout) starts with 3 sets.
+  - **Found and fixed:** after saving a new routine in Build routine and going back to the log, the goal card kept showing the previous routine (it only updated after a refresh). I fixed it to re-fetch the active routine every time the screen changes. The regression UI test failed before the fix (0 pass / 1 fail) and after the fix `routine-progress-ui.test.ts` gives 7 pass.
 
-## 규칙 변경: 분할(운동일) 단위 진행 — 2026-10-19 (Asia/Seoul)
+## Rule change: progression per split (workout day) — 2026-10-19 (Asia/Seoul)
 
-이슈 코멘트 "규칙 변경 — 주 단위가 아니라 분할(운동일) 단위로 진행"을 반영했다. 바로 앞 절의 "주 단위 진행"을 대체한다.
+Reflects the issue comment "규칙 변경 — 주 단위가 아니라 분할(운동일) 단위로 진행" (Rule change — progress per split (workout day), not per week). It replaces the "weekly progression" of the previous section.
 
-### 새 규칙
+### New rules
 
-- 진행 단위는 종목이 들어 있는 분할의 세션(운동일)이다. 세션마다 반복 +1, 상한 초과 시 약 5%(2.5 kg 단위, 최소 2.5 kg) 증량·하한, 0 kg은 반복만 늘린다. 주 3회 무분할은 한 주에 3단계, 주 3회 2분할은 A/B/A·B/A/B로 각 분할이 주 1~2단계 진행한다. 첫 세션 목표는 입력한 현재 수행 능력이다.
-- 판정 구간: 그 세션 날짜부터 같은 분할의 다음 세션 전날까지(마지막 세션은 계획 종료일까지). 구간 안 한 번의 일지에서 목표 중량·반복 이상인 세트(완료 열이 있으면 완료 세트만)가 계획 세트 수 이상이면 다음 세션이 진행하고, 구간이 끝났는데 없으면 다음 세션도 같은 목표다. 열린 구간과 앞으로의 세션은 예상이다.
-- 디로딩: 4·8·12주차(목표의 원래 계획 주차)의 세션은 모두 직전 비디로딩 목표 중량 × 0.9(2.5 kg 단위)·같은 반복이며 판정·진행하지 않는다. 다음 세션은 디로딩 직전 목표의 판정 결과에서 이어간다.
-- **디로딩 기준을 달력 주차로 유지한 이유:** 원래 요구사항이 "4주마다 디로딩"이었다. 세션 수 기준(예: N회마다)으로 하면 주당 운동 횟수와 분할 수에 따라 디로딩 간격이 크게 달라진다(주 3회 무분할과 주 2회 3분할은 같은 N회가 몇 주씩 차이 난다). 그래서 4·8·12주차를 유지했다(코디네이터 결정, 사용자 위임).
-- 표시: 세션 순서(n번째 운동일)를 목표에 붙인다. 루틴 폼·상세 미리보기는 주차별로 묶어 "1주차: 1번째 100 kg × 10회(시작), 2번째 …"로 보여주고, 루틴 목표 카드의 오늘·이번 주는 "3주차 2번째 · 분할 A", 12주 표는 날짜 뒤에 "n번째"를 표시한다. 화면 규칙 설명(한국어)도 세션 기준으로 고쳤다. 수동 루틴의 표시는 바꾸지 않았다.
-- 휴식하기 규칙(계획 순서 유지, 종료일 고정, 제외 목표 보관, 당일 취소), 디로딩 귀속(원래 계획 주차), 기본 3세트, 수동 루틴 호환은 그대로다.
+- The progression unit is a session (workout day) of the split that contains the exercise. At each session reps go +1, and when above the upper bound the weight increases by about 5% (2.5 kg units, at least 2.5 kg) and reps reset to the lower bound; for 0 kg only reps increase. With 3 workouts a week and no split, there are 3 steps a week; with 3 workouts a week and 2 splits, it is A/B/A and B/A/B, and each split progresses 1 to 2 steps a week. The first session's target is the entered current performance.
+- Evaluation window: from that session's date to the day before the next session of the same split (for the last session, up to the plan end date). If, in a single log within the window, the sets at or above the target weight and reps (only completed sets if a completed column exists) are at least the planned number of sets, the next session progresses; if the window ends with none, the next session has the same target too. An open window and future sessions are projections.
+- Deload: all sessions in weeks 4, 8, and 12 (the target's original planned week) use the previous non-deload target weight × 0.9 (2.5 kg units) and the same reps, and are not evaluated or progressed. The next session continues from the evaluation result of the target before the deload.
+- **Why the deload basis stays the calendar week:** the original requirement was "a deload every 4 weeks". If it were based on the number of sessions (for example every N workouts), the deload interval would vary a lot with workouts per week and the number of splits (the same N workouts differ by several weeks between 3 workouts a week with no split and 2 workouts a week with 3 splits). So I kept weeks 4, 8, and 12 (coordinator decision, delegated by the user).
+- Display: the session order (the n-th workout day) is attached to the target. The routine form and detail preview group by week and show "1주차: 1번째 100 kg × 10회(시작), 2번째 …" (Week 1: 1st 100 kg × 10 reps (start), 2nd …); on the routine goal card, today and this week show "3주차 2번째 · 분할 A" (Week 3, 2nd · split A), and the 12-week table shows "n번째" (n-th) after the date. The on-screen rule description (in Korean) was also changed to the session basis. The display of manual routines was not changed.
+- The rest rules (keeping plan order, fixed end date, keeping excluded targets, same-day cancel), deload attribution (the original planned week), the default 3 sets, and manual routine compatibility are unchanged.
 
-### 변경 파일
+### Changed files
 
-- `backend/src/progress.ts`: `autoExercises`를 세션 단위로 바꿨다. 목표에 `session`(계획 주차 안의 n번째 운동일)을 추가했다.
-- `frontend/src/progression.ts`: `splitSessions`·세션 단위 `projectExercise`·주차 묶음 `byWeek`. 서버와 같은 계산(패리티 테스트로 확인).
-- `frontend/src/routines.tsx`, `frontend/src/progress.tsx`, `README.md`: 세션 표시와 규칙 문구.
+- `backend/src/progress.ts`: changed `autoExercises` to per-session. Added `session` (the n-th workout day within the planned week) to the target.
+- `frontend/src/progression.ts`: `splitSessions`, per-session `projectExercise`, and the per-week grouping `byWeek`. The same calculation as the server (confirmed by the parity test).
+- `frontend/src/routines.tsx`, `frontend/src/progress.tsx`, `README.md`: session display and rule text.
 
-### 판단 사항
+### Judgment calls
 
-1. "n번째"는 그 주의 n번째 운동일(분할과 무관한 순서)이며, 휴식으로 날짜가 밀려도 원래 계획 순서의 번호를 유지한다.
-2. 휴식으로 다음 세션이 뒤로 밀리면 직전 세션의 판정 구간도 늘어난다. 그래서 이미 닫혔던 구간이 다시 열리면 달성 가정(예상)으로 바뀔 수 있다. 통합 테스트에 이 동작을 명시했다(오늘 휴식 시 옮겨진 세션이 한 단계 높은 예상 목표).
-3. 다음 세션 날짜에 저장한 기록은 다음 세션의 판정에만 쓴다(구간 끝은 다음 세션 전날까지).
+1. "n-th" is the n-th workout day of that week (an order independent of the split), and even if a rest moves the date, it keeps the number of the original plan order.
+2. If a rest pushes the next session back, the previous session's evaluation window also grows. So a window that had already closed can reopen and change to the assumed-achieved (projected) state. I stated this behavior in the integration test (when resting today, the moved session has a projected target one step higher).
+3. A record saved on the next session's date is used only for the next session's evaluation (the window end is up to the day before the next session).
 
-### 테스트
+### Tests
 
-- `backend/test/routine-progression.test.ts`(9건으로 재작성): 스키마 호환, 증량·디로딩 반올림, 주 3회 무분할의 세션별 진행(36세션, 4·8·12주차 디로딩 값과 5주차 재개), 덤벨·맨몸, 주 3회 2분할 A/B/A·B/A/B의 분할별 진행과 디로딩, 세션 구간 판정(구간 안 기록, 1세트 부족 유지, 기록 없음 유지, 다음 세션 날 기록 귀속, 오늘 확정·미래 예상), 완료 플래그, 디로딩 세션 무판정·이후 재개와 미달 유지, 휴식 이동(계획 순서·세션 값 유지, 옮겨진 날 기록 판정, 3주차 목표의 4주 달력 이동·디로딩 목표의 5주 달력 이동), 프런트 미리보기와 서버 값·주차/세션 번호 일치(무분할·2분할).
-- `backend/test/routine-progression.integration.test.ts`: 세 번째 세션 날짜 기준으로 1세션 달성→2세션 진행, 2세션 무기록→오늘 유지, 컬 미달 유지, 5주차 컬 45 kg × 9, 휴식 후 옮겨진 세션(1주차 3번째)의 예상 100 kg × 12로 수정.
-- `backend/test/routines-ui.test.ts`: 자동 폼 미리보기 문구를 주차별 세션 표기로 수정하고 세션 규칙 설명을 확인한다. 상세 화면은 "5주차: 1번째 110 kg × 9회(반복 +1)".
-- `backend/test/routine-progress-ui.test.ts`: 오늘 "1주차 1번째 · 전신", 12주 표의 1주차 3번째 100 kg × 12회, 5주차 1번째 110 kg × 9회.
+- `backend/test/routine-progression.test.ts` (rewritten to 9 tests): schema compatibility, increment and deload rounding, per-session progression for 3 workouts a week with no split (36 sessions, deload values in weeks 4, 8, and 12, and resuming in week 5), dumbbell and bodyweight, per-split progression and deload for 3 workouts a week with 2 splits A/B/A and B/A/B, session window evaluation (record inside the window, one set short holds, no record holds, a record on the next session's day belongs to it, today confirmed and future projected), the completed flag, no evaluation of deload sessions and resuming afterward with a missed hold, rest shifts (plan order and session values kept, evaluating a record on the moved day, the 4-week calendar shift of a week 3 target and the 5-week calendar shift of a deload target), and the frontend preview matching the server value and the week/session numbers (no split and 2 splits).
+- `backend/test/routine-progression.integration.test.ts`: changed to use the third session's date: session 1 achieved → session 2 progresses, session 2 no record → today holds, curl miss holds, week 5 curl 45 kg × 9, and the moved session after a rest (week 1, 3rd) has a projected 100 kg × 12.
+- `backend/test/routines-ui.test.ts`: changed the automatic form preview text to the per-week session notation and checks the session rule description. The detail screen shows "5주차: 1번째 110 kg × 9회(반복 +1)" (Week 5: 1st 110 kg × 9 reps (reps +1)).
+- `backend/test/routine-progress-ui.test.ts`: today "1주차 1번째 · 전신" (Week 1, 1st · full body), the 12-week table's week 1 3rd 100 kg × 12 reps, and week 5 1st 110 kg × 9 reps.
 
-### 실제 실행 명령과 결과
+### Commands actually run and results
 
-- 구현 전 `issue-check.ps1 -Issue 28 -Script test -Migrate`(테스트만 갱신한 상태): **248 tests / 238 pass / 10 fail / 0 skip**, EXIT=1. 실패는 주 단위 계산과 세션 표시 미구현 때문이다.
-- 구현 후 관련 파일 `node node_modules/tsx/dist/cli.mjs --test test/routine-progression.test.ts test/routine-progress.test.ts test/routines-ui.test.ts test/routine-progress-ui.test.ts`: **35 pass / 0 fail / 0 skip**.
-- 최종 `issue-check.ps1 -Issue 28 -Migrate`: **EXIT=0**. 앱 테스트 **248 pass / 0 fail / 0 skip**(전용 DB 통합 포함, 자동 통합 테스트 실행 확인), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, lint·typecheck·빌드 통과.
-- 이 변경은 실제 브라우저에서 확인하지 않았다.
+- `issue-check.ps1 -Issue 28 -Script test -Migrate` before implementation (only tests updated): **248 tests / 238 pass / 10 fail / 0 skip**, EXIT=1. The failures are because the weekly calculation and the session display are not implemented.
+- After implementation, on the related files `node node_modules/tsx/dist/cli.mjs --test test/routine-progression.test.ts test/routine-progress.test.ts test/routines-ui.test.ts test/routine-progress-ui.test.ts`: **35 pass / 0 fail / 0 skip**.
+- Final `issue-check.ps1 -Issue 28 -Migrate`: **EXIT=0**. App tests **248 pass / 0 fail / 0 skip** (including dedicated-DB integration; confirmed the automatic integration test ran), `test:agents` **162 pass / 0 fail / 0 skip**, `test:skills` **4 pass / 0 fail / 0 skip**, lint, typecheck, and builds passed.
+- This change was not checked in a real browser.
 
-## 코디네이터 검토·실제 브라우저 확인 — 분할(세션) 단위 진행 (2026-10-19)
+## Coordinator review and real-browser check — per-split (session) progression (2026-10-19)
 
-- 독립 검토(읽기 전용): 차단 지적 없음. 분할별로 자기 세션에서만 진행(A/B/A–B/A/B), 미리보기와 서버 일정·단계 계산 일치, 휴식 이동 뒤에도 디로딩은 원래 계획 주차를 따름, 디로딩 직전 세션이 미달이면 유지된 목표에서 재개, 창 경계(`start <= date < stop`, 다음 세션 날짜 기록은 다음 세션 소속), `completed` 처리를 확인했다.
-- 검토 참고(P3, 정책으로 기록): 같은 운동명이 여러 분할에 있으면 진행은 분할별로 따로 계산하지만, 기록은 운동명으로만 맞춘다. 그래서 A 분할 날 기록이 같은 기간에 열린 B 분할의 판정 창에 포함될 수 있다. 분할을 완전히 분리해야 하면 별도 규칙이 필요하다.
-- 실제 브라우저(모바일 390px, 전용 DB):
-  - 2분할·주 3회(월수금), A 벤치프레스 60 kg × 10회, B 스쿼트 80 kg × 8회의 미리보기. A는 1주차 1·3번째(60×10→11), 2주차 2번째(60×12), 3주차 1번째 62.5×8(+2.5 kg)로 진행한다. B는 1주차 2번째 80×8, 2주차 1·3번째 9·10회로 각자 자기 세션에서만 진행한다. 4주차 디로딩 주의 해당 세션은 모두 90%(A 57.5 kg, B 72.5 kg × 2회)이고, 5주차에 디로딩 전 목표에서 이어진다. 스쿼트 증량폭은 80 kg의 5%를 2.5 kg 단위로 맞춘 +5 kg. 가로 스크롤 없음.
-  - 저장 후 일지 카드: 오늘(월) "1주차 1번째 · 분할 1 · 벤치프레스 3세트 · 60 kg · 10회", 수 "1주차 2번째 · 분할 2 · 스쿼트 80 kg · 8회 · 예상", 금 "1주차 3번째 · 분할 1 · 벤치프레스 60 kg · 11회 · 예상".
-  - 호스트 `npm run check`(수정 포함): exit 0 — 앱·DB 249, 워커 162, 스킬 4 pass, fail·skip 0.
-  - **발견·수정:** 첫 저장 시도에서 한 분할에 부위가 빠지자 서버가 Zod 기본 영어 메시지 "Array must contain at least 1 element(s)"를 그대로 보여줬다(#27부터 있던 동작). 부위 배열 검증에 한국어 메시지 "분할마다 운동 부위를 1개 이상 선택하세요"를 지정했다. 회귀 테스트(`routines.test.ts`)는 수정 전 실패, 수정 후 50 pass.
+- Independent review (read-only): no blocking findings. Confirmed that each split progresses only in its own sessions (A/B/A–B/A/B), that the preview and the server schedule and step calculation match, that after a rest shift the deload still follows the original planned week, that if the session right before a deload was missed it resumes from the held target, the window boundary (`start <= date < stop`, a record on the next session's date belongs to the next session), and the `completed` handling.
+- Review note (P3, recorded as policy): if the same exercise name is in several splits, progression is calculated separately per split, but records are matched only by exercise name. So a record on a day of split A can fall in the evaluation window of split B that is open during the same period. If the splits must be fully separated, a separate rule is needed.
+- Real browser (mobile 390px, dedicated DB):
+  - Preview with 2 splits, 3 workouts a week (Mon/Wed/Fri), A Bench press 60 kg × 10 reps and B Squat 80 kg × 8 reps. A progresses with week 1 1st and 3rd (60×10→11), week 2 2nd (60×12), and week 3 1st 62.5×8 (+2.5 kg). B has week 1 2nd 80×8 and week 2 1st and 3rd 9 and 10 reps, each progressing only in its own sessions. All the sessions of the week 4 deload week are at 90% (A 57.5 kg, B 72.5 kg × 2 reps), and week 5 continues from the target before the deload. The squat increment is +5 kg, 5% of 80 kg rounded to 2.5 kg units. No horizontal scrolling.
+  - Log card after saving: today (Mon) "1주차 1번째 · 분할 1 · 벤치프레스 3세트 · 60 kg · 10회" (Week 1, 1st · split 1 · Bench press 3 sets · 60 kg · 10 reps), Wed "1주차 2번째 · 분할 2 · 스쿼트 80 kg · 8회 · 예상" (Week 1, 2nd · split 2 · Squat 80 kg · 8 reps · projected), Fri "1주차 3번째 · 분할 1 · 벤치프레스 60 kg · 11회 · 예상" (Week 1, 3rd · split 1 · Bench press 60 kg · 11 reps · projected).
+  - Host `npm run check` (including fixes): exit 0 — app and DB 249, worker 162, skills 4 pass, 0 fail and skip.
+  - **Found and fixed:** on the first save attempt, when one split was missing body parts, the server showed Zod's default English message "Array must contain at least 1 element(s)" as it was (behavior since #27). I set the Korean message "분할마다 운동 부위를 1개 이상 선택하세요" (Select at least one body part for each split) on the body-part array validation. The regression test (`routines.test.ts`) failed before the fix and gives 50 pass after it.

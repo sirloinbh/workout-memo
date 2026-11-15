@@ -130,11 +130,11 @@ export function byWeek(rows: PreviewRow[]) {
 
 export const kindLabel = (row: PreviewRow) =>
   row.kind === 'start'
-    ? '시작'
+    ? 'Start'
     : row.kind === 'reps'
-      ? '반복 +1'
+      ? 'Reps +1'
       : row.kind === 'weight'
-        ? `증량 +${row.increment} kg`
+        ? `Increase +${row.increment} kg`
         : row.kind === 'hold'
-          ? '유지'
-          : '디로딩';
+          ? 'Held'
+          : 'Deload';

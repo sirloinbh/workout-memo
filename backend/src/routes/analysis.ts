@@ -10,10 +10,10 @@ const partOrder = `array_position(ARRAY[${allBodyParts.map((p) => `'${p}'`).join
 
 export const analysisQuery = z
   .object({ from: date, to: date })
-  .refine((value) => value.from <= value.to, '조회 종료일은 시작일 이후여야 합니다')
+  .refine((value) => value.from <= value.to, 'The end date must be after the start date')
   .refine(
     (value) => +new Date(value.to) - +new Date(value.from) <= 370 * 86400000,
-    '분석 기간은 371일 이하로 선택하세요',
+    'Choose an analysis period of 371 days or less',
   );
 
 export function registerAnalysisRoutes(app: express.Express, pool: Pool) {

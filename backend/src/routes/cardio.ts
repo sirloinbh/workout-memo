@@ -19,16 +19,18 @@ const cardioColumns = `id, date, to_char(start_time, 'HH24:MI') AS start_time, k
   ${cardioPaceSql()} AS pace_sec_per_km, ${cardioSpeedSql()} AS speed_kmh`;
 const cardioFields =
   'date, start_time, kind, duration_sec, distance_km, avg_heart_rate, max_heart_rate, calories_kcal, elevation_gain_m, avg_cadence, effort, workout_id, source, external_id, memo';
-const cardioMissing = '유산소 기록을 찾을 수 없습니다';
-const label = '유산소 기록';
+const cardioMissing = 'Cardio record not found';
+const label = 'cardio record';
 
 export const cardioQuery = z
   .object({
     from: date,
     to: date,
-    kind: z.enum(cardioKinds, { error: '종류 필터는 유산소 종류 중 하나여야 합니다' }).optional(),
+    kind: z
+      .enum(cardioKinds, { error: 'The type filter must be one of the cardio types' })
+      .optional(),
   })
-  .refine((value) => value.from <= value.to, '조회 종료일은 시작일 이후여야 합니다');
+  .refine((value) => value.from <= value.to, 'The end date must be after the start date');
 
 type Cardio = z.output<ReturnType<typeof cardioSessionSchemaFor>>;
 const values = (c: Cardio) => [

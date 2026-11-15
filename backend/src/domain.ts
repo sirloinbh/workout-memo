@@ -90,7 +90,7 @@ export const routineSchema = z
           name: limitLength(z.string().trim(), { min: 1, max: 120 }),
           body_parts: z
             .array(z.enum(allBodyParts))
-            .min(1, '분할마다 운동 부위를 1개 이상 선택하세요')
+            .min(1, 'Select at least 1 body part for each split')
             .max(100),
           exercises: z
             .array(
@@ -125,39 +125,40 @@ export const routineSchema = z
   })
   .superRefine((plan, ctx) => {
     const invalid = (message: string) => ctx.addIssue({ code: 'custom', message });
-    if (plan.splits.length !== plan.split_count) invalid('분할 개수를 확인하세요');
+    if (plan.splits.length !== plan.split_count) invalid('Check the number of splits');
     if (plan.schedule_mode === 'cycle') {
-      if (!plan.cycle) invalid('운동일과 휴식일 수를 입력하세요');
-      if (plan.rest_days.length) invalid('주기 방식에는 휴식 요일을 지정하지 않습니다');
-    } else if (plan.cycle) invalid('요일 방식에는 운동·휴식 주기를 지정하지 않습니다');
+      if (!plan.cycle) invalid('Enter the number of workout days and rest days');
+      if (plan.rest_days.length) invalid('Cycle mode does not take rest weekdays');
+    } else if (plan.cycle) invalid('Weekday mode does not take a workout/rest cycle');
     else if (
       new Set(plan.rest_days).size !== plan.rest_days.length ||
       plan.rest_days.length + plan.weekly_workouts !== 7
     )
-      invalid('휴식 요일과 주당 운동 횟수를 확인하세요');
+      invalid('Check the rest weekdays and workouts per week');
     if (plan.progression === 'auto') {
-      if (plan.weeks) invalid('자동 목표 루틴에는 주차별 변화량을 입력하지 않습니다');
+      if (plan.weeks) invalid('Auto-goal routines do not take weekly changes');
       for (const split of plan.splits)
         for (const e of split.exercises)
           if (e.rep_min === undefined || e.rep_max === undefined || e.rep_min > e.rep_max)
-            invalid('반복 범위(하한 ≤ 상한)를 확인하세요');
+            invalid('Check the rep range (lower ≤ upper)');
       return;
     }
     if (!plan.weeks) {
-      invalid('1~12주차 목표를 입력하세요');
+      invalid('Enter goals for weeks 1 to 12');
       return;
     }
     if (new Set(plan.weeks.map((w) => w.week)).size !== 12)
-      invalid('1~12주차를 한 번씩 입력하세요');
+      invalid('Enter each of weeks 1 to 12 once');
     for (const w of plan.weeks) {
-      if ((w.week % 4 === 0) !== (w.kind === 'deload')) invalid('4·8·12주차는 디로딩입니다');
+      if ((w.week % 4 === 0) !== (w.kind === 'deload'))
+        invalid('Weeks 4, 8, and 12 are deload weeks');
       if ((w.kind === 'deload') !== (w.deload_metric !== null))
-        invalid('디로딩 감소 대상을 확인하세요');
+        invalid('Check the deload decrease target');
       if (
         (w.kind === 'increase_reps' || (w.kind === 'deload' && w.deload_metric !== 'weight')) &&
         (!Number.isInteger(w.amount) || w.amount > (w.deload_metric === 'sets' ? 200 : 1000))
       )
-        invalid('반복 수와 세트 변화량은 허용 범위의 정수여야 합니다');
+        invalid('Reps and set changes must be whole numbers within the allowed range');
     }
   });
 export type RoutinePlan = z.infer<typeof routineSchema>;
@@ -187,4 +188,4 @@ export function routineSchedule(plan: RoutinePlan) {
 
 export const dateRange = z
   .object({ from: date, to: date })
-  .refine((value) => value.from <= value.to, '조회 종료일은 시작일 이후여야 합니다');
+  .refine((value) => value.from <= value.to, 'The end date must be after the start date');

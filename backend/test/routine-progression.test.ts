@@ -71,16 +71,16 @@ const twoSplitInput = () => ({
   split_count: 2,
   splits: [
     {
-      name: '분할 A',
+      name: 'Split A',
       body_parts: ['가슴'],
       exercises: [
-        { exercise: '벤치프레스', sets: 3, weight: 100, reps: 10, rep_min: 8, rep_max: 12 },
+        { exercise: 'Benchpress', sets: 3, weight: 100, reps: 10, rep_min: 8, rep_max: 12 },
       ],
     },
     {
-      name: '분할 B',
+      name: 'Split B',
       body_parts: ['하체-앞'],
-      exercises: [{ exercise: '스쿼트', sets: 3, weight: 50, reps: 10, rep_min: 8, rep_max: 12 }],
+      exercises: [{ exercise: 'Squat', sets: 3, weight: 50, reps: 10, rep_min: 8, rep_max: 12 }],
     },
   ],
 });
@@ -109,7 +109,7 @@ const at = (
 };
 const benchSets = (date: string, sets: [number, number, (boolean | null)?][]) => ({
   date,
-  exercise: '벤치프레스',
+  exercise: 'Benchpress',
   sets: sets.map(([weight, reps, completed]) => ({ weight, reps, completed })),
 });
 const three = (date: string, w: number, r: number) =>
@@ -157,7 +157,7 @@ test('weight increment is 5 kg by default and the exercise own step otherwise (#
 });
 
 test('a full-body routine trained 3x a week advances one step per session', () => {
-  const bench = sessions('벤치프레스');
+  const bench = sessions('Benchpress');
   assert.equal(bench.length, 36);
   assert.deepEqual(bench.slice(0, 9), [
     '100x10', // week 1, session 1: the entered current performance
@@ -182,7 +182,7 @@ test('a full-body routine trained 3x a week advances one step per session', () =
   );
   assert.deepEqual(bench.slice(21, 24), ['102.5x12', '102.5x12', '102.5x12'], 'week 8 deload');
   assert.deepEqual(bench.slice(33), ['112.5x11', '112.5x11', '112.5x11'], 'week 12 deload');
-  assert.deepEqual(sessions('덤벨 컬').slice(0, 15), [
+  assert.deepEqual(sessions('Dumbbell Curl').slice(0, 15), [
     '40x12',
     '45x8', // #86: +5 kg by default, also for light weights
     '45x9',
@@ -200,8 +200,8 @@ test('a full-body routine trained 3x a week advances one step per session', () =
     '55x8',
   ]);
   // A 2.5 kg step set for the exercise (also for saved routines) is used instead.
-  const custom = progress.withWeightSteps(plan(), { '덤벨 컬': 2.5 }) as RoutinePlan;
-  assert.deepEqual(sessions('덤벨 컬', [], beforeStart, [], custom).slice(0, 7), [
+  const custom = progress.withWeightSteps(plan(), { 'dumbbell curl': 2.5 }) as RoutinePlan;
+  assert.deepEqual(sessions('Dumbbell Curl', [], beforeStart, [], custom).slice(0, 7), [
     '40x12',
     '42.5x8',
     '42.5x9',
@@ -210,7 +210,7 @@ test('a full-body routine trained 3x a week advances one step per session', () =
     '42.5x12',
     '45x8',
   ]);
-  const pullUp = sessions('맨몸 풀업');
+  const pullUp = sessions('Bodyweight Pull-up');
   assert.deepEqual(pullUp.slice(0, 4), ['0x10', '0x11', '0x12', '0x12']);
   assert.ok(
     pullUp.every((t) => t.startsWith('0x')),
@@ -225,10 +225,10 @@ test('a 2-split routine 3x a week advances each exercise only on its own split s
   const { days } = api.arrangeTargets(twoSplit(), [], [], beforeStart);
   assert.deepEqual(
     days.slice(0, 6).map((d) => d.target!.split_name),
-    ['분할 A', '분할 B', '분할 A', '분할 B', '분할 A', '분할 B'],
+    ['Split A', 'Split B', 'Split A', 'Split B', 'Split A', 'Split B'],
     'A/B/A in week 1, then B/A/B in week 2',
   );
-  assert.deepEqual(sessions('벤치프레스', [], beforeStart, [], twoSplit()).slice(0, 7), [
+  assert.deepEqual(sessions('Benchpress', [], beforeStart, [], twoSplit()).slice(0, 7), [
     '100x10', // w1 #1
     '100x11', // w1 #3
     '100x12', // w2 #2
@@ -237,7 +237,7 @@ test('a 2-split routine 3x a week advances each exercise only on its own split s
     '95x9', // w4 #2 deload
     '105x10', // w5 #1 resumes
   ]);
-  assert.deepEqual(sessions('스쿼트', [], beforeStart, [], twoSplit()).slice(0, 7), [
+  assert.deepEqual(sessions('Squat', [], beforeStart, [], twoSplit()).slice(0, 7), [
     '50x10', // w1 #2
     '50x11', // w2 #1
     '50x12', // w2 #3
@@ -252,14 +252,14 @@ test('each session window decides whether the next session advances or holds', (
   const friday = '2024-03-08'; // week 1, session 3
   const metFirst = [three('2024-03-05', 100, 10)]; // inside session 1's window (Mon–Tue)
   assert.deepEqual(
-    sessions('벤치프레스', metFirst, friday).slice(0, 4),
+    sessions('Benchpress', metFirst, friday).slice(0, 4),
     ['100x10', '100x11', '100x11', '100x12'],
     'session 1 met → session 2 advances; session 2 has no record → session 3 holds',
   );
-  assert.equal(at('2024-03-04', '벤치프레스', metFirst, friday).exercise?.result, 'achieved');
-  assert.equal(at('2024-03-06', '벤치프레스', metFirst, friday).exercise?.result, 'missed');
-  assert.equal(at(friday, '벤치프레스', metFirst, friday).exercise?.projected, false);
-  assert.equal(at('2024-03-11', '벤치프레스', metFirst, friday).exercise?.projected, true);
+  assert.equal(at('2024-03-04', 'Benchpress', metFirst, friday).exercise?.result, 'achieved');
+  assert.equal(at('2024-03-06', 'Benchpress', metFirst, friday).exercise?.result, 'missed');
+  assert.equal(at(friday, 'Benchpress', metFirst, friday).exercise?.projected, false);
+  assert.equal(at('2024-03-11', 'Benchpress', metFirst, friday).exercise?.projected, true);
   const short = [
     benchSets('2024-03-04', [
       [100, 10],
@@ -268,23 +268,23 @@ test('each session window decides whether the next session advances or holds', (
     ]),
   ];
   assert.deepEqual(
-    sessions('벤치프레스', short, '2024-03-06').slice(0, 3),
+    sessions('Benchpress', short, '2024-03-06').slice(0, 3),
     ['100x10', '100x10', '100x11'],
     'one set short holds the target; the open session is projected as met',
   );
   assert.deepEqual(
-    sessions('벤치프레스', [], '2024-03-06').slice(0, 2),
+    sessions('Benchpress', [], '2024-03-06').slice(0, 2),
     ['100x10', '100x10'],
     'a closed window without a record holds',
   );
   // A record on the next session's day belongs to that next session.
   const recordToday = [three('2024-03-06', 100, 10)];
   assert.equal(
-    at('2024-03-04', '벤치프레스', recordToday, '2024-03-06').exercise?.result,
+    at('2024-03-04', 'Benchpress', recordToday, '2024-03-06').exercise?.result,
     'missed',
   );
   assert.equal(
-    at('2024-03-06', '벤치프레스', recordToday, '2024-03-06').exercise?.result,
+    at('2024-03-06', 'Benchpress', recordToday, '2024-03-06').exercise?.result,
     'achieved',
   );
 });
@@ -295,14 +295,14 @@ test('an achieved session marked hard holds the next target; medium and easy adv
     { ...three('2024-03-05', 100, 10), feedback },
   ];
   assert.deepEqual(
-    sessions('벤치프레스', met('hard'), friday).slice(0, 2),
+    sessions('Benchpress', met('hard'), friday).slice(0, 2),
     ['100x10', '100x10'],
     'hard → same target next session',
   );
-  assert.equal(at('2024-03-04', '벤치프레스', met('hard'), friday).exercise?.result, 'achieved');
+  assert.equal(at('2024-03-04', 'Benchpress', met('hard'), friday).exercise?.result, 'achieved');
   for (const feedback of ['medium', 'easy', null] as const)
     assert.deepEqual(
-      sessions('벤치프레스', met(feedback), friday).slice(0, 2),
+      sessions('Benchpress', met(feedback), friday).slice(0, 2),
       ['100x10', '100x11'],
       `${String(feedback)} → advances as before`,
     );
@@ -311,7 +311,7 @@ test('an achieved session marked hard holds the next target; medium and easy adv
     three('2024-03-05', 100, 10),
     { ...three('2024-03-06', 100, 11), feedback: 'hard' as const },
   ];
-  assert.deepEqual(sessions('벤치프레스', hardLater, friday).slice(0, 3), [
+  assert.deepEqual(sessions('Benchpress', hardLater, friday).slice(0, 3), [
     '100x10',
     '100x11',
     '100x11',
@@ -327,7 +327,7 @@ test('only completed sets count when the completed flag is present', () => {
       [100, 10, false],
     ]),
   ];
-  assert.deepEqual(sessions('벤치프레스', oneIncomplete, today).slice(0, 2), ['100x10', '100x10']);
+  assert.deepEqual(sessions('Benchpress', oneIncomplete, today).slice(0, 2), ['100x10', '100x10']);
   const extra = [
     benchSets('2024-03-04', [
       [100, 10, true],
@@ -336,7 +336,7 @@ test('only completed sets count when the completed flag is present', () => {
       [100, 10, true],
     ]),
   ];
-  assert.deepEqual(sessions('벤치프레스', extra, today).slice(0, 2), ['100x10', '100x11']);
+  assert.deepEqual(sessions('Benchpress', extra, today).slice(0, 2), ['100x10', '100x11']);
   const legacy = [
     benchSets('2024-03-04', [
       [100, 10, null],
@@ -345,7 +345,7 @@ test('only completed sets count when the completed flag is present', () => {
     ]),
   ];
   assert.deepEqual(
-    sessions('벤치프레스', legacy, today).slice(0, 2),
+    sessions('Benchpress', legacy, today).slice(0, 2),
     ['100x10', '100x11'],
     'sets without the column count as performed',
   );
@@ -364,14 +364,14 @@ test('deload sessions are not judged and the session after them resumes', () => 
     three('2024-03-20', 105, 12),
     three('2024-03-22', 110, 8),
   ];
-  const bench = sessions('벤치프레스', records, today);
+  const bench = sessions('Benchpress', records, today);
   assert.deepEqual(bench.slice(9, 12), ['100x8', '100x8', '100x8'], 'no deload records needed');
   assert.deepEqual(
     bench.slice(12, 15),
     ['110x9', '110x9', '110x10'],
     'week 5 starts from the pre-deload step; its missed first session holds',
   );
-  const deload = at('2024-03-25', '벤치프레스', records, today).exercise!;
+  const deload = at('2024-03-25', 'Benchpress', records, today).exercise!;
   assert.equal(deload.result ?? null, null, 'deload sessions have no outcome');
 });
 
@@ -386,14 +386,14 @@ test('rest-day shifts keep plan order, deload attribution and per-session values
     [36],
   );
   assert.deepEqual(
-    sessions('벤치프레스', [], beforeStart, [rest]),
-    sessions('벤치프레스').slice(0, 35),
+    sessions('Benchpress', [], beforeStart, [rest]),
+    sessions('Benchpress').slice(0, 35),
     'without records the shifted sessions keep their values in plan order',
   );
   // A record on the shifted Monday belongs to the moved session's window.
   const late = [three('2024-03-11', 100, 12)];
   assert.equal(
-    at('2024-03-11', '벤치프레스', late, '2024-03-13', [rest]).exercise?.result,
+    at('2024-03-11', 'Benchpress', late, '2024-03-13', [rest]).exercise?.result,
     'achieved',
   );
   // Resting the first week-3 session pushes a week-3 target into calendar week 4

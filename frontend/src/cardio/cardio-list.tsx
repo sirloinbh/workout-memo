@@ -29,14 +29,14 @@ export function CardioList({
   onDelete: (session: CardioSession) => void;
 }) {
   return (
-    <List aria-label="유산소 기록" className="px-4 py-1 md:px-6 md:py-2.5">
+    <List aria-label="Cardio records" className="px-4 py-1 md:px-6 md:py-2.5">
       {sessions.map((s) => {
         const date = s.date.slice(0, 10);
         const kind = cardioKindLabels[s.kind];
         const label = sessionLabel(s);
         const figures = [
           formatDuration(s.duration_sec),
-          formatDistance(s.kind, s.distance_km) ?? '거리 미입력',
+          formatDistance(s.kind, s.distance_km) ?? 'No distance',
           formatPace(paceOf(s.duration_sec, s.distance_km, s.pace_sec_per_km)),
           formatSpeed(speedOf(s.duration_sec, s.distance_km, s.speed_kmh)),
         ].filter(Boolean);
@@ -45,7 +45,7 @@ export function CardioList({
             <div className="min-w-0 flex-1 basis-full [overflow-wrap:anywhere] md:basis-auto">
               <h3 className="flex flex-wrap items-center gap-2 text-body-sm font-semibold">
                 {date} {kind}
-                {s.effort && <Badge variant="secondary">체감 {effortLabels[s.effort]}</Badge>}
+                {s.effort && <Badge variant="secondary">Effort {effortLabels[s.effort]}</Badge>}
               </h3>
               <p className="mt-1 text-meta text-muted-foreground">{figures.join(' · ')}</p>
               {s.memo && (
@@ -57,19 +57,19 @@ export function CardioList({
                 variant="ghost"
                 size="sm"
                 disabled={busy}
-                aria-label={`${label} 유산소 기록 수정`}
+                aria-label={`Edit cardio record ${label}`}
                 onClick={() => onEdit(s)}
               >
-                수정
+                Edit
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 disabled={busy}
-                aria-label={`${label} 유산소 기록 삭제`}
+                aria-label={`Delete cardio record ${label}`}
                 onClick={() => onDelete(s)}
               >
-                삭제
+                Delete
               </Button>
             </div>
           </ListItem>

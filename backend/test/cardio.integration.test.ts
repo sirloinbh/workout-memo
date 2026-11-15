@@ -74,7 +74,7 @@ const run = {
   elevation_gain_m: 35,
   avg_cadence: 168,
   effort: 'medium',
-  memo: '아침 러닝',
+  memo: 'Morning run',
 };
 
 test(
@@ -144,14 +144,14 @@ test(
         [],
       );
 
-      assert.equal((await api(`/cardio-sessions/${id}`)).data.memo, '아침 러닝');
+      assert.equal((await api(`/cardio-sessions/${id}`)).data.memo, 'Morning run');
       assert.deepEqual(await api(`/cardio-sessions/${id}`, 'DELETE'), {
         status: 200,
         data: { ok: true },
       });
       assert.deepEqual(await api(`/cardio-sessions/${id}`), {
         status: 404,
-        data: { error: '유산소 기록을 찾을 수 없습니다' },
+        data: { error: 'Cardio record not found' },
       });
       assert.equal((await api(`/cardio-sessions/${id}`, 'DELETE')).status, 404);
     });
@@ -165,10 +165,10 @@ test(
     await isolated(async (api, pool) => {
       const imported = { ...run, source: 'garmin', external_id: 'act-1' };
       assert.equal((await api('/cardio-sessions', 'POST', imported)).status, 201);
-      const duplicate = await api('/cardio-sessions', 'POST', { ...imported, memo: '다시' });
+      const duplicate = await api('/cardio-sessions', 'POST', { ...imported, memo: 'Again' });
       assert.deepEqual(duplicate, {
         status: 409,
-        data: { error: '같은 출처와 외부 ID의 유산소 기록이 이미 있습니다' },
+        data: { error: 'A cardio record with the same source and external ID already exists' },
       });
       // The same id from another source is another activity.
       assert.equal(
@@ -267,7 +267,7 @@ test(
         ...run,
         source: 'garmin',
         external_id: 'b',
-        memo: '같은 외부 ID 유지',
+        memo: 'Keep the same external ID',
       });
       assert.equal(same.status, 200);
       // Taking another row's external id is a 409; the rollback leaves the row unchanged.
@@ -281,7 +281,7 @@ test(
 
       assert.deepEqual(await api('/cardio-sessions/999999', 'PUT', run), {
         status: 404,
-        data: { error: '유산소 기록을 찾을 수 없습니다' },
+        data: { error: 'Cardio record not found' },
       });
       assert.equal(
         (await api(`/cardio-sessions/${first.data.id}`, 'PUT', { ...run, date: '2026-11-09' }))
@@ -299,9 +299,9 @@ test(
     await isolated(async (api) => {
       const workout = await api('/workouts', 'POST', {
         date: '2026-11-07',
-        title: '하체',
+        title: 'Lower body',
         notes: '',
-        sets: [{ exercise: '스쿼트', machine_id: null, weight: 100, reps: 5, notes: '' }],
+        sets: [{ exercise: 'Squat', machine_id: null, weight: 100, reps: 5, notes: '' }],
       });
       assert.equal(workout.status, 201);
       const linked = await api('/cardio-sessions', 'POST', { ...run, workout_id: workout.data.id });
@@ -309,7 +309,7 @@ test(
       assert.equal(linked.data.workout_id, workout.data.id);
       assert.deepEqual(await api('/cardio-sessions', 'POST', { ...run, workout_id: 999999 }), {
         status: 400,
-        data: { error: '연결할 근력 일지가 존재하지 않습니다' },
+        data: { error: 'The strength journal to link does not exist' },
       });
       assert.equal(
         (await api(`/cardio-sessions/${linked.data.id}`, 'PUT', { ...run, workout_id: 999999 }))
@@ -321,7 +321,7 @@ test(
       const after = await api(`/cardio-sessions/${linked.data.id}`);
       assert.equal(after.status, 200, 'The cardio session survives');
       assert.equal(after.data.workout_id, null);
-      assert.equal(after.data.memo, '아침 러닝');
+      assert.equal(after.data.memo, 'Morning run');
     });
   },
 );

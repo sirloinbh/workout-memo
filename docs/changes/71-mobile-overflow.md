@@ -1,33 +1,33 @@
-# #71 모바일 가로 넘침 수정
+# #71 Fix the mobile horizontal overflow
 
-- 이슈: [#71](https://github.com/sirloinbh/workout-memo/issues/71) (#66 화면 동일성 검증 중 발견)
-- 브랜치: `fix/71-mobile-overflow`
+- Issue: [#71](https://github.com/sirloinbh/workout-memo/issues/71) (found during the #66 screen sameness verification)
+- Branch: `fix/71-mobile-overflow`
 
-## 원인 — 2026-10-20
+## Cause — 2026-10-20
 
-실제 Chrome에서 뷰포트 오른쪽 밖으로 나가는 요소를 수집했다(임시 스펙, 커밋하지 않음).
+In real Chrome, I collected the elements that go outside the right edge of the viewport (a temporary spec, not committed).
 
-- **390px**: 8개 페이지 모두 `scrollWidth=424`였다.
-  - 모바일 메뉴가 링크 8개를 한 줄(`flex: 1`)에 놓는데, 각 링크의 최소 폭(약 47px)과 간격을 더하면 약 404px이 필요하다. 쓸 수 있는 폭은 354px이라 마지막 링크가 424px까지 밀렸다.
-  - 라벨도 세로로 쪼개졌다(예: "머신 / 라이브러리").
-- **320px**: 대시보드·일지·신체 기록이 `scrollWidth=373`이었다. 기간 탭과 날짜 조작이 한 줄에 놓여 날짜 조작이 밀렸다.
-- 대시보드의 장식 원(`.rings`)은 부모 `.focus-card`의 `overflow: hidden`에 잘려서 스크롤 폭에는 영향이 없었다.
+- **390px**: all 8 pages had `scrollWidth=424`.
+  - The mobile menu puts 8 links on one line (`flex: 1`), but adding each link's minimum width (about 47px) and the gaps needs about 404px. The usable width is 354px, so the last link was pushed out to 424px.
+  - The labels were also split vertically (for example "머신 / 라이브러리" (Machine / Library)).
+- **320px**: the dashboard, journal, and body records had `scrollWidth=373`. The period tabs and the date controls sit on one line, so the date controls were pushed out.
+- The decorative circles (`.rings`) on the dashboard were clipped by the `overflow: hidden` of the parent `.focus-card`, so they did not affect the scroll width.
 
-## 변경
+## Change
 
-`frontend/src/style.css`의 `@media (max-width: 760px)` 안만 바꿨다. 데스크톱 규칙은 그대로다.
+I changed only inside the `@media (max-width: 760px)` of `frontend/src/style.css`. The desktop rules are unchanged.
 
-- 메뉴: 4열 그리드(`repeat(4, minmax(0, 1fr))`), 2줄. 링크는 아이콘 위·라벨 아래로 배치하고, `min-width: 0`과 가운데 정렬을 적용했다.
-- 기간 바: `flex-wrap: wrap`. 좁은 폭에서는 날짜 조작이 탭 아래 줄로 내려간다.
-- `e2e/layout.spec.ts`(신규): 320px·390px에서 8개 페이지의 `scrollWidth`가 뷰포트 폭 이하인지, 메뉴 링크 8개가 모두 뷰포트 안에 있는지 검사한다.
+- Menu: a 4-column grid (`repeat(4, minmax(0, 1fr))`), 2 rows. The links put the icon on top and the label below, with `min-width: 0` and centered alignment.
+- Period bar: `flex-wrap: wrap`. At narrow widths, the date controls drop to the line below the tabs.
+- `e2e/layout.spec.ts` (new): at 320px and 390px, it checks that the `scrollWidth` of the 8 pages is at most the viewport width, and that all 8 menu links are inside the viewport.
 
-## 검증
+## Checks
 
-| 검사                                                                          | 결과                                                                                                                                            |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 변경 후 `scrollWidth`                                                         | 390px 8개 페이지 모두 390, 320px 8개 페이지 모두 320                                                                                            |
-| `npm run test:e2e`                                                            | **4 passed**: 레이아웃 320·390, 일지 CRUD, URL 유지                                                                                             |
-| 데스크톱 1280px 픽셀 비교(main `style.css`와 변경본, 시계 고정·애니메이션 끔) | 8개 페이지 **0픽셀 차이**                                                                                                                       |
-| 모바일 화면 확인                                                              | 변경 전에는 메뉴 라벨이 세로로 쪼개지고 마지막 링크가 잘렸으며, 기간 탭 글자가 세로로 나뉘었다. 변경 후 메뉴 4열 2줄, 라벨 한 줄, 기간 탭 한 줄 |
+| Check                                                                                              | Result                                                                                                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scrollWidth` after the change                                                                     | All 8 pages at 390px are 390, and all 8 pages at 320px are 320                                                                                                                                                                                        |
+| `npm run test:e2e`                                                                                 | **4 passed**: layout 320 and 390, journal CRUD, URL persistence                                                                                                                                                                                       |
+| Desktop 1280px pixel comparison (main `style.css` against the change, clock fixed, animations off) | **0 pixels of difference** on the 8 pages                                                                                                                                                                                                             |
+| Mobile screen check                                                                                | Before the change, the menu labels were split vertically, the last link was cut off, and the period tab text was split vertically. After the change, the menu is 4 columns by 2 rows, the labels are on one line, and the period tabs are on one line |
 
-`npm run check`: **EXIT=0**. 결과: 백엔드 279, 프론트 89, 워커 212, 스킬 4 모두 pass, fail·skip 0.
+`npm run check`: **EXIT=0**. Result: backend 279, frontend 89, workers 212, skills 4, all pass, with 0 fail and 0 skip.

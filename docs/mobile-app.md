@@ -13,14 +13,14 @@
 
 ## This app's conditions
 
-| Item                        | Current state                                                                                                                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Users                       | Just me (1 person)                                                                                                                                                                                      |
-| Access                      | `http://<fixed IP>`, limited only by the Lightsail firewall IP allow list ([deployment and operations](deployment.md)). No domain or HTTPS (#106)                                                       |
-| Authentication              | None (#107). A phone's IP changes, so the phone cannot connect without login                                                                                                                            |
-| PWA files                   | `manifest.webmanifest` (standalone, 192, 512 and maskable icons), `sw.js` (pages go to the network, offline shows a notice, caches only `/assets/`, does not touch `/api/`), `offline.html`, Apple icon |
-| Service worker registration | `service-worker.ts` registers `/sw.js` in a production build and shows a "new version" notice with a Reload button (#109). HTTP+IP is not a secure context, so on the server it is not registered yet   |
-| Important features          | Rest timer end notification and vibration (including when the screen is off), offline use in the gym, and later Garmin and Nike data (Health Connect, #118)                                             |
+| Item                        | Current state                                                                                                                                                                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Users                       | Just me (1 person)                                                                                                                                                                                                                                      |
+| Access                      | `https://workout-memo.daysofme.com` since 2026-11-15 (#106, Let's Encrypt wildcard certificate); 443 is still limited to allowed IPs by the firewall ([deployment and operations](deployment.md)). Before #106 it was `http://<fixed IP>` with no HTTPS |
+| Authentication              | The shared sign-in (`https://auth.daysofme.com`), merged 2026-11-16 (#303, which replaced #107); its production behavior has not been checked yet                                                                                                       |
+| PWA files                   | `manifest.webmanifest` (standalone, 192, 512 and maskable icons), `sw.js` (pages go to the network, offline shows a notice, caches only `/assets/`, does not touch `/api/`), `offline.html`, Apple icon                                                 |
+| Service worker registration | `service-worker.ts` registers `/sw.js` in a production build and shows a "new version" notice with a Reload button (#109). With HTTPS (#106) the production address is a secure context, so it should register there too; not checked in production yet |
+| Important features          | Rest timer end notification and vibration (including when the screen is off), offline use in the gym, and later Garmin and Nike data (Health Connect, #118)                                                                                             |
 
 About offline: the current service worker does not cache pages, so when offline you only see `offline.html`. "Recording offline in the gym" is web-side work that is separate from the choice of approach: an app shell cache and a save queue (draft preservation, #34). All three approaches use the same web code, so this work is reused in any of them.
 
@@ -38,7 +38,7 @@ Lighthouse 12 no longer has PWA audits, so #109 checked these once in Chrome on 
 
 - An offline save of a workout now says "Cannot reach the server. Check your connection." (or that the server did not answer within 15 seconds) and that the input is kept as a draft on this device, instead of the browser's "Failed to fetch".
 - Notes for the next check: a Playwright `newContext` reports only `in-incognito`, so use a persistent profile. Chrome did not keep the service worker registration for a profile under a long path (the session scratchpad); a short path such as `%TEMP%\pwa109` worked.
-- Not checked yet: installing on a real phone and the production address. Both need HTTPS (#106).
+- Not checked yet: installing on a real phone and the production address. They can be checked now that the app is on HTTPS (#106, 2026-11-15); the shared sign-in (#303) merged on 2026-11-16 and is not checked in production yet either.
 
 ## Comparison of candidates
 

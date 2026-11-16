@@ -766,4 +766,10 @@ test('Create new routine asks before it discards an open draft (#323)', async ()
   expect(ui.heading()).toHaveTextContent(/^Step 1 of 4/);
   expect(screen.queryByDisplayValue('Unsaved routine')).toBeNull();
   expect(ui.nonGet()).toHaveLength(0);
+
+  // The same dialog asked from View plan keeps its own wording.
+  await ui.click('View plan');
+  const fromPlan = await screen.findByRole('dialog');
+  expect(fromPlan).toHaveTextContent('Opening this plan closes the new routine form');
+  expect(within(fromPlan).getByRole('button', { name: 'Discard and view plan' })).toBeEnabled();
 });

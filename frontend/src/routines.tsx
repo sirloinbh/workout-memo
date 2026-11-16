@@ -342,6 +342,12 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
   // #312, #323: what waits for the user to discard the open draft (a saved plan, or 'new' for a
   // fresh draft), and the button that asked.
   const [replacing, setReplacing] = useState<Plan | 'new' | null>(null);
+  // The dialog wording, kept after replacing clears so the closing dialog does not switch text.
+  const [asking, setAsking] = useState<'plan' | 'new'>('plan');
+  const askToReplace = (next: Plan | 'new') => {
+    setAsking(next === 'new' ? 'new' : 'plan');
+    setReplacing(next);
+  };
   const askedFrom = useRef<HTMLButtonElement | null>(null);
   const startDraft = () => {
     setDraft(newPlan());
@@ -424,7 +430,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
         disabled={saving || opening !== null}
         onClick={(e) => {
           askedFrom.current = e.currentTarget;
-          if (draft) setReplacing('new');
+          if (draft) askToReplace('new');
           else startDraft();
         }}
       >
@@ -454,7 +460,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                 aria-busy={opening === p.id || undefined}
                 onClick={(e) => {
                   askedFrom.current = e.currentTarget;
-                  if (draft) setReplacing(p);
+                  if (draft) askToReplace(p);
                   else openPlan(p);
                 }}
               >
@@ -470,11 +476,11 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
         onOpenChange={(open) => !open && setReplacing(null)}
         title="Discard the new routine you are entering?"
         description={
-          replacing === 'new'
+          asking === 'new'
             ? 'Starting over clears the new routine form, and what you entered is not saved.'
             : 'Opening this plan closes the new routine form, and what you entered is not saved.'
         }
-        confirmLabel={replacing === 'new' ? 'Discard and start over' : 'Discard and view plan'}
+        confirmLabel={asking === 'new' ? 'Discard and start over' : 'Discard and view plan'}
         cancelLabel="Keep editing"
         returnFocusRef={askedFrom}
         onConfirm={() => {

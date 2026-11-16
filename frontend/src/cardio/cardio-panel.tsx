@@ -61,11 +61,14 @@ export function CardioPanel({
   // undefined: closed, null: a new session, otherwise the session being edited.
   const [editing, setEditing] = useState<CardioSession | null | undefined>();
   const [formPreset, setFormPreset] = useState<CardioPreset>();
+  // Each preset remounts the form, so one arriving while a form is open is never ignored.
+  const [presetCount, setPresetCount] = useState(0);
   useEffect(() => {
     if (!preset) return;
     setStatus('');
     setActionError('');
     setFormPreset(preset);
+    setPresetCount((n) => n + 1);
     setEditing(null);
     onPresetUsed?.();
   }, [preset, onPresetUsed]);
@@ -263,6 +266,7 @@ export function CardioPanel({
       )}
       {editing !== undefined && (
         <CardioForm
+          key={formPreset ? `preset-${presetCount}` : (editing?.id ?? 'new')}
           session={editing ?? undefined}
           // A preset session is the routine's cardio for today.
           date={formPreset ? today : newDate}

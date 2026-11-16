@@ -51,3 +51,32 @@ The "Log cardio" button uses the shared `sm` button, which is at least 44px on t
 
 - The card shows the planned cardio but does not mark it done. Part 3 adds the cardio achievement rate for the routine in progress.
 - An interval record does not fill in a time. The memo names the structure, and the user types the session's total time.
+
+## Review round 1
+
+No blocking findings. The reviewer confirmed:
+
+- older plans keep the same response shape
+- the week index stays within 1 to 12
+- rest-moved targets keep their week
+- the date rules and import `apply` are untouched
+- the preset effect is safe under StrictMode
+- the heading levels and the label-in-name of the buttons are correct
+
+Applied:
+
+- The cardio form remounts for each preset (`key`), so a preset that arrives while a form is open is never ignored.
+- `e2e/cardio-routine.spec.ts` scans the routine card with axe (WCAG 2.1 A/AA) at both sizes. `ui-a11y.spec.ts` runs on mocked fixtures and never saw the cardio list.
+- The specs that run while this spec's routine is the active one were run too: `cardio`, `custom-range` and `layout`.
+
+Not applied:
+
+- clearing the App preset if the Cardio tab never mounts (no current path leaves it set)
+- showing a preset record saved outside the open past period (the save notice still shows)
+- extra form tests for a km or minutes preset (the e2e and panel tests cover them)
+
+| Command                                                                                                         | Result              |
+| --------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `npm run test:e2e -- e2e/cardio-routine.spec.ts e2e/cardio.spec.ts e2e/custom-range.spec.ts e2e/layout.spec.ts` | 7 passed            |
+| `vitest run src/cardio src/routine-progress.test.tsx`                                                           | 10 files, 89 passed |
+| `lint`, `typecheck`, `format:check`                                                                             | passed              |

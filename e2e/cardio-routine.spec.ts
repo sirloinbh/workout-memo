@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 // #117: today's routine card lists the split's cardio for this routine week, and "Log cardio"
@@ -57,6 +58,14 @@ for (const viewport of [
     const card = page.getByRole('region', { name: 'Routine goals' });
     await expect(card.getByRole('heading', { name: 'Cardio after strength' })).toBeVisible();
     await expect(card).toContainText('Rowing · Interval · 8 × 1:00 work / 1:30 recovery');
+    // ui-a11y.spec.ts runs on mocked fixtures, so the card's cardio is scanned here.
+    const axe = await new AxeBuilder({ page })
+      .include('[aria-label="Routine goals"]')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    expect(
+      axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`),
+    ).toEqual([]);
     // Nothing on the card pushes the page sideways.
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       viewport.width,

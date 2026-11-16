@@ -720,3 +720,22 @@ test('View plan without a draft opens the plan without asking (#312)', async () 
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(ui.form()).toHaveLength(0);
 });
+
+test('a plan that fails to load after Discard keeps the draft and shows the error (#312)', async () => {
+  const ui = mount();
+  const fetch = vi.mocked(globalThis.fetch);
+  const real = fetch.getMockImplementation()!;
+  fetch.mockImplementation(async (input, init) =>
+    String(input).endsWith('/api/routines/27')
+      ? json({ error: 'Plan lookup failed' }, 503)
+      : real(input, init),
+  );
+  await openRoutines();
+  await ui.click('Create new routine');
+  await ui.change('Routine name', 'Unsaved routine');
+  await ui.click('View plan');
+  await ui.user.click(await screen.findByRole('button', { name: 'Discard and view plan' }));
+  expect(await screen.findByText('Plan lookup failed')).toBeInTheDocument();
+  expect(ui.form()).toHaveLength(1);
+  expect(screen.getByDisplayValue('Unsaved routine')).toBeInTheDocument();
+});

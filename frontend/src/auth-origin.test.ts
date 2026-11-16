@@ -1,8 +1,9 @@
+// Managed file. Edit it in sirloinbh/project-standards templates/ui/frontend/src/
 import { expect, test } from 'vitest';
 
 import { authOrigin } from './auth-origin';
 
-// #303: the sign-in lives at auth.<domain>; local and IP addresses run without it.
+// The shared sign-in (#551) lives at auth.<domain>; local and IP addresses run without it.
 test('the sign-in origin replaces the app name with auth', () => {
   expect(authOrigin({ protocol: 'https:', hostname: 'workout-memo.daysofme.com' })).toBe(
     'https://auth.daysofme.com',

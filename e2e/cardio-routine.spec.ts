@@ -58,6 +58,10 @@ for (const viewport of [
     const card = page.getByRole('region', { name: 'Routine goals' });
     await expect(card.getByRole('heading', { name: 'Cardio after strength' })).toBeVisible();
     await expect(card).toContainText('Rowing · Interval · 8 × 1:00 work / 1:30 recovery');
+    // Part 3: today's two items are planned; a run saved by the 390px pass counts at 1440px.
+    await expect(card.locator('[data-slot=cardio-summary]')).toHaveText(
+      /^Cardio: (0 of 2 planned items done \(0%\)|1 of 2 planned items done \(50%\))$/,
+    );
     // ui-a11y.spec.ts runs on mocked fixtures, so the card's cardio is scanned here.
     const axe = await new AxeBuilder({ page })
       .include('[aria-label="Routine goals"]')
@@ -87,5 +91,13 @@ for (const viewport of [
           .getByRole('listitem')
           .filter({ hasText: memo }),
       ).toBeVisible();
+      // Part 3: the saved 30-minute run marks today's item done on the routine card.
+      await page.goto('/journal');
+      await expect(card.locator('[data-slot=cardio-summary]')).toHaveText(
+        'Cardio: 1 of 2 planned items done (50%)',
+      );
+      await expect(card.locator('[data-slot=target-cardio]')).toContainText(
+        'Running · Zone 2 · 30 min · Done',
+      );
     } else await dialog.getByRole('button', { name: 'Close' }).click();
   });

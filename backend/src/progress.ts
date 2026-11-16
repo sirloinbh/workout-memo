@@ -28,7 +28,17 @@ export type PlanTarget = {
   change: WeekChange | null;
   exercises: TargetExercise[];
   // #117: the split's cardio items with this week's target; only on splits that have any.
-  cardio?: RoutineCardio[];
+  // routineProgress adds each item's result from saved cardio records.
+  cardio?: TargetCardio[];
+};
+export type TargetCardio = RoutineCardio & { result?: 'achieved' | 'missed' | null };
+// A saved cardio record as the cardio judgement needs it.
+export type CardioRecord = {
+  id: number;
+  date: string;
+  kind: string;
+  duration_sec: number;
+  distance_km: number | null;
 };
 export type PlanDay = { date: string; week: number; rest: boolean; target: PlanTarget | null };
 // One saved workout's sets for one exercise. `completed` exists once sets carry
@@ -333,13 +343,70 @@ export function restPreview(
   return { date: today, moves, excluded: after.excluded.filter((t) => !known.has(t.order)) };
 }
 
+// #117 part 3 (2026-11-16 decision): a planned cardio item is done when a saved record of the
+// same type falls in its session's window (the session date until the next session of the same
+// split, exclusive; the last one until the plan end) and meets the week's time or distance; an
+// interval item takes any record of its type. One record counts for one item only, matched in
+// session and item order with the earliest record first. A closed window without one is missed.
+// The summary counts the items of sessions on or before today; null when no split has cardio.
+export function judgeCardio(
+  plan: RoutinePlan,
+  days: readonly PlanDay[],
+  records: readonly CardioRecord[],
+  today: string,
+) {
+  if (!plan.splits.some((s) => s.cardio?.length)) return { days: [...days], summary: null };
+  const end = addDays(planEndDate(plan), 1);
+  const dated = days.filter((d) => d.target);
+  const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+  const used = new Set<number>();
+  const judged = new Map<number, PlanTarget>();
+  let planned = 0;
+  let done = 0;
+  dated.forEach((day, index) => {
+    const target = day.target!;
+    if (!target.cardio) return;
+    const stop =
+      dated.slice(index + 1).find((d) => d.target!.split_index === target.split_index)?.date ?? end;
+    const cardio = target.cardio.map((item): TargetCardio => {
+      const match = sorted.find(
+        (r) =>
+          !used.has(r.id) &&
+          r.kind === item.kind &&
+          r.date >= day.date &&
+          r.date < stop &&
+          (item.interval ||
+            (item.minutes !== undefined
+              ? r.duration_sec >= item.minutes * 60
+              : r.distance_km !== null && r.distance_km >= item.distance_km!)),
+      );
+      if (match) used.add(match.id);
+      if (day.date <= today) {
+        planned++;
+        if (match) done++;
+      }
+      return { ...item, result: match ? 'achieved' : stop <= today ? 'missed' : null };
+    });
+    judged.set(target.order, { ...target, cardio });
+  });
+  return {
+    days: days.map((d) =>
+      d.target && judged.has(d.target.order) ? { ...d, target: judged.get(d.target.order)! } : d,
+    ),
+    summary: { done, planned },
+  };
+}
+
 export function routineProgress(
   plan: RoutinePlan,
   rests: readonly string[],
   today: string,
   records: readonly WorkoutRecord[] = [],
+  cardioRecords: readonly CardioRecord[] = [],
 ) {
-  const { days, excluded } = arrangeTargets(plan, rests, records, today);
+  const arranged = arrangeTargets(plan, rests, records, today);
+  const { excluded } = arranged;
+  const { days, summary: cardioSummary } = judgeCardio(plan, arranged.days, cardioRecords, today);
   const end = planEndDate(plan);
   const inRange = today >= plan.start_date && today <= end;
   const currentWeek = inRange ? Math.floor(dayDiff(plan.start_date, today) / 7) + 1 : null;
@@ -351,6 +418,8 @@ export function routineProgress(
     status: inRange ? 'active' : 'finished',
     progression: isAuto(plan) ? 'auto' : 'manual',
     current_week: currentWeek,
+    // #117: planned cardio items done so far; null when the routine has no cardio.
+    cardio_summary: cardioSummary,
     today_plan: days.find((d) => d.date === today) ?? null,
     this_week: days.filter((d) => d.week === currentWeek),
     weeks: Array.from({ length: 12 }, (_, i) => i + 1).map((week) => ({

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
 import { type RoutinePlan, routineSchema } from '../../backend/src/domain';
-import { routineProgress } from '../../backend/src/progress';
+import { type CardioRecord, routineProgress } from '../../backend/src/progress';
 import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
 import { App } from './app';
 import { deferred, json, mockApi } from './test/api';
@@ -15,7 +15,14 @@ import { openPage } from './test/nav';
 const plan = routineSchema.parse(routineInput(2));
 const today = '2024-03-04'; // Monday, the second training slot: split 2, week 1.
 
-function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: boolean } = {}) {
+function mount(
+  options: {
+    routine?: boolean;
+    plan?: RoutinePlan;
+    failProgress?: boolean;
+    cardio?: CardioRecord[];
+  } = {},
+) {
   let progressFails = options.failProgress ?? false;
   vi.stubGlobal('confirm', () => true);
   let rests: string[] = [];
@@ -25,7 +32,7 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: 
       ? { today, routine: null }
       : {
           routine: { id: 7, name: 'Manual 12-week routine', splits: 2 },
-          ...routineProgress(options.plan ?? plan, rests, today),
+          ...routineProgress(options.plan ?? plan, rests, today, [], options.cardio),
           previous: {
             squat: {
               date: '2024-03-01',
@@ -412,4 +419,34 @@ test("today's card lists the split's cardio and logs one into the Cardio tab", a
     ui.requests.filter((r) => r.method !== 'GET'),
     'opening the form saves nothing',
   ).toHaveLength(0);
+});
+
+// #117 part 3: the card sums up the cardio done so far and marks each judged item.
+test('the card sums up done cardio items and marks them in today and the 12-week table', async () => {
+  const withCardio = routineSchema.parse({
+    ...routineInput(2),
+    splits: routineInput(2).splits.map((s, i) => ({
+      ...s,
+      cardio: [
+        i === 0
+          ? { kind: 'running', intensity: 'zone2', minutes: 30 }
+          : { kind: 'rowing', intensity: 'recovery', distance_km: 5 },
+      ],
+    })),
+  });
+  // Split 1 trained on 03-01 and split 2 trains today (03-04): only the run is recorded.
+  const ui = mount({
+    plan: withCardio,
+    cardio: [{ id: 1, date: '2024-03-01', kind: 'running', duration_sec: 1900, distance_km: 5 }],
+  });
+  await openJournal();
+  expect(ui.text(card()!.querySelector('[data-slot=cardio-summary]')!)).toBe(
+    'Cardio: 1 of 2 planned items done (50%)',
+  );
+  // Today's row is not recorded yet and its window is open: no mark.
+  const today = ui.text(card()!.querySelector('[data-slot=target-cardio]')!);
+  expect(today).toMatch(/Rowing · Recovery · 5 km/);
+  expect(today).not.toMatch(/Done|Missed/);
+  expect(ui.text(weekRows()[0])).toMatch(/Cardio: Running · Zone 2 · 30 min · Done/);
+  expect(ui.text(weekRows()[0])).toMatch(/Cardio: Rowing · Recovery · 5 km(?! · )/);
 });

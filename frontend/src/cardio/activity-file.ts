@@ -4,13 +4,14 @@ import type { CardioKind } from '../contract';
 // this browser. Only the summary values of cardio_sessions are kept (#114: no laps, no GPS
 // route); the file itself is never uploaded or stored, because its route contains places such
 // as home. GPX and TCX are XML and are read with the browser's DOMParser, without a package.
-// Research and field mapping: docs/activity-import.md (#118).
+// FIT is read with Garmin's SDK and ZIP with fflate, each loaded only when such a file is
+// chosen (#119 PR 2). Research and field mapping: docs/activity-import.md (#118).
 
 // One activity read from a file, in the API's field names. `started_at` (UTC, ISO) is kept
 // for the duplicate check; `date` and `start_time` are the same instant in Asia/Seoul.
 export type ImportedActivity = {
   file: string;
-  format: 'tcx' | 'gpx';
+  format: 'tcx' | 'gpx' | 'fit';
   external_id: string;
   started_at: string;
   kind: CardioKind;
@@ -265,8 +266,90 @@ export function parseGpx(file: string, text: string): ImportedActivity[] {
   });
 }
 
-// The extensions this step reads. FIT and ZIP come in the next step (#119 PR ②).
-export const activityFileAccept = '.tcx,.gpx';
+// FIT `sport` and `sub_sport` as the SDK names them. Treadmill and indoor running stay Running,
+// and indoor walking stays Walking: the app has no kind of their own for them.
+const fitEquipment: Record<string, CardioKind> = {
+  treadmill: 'running',
+  indoorRunning: 'running',
+  indoorWalking: 'walking',
+  indoorCycling: 'indoor_cycling',
+  indoorRowing: 'rowing',
+  elliptical: 'elliptical',
+  stairClimbing: 'stairs',
+};
+function fitKind(sport: unknown, subSport: unknown): CardioKind {
+  const sub = String(subSport ?? '');
+  switch (String(sport ?? '')) {
+    case 'running':
+      return 'running';
+    case 'walking':
+    case 'hiking':
+      return 'walking';
+    case 'cycling':
+    case 'eBiking':
+      return ['indoorCycling', 'spin', 'virtualActivity'].includes(sub)
+        ? 'indoor_cycling'
+        : 'outdoor_cycling';
+    case 'swimming':
+      return 'swimming';
+    case 'rowing':
+      return 'rowing';
+    case 'fitnessEquipment':
+      return fitEquipment[sub] ?? 'other';
+    default:
+      return 'other';
+  }
+}
+
+const damaged = (file: string) =>
+  new ActivityFileError(`${file}: Could not read the file. It is damaged.`);
+
+// FIT: each session message is one activity (a multisport file has several; their transitions
+// are left out). Duration is `total_timer_time`, pauses excluded (2026-11-08 decision), the same
+// as TCX. FIT has a reliable ascent total, so unlike TCX and GPX the elevation gain is kept.
+// Cadence is kept only for cycling: running cadence is stored per foot.
+export async function parseFit(file: string, bytes: Uint8Array): Promise<ImportedActivity[]> {
+  const { Decoder, Stream } = await import('@garmin/fitsdk');
+  const stream = Stream.fromByteArray(bytes);
+  if (!Decoder.isFIT(stream)) throw new ActivityFileError(`${file}: Not a FIT file.`);
+  const decoder = new Decoder(stream);
+  // The CRC check catches a cut-off download as well as a damaged file.
+  if (!decoder.checkIntegrity()) throw damaged(file);
+  let sessions;
+  try {
+    sessions = (decoder.read().messages.sessionMesgs ?? []).filter((s) => s.sport !== 'transition');
+  } catch {
+    throw damaged(file);
+  }
+  if (!sessions.length)
+    throw new ActivityFileError(
+      `${file}: No activity summary found. Only activity FIT files can be imported.`,
+    );
+  return sessions.map((session, index) => {
+    const name = sessions.length > 1 ? `${file} (${index + 1})` : file;
+    if (!(session.startTime instanceof Date))
+      throw new ActivityFileError(`${name}: No start time found.`);
+    const kind = fitKind(session.sport, session.subSport);
+    const seconds = session.totalTimerTime ?? session.totalElapsedTime;
+    return finish(name, 'fit', session.startTime, {
+      kind,
+      duration_sec: typeof seconds === 'number' ? Math.round(seconds) : 0,
+      distance_km: kmOf(session.totalDistance ?? 0),
+      avg_heart_rate: within(session.avgHeartRate ?? null, 30, 250),
+      max_heart_rate: within(session.maxHeartRate ?? null, 30, 250),
+      calories_kcal: within(session.totalCalories ?? null, 0, 20000),
+      elevation_gain_m: within(session.totalAscent ?? null, 0, 10000),
+      avg_cadence:
+        kind === 'outdoor_cycling' || kind === 'indoor_cycling'
+          ? within(session.avgCadence ?? null, 1, 300)
+          : null,
+      memo: '',
+    });
+  });
+}
+
+// The extensions the file chooser offers.
+export const activityFileAccept = '.tcx,.gpx,.fit,.zip';
 
 // One chosen file → its activities. The format is taken from the extension, or from the root
 // element when the extension is missing or unknown.
@@ -276,5 +359,72 @@ export function parseActivityFile(file: string, text: string): ImportedActivity[
   if (extension === 'gpx') return parseGpx(file, text);
   if (/<TrainingCenterDatabase[\s>]/.test(text)) return parseTcx(file, text);
   if (/<gpx[\s>]/.test(text)) return parseGpx(file, text);
-  throw new ActivityFileError(`${file}: Only TCX and GPX files can be imported.`);
+  throw new ActivityFileError(`${file}: Only TCX, GPX, FIT and ZIP files can be imported.`);
+}
+
+// What one chosen file gave: its activities, and a message for each file (or file inside a
+// ZIP) that could not be read. One bad file never stops the rest.
+export type ReadResult = { activities: ImportedActivity[]; problems: string[] };
+
+const extensionOf = (name: string) => name.toLowerCase().split('.').pop() ?? '';
+const startsWith = (bytes: Uint8Array, text: string, at = 0) =>
+  Array.from(text).every((c, i) => bytes[at + i] === c.charCodeAt(0));
+// Garmin's whole-account export keeps the activity files in ZIPs inside the ZIP, so one level
+// of nesting is opened. Other entries (JSON, images, macOS "._" copies) are skipped.
+const zipDepth = 2;
+const activityEntry = (path: string, depth: number) => {
+  const base = path.split('/').pop() ?? '';
+  if (!base || base.startsWith('.') || path.startsWith('__MACOSX/')) return false;
+  const extension = extensionOf(base);
+  return ['tcx', 'gpx', 'fit'].includes(extension) || (extension === 'zip' && depth < zipDepth);
+};
+
+// One chosen file → its activities. TCX and GPX are text; FIT is binary and is told by its
+// ".FIT" signature as well as by its extension; a ZIP is opened and each activity file inside is
+// read the same way. Its activities are named "archive.zip › activity.fit".
+export async function readActivityFile(
+  file: string,
+  bytes: Uint8Array,
+  depth = 0,
+): Promise<ReadResult> {
+  const extension = extensionOf(file);
+  try {
+    if (extension === 'zip' || startsWith(bytes, 'PK\x03\x04')) {
+      const { unzipSync } = await import('fflate');
+      let entries: Record<string, Uint8Array>;
+      try {
+        entries = unzipSync(bytes, { filter: (entry) => activityEntry(entry.name, depth + 1) });
+      } catch {
+        return {
+          activities: [],
+          problems: [`${file}: Could not open the ZIP file. It is damaged.`],
+        };
+      }
+      const paths = Object.keys(entries).sort();
+      if (!paths.length)
+        return {
+          activities: [],
+          problems: [`${file}: No TCX, GPX or FIT files found in the ZIP file.`],
+        };
+      const out: ReadResult = { activities: [], problems: [] };
+      for (const path of paths) {
+        const inner = await readActivityFile(
+          `${file} › ${path.split('/').pop()}`,
+          entries[path],
+          depth + 1,
+        );
+        out.activities.push(...inner.activities);
+        out.problems.push(...inner.problems);
+      }
+      return out;
+    }
+    if (extension === 'fit' || startsWith(bytes, '.FIT', 8))
+      return { activities: await parseFit(file, bytes), problems: [] };
+    return { activities: parseActivityFile(file, new TextDecoder().decode(bytes)), problems: [] };
+  } catch (e) {
+    return {
+      activities: [],
+      problems: [e instanceof ActivityFileError ? e.message : damaged(file).message],
+    };
+  }
 }

@@ -145,3 +145,14 @@ Values that are thrown away: laps, lengths, segments, the GPS route, per-second 
 | 6. Health Connect           | On hold                                                                                                                                                                                                      |
 | 7. Source of NRC via Strava | Keep `source` as `nike` (no migration), and `external_id` is the Strava activity ID                                                                                                                          |
 | 8. Duplicates and schedule  | Even from different sources, the same date, a start time within ±2 minutes, and a distance within ±1% (a time within ±1% if there is no distance) is a duplicate candidate. Sync twice a day + manual import |
+
+## 11. Package check and user decisions (2026-11-16, #119 PR 2)
+
+- `@garmin/fitsdk` 21.218.0 (the newest version at least 14 days old; 21.221.0 was 13 days old) and `fflate` 0.8.3: no dependencies, no install scripts, and no network, `eval` or `process.env` use in the shipped files. The user installed both with `--ignore-scripts --save-exact`.
+- The FIT SDK is under the Garmin FIT Protocol License, not an open-source license. It calls the SDK Garmin's confidential information and forbids making it available to third parties (section 2c). Reading in the browser serves the SDK with the public site, and the user accepted that. The SDK and `fflate` are loaded only when a FIT or ZIP file is read (their own chunks), not on every page.
+
+| Item                   | Decision                                                                                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 9. Where FIT is read   | In the browser with `@garmin/fitsdk`, license noted above                                                                                 |
+| 10. Real samples       | The user provides 1–2 Garmin FIT exports; GPS and personal data are removed before anything is committed                                  |
+| 11. More than 200 rows | Saved in batches of 200, oldest first. Each batch is all or nothing; a refused batch stops the save, and the batches before it stay saved |

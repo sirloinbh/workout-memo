@@ -129,7 +129,7 @@ describe('activity files (#119)', () => {
     );
     expect(() => parseActivityFile('ride.gpx', run)).toThrow('ride.gpx: Not a GPX file.');
     expect(() => parseActivityFile('a.fit', 'binary')).toThrow(
-      'a.fit: Only TCX and GPX files can be imported.',
+      'a.fit: Only TCX, GPX, FIT and ZIP files can be imported.',
     );
     expect(() => parseActivityFile('empty.gpx', '<gpx><trk><trkseg></trkseg></trk></gpx>')).toThrow(
       'empty.gpx: No record timestamps found.',

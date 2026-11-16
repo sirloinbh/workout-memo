@@ -339,9 +339,23 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
   };
   // #173: the plan being opened, so its button shows it is waiting.
   const [opening, setOpening] = useState<number | null>(null);
-  // #312: a saved plan waiting for the user to discard the open draft, and the button that asked.
-  const [replacing, setReplacing] = useState<Plan | null>(null);
+  // #312, #323: what waits for the user to discard the open draft (a saved plan, or 'new' for a
+  // fresh draft), and the button that asked.
+  const [replacing, setReplacing] = useState<Plan | 'new' | null>(null);
+  // The dialog wording, kept after replacing clears so the closing dialog does not switch text.
+  const [asking, setAsking] = useState<'plan' | 'new'>('plan');
+  const askToReplace = (next: Plan | 'new') => {
+    setAsking(next === 'new' ? 'new' : 'plan');
+    setReplacing(next);
+  };
   const askedFrom = useRef<HTMLButtonElement | null>(null);
+  const startDraft = () => {
+    setDraft(newPlan());
+    setStep(0);
+    setSelected(null);
+    setError('');
+    setSavedId(null);
+  };
   const openPlan = (p: Plan) => {
     setError('');
     setOpening(p.id!);
@@ -414,12 +428,10 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
       <Button
         // A plan still opening would close the new draft when it arrives.
         disabled={saving || opening !== null}
-        onClick={() => {
-          setDraft(newPlan());
-          setStep(0);
-          setSelected(null);
-          setError('');
-          setSavedId(null);
+        onClick={(e) => {
+          askedFrom.current = e.currentTarget;
+          if (draft) askToReplace('new');
+          else startDraft();
         }}
       >
         <Plus aria-hidden />
@@ -448,7 +460,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                 aria-busy={opening === p.id || undefined}
                 onClick={(e) => {
                   askedFrom.current = e.currentTarget;
-                  if (draft) setReplacing(p);
+                  if (draft) askToReplace(p);
                   else openPlan(p);
                 }}
               >
@@ -463,12 +475,17 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
         open={replacing !== null}
         onOpenChange={(open) => !open && setReplacing(null)}
         title="Discard the new routine you are entering?"
-        description="Opening this plan closes the new routine form, and what you entered is not saved."
-        confirmLabel="Discard and view plan"
+        description={
+          asking === 'new'
+            ? 'Starting over clears the new routine form, and what you entered is not saved.'
+            : 'Opening this plan closes the new routine form, and what you entered is not saved.'
+        }
+        confirmLabel={asking === 'new' ? 'Discard and start over' : 'Discard and view plan'}
         cancelLabel="Keep editing"
         returnFocusRef={askedFrom}
         onConfirm={() => {
-          if (replacing) openPlan(replacing);
+          if (replacing === 'new') startDraft();
+          else if (replacing) openPlan(replacing);
         }}
       />
       {draft && (

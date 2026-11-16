@@ -739,3 +739,31 @@ test('a plan that fails to load after Discard keeps the draft and shows the erro
   expect(ui.form()).toHaveLength(1);
   expect(screen.getByDisplayValue('Unsaved routine')).toBeInTheDocument();
 });
+
+test('Create new routine asks before it discards an open draft (#323)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('Create new routine');
+  await ui.change('Routine name', 'Unsaved routine');
+  ui.next();
+  await ui.click('Create new routine');
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Discard the new routine you are entering?',
+  });
+  expect(dialog).toHaveTextContent('Starting over clears the new routine form');
+
+  await ui.user.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(screen.getByRole('button', { name: 'Create new routine' })).toHaveFocus();
+  expect(ui.heading()).toHaveTextContent(/^Step 2 of 4/);
+  await ui.toStep(1);
+  expect(screen.getByDisplayValue('Unsaved routine')).toBeInTheDocument();
+
+  await ui.click('Create new routine');
+  await ui.user.click(await screen.findByRole('button', { name: 'Discard and start over' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(ui.form()).toHaveLength(1);
+  expect(ui.heading()).toHaveTextContent(/^Step 1 of 4/);
+  expect(screen.queryByDisplayValue('Unsaved routine')).toBeNull();
+  expect(ui.nonGet()).toHaveLength(0);
+});

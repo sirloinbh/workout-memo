@@ -26,6 +26,15 @@ export function cardioLabel(c: CardioItem) {
   return `${head} · ${c.minutes ?? c.distance_km} ${cardioUnit(c)}`;
 }
 
+// #117 part 3: the item with its result from saved cardio records.
+export const cardioResultText = (c: CardioItem & { result?: 'achieved' | 'missed' | null }) =>
+  cardioLabel(c) + (c.result === 'achieved' ? ' · Done' : c.result === 'missed' ? ' · Missed' : '');
+/** "Cardio: 7 of 10 planned items done (70%)". */
+export function cardioSummaryText({ done, planned }: { done: number; planned: number }) {
+  if (!planned) return 'Cardio: no planned items yet';
+  return `Cardio: ${done} of ${planned} planned ${planned === 1 ? 'item' : 'items'} done (${Math.round((done / planned) * 100)}%)`;
+}
+
 // What a new cardio record starts with when it is logged from today's routine card.
 export type CardioPreset = {
   kind: CardioKind;

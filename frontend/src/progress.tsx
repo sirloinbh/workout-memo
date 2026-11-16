@@ -13,7 +13,13 @@ import {
   sessionLabel,
   targetLabel,
 } from './progress-data';
-import { cardioLabel, type CardioPreset, cardioPreset } from './routine-cardio';
+import {
+  cardioLabel,
+  type CardioPreset,
+  cardioPreset,
+  cardioResultText,
+  cardioSummaryText,
+} from './routine-cardio';
 
 // `.legacy p` sets 12px muted text, so paragraphs in this card name their own size.
 const text = 'text-sm text-muted-foreground';
@@ -107,6 +113,11 @@ export function RoutineProgress({
                 ? ` · Currently week ${progress.current_week}`
                 : ' · Routine period ended'}
             </p>
+            {progress.cardio_summary && (
+              <p data-slot="cardio-summary" className={`mt-1 ${text}`}>
+                {cardioSummaryText(progress.cardio_summary)}
+              </p>
+            )}
             {progress.progression === 'auto' && (
               <p className="mt-2 rounded-md bg-muted p-3 text-meta">
                 Auto goals (double progressive overload): advance on each session (workout day) of a
@@ -157,7 +168,7 @@ export function RoutineProgress({
                     <ul data-slot="target-cardio" className={list}>
                       {today.target.cardio.map((c, i) => (
                         <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span className="font-semibold">{cardioLabel(c)}</span>
+                          <span className="font-semibold">{cardioResultText(c)}</span>
                           <Button
                             type="button"
                             variant="outline"
@@ -278,6 +289,8 @@ export function RoutineProgress({
                                 {auto && e.target.session ? `Session ${e.target.session} · ` : ''}
                                 {e.target.split_name} ·{' '}
                                 {e.target.exercises.map(exerciseText).join(' / ')}
+                                {e.target.cardio &&
+                                  ` / Cardio: ${e.target.cardio.map(cardioResultText).join(', ')}`}
                               </li>
                             ))}
                           </ul>

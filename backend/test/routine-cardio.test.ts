@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import { cardioWeeklyTargets } from '../src/contract.js';
 import { type RoutinePlan, routineSchema } from '../src/domain.js';
-import { arrangeTargets, routineProgress, weekCardio } from '../src/progress.js';
+import { arrangeTargets, planEndDate, routineProgress, weekCardio } from '../src/progress.js';
 import { autoRoutineInput, routineInput } from './routine-fixture.js';
 
 // #117 (2026-11-16 decision): +10% a week compounded from week 1, shown rounded to 1 minute
@@ -112,5 +112,204 @@ test('a rest moves a session with the cardio of its planned week, and auto routi
     kind: 'running',
     intensity: 'zone2',
     minutes: 30,
+    // Part 3: today's window is open and nothing is recorded yet.
+    result: null,
   });
+});
+
+// Part 3 (2026-11-16 decision): a same-type record in the session's window that meets the
+// week's target marks the item done; an interval needs only the type; one record counts once.
+test('cardio items are judged against saved records in their session window', () => {
+  // One split, Mon/Wed/Fri from Monday 2098-03-03: windows 03-03..03-04, 03-05..03-06, 03-07..
+  const input = routineInput(1);
+  input.start_date = '2098-03-03';
+  const plan = routineSchema.parse({
+    ...input,
+    splits: [
+      {
+        ...input.splits[0],
+        cardio: [
+          { kind: 'running', intensity: 'zone2', minutes: 30 },
+          { kind: 'rowing', intensity: 'recovery', distance_km: 5 },
+          {
+            kind: 'stairs',
+            intensity: 'interval',
+            interval: { repeats: 6, work_sec: 30, recovery_sec: 30 },
+          },
+        ],
+      },
+    ],
+  }) as RoutinePlan;
+  const record = (id: number, date: string, kind: string, minutes: number, km: number | null) => ({
+    id,
+    date,
+    kind,
+    duration_sec: minutes * 60,
+    distance_km: km,
+  });
+  const progress = routineProgress(
+    plan,
+    [],
+    '2098-03-07',
+    [],
+    [
+      // Session 1: 30 min run meets 30; 5.0 km row meets 5; a short stairs session counts.
+      record(1, '2098-03-03', 'running', 30, 5),
+      record(2, '2098-03-04', 'rowing', 25, 5),
+      record(3, '2098-03-04', 'stairs', 5, null),
+      // Session 2: 29:59 is short of 30 min; the row is 4.9 km; a walk is the wrong type.
+      { ...record(4, '2098-03-05', 'running', 30, null), duration_sec: 1799 },
+      record(5, '2098-03-06', 'rowing', 40, 4.9),
+      record(6, '2098-03-06', 'walking', 60, 6),
+      // Session 3 (today, window still open): one run, which cannot count twice.
+      record(7, '2098-03-07', 'running', 31, null),
+    ],
+  );
+  const results = progress.days
+    .filter((d) => d.target)
+    .slice(0, 4)
+    .map((d) => d.target!.cardio!.map((c) => c.result));
+  assert.deepEqual(results, [
+    ['achieved', 'achieved', 'achieved'],
+    ['missed', 'missed', 'missed'],
+    ['achieved', null, null],
+    [null, null, null],
+  ]);
+  // Sessions on or before today: 3 sessions × 3 items, 4 done.
+  assert.deepEqual(progress.cardio_summary, { done: 4, planned: 9 });
+  assert.equal(progress.today_plan?.target?.cardio?.[0].result, 'achieved');
+  // The 12-week table shows the same judged targets.
+  assert.deepEqual(
+    progress.weeks[0].entries[1].target.cardio?.map((c) => c.result),
+    ['missed', 'missed', 'missed'],
+  );
+});
+
+test("a record on the next session's date belongs to that session, and deload targets apply", () => {
+  const input = routineInput(1);
+  input.start_date = '2098-03-03';
+  const plan = routineSchema.parse({
+    ...input,
+    splits: [
+      { ...input.splits[0], cardio: [{ kind: 'running', intensity: 'zone2', minutes: 30 }] },
+    ],
+  }) as RoutinePlan;
+  const run = (id: number, date: string, minutes: number) => ({
+    id,
+    date,
+    kind: 'running',
+    duration_sec: minutes * 60,
+    distance_km: null,
+  });
+  const early = routineProgress(plan, [], '2098-03-05', [], [run(1, '2098-03-05', 30)]);
+  const [first, second] = early.days.filter((d) => d.target);
+  assert.equal(first.target!.cardio![0].result, 'missed', 'its window closed on 03-05');
+  assert.equal(second.target!.cardio![0].result, 'achieved');
+
+  // Week 4 is a deload at 80% of week 3 (36 → 29 min): 29 minutes meets it.
+  const week4 = routineProgress(plan, [], '2098-03-24', [], [run(1, '2098-03-24', 29)]);
+  assert.equal(week4.today_plan?.week, 4);
+  assert.equal(week4.today_plan?.target?.cardio?.[0].minutes, 29);
+  assert.equal(week4.today_plan?.target?.cardio?.[0].result, 'achieved');
+});
+
+test('a routine without cardio has no cardio summary and unchanged targets', () => {
+  const plan = routineSchema.parse(routineInput(2)) as RoutinePlan;
+  const progress = routineProgress(
+    plan,
+    [],
+    '2024-03-04',
+    [],
+    [{ id: 1, date: '2024-03-04', kind: 'running', duration_sec: 1800, distance_km: 5 }],
+  );
+  assert.equal(progress.cardio_summary, null);
+  assert.ok(progress.days.every((d) => !d.target || !('cardio' in d.target)));
+});
+
+// Review round 1: harder items pick first, the last window runs to the plan end, and rests move
+// a session's window.
+test('a harder item is never left without the record an easier one took', () => {
+  const input = routineInput(1);
+  input.start_date = '2098-03-03';
+  const plan = routineSchema.parse({
+    ...input,
+    splits: [
+      {
+        ...input.splits[0],
+        cardio: [
+          {
+            kind: 'running',
+            intensity: 'interval',
+            interval: { repeats: 6, work_sec: 30, recovery_sec: 30 },
+          },
+          { kind: 'running', intensity: 'zone2', minutes: 20 },
+          { kind: 'running', intensity: 'tempo', minutes: 40 },
+        ],
+      },
+    ],
+  }) as RoutinePlan;
+  const run = (id: number, date: string, minutes: number) => ({
+    id,
+    date,
+    kind: 'running',
+    duration_sec: minutes * 60,
+    distance_km: null,
+  });
+  // The longest run comes first: in item order the interval would take it and leave 40 min short.
+  const progress = routineProgress(
+    plan,
+    [],
+    '2098-03-05',
+    [],
+    [run(1, '2098-03-03', 45), run(2, '2098-03-04', 25), run(3, '2098-03-04', 10)],
+  );
+  assert.deepEqual(
+    progress.days.find((d) => d.target)!.target!.cardio!.map((c) => c.result),
+    ['achieved', 'achieved', 'achieved'],
+  );
+});
+
+test('the last window runs to the plan end, rests move windows, and excluded items are unjudged', () => {
+  const input = routineInput(1);
+  input.start_date = '2098-03-03';
+  const plan = routineSchema.parse({
+    ...input,
+    splits: [
+      { ...input.splits[0], cardio: [{ kind: 'walking', intensity: 'recovery', minutes: 1 }] },
+    ],
+  }) as RoutinePlan;
+  const end = planEndDate(plan);
+  const walk = (id: number, date: string) => ({
+    id,
+    date,
+    kind: 'walking',
+    duration_sec: 3600,
+    distance_km: null,
+  });
+  const lastOf = (p: ReturnType<typeof routineProgress>) => p.days.filter((d) => d.target).at(-1)!;
+  // A walk on the plan's last day counts for the last session.
+  const onEnd = routineProgress(plan, [], end, [], [walk(1, end)]);
+  assert.equal(lastOf(onEnd).target!.cardio![0].result, 'achieved');
+  assert.equal(
+    routineProgress(plan, [], end, [], [])
+      .days.filter((d) => d.target)
+      .at(-1)!.target!.cardio![0].result,
+    null,
+    'still open on the last day',
+  );
+
+  // Resting on the first session day moves session 1 to 03-05; a walk on 03-03 no longer counts.
+  const rested = routineProgress(plan, ['2098-03-03'], '2098-03-09', [], [walk(1, '2098-03-03')]);
+  const first = rested.days.find((d) => d.target)!;
+  assert.equal(first.date, '2098-03-05');
+  assert.equal(first.target!.cardio![0].result, 'missed');
+  assert.equal(rested.excluded.length, 1);
+  assert.deepEqual(rested.excluded[0].cardio, [
+    {
+      kind: 'walking',
+      intensity: 'recovery',
+      minutes: rested.excluded[0].cardio![0].minutes,
+      result: null,
+    },
+  ]);
 });

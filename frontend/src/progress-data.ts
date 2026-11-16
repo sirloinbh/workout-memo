@@ -22,8 +22,9 @@ export type Target = {
   split_name: string;
   change: Change | null;
   exercises: TargetExercise[];
-  // #117: the split's cardio with this week's targets; missing when the split has none.
-  cardio?: RoutineCardio[];
+  // #117: the split's cardio with this week's targets; missing when the split has none. The
+  // result is judged from saved cardio records (null while the session's window is open).
+  cardio?: (RoutineCardio & { result?: 'achieved' | 'missed' | null })[];
 };
 type Day = { date: string; week: number; rest: boolean; target: Target | null };
 type Move = {
@@ -43,6 +44,8 @@ export type Progress = {
   status?: string;
   progression?: 'manual' | 'auto';
   current_week?: number | null;
+  // #117: planned cardio items of sessions up to today and how many are done; null without cardio.
+  cardio_summary?: { done: number; planned: number } | null;
   today_plan?: Day | null;
   this_week?: Day[];
   weeks?: {

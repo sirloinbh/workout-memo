@@ -1,5 +1,5 @@
 {
-  "centralSha": "8f21b780133753daa102131c7fe6d47be747dabe",
+  "centralSha": "a0890cfe2de43403c6c740ec20408636a5e3b523",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -165,7 +165,7 @@
     },
     ".prettierignore": {
       "mode": "section",
-      "sha256": "ba680d387c295fdab5181eac54b1e2b3a88e5abd3d0cf3ed149830927410623e",
+      "sha256": "ecf64bb26a140f87a75f6dc7d75704989fdb51fcf35de572df9922f7325c2c62",
       "source": "templates/app/.prettierignore.tmpl"
     },
     ".standards/blocked-packages.json": {
@@ -249,6 +249,7 @@
         "packageManager": "npm@11.19.0",
         "engines.node": "24.21.0",
         "engines.npm": "11.19.0",
+        "dependencies.@sirloinbh/auth-client": "1.0.0",
         "devDependencies.@sirloinbh/tsconfig": "1.0.0",
         "dependencies.express": "5.3.0",
         "dependencies.pg": "8.23.1",
@@ -260,6 +261,11 @@
         "devDependencies.typescript": "5.9.3"
       },
       "source": "templates/index.json"
+    },
+    "backend/src/standard/auth.ts": {
+      "mode": "full",
+      "sha256": "a33a4eefa1dbb21c24afc8c8a0caf689c6ed5439368dd1fe2bac28a7e0cb87a9",
+      "source": "templates/app/backend/src/standard/auth.ts"
     },
     "backend/src/standard/http.ts": {
       "mode": "full",
@@ -392,6 +398,7 @@
         "packageManager": "npm@11.19.0",
         "engines.node": "24.21.0",
         "engines.npm": "11.19.0",
+        "dependencies.@sirloinbh/auth-client": "1.0.0",
         "dependencies.@sirloinbh/design-tokens": "1.0.0",
         "devDependencies.@sirloinbh/tsconfig": "1.0.0",
         "dependencies.class-variance-authority": "0.7.1",
@@ -438,6 +445,16 @@
       "mode": "full",
       "sha256": "a5725eb459bbffb2c29f87ff6b64958cc974f090dc3beaecd5afa8f20a21c76a",
       "source": "templates/ui/frontend/public/theme-init.js.tmpl"
+    },
+    "frontend/src/auth-origin.test.ts": {
+      "mode": "full",
+      "sha256": "646b60431e40e709f40241396ddd0a8c28323227e7faf2fb8257f7a5349b3979",
+      "source": "templates/ui/frontend/src/auth-origin.test.ts"
+    },
+    "frontend/src/auth-origin.ts": {
+      "mode": "full",
+      "sha256": "1fb4c37122032f83f3eaa5768a7ff17e22a066556833fd420518300ff0b7d9b3",
+      "source": "templates/ui/frontend/src/auth-origin.ts"
     },
     "frontend/src/components/layout/app-shell.test.tsx": {
       "mode": "full",
@@ -673,6 +690,11 @@
       "mode": "full",
       "sha256": "ae223fe47966193ebd80c94391cac51d599afb419ef0f7139585c5c091adc9a0",
       "source": "templates/ui/frontend/src/lib/utils.ts"
+    },
+    "frontend/src/sign-in.tsx": {
+      "mode": "full",
+      "sha256": "5ea070c066dd7b9746e7f0b2a5ae17981d5ee2a0559a089c81bba36376904885",
+      "source": "templates/ui/frontend/src/sign-in.tsx"
     },
     "frontend/src/test/contract-api.test.ts": {
       "mode": "full",

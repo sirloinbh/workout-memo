@@ -368,7 +368,15 @@ export function judgeCardio(
     if (!target.cardio) return;
     const stop =
       dated.slice(index + 1).find((d) => d.target!.split_index === target.split_index)?.date ?? end;
-    const cardio = target.cardio.map((item): TargetCardio => {
+    // The most demanding items pick first (distance, then time, larger targets first, intervals
+    // last), so an easy item never takes the only record a harder one could use.
+    const rank = (c: TargetCardio) =>
+      c.interval ? [2, 0] : c.distance_km !== undefined ? [0, -c.distance_km] : [1, -c.minutes!];
+    const order = target.cardio
+      .map((item, i) => ({ item, i, rank: rank(item) }))
+      .sort((a, b) => a.rank[0] - b.rank[0] || a.rank[1] - b.rank[1] || a.i - b.i);
+    const cardio: TargetCardio[] = [...target.cardio];
+    for (const { item, i } of order) {
       const match = sorted.find(
         (r) =>
           !used.has(r.id) &&
@@ -385,8 +393,8 @@ export function judgeCardio(
         planned++;
         if (match) done++;
       }
-      return { ...item, result: match ? 'achieved' : stop <= today ? 'missed' : null };
-    });
+      cardio[i] = { ...item, result: match ? 'achieved' : stop <= today ? 'missed' : null };
+    }
     judged.set(target.order, { ...target, cardio });
   });
   return {
@@ -405,7 +413,10 @@ export function routineProgress(
   cardioRecords: readonly CardioRecord[] = [],
 ) {
   const arranged = arrangeTargets(plan, rests, records, today);
-  const { excluded } = arranged;
+  // Targets pushed past the plan end are never judged.
+  const excluded = arranged.excluded.map((t) =>
+    t.cardio ? { ...t, cardio: t.cardio.map((c) => ({ ...c, result: null })) } : t,
+  );
   const { days, summary: cardioSummary } = judgeCardio(plan, arranged.days, cardioRecords, today);
   const end = planEndDate(plan);
   const inRange = today >= plan.start_date && today <= end;

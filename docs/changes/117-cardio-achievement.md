@@ -15,7 +15,7 @@ Routine cardio items were planned (part 1) and shown on today's card with a pre-
   - it is dated in the session's window: the session date until the next session of the same split (exclusive), and the last one until the plan end, the same window auto strength goals use
   - it meets that week's target: time ≥ the target minutes, or distance ≥ the target km
 - An interval item counts with any record of its type.
-- One record counts for one item only. Items are matched in session and item order, earliest record first.
+- One record counts for one item only. Sessions are matched in date order. Within a session, the most demanding item picks first (distance, then time, larger targets first, intervals last), each taking the earliest record that fits.
 - A closed window without a matching record is **missed**. An open window has no mark yet.
 - The summary counts the items of sessions dated on or before today: "Cardio: X of Y planned items done (Z%)".
 
@@ -66,4 +66,36 @@ Note: the first full frontend run reported 1 failed test, and its name was cut f
 ## Limits and follow-up
 
 - Matching is greedy in session order. When two splits' windows overlap, one record goes to the earlier session's item.
+- Within a session, the demanding-first order fixes the common cases, but it is not a full assignment search. For example, a distance item and a time item of the same type can still compete for a record that has both.
 - A record outside every window (on a rest day after the plan end, or before the start) is not counted.
+
+## Review round 1
+
+No blocking findings. The reviewer confirmed:
+
+- the window edges match `autoExercises`
+- `planCardio`'s date range covers every window
+- the exact `distance_km` comparison
+- no record counts twice
+- older routines keep their shape
+- the rest endpoints return judged progress
+
+Applied:
+
+- An item could be marked missed while a valid match existed: in item order, an interval took the 45-minute run that a 40-minute item needed. The most demanding item now picks first. Test: an interval, a 20-minute and a 40-minute run, with the longest run first.
+- Excluded targets (pushed past the plan end) now carry `result: null` like every other item.
+- The 12-week table lists a session's cardio once ("/ Cardio: a · Done, b · Missed") instead of repeating "Cardio:".
+- New tests:
+  - a record on the plan's last day counts for the last session, which stays open on that day
+  - a rest moves the first session and its window
+  - excluded items are unjudged
+
+Not applied:
+
+- A live region on the summary line. It is static text on the card, and the card reloads on page change.
+
+| Command                                               | Result                |
+| ----------------------------------------------------- | --------------------- |
+| `npm run test -w backend` (throwaway DB)              | 388 passed, 0 skipped |
+| `vitest run src/routine-progress.test.tsx src/cardio` | 90 passed             |
+| `lint`, `typecheck`                                   | passed                |

@@ -289,9 +289,8 @@ export function RoutineProgress({
                                 {auto && e.target.session ? `Session ${e.target.session} · ` : ''}
                                 {e.target.split_name} ·{' '}
                                 {e.target.exercises.map(exerciseText).join(' / ')}
-                                {e.target.cardio
-                                  ?.map((c) => ` / Cardio: ${cardioResultText(c)}`)
-                                  .join('')}
+                                {e.target.cardio &&
+                                  ` / Cardio: ${e.target.cardio.map(cardioResultText).join(', ')}`}
                               </li>
                             ))}
                           </ul>

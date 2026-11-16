@@ -1,3 +1,4 @@
+// Managed file. Edit it in sirloinbh/project-standards templates/ui/frontend/src/
 import { createUseUser, signInUrl, signOutUrl, type User } from '@sirloinbh/auth-client';
 import type * as React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -6,7 +7,7 @@ import { authOrigin } from './auth-origin';
 import { Button } from './components/ui/button';
 import { Spinner } from './components/ui/spinner';
 
-// #303: the shared sign-in (sirloinbh/shared-auth, project-standards ADR-0015). The API answers 401
+// The shared sign-in (sirloinbh/shared-auth, ADR-0015, #550, #551). The API answers 401
 // without a session; the screen sends a signed-out visitor to auth.<domain> and back.
 const useUser = createUseUser({ useState, useEffect });
 const SignedInUser = createContext<User | null>(null);
@@ -35,7 +36,7 @@ function Gate({ origin, children }: { origin: string; children: React.ReactNode 
           </Button>
         </div>
       ) : (
-        // #317: the shared Spinner beside the status line while the session is checked (#173 rule).
+        // The shared Spinner beside the status line while the session is checked (workout-memo#317).
         <div aria-busy="true" aria-label="Sign-in check" className="flex items-center gap-2">
           <Spinner size="sm" aria-hidden />
           <p role="status">Checking your sign-in…</p>

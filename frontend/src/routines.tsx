@@ -7,6 +7,7 @@ import { Button } from './components/ui/button';
 import { Card, CardTitle } from './components/ui/card';
 import { Checkbox } from './components/ui/checkbox';
 import { Combobox } from './components/ui/combobox';
+import { ConfirmDialog } from './components/ui/confirm-dialog';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
@@ -338,6 +339,20 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
   };
   // #173: the plan being opened, so its button shows it is waiting.
   const [opening, setOpening] = useState<number | null>(null);
+  // #312: a saved plan waiting for the user to discard the open draft, and the button that asked.
+  const [replacing, setReplacing] = useState<Plan | null>(null);
+  const askedFrom = useRef<HTMLButtonElement | null>(null);
+  const openPlan = (p: Plan) => {
+    setError('');
+    setOpening(p.id!);
+    void request<Plan>('/' + p.id)
+      .then((value) => {
+        setSelected(value);
+        setDraft(null);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setOpening(null));
+  };
   useEffect(() => {
     let active = true;
     void fetch('/api/exercise-weight-steps')
@@ -431,16 +446,10 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                 size="sm"
                 disabled={saving || opening !== null}
                 aria-busy={opening === p.id || undefined}
-                onClick={() => {
-                  setError('');
-                  setOpening(p.id!);
-                  void request<Plan>('/' + p.id)
-                    .then((value) => {
-                      setSelected(value);
-                      setDraft(null);
-                    })
-                    .catch((e) => setError(e.message))
-                    .finally(() => setOpening(null));
+                onClick={(e) => {
+                  askedFrom.current = e.currentTarget;
+                  if (draft) setReplacing(p);
+                  else openPlan(p);
                 }}
               >
                 {opening === p.id && <Spinner size="sm" aria-hidden />}
@@ -450,6 +459,18 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
           ))}
         </ul>
       )}
+      <ConfirmDialog
+        open={replacing !== null}
+        onOpenChange={(open) => !open && setReplacing(null)}
+        title="Discard the new routine you are entering?"
+        description="Opening this plan closes the new routine form, and what you entered is not saved."
+        confirmLabel="Discard and view plan"
+        cancelLabel="Keep editing"
+        returnFocusRef={askedFrom}
+        onConfirm={() => {
+          if (replacing) openPlan(replacing);
+        }}
+      />
       {draft && (
         <Card className="mt-5 gap-0 px-4 py-5 shadow-none md:px-6 md:py-6">
           <form

@@ -1,5 +1,6 @@
+// Managed file. Edit it in sirloinbh/project-standards templates/ui/frontend/src/
 /**
- * The shared sign-in origin for this address (#303): workout-memo.daysofme.com → https://auth.daysofme.com.
+ * The shared sign-in origin for this address (#551): workout-memo.daysofme.com → https://auth.daysofme.com.
  * Null on local and IP addresses, where the API runs without the sign-in.
  */
 export function authOrigin({ protocol, hostname }: { protocol: string; hostname: string }) {

@@ -1,3 +1,4 @@
+import type { RoutineCardio } from './contract';
 import { plural } from './labels';
 // Routine goals (#28). Planned targets are shown per exercise exactly as planned;
 // weights of different exercises are never summed. Only saved journals are records.
@@ -21,6 +22,8 @@ export type Target = {
   split_name: string;
   change: Change | null;
   exercises: TargetExercise[];
+  // #117: the split's cardio with this week's targets; missing when the split has none.
+  cardio?: RoutineCardio[];
 };
 type Day = { date: string; week: number; rest: boolean; target: Target | null };
 type Move = {

@@ -1,3 +1,4 @@
+import { cardioWeeklyTargets, type RoutineCardio } from './contract.js';
 import { defaultWeightStep, type Feedback, type RoutinePlan, routineSchedule } from './domain.js';
 
 // Routine progress (#28). A plan's targets keep their original order; a rest day
@@ -26,6 +27,8 @@ export type PlanTarget = {
   split_name: string;
   change: WeekChange | null;
   exercises: TargetExercise[];
+  // #117: the split's cardio items with this week's target; only on splits that have any.
+  cardio?: RoutineCardio[];
 };
 export type PlanDay = { date: string; week: number; rest: boolean; target: PlanTarget | null };
 // One saved workout's sets for one exercise. `completed` exists once sets carry
@@ -95,6 +98,21 @@ export function weekExercises(plan: RoutinePlan, splitIndex: number, week: numbe
       reps: clamp(reps, 1, 1000),
       base: { sets: base.sets, weight: base.weight, reps: base.reps },
     };
+  });
+}
+
+// #117: a split's cardio items for a routine week. A steady item's time or distance becomes the
+// week's target (10% a week, deloads in weeks 4, 8 and 12); an interval item keeps its structure.
+export function weekCardio(plan: RoutinePlan, splitIndex: number, week: number) {
+  const items = plan.splits[splitIndex].cardio;
+  if (!items?.length) return undefined;
+  return items.map((item): RoutineCardio => {
+    const targets = cardioWeeklyTargets(item);
+    if (item.interval || !targets) return { ...item };
+    const target = targets[week - 1].target;
+    return item.minutes !== undefined
+      ? { ...item, minutes: target }
+      : { ...item, distance_km: target };
   });
 }
 
@@ -249,15 +267,19 @@ export function arrangeTargets(
   for (const target of excludedSkeletons) placed.push({ target, date: null });
   const auto = isAuto(plan) ? autoExercises(plan, placed, records, today) : null;
   const full = new Map<number, PlanTarget>(
-    placed.map((p) => [
-      p.target.order,
-      {
-        ...p.target,
-        exercises: auto
-          ? auto.get(p.target.order)!
-          : weekExercises(plan, p.target.split_index, p.target.week),
-      },
-    ]),
+    placed.map((p) => {
+      const cardio = weekCardio(plan, p.target.split_index, p.target.week);
+      return [
+        p.target.order,
+        {
+          ...p.target,
+          exercises: auto
+            ? auto.get(p.target.order)!
+            : weekExercises(plan, p.target.split_index, p.target.week),
+          ...(cardio && { cardio }),
+        },
+      ];
+    }),
   );
   const days = slots.map((slot): PlanDay =>
     rested.has(slot.date)

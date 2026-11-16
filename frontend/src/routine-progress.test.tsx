@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
@@ -57,6 +57,9 @@ function mount(options: { routine?: boolean; plan?: RoutinePlan; failProgress?: 
       return json({ applied: true, ...serverProgress() });
     }
     if (pathname === '/api/workouts' && method === 'POST') return json({ id: 42, version: 1 }, 201);
+    // #117: the Cardio tab's personal records.
+    if (pathname === '/api/cardio-sessions/records')
+      return { longest: [], best5k: null, best10k: null };
     return [];
   });
   const user = userEvent.setup();
@@ -354,4 +357,59 @@ test('going back from the rest preview sends nothing and offers rest again', asy
   expect(document.querySelector('[aria-label="Confirm before rest"]')).toBeNull();
   expect(ui.button('Rest today')).toBeEnabled();
   expect(posts(ui, '/api/routines/7/rests')).toHaveLength(0);
+});
+
+// #117: today's split lists its cardio for this routine week, and "Log cardio" opens the Cardio
+// tab with a new record filled in from the item.
+test("today's card lists the split's cardio and logs one into the Cardio tab", async () => {
+  const withCardio = routineSchema.parse({
+    ...routineInput(2),
+    splits: routineInput(2).splits.map((s, i) =>
+      i === 1
+        ? {
+            ...s,
+            cardio: [
+              { kind: 'running', intensity: 'zone2', minutes: 30 },
+              {
+                kind: 'rowing',
+                intensity: 'interval',
+                interval: { repeats: 8, work_sec: 60, recovery_sec: 90 },
+              },
+            ],
+          }
+        : s,
+    ),
+  });
+  const ui = mount({ plan: withCardio });
+  await openJournal();
+  const list = card()!.querySelector('[data-slot=target-cardio]')!;
+  expect(list, 'cardio follows the strength targets').toBeTruthy();
+  expect(ui.text(list)).toMatch(/Running · Zone 2 · 30 min/);
+  expect(ui.text(list)).toMatch(/Rowing · Interval · 8 × 1:00 work \/ 1:30 recovery/);
+
+  await ui.click('Log cardio: Running · Zone 2 · 30 min');
+  const dialog = await screen.findByRole('dialog', { name: 'New cardio record' });
+  expect(window.location.search).toMatch(/tab=cardio/);
+  expect(within(dialog).getByLabelText('Type')).toHaveValue('running');
+  expect(within(dialog).getByRole('textbox', { name: 'Workout time minutes' })).toHaveValue('30');
+  expect(within(dialog).getByLabelText('Memo (optional)')).toHaveValue(
+    'Routine week 1 · Running · Zone 2 · 30 min',
+  );
+  await ui.click('Close');
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+  // An interval fills in its type and structure, not a time.
+  await userEvent.click(screen.getByRole('radio', { name: 'Strength' }));
+  await waitFor(() => expect(card()?.querySelector('[data-slot=target-cardio]')).toBeTruthy());
+  await ui.click('Log cardio: Rowing · Interval · 8 × 1:00 work / 1:30 recovery');
+  const interval = await screen.findByRole('dialog', { name: 'New cardio record' });
+  expect(within(interval).getByLabelText('Type')).toHaveValue('rowing');
+  expect(within(interval).getByRole('textbox', { name: 'Workout time minutes' })).toHaveValue('');
+  expect(within(interval).getByLabelText('Memo (optional)')).toHaveValue(
+    'Routine week 1 · Rowing · Interval · 8 × 1:00 work / 1:30 recovery',
+  );
+  expect(
+    ui.requests.filter((r) => r.method !== 'GET'),
+    'opening the form saves nothing',
+  ).toHaveLength(0);
 });

@@ -10,6 +10,7 @@ import { Notice } from '../components/ui/notice';
 import { SkeletonList } from '../components/ui/skeleton';
 import { seoulDate } from '../date';
 import { RequestError } from '../lib/api';
+import type { CardioPreset } from '../routine-cardio';
 import { type CardioSession, deleteCardioSession, listCardioSessions } from './api';
 import { CardioForm, type LinkableWorkout } from './cardio-form';
 import { CardioImport } from './cardio-import';
@@ -30,6 +31,8 @@ export function CardioPanel({
   workouts,
   onSessionsChange,
   onChanged,
+  preset,
+  onPresetUsed,
 }: {
   from: string;
   to: string;
@@ -42,6 +45,10 @@ export function CardioPanel({
   onSessionsChange?: (sessions: CardioSession[], status: CardioListStatus) => void;
   // Called after a session is saved or deleted (or found already deleted).
   onChanged?: () => void;
+  // #117: when set, the form opens for a new session filled in from a routine's cardio item;
+  // onPresetUsed tells the caller it was taken, so a later render does not open it again.
+  preset?: CardioPreset | null;
+  onPresetUsed?: () => void;
 }) {
   const [sessions, setSessions] = useState<CardioSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +60,22 @@ export function CardioPanel({
   const [busy, setBusy] = useState(false);
   // undefined: closed, null: a new session, otherwise the session being edited.
   const [editing, setEditing] = useState<CardioSession | null | undefined>();
+  const [formPreset, setFormPreset] = useState<CardioPreset>();
+  // Each preset remounts the form, so one arriving while a form is open is never ignored.
+  const [presetCount, setPresetCount] = useState(0);
+  useEffect(() => {
+    if (!preset) return;
+    setStatus('');
+    setActionError('');
+    setFormPreset(preset);
+    setPresetCount((n) => n + 1);
+    setEditing(null);
+    onPresetUsed?.();
+  }, [preset, onPresetUsed]);
+  const closeForm = () => {
+    setEditing(undefined);
+    setFormPreset(undefined);
+  };
   // #119: the activity file import card under the list.
   const [importing, setImporting] = useState(false);
   const importButton = useRef<HTMLButtonElement>(null);
@@ -190,6 +213,7 @@ export function CardioPanel({
               onClick={() => {
                 setStatus('');
                 setActionError('');
+                setFormPreset(undefined);
                 setEditing(null);
               }}
             >
@@ -221,6 +245,7 @@ export function CardioPanel({
             onEdit={(session) => {
               setStatus('');
               setActionError('');
+              setFormPreset(undefined);
               setEditing(session);
             }}
             onDelete={(session) => void remove(session)}
@@ -242,13 +267,16 @@ export function CardioPanel({
       )}
       {editing !== undefined && (
         <CardioForm
+          key={formPreset ? `preset-${presetCount}` : (editing?.id ?? 'new')}
           session={editing ?? undefined}
-          date={newDate}
+          // A preset session is the routine's cardio for today.
+          date={formPreset ? today : newDate}
+          preset={formPreset}
           today={today}
           workouts={workouts}
-          close={() => setEditing(undefined)}
+          close={closeForm}
           onSaved={() => {
-            setEditing(undefined);
+            closeForm();
             setStatus('Cardio record saved');
             onChanged?.();
             void load();

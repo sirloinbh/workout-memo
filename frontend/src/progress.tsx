@@ -13,6 +13,7 @@ import {
   sessionLabel,
   targetLabel,
 } from './progress-data';
+import { cardioLabel, type CardioPreset, cardioPreset } from './routine-cardio';
 
 // `.legacy p` sets 12px muted text, so paragraphs in this card name their own size.
 const text = 'text-sm text-muted-foreground';
@@ -28,6 +29,7 @@ export function RoutineProgress({
   confirming,
   draftDisabled,
   onQuick,
+  onCardio,
   onRestStart,
   onRestBack,
   onRestConfirm,
@@ -40,6 +42,8 @@ export function RoutineProgress({
   confirming: boolean;
   draftDisabled: boolean;
   onQuick: () => void;
+  // #117: opens a new cardio record filled in from one of today's cardio items.
+  onCardio: (preset: CardioPreset) => void;
   onRestStart: () => void;
   onRestBack: () => void;
   onRestConfirm: () => void;
@@ -147,6 +151,27 @@ export function RoutineProgress({
                     </li>
                   ))}
                 </ul>
+                {today.target.cardio && (
+                  <>
+                    <h4 className="mt-3 text-sm font-semibold">Cardio after strength</h4>
+                    <ul data-slot="target-cardio" className={list}>
+                      {today.target.cardio.map((c, i) => (
+                        <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="font-semibold">{cardioLabel(c)}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            aria-label={`Log cardio: ${cardioLabel(c)}`}
+                            onClick={() => onCardio(cardioPreset(c, today.target!.week))}
+                          >
+                            Log cardio
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   <Button
                     type="button"

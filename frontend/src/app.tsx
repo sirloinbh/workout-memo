@@ -101,6 +101,7 @@ import {
   validDuration,
   withDuration,
 } from './rest-timer';
+import { type CardioPreset } from './routine-cardio';
 import { Routines } from './routines';
 import { AccountActions, SignInGate } from './sign-in';
 const restKindLabels: Record<RestKind, string> = {
@@ -536,6 +537,9 @@ function Workspace() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [progressError, setProgressError] = useState('');
   const [restConfirm, setRestConfirm] = useState(false);
+  // #117: "Log cardio" on today's routine card opens the Cardio tab with a filled-in record.
+  const [cardioPreset, setCardioPreset] = useState<CardioPreset | null>(null);
+  const clearCardioPreset = useCallback(() => setCardioPreset(null), []);
   const [restBusy, setRestBusy] = useState(false);
   const restPending = useRef(false);
   const loadProgress = useCallback(async () => {
@@ -1229,6 +1233,8 @@ function Workspace() {
                 onChanged={() =>
                   void queryClient.invalidateQueries({ queryKey: ['cardio-sessions'] })
                 }
+                preset={cardioPreset}
+                onPresetUsed={clearCardioPreset}
               />
             </>
           )}
@@ -1281,6 +1287,10 @@ function Workspace() {
                   confirming={restConfirm}
                   draftDisabled={!!recovery || saving}
                   onQuick={quickWorkout}
+                  onCardio={(preset) => {
+                    setCardioPreset(preset);
+                    setJournalTab('cardio');
+                  }}
                   onRestStart={() => setRestConfirm(true)}
                   onRestBack={() => setRestConfirm(false)}
                   onRestConfirm={() => void changeRest('POST')}

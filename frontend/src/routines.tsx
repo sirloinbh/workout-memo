@@ -24,6 +24,7 @@ import { SimilarNameHint } from './exercise-names';
 import { bodyPartLabel, plural } from './labels';
 import { cn } from './lib/utils';
 import { byWeek, kindLabel, previewTargets } from './progression';
+import { type CardioItem, cardioLabel, cardioUnit, intensityLabels } from './routine-cardio';
 
 // #102: the routine form on the common components. Selects stay native like the journal's
 // machine select (#101): the tests and the "Free workout" empty value rely on a real <select>.
@@ -50,13 +51,7 @@ type Exercise = {
   rep_max?: number | string;
 };
 // #117: a cardio item as the form holds it; numbers may be '' while typed.
-type Cardio = {
-  kind: CardioKind;
-  intensity: RoutineCardioIntensity;
-  minutes?: number | '';
-  distance_km?: number | '';
-  interval?: { repeats: number | ''; work_sec: number | ''; recovery_sec: number | '' };
-};
+type Cardio = CardioItem;
 type Split = { name: string; body_parts: string[]; exercises: Exercise[]; cardio?: Cardio[] };
 type Week = { week: number; kind: string; amount: number | string; deload_metric: string | null };
 type Plan = {
@@ -193,21 +188,6 @@ const cardioPayload = ({ kind, intensity, minutes, distance_km, interval }: Card
     : minutes !== undefined
       ? { kind, intensity, minutes: Number(minutes) }
       : { kind, intensity, distance_km: Number(distance_km) };
-const intensityLabels: Record<RoutineCardioIntensity, string> = {
-  zone2: 'Zone 2',
-  tempo: 'Tempo',
-  interval: 'Interval',
-  recovery: 'Recovery',
-};
-const seconds = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-const cardioUnit = (c: Cardio) => (c.minutes !== undefined ? 'min' : 'km');
-/** "Running · Zone 2 · 30 min" or "Rowing · Interval · 8 × 1:00 work / 1:30 recovery". */
-function cardioLabel(c: Cardio) {
-  const head = `${cardioKindLabels[c.kind]} · ${intensityLabels[c.intensity]}`;
-  if (c.interval)
-    return `${head} · ${c.interval.repeats} × ${seconds(Number(c.interval.work_sec))} work / ${seconds(Number(c.interval.recovery_sec))} recovery`;
-  return `${head} · ${c.minutes ?? c.distance_km} ${cardioUnit(c)}`;
-}
 // #117: each split's cardio items with their 12 weekly targets (all modes; intervals are fixed).
 function CardioPreview({ splits }: { splits: Split[] }) {
   const items = splits.flatMap((s) => (s.cardio ?? []).map((c) => ({ split: s.name, item: c })));

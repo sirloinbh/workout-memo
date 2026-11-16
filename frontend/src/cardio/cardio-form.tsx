@@ -27,6 +27,7 @@ import {
   fieldErrors,
 } from '../contract';
 import { cn } from '../lib/utils';
+import type { CardioPreset } from '../routine-cardio';
 import { type CardioBody, type CardioSession, saveCardioSession } from './api';
 import {
   cardioKindLabels,
@@ -79,17 +80,26 @@ function convertDistance(text: string, from: CardioKind, to: CardioKind) {
   return String(distanceUnit(to) === 'm' ? kmToMetres(value) : metresToKm(value));
 }
 
-function initialDraft(session: FormSession | undefined, date: string): Draft {
+function initialDraft(
+  session: FormSession | undefined,
+  date: string,
+  preset?: CardioPreset,
+): Draft {
   if (!session)
     return {
-      kind: 'running',
+      kind: preset?.kind ?? 'running',
       date,
-      hours: '',
-      minutes: '',
-      seconds: '',
-      distance: '',
+      ...(preset?.duration_sec !== undefined
+        ? splitDuration(preset.duration_sec)
+        : { hours: '', minutes: '', seconds: '' }),
+      distance:
+        preset?.distance_km === undefined
+          ? ''
+          : preset.kind === 'swimming'
+            ? String(kmToMetres(preset.distance_km))
+            : String(preset.distance_km),
       effort: null,
-      memo: '',
+      memo: preset?.memo ?? '',
       start_time: '',
       workout_id: '',
       avg_heart_rate: '',
@@ -133,6 +143,7 @@ export function CardioForm({
   close,
   onSaved,
   apply,
+  preset,
 }: {
   session?: FormSession;
   // The date a new session starts with.
@@ -142,8 +153,10 @@ export function CardioForm({
   close: () => void;
   onSaved?: (session: CardioSession) => void;
   apply?: (body: CardioBody) => void;
+  // #117: a new session filled in from a routine's cardio item (ignored when editing).
+  preset?: CardioPreset;
 }) {
-  const [draft, setDraft] = useState(() => initialDraft(session, date));
+  const [draft, setDraft] = useState(() => initialDraft(session, date, preset));
   // An edited session that already has any of the hidden values opens with them shown.
   const [more, setMore] = useState(() => moreKeys.some((key) => draft[key as keyof Draft]));
   const [issues, setIssues] = useState<Record<string, string>>({});

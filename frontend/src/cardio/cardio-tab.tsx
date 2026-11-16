@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { StatCard } from '../components/stat-card';
 import { plural } from '../labels';
+import type { CardioPreset } from '../routine-cardio';
 import type { CardioSession } from './api';
 import type { LinkableWorkout } from './cardio-form';
 import { type CardioListStatus, CardioPanel } from './cardio-panel';
@@ -19,6 +20,8 @@ export function CardioTab({
   today,
   workouts,
   onChanged,
+  preset,
+  onPresetUsed,
 }: {
   from: string;
   to: string;
@@ -26,6 +29,9 @@ export function CardioTab({
   workouts: readonly LinkableWorkout[];
   // After a save or delete, e.g. so the dashboard summary loads the period again.
   onChanged?: () => void;
+  // #117: a cardio record to start from today's routine card (see CardioPanel).
+  preset?: CardioPreset | null;
+  onPresetUsed?: () => void;
 }) {
   const [list, setList] = useState<{ sessions: CardioSession[]; status: CardioListStatus }>({
     sessions: [],
@@ -39,6 +45,8 @@ export function CardioTab({
         to={to}
         today={today}
         workouts={workouts}
+        preset={preset}
+        onPresetUsed={onPresetUsed}
         onSessionsChange={(sessions, status) => setList({ sessions, status })}
         onChanged={() => {
           setRefreshKey((key) => key + 1);

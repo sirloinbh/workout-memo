@@ -623,3 +623,47 @@ test('the cardio save button shows a spinner while it saves', async () => {
   saved.resolve();
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Saving…' })).toBeNull());
 });
+
+// #117: "Log cardio" on today's routine card opens a new record filled in from the item.
+test('a routine preset opens a new record filled in for today and saves like any other', async () => {
+  const user = userEvent.setup();
+  const used = vi.fn();
+  const api = mockApi((request) =>
+    request.method === 'POST' ? json({ ...base, id: 9, ...(request.body as object) }, 201) : [],
+  );
+  // A past period: a plain new record would start on its last day, a preset starts today.
+  render(
+    <CardioPanel
+      from="2026-10-26"
+      to="2026-11-01"
+      today={today}
+      workouts={workouts}
+      preset={{ kind: 'swimming', distance_km: 1.5, memo: 'Routine week 3 · Swimming · Zone 2' }}
+      onPresetUsed={used}
+    />,
+  );
+  expect(await screen.findByRole('heading', { name: 'New cardio record' })).toBeInTheDocument();
+  expect(used).toHaveBeenCalledOnce();
+  expect(within(dialog()).getByLabelText('Type')).toHaveValue('swimming');
+  expect(field('Distance m')).toHaveValue('1500');
+  expect(field('Workout time minutes')).toHaveValue('');
+  expect(within(dialog()).getByLabelText('Memo (optional)')).toHaveValue(
+    'Routine week 3 · Swimming · Zone 2',
+  );
+  await user.type(field('Workout time minutes'), '35');
+  await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  const post = api.requests.find((r) => r.method === 'POST')!;
+  expect(post.body).toMatchObject({
+    date: today,
+    kind: 'swimming',
+    duration_sec: 2100,
+    distance_km: 1.5,
+    memo: 'Routine week 3 · Swimming · Zone 2',
+  });
+
+  // "Add cardio record" afterwards starts empty again.
+  await user.click(screen.getByRole('button', { name: 'Add cardio record' }));
+  expect(within(dialog()).getByLabelText('Type')).toHaveValue('running');
+  expect(within(dialog()).getByLabelText('Memo (optional)')).toHaveValue('');
+});

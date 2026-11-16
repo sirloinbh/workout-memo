@@ -150,11 +150,18 @@ for (const { width, height } of touchWidths) {
       await page.getByRole('combobox', { name: 'Exercise name' }).fill('Squat');
       await page.getByLabel('Current total weight (kg, including machine base weight)').fill('100');
       await page.getByLabel('Current reps').fill('8');
+      // #117: a steady and an interval cardio item on the split.
+      await page.getByRole('button', { name: 'Add cardio' }).click();
+      await page.getByLabel('Week 1 minutes').fill('30');
+      await page.getByRole('button', { name: 'Add cardio' }).click();
+      await page.getByLabel('Intensity').nth(1).selectOption('interval');
+      await expect(page.getByLabel('Repeats')).toHaveValue('6');
       expect(await violations(form), 'Step 3').toEqual([]);
       await next.click();
       await step(4);
       // #198: the automatic mode shows the 12 week preview inside the form.
       await openDetails(form);
+      await expect(page.getByRole('heading', { name: 'Cardio · 12 weeks' })).toBeVisible();
       expect(await violations(form), 'Auto preview').toEqual([]);
       expect(await overflow(page), 'Horizontal overflow (px)').toBeLessThanOrEqual(0);
       await page.getByRole('button', { name: '1. Basics' }).click();

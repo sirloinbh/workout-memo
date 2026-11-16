@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
+import { cardioKindLabels } from './cardio/format';
 import { AlertBanner } from './components/alert-banner';
 import { Button } from './components/ui/button';
 import { Card, CardTitle } from './components/ui/card';
@@ -11,7 +12,14 @@ import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
-import { defaultWeightStep } from './contract';
+import {
+  type CardioKind,
+  cardioKinds,
+  cardioWeeklyTargets,
+  defaultWeightStep,
+  routineCardioIntensities,
+  type RoutineCardioIntensity,
+} from './contract';
 import { SimilarNameHint } from './exercise-names';
 import { bodyPartLabel, plural } from './labels';
 import { cn } from './lib/utils';
@@ -41,7 +49,15 @@ type Exercise = {
   rep_min?: number | string;
   rep_max?: number | string;
 };
-type Split = { name: string; body_parts: string[]; exercises: Exercise[] };
+// #117: a cardio item as the form holds it; numbers may be '' while typed.
+type Cardio = {
+  kind: CardioKind;
+  intensity: RoutineCardioIntensity;
+  minutes?: number | '';
+  distance_km?: number | '';
+  interval?: { repeats: number | ''; work_sec: number | ''; recovery_sec: number | '' };
+};
+type Split = { name: string; body_parts: string[]; exercises: Exercise[]; cardio?: Cardio[] };
 type Week = { week: number; kind: string; amount: number | string; deload_metric: string | null };
 type Plan = {
   id?: number;
@@ -150,15 +166,86 @@ function payload(plan: Plan) {
       : { schedule_mode: plan.schedule_mode, cycle: undefined }),
     progression: auto ? 'auto' : 'manual',
     weeks: auto ? undefined : plan.weeks,
-    splits: plan.splits.map((s) => ({
+    splits: plan.splits.map(({ cardio, ...s }) => ({
       ...s,
       // A free exercise omits machine_id, so plans without machines keep their shape.
       exercises: s.exercises.map(({ rep_min, rep_max, machine_id, ...rest }) => {
         const value = machine_id == null ? rest : { ...rest, machine_id };
         return auto ? { ...value, rep_min, rep_max } : value;
       }),
+      // #117: a split without cardio keeps the older plan shape.
+      ...(cardio?.length ? { cardio: cardio.map(cardioPayload) } : {}),
     })),
   };
+}
+// Only the fields of the item's kind of target, as numbers (the inputs are required).
+const cardioPayload = ({ kind, intensity, minutes, distance_km, interval }: Cardio) =>
+  interval
+    ? {
+        kind,
+        intensity,
+        interval: {
+          repeats: Number(interval.repeats),
+          work_sec: Number(interval.work_sec),
+          recovery_sec: Number(interval.recovery_sec),
+        },
+      }
+    : minutes !== undefined
+      ? { kind, intensity, minutes: Number(minutes) }
+      : { kind, intensity, distance_km: Number(distance_km) };
+const intensityLabels: Record<RoutineCardioIntensity, string> = {
+  zone2: 'Zone 2',
+  tempo: 'Tempo',
+  interval: 'Interval',
+  recovery: 'Recovery',
+};
+const seconds = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const cardioUnit = (c: Cardio) => (c.minutes !== undefined ? 'min' : 'km');
+/** "Running · Zone 2 · 30 min" or "Rowing · Interval · 8 × 1:00 work / 1:30 recovery". */
+function cardioLabel(c: Cardio) {
+  const head = `${cardioKindLabels[c.kind]} · ${intensityLabels[c.intensity]}`;
+  if (c.interval)
+    return `${head} · ${c.interval.repeats} × ${seconds(Number(c.interval.work_sec))} work / ${seconds(Number(c.interval.recovery_sec))} recovery`;
+  return `${head} · ${c.minutes ?? c.distance_km} ${cardioUnit(c)}`;
+}
+// #117: each split's cardio items with their 12 weekly targets (all modes; intervals are fixed).
+function CardioPreview({ splits }: { splits: Split[] }) {
+  const items = splits.flatMap((s) => (s.cardio ?? []).map((c) => ({ split: s.name, item: c })));
+  if (!items.length) return null;
+  return (
+    <section data-slot="routine-cardio-preview" className="my-5 rounded-xl border p-4">
+      <h4 className="mb-2 text-body-sm font-semibold">Cardio · 12 weeks</h4>
+      <p className="mb-2 text-meta text-muted-foreground">
+        Done after the split&apos;s strength work. Time or distance goes up 10% a week; weeks 4, 8
+        and 12 are deloads at 80% of the week before. Intervals keep their repeats.
+      </p>
+      <ul className={list}>
+        {items.map(({ split, item }, i) => {
+          const weeks =
+            item.interval || item.minutes === '' || item.distance_km === ''
+              ? null
+              : cardioWeeklyTargets(cardioPayload(item));
+          return (
+            <li key={i} className="[overflow-wrap:anywhere]">
+              <span className="font-medium">
+                {split} · {cardioLabel(item)}
+              </span>
+              {weeks && (
+                <span className="block text-meta text-muted-foreground">
+                  {weeks
+                    .map(
+                      (w) =>
+                        `Week ${w.week}${w.deload ? ' deload' : ''} ${w.target} ${cardioUnit(item)}`,
+                    )
+                    .join(', ')}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 // #86: each exercise's increment comes from the user's per-exercise settings.
 type Steps = Record<string, number>;
@@ -778,6 +865,200 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                     <Plus aria-hidden />
                     Add exercise
                   </Button>
+                  {/* #117: cardio done after this split's strength work. */}
+                  {(s.cardio ?? []).map((c, j) => {
+                    const setCardio = (value: Cardio) =>
+                      changeSplit(i, {
+                        ...s,
+                        cardio: s.cardio!.map((v, k) => (k === j ? value : v)),
+                      });
+                    const number = (v: string) => (v === '' ? '' : Number(v));
+                    // The same names repeat per item and split; screen readers hear which one.
+                    // The space stays outside the hidden span, or the name reads "Intensity(split".
+                    const where = (
+                      <>
+                        {' '}
+                        <span className="sr-only">
+                          (split {i + 1}, cardio {j + 1})
+                        </span>
+                      </>
+                    );
+                    return (
+                      <div
+                        data-slot="routine-cardio"
+                        key={j}
+                        className="mt-3 grid grid-cols-2 items-end gap-3 border-t pt-3 md:grid-cols-3"
+                      >
+                        <Label className={fieldLabel}>
+                          Cardio type{where}
+                          <select
+                            className={nativeSelect}
+                            value={c.kind}
+                            onChange={(e) =>
+                              setCardio({ ...c, kind: e.target.value as CardioKind })
+                            }
+                          >
+                            {cardioKinds.map((k) => (
+                              <option key={k} value={k}>
+                                {cardioKindLabels[k]}
+                              </option>
+                            ))}
+                          </select>
+                        </Label>
+                        <Label className={fieldLabel}>
+                          Intensity{where}
+                          <select
+                            className={nativeSelect}
+                            value={c.intensity}
+                            onChange={(e) => {
+                              const intensity = e.target.value as RoutineCardioIntensity;
+                              // An interval item has repeats instead of a time or distance.
+                              // The typed target stays in the form (not sent while it is an
+                              // interval), so switching back does not lose it.
+                              if (intensity === 'interval')
+                                setCardio({
+                                  ...c,
+                                  intensity,
+                                  interval: c.interval ?? {
+                                    repeats: 6,
+                                    work_sec: 60,
+                                    recovery_sec: 60,
+                                  },
+                                });
+                              else {
+                                const next: Cardio = { ...c, intensity };
+                                delete next.interval;
+                                if (next.minutes === undefined && next.distance_km === undefined)
+                                  next.minutes = '';
+                                setCardio(next);
+                              }
+                            }}
+                          >
+                            {routineCardioIntensities.map((v) => (
+                              <option key={v} value={v}>
+                                {intensityLabels[v]}
+                              </option>
+                            ))}
+                          </select>
+                        </Label>
+                        {c.interval ? (
+                          (['repeats', 'work_sec', 'recovery_sec'] as const).map((key) => (
+                            <Label key={key} className={fieldLabel}>
+                              {
+                                {
+                                  repeats: 'Repeats',
+                                  work_sec: 'Work seconds',
+                                  recovery_sec: 'Recovery seconds',
+                                }[key]
+                              }
+                              {where}
+                              <Input
+                                className={touchText}
+                                required
+                                type="number"
+                                min={key === 'repeats' ? 1 : key === 'work_sec' ? 5 : 0}
+                                max={key === 'repeats' ? 50 : 3600}
+                                value={c.interval![key]}
+                                onChange={(e) =>
+                                  setCardio({
+                                    ...c,
+                                    interval: { ...c.interval!, [key]: number(e.target.value) },
+                                  })
+                                }
+                              />
+                            </Label>
+                          ))
+                        ) : (
+                          <>
+                            <Label className={fieldLabel}>
+                              Target{where}
+                              <select
+                                className={nativeSelect}
+                                value={c.minutes !== undefined ? 'time' : 'distance'}
+                                onChange={(e) =>
+                                  setCardio(
+                                    e.target.value === 'time'
+                                      ? { kind: c.kind, intensity: c.intensity, minutes: '' }
+                                      : { kind: c.kind, intensity: c.intensity, distance_km: '' },
+                                  )
+                                }
+                              >
+                                <option value="time">Time</option>
+                                <option value="distance">Distance</option>
+                              </select>
+                            </Label>
+                            {c.minutes !== undefined ? (
+                              <Label className={fieldLabel}>
+                                Week 1 minutes{where}
+                                <Input
+                                  className={touchText}
+                                  required
+                                  type="number"
+                                  min={1}
+                                  max={600}
+                                  value={c.minutes}
+                                  onChange={(e) =>
+                                    setCardio({ ...c, minutes: number(e.target.value) })
+                                  }
+                                />
+                              </Label>
+                            ) : (
+                              <Label className={fieldLabel}>
+                                Week 1 km{where}
+                                <Input
+                                  className={touchText}
+                                  required
+                                  type="number"
+                                  min={0.1}
+                                  max={500}
+                                  step={0.1}
+                                  value={c.distance_km}
+                                  onChange={(e) =>
+                                    setCardio({ ...c, distance_km: number(e.target.value) })
+                                  }
+                                />
+                              </Label>
+                            )}
+                          </>
+                        )}
+                        <div className="col-span-2 flex items-end md:col-span-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            aria-label={`Delete split ${i + 1} cardio ${j + 1}`}
+                            onClick={() =>
+                              changeSplit(i, {
+                                ...s,
+                                cardio: s.cardio!.filter((_, k) => k !== j),
+                              })
+                            }
+                          >
+                            Delete cardio
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    // Beside Add exercise until cardio items come between them.
+                    className={cn('mt-3', !s.cardio?.length && 'ml-2')}
+                    disabled={(s.cardio?.length ?? 0) >= 10}
+                    onClick={() =>
+                      changeSplit(i, {
+                        ...s,
+                        cardio: [
+                          ...(s.cardio ?? []),
+                          { kind: 'running', intensity: 'zone2', minutes: '' },
+                        ],
+                      })
+                    }
+                  >
+                    <Plus aria-hidden />
+                    Add cardio
+                  </Button>
                 </fieldset>
               ))}
             {step === 3 && draft.progression === 'auto' && (
@@ -787,6 +1068,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                 <Preview plan={draft} steps={steps} />
               </>
             )}
+            {step === 3 && <CardioPreview splits={draft.splits} />}
             {step === 3 &&
               draft.progression !== 'auto' &&
               draft.weeks?.map((w, i) => (
@@ -951,9 +1233,15 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                         ` · Rep range ${ex.rep_min}–${ex.rep_max} · Increase step ${stepOf(steps, ex.exercise)} kg`}
                     </li>
                   ))}
+                  {s.cardio?.map((c, j) => (
+                    <li key={`cardio-${j}`} className="[overflow-wrap:anywhere]">
+                      Cardio · {cardioLabel(c)}
+                    </li>
+                  ))}
                 </ul>
               </section>
             ))}
+            <CardioPreview splits={selected.splits} />
             {selected.progression === 'auto' ? (
               <>
                 <p className={cn(hint, 'mt-4')}>Auto · double progressive overload. {autoRule}</p>

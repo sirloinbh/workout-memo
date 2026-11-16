@@ -2326,6 +2326,77 @@
                   },
                   "minItems": 1,
                   "maxItems": 100
+                },
+                "cardio": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "running",
+                          "walking",
+                          "outdoor_cycling",
+                          "indoor_cycling",
+                          "rowing",
+                          "stairs",
+                          "elliptical",
+                          "swimming",
+                          "other"
+                        ]
+                      },
+                      "intensity": {
+                        "type": "string",
+                        "enum": [
+                          "zone2",
+                          "tempo",
+                          "interval",
+                          "recovery"
+                        ]
+                      },
+                      "minutes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 600
+                      },
+                      "distance_km": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 500
+                      },
+                      "interval": {
+                        "type": "object",
+                        "properties": {
+                          "repeats": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                          },
+                          "work_sec": {
+                            "type": "integer",
+                            "minimum": 5,
+                            "maximum": 3600
+                          },
+                          "recovery_sec": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3600
+                          }
+                        },
+                        "required": [
+                          "repeats",
+                          "work_sec",
+                          "recovery_sec"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "intensity"
+                    ]
+                  },
+                  "maxItems": 10
                 }
               },
               "required": [

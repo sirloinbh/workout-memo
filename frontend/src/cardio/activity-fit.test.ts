@@ -1,4 +1,5 @@
 import {
+  CrcCalculator,
   type Encodable,
   Encoder,
   type FileIdMesg,
@@ -153,6 +154,19 @@ describe('FIT activity files (#119)', () => {
     ]);
     expect((await readActivityFile('settings.fit', fit([], 'settings'))).problems).toEqual([
       'settings.fit: No activity summary found. Only activity FIT files can be imported.',
+    ]);
+  });
+
+  it('reports a file that passes the CRC but cannot be decoded as damaged', async () => {
+    // The first record becomes data for a local message that was never defined, and the CRC
+    // is written again, so only the decoder finds the problem.
+    const bytes = fit([]);
+    bytes[14] = 0x05;
+    const crc = CrcCalculator.calculateCRC(bytes, 0, bytes.length - 2);
+    bytes[bytes.length - 2] = crc & 0xff;
+    bytes[bytes.length - 1] = crc >> 8;
+    expect((await readActivityFile('odd.fit', bytes)).problems).toEqual([
+      'odd.fit: Could not read the file. It is damaged.',
     ]);
   });
 

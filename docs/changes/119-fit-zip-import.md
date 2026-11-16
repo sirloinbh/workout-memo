@@ -14,7 +14,7 @@ Read Garmin FIT files and ZIP archives (one activity's "Export Original", or a w
 1. Packages: `@garmin/fitsdk` 21.218.0 and `fflate` 0.8.3, installed by the user with `npm install --ignore-scripts --save-exact -w frontend`. 21.218.0 is the newest FIT SDK version at least 14 days old (21.221.0 was 13 days old).
 2. FIT is read in the browser with the SDK. The SDK is under the Garmin FIT Protocol License, which calls it confidential and forbids making it available to third parties (section 2c). Reading in the browser serves it with the public site, and the user accepted that.
 3. The user provides 1–2 real Garmin FIT exports for the tests. GPS and personal data are removed before anything is committed.
-4. More than 200 chosen rows are saved in batches of 200, oldest first. Each batch is all or nothing. A refused batch stops the save, and the batches before it stay saved.
+4. More than 200 chosen rows are saved in batches of 200, in the order of the table (start time as read). Each batch is all or nothing. A refused batch stops the save, and the batches before it stay saved.
 
 ## Package check
 
@@ -40,7 +40,7 @@ Read Garmin FIT files and ZIP archives (one activity's "Export Original", or a w
     - The external ID is the start instant, as for TCX and GPX, so a FIT and a TCX of the same activity share it ("Same activity as row N" / "Already imported").
     - Out-of-range values are left empty, as for TCX and GPX.
     - Errors by file name: not a FIT file, damaged (the CRC check fails, or decoding fails before any session), and a FIT file without an activity summary (for example a settings file; inside a ZIP these are only counted, see review round 1).
-  - `readActivityFile(name, bytes)`: one chosen file → `{ activities, problems }`. ZIP (by extension or the `PK` signature) is opened with `fflate`, also loaded on demand. Activity files inside are read the same way and named `archive.zip › file.fit`. One nested ZIP level is opened, as in Garmin's whole-account export. Other entries (JSON, images, `__MACOSX`, dot files) are skipped. A damaged ZIP and a ZIP without activity files are reported. FIT is also told by its `.FIT` signature when the name has no extension. A bad file inside a ZIP does not stop the others.
+  - `readActivityFile(name, bytes)`: one chosen file → `{ activities, problems, skipped }`. ZIP (by extension or the `PK` signature) is opened with `fflate`, also loaded on demand. Activity files inside are read the same way and named `archive.zip › file.fit`. One nested ZIP level is opened, as in Garmin's whole-account export. Other entries (JSON, images, `__MACOSX`, dot files) are skipped. A damaged ZIP and a ZIP without activity files are reported. FIT is also told by its `.FIT` signature when the name has no extension. A bad file inside a ZIP does not stop the others.
   - The file chooser accepts `.tcx,.gpx,.fit,.zip`, and the unknown-format message names all four.
 - `frontend/src/cardio/cardio-import.tsx`:
   - Files are read as bytes through `readActivityFile`. While they are read, the status says "Reading files…".
@@ -63,7 +63,7 @@ Read Garmin FIT files and ZIP archives (one activity's "Export Original", or a w
 - `frontend/src/cardio/activity-file.test.ts`: the unknown-format message names FIT and ZIP.
 - `frontend/src/cardio/cardio-import.test.tsx` (label renamed):
   - A FIT file inside a ZIP previewed and saved, with its elevation gain.
-  - 205 rows saved in two requests of 200 and 5, oldest first.
+  - 205 rows saved in two requests of 200 and 5, in table order.
   - A refused second batch: the 200 saved rows leave the table, the reason sits on the refused row, and the panel reloads its list.
 - `e2e/cardio-import.spec.ts`: the label renamed. A new test reads a FIT run inside a ZIP in real Chrome (the lazily loaded chunks), saves it and sees it in the list. The cleanup also removes its ID.
 
@@ -105,7 +105,7 @@ Applied:
 - **Timer time of 0:** the duration falls back to the elapsed time, instead of a 0-second row that fails validation.
 - **Decoder errors:** `Decoder.read()` returns errors instead of throwing, so the dead `try`/`catch` is gone. A file whose decoding failed with no sessions is now reported as damaged, not as "No activity summary". Sessions read before a later error (for example a damaged second file chained after the first) are still used.
 - **Unopenable file:** a file that cannot be read after it was chosen (moved or deleted) is named in the errors ("Could not open the file. Choose it again."), and the other files are still read. Before, the card stayed on "Reading files…".
-- **Save order wording:** batches follow the table order, which is the start time as read; an edited date does not re-sort. The note now says "in the order of the table", and this record's "oldest first" means that order.
+- **Save order wording:** batches follow the table order, which is the start time as read; an edited date does not re-sort. The note now says "in the order of the table", and this record says the same.
 
 Tests added: the timer fallback, a session without a start time, the counted non-activity FIT files (top level and nested), the 50 MB cap, and the unopenable file on the card.
 
@@ -115,3 +115,22 @@ Not applied:
 - A guard against a fast second click after a partial save: the server's unique index refuses a duplicate with 409, and the card then reloads.
 
 Checks: `vitest run src/cardio` 10 files, 97 passed; `typecheck` and `eslint` passed.
+
+## Review round 2
+
+No blocking findings. The reviewer confirmed each round 1 fix against the SDK and fflate sources:
+
+- Only non-activity FIT files inside a ZIP are counted; a standalone one keeps its own error.
+- The skipped count is summed through nested ZIPs and reported once.
+- The 50 MB filter reads the central directory's size, and `unzipSync` never allocates more than that size for an entry.
+- Problems pushed inside the filter are dropped if the ZIP then fails to open.
+
+Applied:
+
+- A test for a FIT file that passes the CRC but fails to decode, which is now reported as damaged.
+- Stale "oldest first" wording in this record, and the `skipped` field in the `readActivityFile` description.
+
+Not applied (noted):
+
+- Nested ZIPs are not capped. A forged size of several GB fails to allocate and is reported as a damaged ZIP.
+- Sessions read before a later decoding error are kept without telling the user that part of the file was dropped.

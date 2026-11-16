@@ -112,3 +112,13 @@ The two notes are already listed under Limits, so nothing changed in the code:
 
 - A distance item can still take a record that a time item of the same type needed (not a regression).
 - When two splits' windows overlap, the earlier session takes the record. This follows the decided rule.
+
+## Merge with main
+
+Merged `origin/main` (#312 View plan confirm, #303 managed sign-in check, the standards sync) with no conflicts. Checks on the merged tree:
+
+| Command                                                           | Result                |
+| ----------------------------------------------------------------- | --------------------- |
+| `npm run test -w backend` (throwaway DB)                          | 388 passed, 0 skipped |
+| `vitest run routines routine-progress auth-origin sign-in cardio` | 13 files, 112 passed  |
+| `typecheck`, `contract:check`, `prettier --check .`               | passed                |

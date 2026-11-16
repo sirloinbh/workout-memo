@@ -686,3 +686,56 @@ test('removing a cardio item or switching it to distance keeps one target (#117)
   ui.next();
   expect(screen.queryByRole('heading', { name: 'Cardio · 12 weeks' })).toBeNull();
 });
+
+test('View plan asks before it discards an open draft, and Keep editing keeps it (#312)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('Create new routine');
+  await ui.change('Routine name', 'Unsaved routine');
+  await ui.click('View plan');
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Discard the new routine you are entering?',
+  });
+  expect(ui.requests.some((r) => r.path === '/api/routines/27')).toBe(false);
+
+  await ui.user.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(screen.getByRole('button', { name: 'View plan' })).toHaveFocus();
+  expect(ui.form()).toHaveLength(1);
+  expect(screen.getByDisplayValue('Unsaved routine')).toBeInTheDocument();
+  expect(ui.requests.some((r) => r.path === '/api/routines/27')).toBe(false);
+
+  await ui.click('View plan');
+  const again = await screen.findByRole('dialog');
+  await ui.user.click(within(again).getByRole('button', { name: 'Discard and view plan' }));
+  await screen.findByRole('region', { name: 'Manual 12-week routine' });
+  expect(ui.form()).toHaveLength(0);
+});
+
+test('View plan without a draft opens the plan without asking (#312)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('View plan');
+  await screen.findByRole('region', { name: 'Manual 12-week routine' });
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(ui.form()).toHaveLength(0);
+});
+
+test('a plan that fails to load after Discard keeps the draft and shows the error (#312)', async () => {
+  const ui = mount();
+  const fetch = vi.mocked(globalThis.fetch);
+  const real = fetch.getMockImplementation()!;
+  fetch.mockImplementation(async (input, init) =>
+    String(input).endsWith('/api/routines/27')
+      ? json({ error: 'Plan lookup failed' }, 503)
+      : real(input, init),
+  );
+  await openRoutines();
+  await ui.click('Create new routine');
+  await ui.change('Routine name', 'Unsaved routine');
+  await ui.click('View plan');
+  await ui.user.click(await screen.findByRole('button', { name: 'Discard and view plan' }));
+  expect(await screen.findByText('Plan lookup failed')).toBeInTheDocument();
+  expect(ui.form()).toHaveLength(1);
+  expect(screen.getByDisplayValue('Unsaved routine')).toBeInTheDocument();
+});

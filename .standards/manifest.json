@@ -1,5 +1,5 @@
 {
-  "centralSha": "a0890cfe2de43403c6c740ec20408636a5e3b523",
+  "centralSha": "fed37ba151aa56f71a19eaf3f2f80b007ffdde2d",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -837,7 +837,8 @@
     "@sirloinbh/eslint-config": "1.1.0",
     "@sirloinbh/prettier-config": "1.0.0",
     "@sirloinbh/tsconfig": "1.0.0",
-    "@sirloinbh/design-tokens": "1.0.0"
+    "@sirloinbh/design-tokens": "1.0.0",
+    "@sirloinbh/auth-client": "1.0.0"
   },
   "registry": {
     "ports": {

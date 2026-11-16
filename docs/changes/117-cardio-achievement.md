@@ -99,3 +99,16 @@ Not applied:
 | `npm run test -w backend` (throwaway DB)              | 388 passed, 0 skipped |
 | `vitest run src/routine-progress.test.tsx src/cardio` | 90 passed             |
 | `lint`, `typecheck`                                   | passed                |
+
+## Review round 2
+
+No blocking findings. The reviewer confirmed:
+
+- The demanding-first order writes results back in item order, sorts stably and leaves the counts unchanged.
+- Excluded items carry `result: null`, and the table lists a session's cardio once.
+- The greedy-order test fails without the fix. The excluded `result: null` assertion fails without it too, while the plan-end and rest assertions add coverage.
+
+The two notes are already listed under Limits, so nothing changed in the code:
+
+- A distance item can still take a record that a time item of the same type needed (not a regression).
+- When two splits' windows overlap, the earlier session takes the record. This follows the decided rule.

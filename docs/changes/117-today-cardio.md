@@ -80,3 +80,15 @@ Not applied:
 | `npm run test:e2e -- e2e/cardio-routine.spec.ts e2e/cardio.spec.ts e2e/custom-range.spec.ts e2e/layout.spec.ts` | 7 passed            |
 | `vitest run src/cardio src/routine-progress.test.tsx`                                                           | 10 files, 89 passed |
 | `lint`, `typecheck`, `format:check`                                                                             | passed              |
+
+## Review round 2
+
+No blocking findings. The reviewer confirmed:
+
+- The form `key` changes only when a preset arrives. Typing, list reloads and parent re-renders don't remount the form, and Save and Close unmount it cleanly.
+- "Add cardio record" and editing behave as before.
+- The axe `include` selector matches the routine card itself, not its loading placeholder.
+
+Applied the nit: "Edit" also clears the preset, like "Add cardio record". It no longer depends on the modal blocking the list behind it.
+
+Checks: `vitest run src/cardio src/routine-progress.test.tsx` passed, and `lint`, `typecheck` and `format:check` passed.

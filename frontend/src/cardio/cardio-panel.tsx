@@ -245,6 +245,7 @@ export function CardioPanel({
             onEdit={(session) => {
               setStatus('');
               setActionError('');
+              setFormPreset(undefined);
               setEditing(session);
             }}
             onDelete={(session) => void remove(session)}

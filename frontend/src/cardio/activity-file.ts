@@ -29,6 +29,9 @@ export type ImportedActivity = {
 
 // A file that could not be read at all. Its message names the file and is shown as is.
 export class ActivityFileError extends Error {}
+// A FIT file that is not an activity (settings, daily health data, ...). A whole-account export
+// holds many; inside a ZIP they are counted into one line instead of one error each.
+class NotActivityError extends ActivityFileError {}
 
 const seoulParts = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Seoul',
@@ -315,22 +318,23 @@ export async function parseFit(file: string, bytes: Uint8Array): Promise<Importe
   const decoder = new Decoder(stream);
   // The CRC check catches a cut-off download as well as a damaged file.
   if (!decoder.checkIntegrity()) throw damaged(file);
-  let sessions;
-  try {
-    sessions = (decoder.read().messages.sessionMesgs ?? []).filter((s) => s.sport !== 'transition');
-  } catch {
-    throw damaged(file);
-  }
+  // read() reports decoding problems in `errors` instead of throwing. Sessions read before a
+  // problem (e.g. in a damaged second file chained after the first) are still used.
+  const { messages, errors } = decoder.read();
+  const sessions = (messages.sessionMesgs ?? []).filter((s) => s.sport !== 'transition');
   if (!sessions.length)
-    throw new ActivityFileError(
-      `${file}: No activity summary found. Only activity FIT files can be imported.`,
-    );
+    throw errors.length
+      ? damaged(file)
+      : new NotActivityError(
+          `${file}: No activity summary found. Only activity FIT files can be imported.`,
+        );
   return sessions.map((session, index) => {
     const name = sessions.length > 1 ? `${file} (${index + 1})` : file;
     if (!(session.startTime instanceof Date))
       throw new ActivityFileError(`${name}: No start time found.`);
     const kind = fitKind(session.sport, session.subSport);
-    const seconds = session.totalTimerTime ?? session.totalElapsedTime;
+    // A device that leaves the timer at 0 still has the elapsed time.
+    const seconds = session.totalTimerTime || session.totalElapsedTime;
     return finish(name, 'fit', session.startTime, {
       kind,
       duration_sec: typeof seconds === 'number' ? Math.round(seconds) : 0,
@@ -364,7 +368,8 @@ export function parseActivityFile(file: string, text: string): ImportedActivity[
 
 // What one chosen file gave: its activities, and a message for each file (or file inside a
 // ZIP) that could not be read. One bad file never stops the rest.
-export type ReadResult = { activities: ImportedActivity[]; problems: string[] };
+// `skipped` counts FIT files inside a ZIP that are not activities.
+export type ReadResult = { activities: ImportedActivity[]; problems: string[]; skipped: number };
 
 const extensionOf = (name: string) => name.toLowerCase().split('.').pop() ?? '';
 const startsWith = (bytes: Uint8Array, text: string, at = 0) =>
@@ -378,6 +383,9 @@ const activityEntry = (path: string, depth: number) => {
   const extension = extensionOf(base);
   return ['tcx', 'gpx', 'fit'].includes(extension) || (extension === 'zip' && depth < zipDepth);
 };
+// One activity file is a few MB at most. A larger entry is not unpacked, so a hostile ZIP cannot
+// fill the memory; the nested ZIPs of an account export are not capped.
+const maxEntryBytes = 50 * 1024 * 1024;
 
 // One chosen file → its activities. TCX and GPX are text; FIT is binary and is told by its
 // ".FIT" signature as well as by its extension; a ZIP is opened and each activity file inside is
@@ -388,43 +396,61 @@ export async function readActivityFile(
   depth = 0,
 ): Promise<ReadResult> {
   const extension = extensionOf(file);
+  const nameOf = (path: string) => `${file} › ${path.split('/').pop()}`;
+  const failed = (problem: string): ReadResult => ({
+    activities: [],
+    problems: [problem],
+    skipped: 0,
+  });
   try {
     if (extension === 'zip' || startsWith(bytes, 'PK\x03\x04')) {
       const { unzipSync } = await import('fflate');
+      const out: ReadResult = { activities: [], problems: [], skipped: 0 };
       let entries: Record<string, Uint8Array>;
       try {
-        entries = unzipSync(bytes, { filter: (entry) => activityEntry(entry.name, depth + 1) });
+        entries = unzipSync(bytes, {
+          filter: (entry) => {
+            if (!activityEntry(entry.name, depth + 1)) return false;
+            if (extensionOf(entry.name) === 'zip' || entry.originalSize <= maxEntryBytes)
+              return true;
+            out.problems.push(
+              `${nameOf(entry.name)}: Too large for an activity file (over 50 MB).`,
+            );
+            return false;
+          },
+        });
       } catch {
-        return {
-          activities: [],
-          problems: [`${file}: Could not open the ZIP file. It is damaged.`],
-        };
+        return failed(`${file}: Could not open the ZIP file. It is damaged.`);
       }
       const paths = Object.keys(entries).sort();
-      if (!paths.length)
-        return {
-          activities: [],
-          problems: [`${file}: No TCX, GPX or FIT files found in the ZIP file.`],
-        };
-      const out: ReadResult = { activities: [], problems: [] };
+      if (!paths.length && !out.problems.length)
+        return failed(`${file}: No TCX, GPX or FIT files found in the ZIP file.`);
       for (const path of paths) {
-        const inner = await readActivityFile(
-          `${file} › ${path.split('/').pop()}`,
-          entries[path],
-          depth + 1,
-        );
+        const inner = await readActivityFile(nameOf(path), entries[path], depth + 1);
         out.activities.push(...inner.activities);
         out.problems.push(...inner.problems);
+        out.skipped += inner.skipped;
+      }
+      // Reported once, by the ZIP the user chose.
+      if (depth === 0 && out.skipped) {
+        out.problems.push(
+          `${file}: Skipped ${out.skipped} FIT ${out.skipped === 1 ? 'file' : 'files'} without an activity summary (such as settings or daily health data).`,
+        );
+        out.skipped = 0;
       }
       return out;
     }
     if (extension === 'fit' || startsWith(bytes, '.FIT', 8))
-      return { activities: await parseFit(file, bytes), problems: [] };
-    return { activities: parseActivityFile(file, new TextDecoder().decode(bytes)), problems: [] };
-  } catch (e) {
+      return { activities: await parseFit(file, bytes), problems: [], skipped: 0 };
     return {
-      activities: [],
-      problems: [e instanceof ActivityFileError ? e.message : damaged(file).message],
+      activities: parseActivityFile(file, new TextDecoder().decode(bytes)),
+      problems: [],
+      skipped: 0,
     };
+  } catch (e) {
+    // Inside a ZIP, a non-activity FIT file is only counted.
+    if (e instanceof NotActivityError && depth > 0)
+      return { activities: [], problems: [], skipped: 1 };
+    return failed(e instanceof ActivityFileError ? e.message : damaged(file).message);
   }
 }

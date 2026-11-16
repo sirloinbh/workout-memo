@@ -129,12 +129,24 @@ describe('FIT activity files (#119)', () => {
     });
   });
 
+  it('falls back to the elapsed time when the timer time is 0', async () => {
+    const [activity] = await parseFit('a.fit', fit([{ ...runSession, totalTimerTime: 0 }]));
+    expect(activity.duration_sec).toBe(1950);
+  });
+
+  it('refuses a session without a start time', async () => {
+    expect(
+      (await readActivityFile('a.fit', fit([{ ...runSession, startTime: undefined }]))).problems,
+    ).toEqual(['a.fit: No start time found.']);
+  });
+
   it('reports a damaged, foreign or non-activity FIT file by name', async () => {
     const damaged = fit([runSession]);
     damaged[damaged.length - 5] ^= 0xff;
     expect(await readActivityFile('cut.fit', damaged)).toEqual({
       activities: [],
       problems: ['cut.fit: Could not read the file. It is damaged.'],
+      skipped: 0,
     });
     expect((await readActivityFile('a.fit', text('<gpx></gpx>'))).problems).toEqual([
       'a.fit: Not a FIT file.',
@@ -190,5 +202,31 @@ describe('ZIP files (#119)', () => {
     expect(
       (await readActivityFile('photos.zip', zipSync({ 'a.jpg': text('x') }))).problems,
     ).toEqual(['photos.zip: No TCX, GPX or FIT files found in the ZIP file.']);
+  });
+
+  it('counts non-activity FIT files in a ZIP into one line', async () => {
+    const archive = zipSync({
+      'run.fit': fit([runSession]),
+      'settings.fit': fit([], 'settings'),
+      'Part1.zip': zipSync({ 'monitor.fit': fit([], 'monitoringB') }),
+    });
+    const read = await readActivityFile('export.zip', archive);
+    expect(read.activities).toHaveLength(1);
+    expect(read.problems).toEqual([
+      'export.zip: Skipped 2 FIT files without an activity summary (such as settings or daily health data).',
+    ]);
+    expect(read.skipped).toBe(0);
+  });
+
+  it('does not unpack an activity entry over 50 MB', async () => {
+    const archive = zipSync({
+      'run.fit': fit([runSession]),
+      'huge.fit': new Uint8Array(51 * 1024 * 1024),
+    });
+    const read = await readActivityFile('export.zip', archive);
+    expect(read.activities).toHaveLength(1);
+    expect(read.problems).toEqual([
+      'export.zip › huge.fit: Too large for an activity file (over 50 MB).',
+    ]);
   });
 });

@@ -165,7 +165,8 @@ function summaryOf(body: CardioBody) {
 // (2026-11-08 user decisions). Files are read in this browser and never uploaded or kept. The
 // table edits the save check, kind, date and start time; "Edit" opens CardioForm without saving
 // for the rest. Up to 200 chosen rows are saved together, all or none; more go in batches of
-// 200 in date order, and a refused batch stops the save with the batches before it kept.
+// 200 in table order (start time as read), and a refused batch stops the save with the batches
+// before it kept.
 export function CardioImport({
   today,
   workouts,
@@ -238,7 +239,15 @@ export function CardioImport({
     const found: ImportedActivity[] = [];
     const problems: string[] = [];
     for (const file of files) {
-      const read = await readActivityFile(file.name, new Uint8Array(await file.arrayBuffer()));
+      let bytes: Uint8Array;
+      try {
+        bytes = new Uint8Array(await file.arrayBuffer());
+      } catch {
+        // E.g. the file was moved or deleted after it was chosen.
+        problems.push(`${file.name}: Could not open the file. Choose it again.`);
+        continue;
+      }
+      const read = await readActivityFile(file.name, bytes);
       found.push(...read.activities);
       problems.push(...read.problems);
     }
@@ -508,8 +517,8 @@ export function CardioImport({
             </div>
             {chosen.length > importLimit && (
               <p className={formHint}>
-                The records are saved {importLimit} at a time, oldest first. If a batch is refused,
-                saving stops there and the batches before it stay saved.
+                The records are saved {importLimit} at a time, in the order of the table. If a batch
+                is refused, saving stops there and the batches before it stay saved.
               </p>
             )}
             <div className="flex flex-wrap gap-2">

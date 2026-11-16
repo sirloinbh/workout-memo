@@ -341,13 +341,15 @@ async function chooseMany(user: ReturnType<typeof userEvent.setup>) {
 const sent = (request: ApiRequest) =>
   (request.body as { sessions: { external_id: string }[] }).sessions;
 
-test('more than 200 chosen rows are saved in batches of 200, oldest first', async () => {
+test('more than 200 chosen rows are saved in batches of 200, in table order', async () => {
   const user = userEvent.setup();
   const api = setup([], (request) =>
     json({ sessions: sent(request).map((_, id) => ({ id })) }, 201),
   );
   const card = await chooseMany(user);
-  expect(within(card).getByText(/saved 200 at a time, oldest first/)).toBeInTheDocument();
+  expect(
+    within(card).getByText(/saved 200 at a time, in the order of the table/),
+  ).toBeInTheDocument();
   await user.click(within(card).getByRole('button', { name: 'Save 205 selected' }));
   expect(await screen.findByText('Imported 205 cardio records')).toBeInTheDocument();
   const [first, second] = imports(api.requests);
@@ -396,3 +398,22 @@ test('a refused batch stops the save and keeps the batches before it', async () 
   await waitFor(() => expect(panelLoads()).toBeGreaterThan(before));
   expect(imports(api.requests)).toHaveLength(2);
 }, 30000);
+
+test('a file that cannot be opened is named, and the other files are still read', async () => {
+  const user = userEvent.setup();
+  setup([]);
+  await user.click(await screen.findByRole('button', { name: 'Import file' }));
+  const card = screen.getByRole('region', { name: 'Import activity file' });
+  // E.g. moved or deleted after it was chosen.
+  const gone = new File(['x'], 'gone.fit');
+  gone.arrayBuffer = () => Promise.reject(new Error('NotFoundError'));
+  await user.upload(within(card).getByLabelText('Activity file (TCX/GPX/FIT/ZIP)'), [
+    gone,
+    new File([run], 'run.tcx'),
+  ]);
+  await within(card).findByRole('region', { name: 'Import preview' });
+  expect(
+    within(card).getByText('gone.fit: Could not open the file. Choose it again.'),
+  ).toBeInTheDocument();
+  expect(within(card).getByLabelText('Activity file (TCX/GPX/FIT/ZIP)')).toBeEnabled();
+});

@@ -39,7 +39,7 @@ Read Garmin FIT files and ZIP archives (one activity's "Export Original", or a w
     - Kinds: running, walking and hiking, cycling (indoor for `indoorCycling`, `spin` and `virtualActivity`), swimming, rowing, and the fitness equipment sub sports (treadmill → Running, indoor rowing → Rowing, elliptical, stair climbing → Stairs, indoor cycling, indoor walking). Anything else is Other.
     - The external ID is the start instant, as for TCX and GPX, so a FIT and a TCX of the same activity share it ("Same activity as row N" / "Already imported").
     - Out-of-range values are left empty, as for TCX and GPX.
-    - Errors by file name: not a FIT file, damaged (CRC or decoding failure), and a FIT file without an activity summary (for example a settings file).
+    - Errors by file name: not a FIT file, damaged (the CRC check fails, or decoding fails before any session), and a FIT file without an activity summary (for example a settings file; inside a ZIP these are only counted, see review round 1).
   - `readActivityFile(name, bytes)`: one chosen file → `{ activities, problems }`. ZIP (by extension or the `PK` signature) is opened with `fflate`, also loaded on demand. Activity files inside are read the same way and named `archive.zip › file.fit`. One nested ZIP level is opened, as in Garmin's whole-account export. Other entries (JSON, images, `__MACOSX`, dot files) are skipped. A damaged ZIP and a ZIP without activity files are reported. FIT is also told by its `.FIT` signature when the name has no extension. A bad file inside a ZIP does not stop the others.
   - The file chooser accepts `.tcx,.gpx,.fit,.zip`, and the unknown-format message names all four.
 - `frontend/src/cardio/cardio-import.tsx`:
@@ -88,3 +88,30 @@ Local test DB: a throwaway `postgres:17-alpine` container on 127.0.0.1:15468 (tm
 - A whole-account export is read entirely in memory (`unzipSync`, with only activity entries decompressed). A very large export may be slow or run out of memory on a phone.
 - The preview renders every row. Hundreds of rows work, but thousands make the table and its duplicate check slow.
 - A batch refused part way leaves the earlier batches saved by design (decision 4). Re-importing the same files is safe, because saved rows are blocked as "Already imported".
+
+## Review round 1
+
+No blocking findings. The reviewer checked against the SDK source:
+
+- the units after `applyScaleAndOffset`, and the `Date` start time;
+- that `checkIntegrity` accepts a header CRC of 0 and a 12-byte header;
+- that exactly one nested ZIP level opens;
+- the row-index mapping of a refused batch, and the single reload after a partial save.
+
+Applied:
+
+- **Non-activity FIT files in a ZIP** (settings, daily health data) are counted into one line ("Skipped N FIT files without an activity summary …") reported by the chosen ZIP. Before, each one was its own error line, which would bury the real problems of a whole-account export.
+- **Size cap:** an activity entry over 50 MB inside a ZIP is not unpacked and is reported ("Too large for an activity file"). Nested ZIPs are not capped.
+- **Timer time of 0:** the duration falls back to the elapsed time, instead of a 0-second row that fails validation.
+- **Decoder errors:** `Decoder.read()` returns errors instead of throwing, so the dead `try`/`catch` is gone. A file whose decoding failed with no sessions is now reported as damaged, not as "No activity summary". Sessions read before a later error (for example a damaged second file chained after the first) are still used.
+- **Unopenable file:** a file that cannot be read after it was chosen (moved or deleted) is named in the errors ("Could not open the file. Choose it again."), and the other files are still read. Before, the card stayed on "Reading files…".
+- **Save order wording:** batches follow the table order, which is the start time as read; an edited date does not re-sort. The note now says "in the order of the table", and this record's "oldest first" means that order.
+
+Tests added: the timer fallback, a session without a start time, the counted non-activity FIT files (top level and nested), the 50 MB cap, and the unopenable file on the card.
+
+Not applied:
+
+- Full paths for ZIP entry names: Garmin's file names are unique IDs, and full export paths would make the labels very long.
+- A guard against a fast second click after a partial save: the server's unique index refuses a duplicate with 409, and the card then reloads.
+
+Checks: `vitest run src/cardio` 10 files, 97 passed; `typecheck` and `eslint` passed.

@@ -10,6 +10,7 @@ import {
   routineSchema,
 } from '../domain.js';
 import {
+  type CardioRecord,
   exerciseKey,
   isAuto,
   planEndDate,
@@ -84,10 +85,28 @@ async function weightSteps(db: Db) {
     ]),
   );
 }
+// #117: the saved cardio records a routine with cardio is judged against.
+async function planCardio(db: Db, plan: RoutinePlan, today: string): Promise<CardioRecord[]> {
+  if (!plan.splits.some((s) => s.cardio?.length)) return [];
+  const result = await db.query(
+    `SELECT id, date, kind, duration_sec, distance_km FROM cardio_sessions
+     WHERE date BETWEEN $1 AND $2 ORDER BY date, id`,
+    [plan.start_date, today < planEndDate(plan) ? today : planEndDate(plan)],
+  );
+  return (
+    result.rows as {
+      id: number;
+      date: string;
+      kind: string;
+      duration_sec: number;
+      distance_km: string | number | null;
+    }[]
+  ).map((r) => ({ ...r, distance_km: r.distance_km === null ? null : Number(r.distance_km) }));
+}
 async function progressResponse(db: Db, routine: ActiveRoutine, rests: string[], today: string) {
   const plan = withWeightSteps(routine.plan, await weightSteps(db));
   const records = await planRecords(db, plan, today);
-  const progress = routineProgress(plan, rests, today, records);
+  const progress = routineProgress(plan, rests, today, records, await planCardio(db, plan, today));
   const names = [
     ...new Set(
       (progress.today_plan?.target?.exercises ?? []).map((e) => e.exercise.trim().toLowerCase()),

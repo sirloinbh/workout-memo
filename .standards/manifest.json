@@ -1,5 +1,5 @@
 {
-  "centralSha": "71970fbfc3b70cbd4fe281523d5bb0f88ff9e08b",
+  "centralSha": "aba0794137264f87dfdd25c776304fae7cb6ffba",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -438,7 +438,7 @@
     },
     "frontend/public/manifest.webmanifest": {
       "mode": "full",
-      "sha256": "6329af31a62d456a1a377746d1f497b5b93b4363672d36cbae06477ac5582e7a",
+      "sha256": "dff519dcbeaccca42c195c9cae88ccecf945db985a01fe92b568c4c1dfcc1b42",
       "source": "templates/app/frontend/public/manifest.webmanifest.tmpl"
     },
     "frontend/public/offline.html": {
@@ -753,7 +753,7 @@
     },
     "knip.json": {
       "mode": "full",
-      "sha256": "d2bbbdec2d8561e99fae53f7465aa288df780f25a662a730a4243eef10d307ca",
+      "sha256": "b3b9fcc9dd9c425b8d7043d4d5a306f32044317ee5c53ff6ce3c6700c2eefc85",
       "source": "templates/app/knip.json"
     },
     "lighthouserc.json": {

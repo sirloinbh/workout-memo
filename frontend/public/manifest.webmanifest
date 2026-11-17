@@ -1,7 +1,7 @@
 {
   "name": "FORM · My Workout Log",
   "short_name": "Workout Log",
-  "description": "A personal service for logging my own workouts and checking training volume and progressive overload goals by period. There is one user (me) and no login. Before any public exposure, design private access or authentication first.",
+  "description": "Log your workouts and track training volume and progressive overload over time.",
   "lang": "en",
   "start_url": "/",
   "scope": "/",

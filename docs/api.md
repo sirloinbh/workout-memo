@@ -5,6 +5,7 @@ The request and response rules of the Workout Memo API (`backend`). The source o
 ## Common rules
 
 - The base path is `/api`. The nginx of the web app (8101) forwards `/api` to the API container (3101). Every `/api` path except `/api/health` needs a session from the shared sign-in (`https://auth.daysofme.com`, #303): without one the response is 401 `{ "error": "unauthorized" }`, and 503 `{ "error": "auth_unavailable" }` when the sign-in service cannot be reached. Local development without `AUTH_INTERNAL_URL` runs without the sign-in.
+- Every response carries an `X-Request-Id` header: the caller's own ID if it is 1 to 128 letters, digits, `_`, `.` or `-`, else a new one. The API logs one JSON line per request with it (project-standards `docs/logging.md`, #331). Saving, editing and deleting a journal also writes an `audit_log` row with the same ID (project-standards `docs/audit-log.md`).
 - Request and response bodies are JSON (UTF-8), and the default request size limit is 256KB. Only the backup restore request accepts up to 10MB (+64KB).
 - Dates are `YYYY-MM-DD` strings, and only dates that really exist are accepted. "Today" is based on the service time zone `Asia/Seoul`.
 - Weight (`weight`, `target_weight`, `base_weight`) is the total weight in kg including the machine base weight. It is 0 or more and 99999 or less, and a base weight that could not be confirmed is `null`. Reps is an integer from 1 to 1000.
@@ -283,3 +284,12 @@ The shared Zod contract for frontend and backend was introduced in #64 as a copy
 ## OpenAPI
 
 [openapi.json](openapi.json) (OpenAPI 3.1) is generated from the registered routes, the endpoint descriptions of this document, and the server Zod schemas (#68, `npm run openapi`). It contains the request bodies, the query parameters, the path variables, and the field constraints (required, range, length, integer, date format, null allowed, default). Response body schemas and cross-field rules (end date >= start date, RPE in 0.5 steps, routine week rules, and so on) were not moved into JSON Schema, so follow the descriptions in this document.
+
+## AI tools (internal)
+
+The shared AI service `shared-ai` calls the app's AI tools on `/internal/tools` (#334, project-standards `docs/ai-tools.md`, ADR-0017). They are not under `/api`: nginx does not forward them, and they are registered only when the server `.env` has `AI_TOOLS_PUBLIC_KEY`. Each call needs a short-lived token signed by `shared-ai` and the `workout-memo:read` or `workout-memo:write` scope, and leaves one `audit_log` row.
+
+| Tool            | Scope | What it does                                                                                         |
+| --------------- | ----- | ---------------------------------------------------------------------------------------------------- |
+| `list_workouts` | read  | Journals and sets between `from` and `to` (at most 366 days), latest first, like `GET /api/workouts` |
+| `add_workout`   | write | Adds a journal with its sets, with the same body rules as `POST /api/workouts` (without `version`)   |

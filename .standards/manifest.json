@@ -1,5 +1,5 @@
 {
-  "centralSha": "fed37ba151aa56f71a19eaf3f2f80b007ffdde2d",
+  "centralSha": "8b59da45cab06274d1bdca8ae771819560db195a",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -165,7 +165,7 @@
     },
     ".prettierignore": {
       "mode": "section",
-      "sha256": "ecf64bb26a140f87a75f6dc7d75704989fdb51fcf35de572df9922f7325c2c62",
+      "sha256": "a74ca50d14fb8575d9c4270e2d0a98d31d08724df8d4315f562f6ace7d8e1ba3",
       "source": "templates/app/.prettierignore.tmpl"
     },
     ".standards/blocked-packages.json": {
@@ -175,7 +175,7 @@
     },
     ".standards/check.mjs": {
       "mode": "full",
-      "sha256": "94ad732bfdb58d7abb249b3c70d4675f7e71d34192a47e670990569fb39e7f35",
+      "sha256": "ea51c44c412ef5cf2ec0272719287371f4a81472fe4ab32da7ca5d32bfabc208",
       "source": "scripts/standards-check.mjs"
     },
     ".standards/ioc-scan.mjs": {
@@ -262,6 +262,11 @@
       },
       "source": "templates/index.json"
     },
+    "backend/src/standard/audit.ts": {
+      "mode": "full",
+      "sha256": "bed036e2af8d35dcdc1f32c05a9d74fed4dd08b2bf6012a8e28c50ad71d36ae6",
+      "source": "templates/app/backend/src/standard/audit.ts"
+    },
     "backend/src/standard/auth.ts": {
       "mode": "full",
       "sha256": "a33a4eefa1dbb21c24afc8c8a0caf689c6ed5439368dd1fe2bac28a7e0cb87a9",
@@ -269,8 +274,13 @@
     },
     "backend/src/standard/http.ts": {
       "mode": "full",
-      "sha256": "cc0f535a9570b1fdd8f272b00f26eebfcbd0ecd3a17e0dcb8c8bbbeed9056b76",
+      "sha256": "d77a5499049593f8e06cb2d6ecba7706769fd82f46fecd52989ccaaedf6c5c32",
       "source": "templates/app/backend/src/standard/http.ts"
+    },
+    "backend/src/standard/tools.ts": {
+      "mode": "full",
+      "sha256": "1f18074ebd5a47d065a32b97985cecf3d5a97c3bb8758332569bffdf0e3c663f",
+      "source": "templates/app/backend/src/standard/tools.ts"
     },
     "backend/tsconfig.json": {
       "mode": "full",
@@ -304,7 +314,7 @@
     },
     "deploy/backup.sh": {
       "mode": "full",
-      "sha256": "fe5ccd6024348877af0df3b21e949e7970c681ac25bd41e478bd30ae7c5045f0",
+      "sha256": "38ad974d4dd8bdda062ef950670cda10b9fd475f05ee80f48e00dc0de249c09d",
       "source": "templates/app/deploy/backup.sh.tmpl"
     },
     "deploy/backup.timer": {
@@ -389,7 +399,7 @@
     },
     "frontend/nginx.conf": {
       "mode": "full",
-      "sha256": "32d08032b659e1735e7f58e866adb29ba15229d36cb74ea74f044cb5726d2656",
+      "sha256": "aefaaa0c02014d6d7758ae7749f3e0575d2aee9fe412b8ad0f919b1c2ca5cc44",
       "source": "templates/app/frontend/nginx.conf.tmpl"
     },
     "frontend/package.json": {
@@ -691,9 +701,19 @@
       "sha256": "ae223fe47966193ebd80c94391cac51d599afb419ef0f7139585c5c091adc9a0",
       "source": "templates/ui/frontend/src/lib/utils.ts"
     },
+    "frontend/src/session-watch.test.ts": {
+      "mode": "full",
+      "sha256": "1e3694637d3796306e286fa46792e25d229134816121312022f740f699850b58",
+      "source": "templates/ui/frontend/src/session-watch.test.ts"
+    },
+    "frontend/src/session-watch.ts": {
+      "mode": "full",
+      "sha256": "7df800670aa484cca1daf4e74093af33128a88b5c7a5a4c2e74f948784202404",
+      "source": "templates/ui/frontend/src/session-watch.ts"
+    },
     "frontend/src/sign-in.tsx": {
       "mode": "full",
-      "sha256": "5ea070c066dd7b9746e7f0b2a5ae17981d5ee2a0559a089c81bba36376904885",
+      "sha256": "8e83f7fed04a4b0e9e5f3d9c683520b14c4cfcadb8e0a0ed6d03c6e3214c8a8c",
       "source": "templates/ui/frontend/src/sign-in.tsx"
     },
     "frontend/src/test/contract-api.test.ts": {

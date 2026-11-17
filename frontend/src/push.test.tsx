@@ -274,7 +274,8 @@ test('while on, start, pause, resume and cancel tell the server', async () => {
       .map((r) =>
         `${r.method} ${(r.body as { ends_at?: number } | undefined)?.ends_at ?? ''}`.trim(),
       );
-  await waitFor(() => expect(sent()).toEqual(['DELETE']));
+  // Opening the app with an idle rest must not cancel a rest running on another device.
+  expect(sent()).toEqual([]);
   const start = Date.parse(deviceNow);
   await ui.user.click(dialog.getByRole('button', { name: 'Start rest' }));
   await waitFor(() => expect(sent().at(-1)).toBe(`PUT ${start + 90_000}`));
@@ -284,13 +285,7 @@ test('while on, start, pause, resume and cancel tell the server', async () => {
   await waitFor(() => expect(sent().at(-1)).toBe(`PUT ${start + 90_000}`));
   await ui.user.click(dialog.getByRole('button', { name: 'Cancel rest' }));
   await waitFor(() => expect(sent().at(-1)).toBe('DELETE'));
-  expect(sent()).toEqual([
-    'DELETE',
-    `PUT ${start + 90_000}`,
-    'DELETE',
-    `PUT ${start + 90_000}`,
-    'DELETE',
-  ]);
+  expect(sent()).toEqual([`PUT ${start + 90_000}`, 'DELETE', `PUT ${start + 90_000}`, 'DELETE']);
 });
 
 test('turning it off removes the subscription on the server and in the browser', async () => {

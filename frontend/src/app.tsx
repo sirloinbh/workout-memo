@@ -562,8 +562,19 @@ function Workspace() {
       current = false;
     };
   }, []);
+  // The first run (page load, or the toggle just turned on) with no running rest sends nothing:
+  // another device of the same user may have a rest running, and clearing it would cancel its push.
+  const pushSynced = useRef(false);
   useEffect(() => {
-    if (push.status !== 'on') return;
+    if (push.status !== 'on') {
+      pushSynced.current = false;
+      return;
+    }
+    if (!pushSynced.current && timer.state !== 'running') {
+      pushSynced.current = true;
+      return;
+    }
+    pushSynced.current = true;
     syncRest(timer, Date.now()).then(
       () => setPushWarning(''),
       () =>

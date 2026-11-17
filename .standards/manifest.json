@@ -1,5 +1,5 @@
 {
-  "centralSha": "aba0794137264f87dfdd25c776304fae7cb6ffba",
+  "centralSha": "9f05ff31ce4c4151dfe85a0ffd38195fe8ecdee4",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -230,7 +230,7 @@
     },
     "AGENTS.md": {
       "mode": "full",
-      "sha256": "8c4e04dacb2b86b01e47817f3c2d358216d5936553eb121428118028765ec4c7",
+      "sha256": "e022b5dd1504dbe4b69b7fae09afd451d16cfcd9f9d2017990698da43d93611b",
       "source": "templates/app/AGENTS.md.tmpl"
     },
     "backend/.npmrc": {
@@ -349,7 +349,7 @@
     },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "eb88d664c2c9fe04790ae28dcd191dfcf21a3df310148d5474edde1d3f93efa4",
+      "sha256": "bc696149ca6f0901092d6f0f4e4c8de3b18e3c915dfaa07e6c2ca8576f46389a",
       "source": "templates/app/deploy/remote-deploy.sh.tmpl"
     },
     "deploy/report.service": {
@@ -359,7 +359,7 @@
     },
     "deploy/report.sh": {
       "mode": "full",
-      "sha256": "3349483b74c99f7cf54a1500332bf24a5c36aa5071b6151ec20ba25fd7768583",
+      "sha256": "78e39decde1efe4c1833c996eabdf0b9103e4b81a51b8128ef239a97c0954de5",
       "source": "templates/app/deploy/report.sh.tmpl"
     },
     "deploy/report.timer": {
@@ -819,7 +819,7 @@
     },
     "scripts/push-repositories.ps1": {
       "mode": "full",
-      "sha256": "c35e3bd5e0a34faa096896bd4003f309b4ec5596c312f87a4d3e7f0ed3f00828",
+      "sha256": "197f9cc806b8c0ebd4f495c3b2324ad2adfaa92aa7a64e769f1d12e9b7259900",
       "source": "templates/app/scripts/push-repositories.ps1"
     },
     "skills/std-backlog/SKILL.md": {

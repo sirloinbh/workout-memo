@@ -1,5 +1,5 @@
 {
-  "centralSha": "1d20cf11e897809cbead42177bae51189e92db2b",
+  "centralSha": "630c6de5c0ab4cc1d9565a954239646b04bbe0bd",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -175,7 +175,7 @@
     },
     ".standards/check.mjs": {
       "mode": "full",
-      "sha256": "94ad732bfdb58d7abb249b3c70d4675f7e71d34192a47e670990569fb39e7f35",
+      "sha256": "e82085acb057e405550f2df6040efe2d999f09668372bcee6387a1e8f8e12755",
       "source": "scripts/standards-check.mjs"
     },
     ".standards/ioc-scan.mjs": {
@@ -262,6 +262,11 @@
       },
       "source": "templates/index.json"
     },
+    "backend/src/standard/audit.ts": {
+      "mode": "full",
+      "sha256": "bed036e2af8d35dcdc1f32c05a9d74fed4dd08b2bf6012a8e28c50ad71d36ae6",
+      "source": "templates/app/backend/src/standard/audit.ts"
+    },
     "backend/src/standard/auth.ts": {
       "mode": "full",
       "sha256": "a33a4eefa1dbb21c24afc8c8a0caf689c6ed5439368dd1fe2bac28a7e0cb87a9",
@@ -269,7 +274,7 @@
     },
     "backend/src/standard/http.ts": {
       "mode": "full",
-      "sha256": "cc0f535a9570b1fdd8f272b00f26eebfcbd0ecd3a17e0dcb8c8bbbeed9056b76",
+      "sha256": "d77a5499049593f8e06cb2d6ecba7706769fd82f46fecd52989ccaaedf6c5c32",
       "source": "templates/app/backend/src/standard/http.ts"
     },
     "backend/tsconfig.json": {
@@ -304,7 +309,7 @@
     },
     "deploy/backup.sh": {
       "mode": "full",
-      "sha256": "fe5ccd6024348877af0df3b21e949e7970c681ac25bd41e478bd30ae7c5045f0",
+      "sha256": "38ad974d4dd8bdda062ef950670cda10b9fd475f05ee80f48e00dc0de249c09d",
       "source": "templates/app/deploy/backup.sh.tmpl"
     },
     "deploy/backup.timer": {
@@ -389,7 +394,7 @@
     },
     "frontend/nginx.conf": {
       "mode": "full",
-      "sha256": "08ff22d322f1bc66f17c571dfdd6520ae9f41221bd4dced8ac34ad00ead6e1d9",
+      "sha256": "aefaaa0c02014d6d7758ae7749f3e0575d2aee9fe412b8ad0f919b1c2ca5cc44",
       "source": "templates/app/frontend/nginx.conf.tmpl"
     },
     "frontend/package.json": {

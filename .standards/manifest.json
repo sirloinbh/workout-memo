@@ -1,5 +1,5 @@
 {
-  "centralSha": "ef519a027a81e433b3ccb701683cf17492cba689",
+  "centralSha": "1d20cf11e897809cbead42177bae51189e92db2b",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -389,7 +389,7 @@
     },
     "frontend/nginx.conf": {
       "mode": "full",
-      "sha256": "32d08032b659e1735e7f58e866adb29ba15229d36cb74ea74f044cb5726d2656",
+      "sha256": "08ff22d322f1bc66f17c571dfdd6520ae9f41221bd4dced8ac34ad00ead6e1d9",
       "source": "templates/app/frontend/nginx.conf.tmpl"
     },
     "frontend/package.json": {

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import {
   CrcCalculator,
   type Encodable,
@@ -242,5 +244,41 @@ describe('ZIP files (#119)', () => {
     expect(read.problems).toEqual([
       'export.zip › huge.fit: Too large for an activity file (over 50 MB).',
     ]);
+  });
+});
+
+// A real Garmin watch run (#119), reduced to what the reader uses: the file_id and session
+// messages. The GPS records, laps, device serial numbers and user profile were left out when
+// the fixture was made, so it holds no position or personal data.
+describe('a real Garmin FIT run (#119)', () => {
+  // Vitest runs in the frontend workspace folder.
+  const bytes = () => new Uint8Array(readFileSync('src/cardio/fixtures/garmin-run.fit'));
+
+  it('reads the type, Seoul date, timer time and distance of the device file', async () => {
+    const [activity, ...rest] = await parseFit('garmin-run.fit', bytes());
+    expect(rest).toEqual([]);
+    expect(activity).toMatchObject({
+      format: 'fit',
+      external_id: '2026-09-18T23:55:50Z',
+      kind: 'running',
+      // 23:55 UTC is the next morning in Seoul.
+      date: '2026-09-19',
+      start_time: '08:55',
+      // total_timer_time 2719.586 s; the elapsed time (2924.589 s) includes pauses.
+      duration_sec: 2720,
+      distance_km: 6.065,
+      avg_heart_rate: 134,
+      max_heart_rate: 173,
+      calories_kcal: 404,
+      elevation_gain_m: 43,
+      avg_cadence: null,
+    });
+  });
+
+  it('is also read when it sits inside a ZIP export', async () => {
+    const zip = zipSync({ 'DI_CONNECT/garmin-run.fit': bytes() });
+    const result = await readActivityFile('export.zip', zip);
+    expect(result.problems).toEqual([]);
+    expect(result.activities.map((a) => a.date)).toEqual(['2026-09-19']);
   });
 });

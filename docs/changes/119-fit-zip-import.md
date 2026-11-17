@@ -60,6 +60,7 @@ Read Garmin FIT files and ZIP archives (one activity's "Export Original", or a w
   - FIT told by its signature.
   - TCX and GPX still read as text, and an unknown file reported.
   - ZIP: activity files at the top and one nested level, skipped entries, a ZIP two levels down not opened, a bad file inside reported while the rest is read, and damaged and empty ZIPs reported.
+- `frontend/src/cardio/activity-fit.test.ts`, real device file: `fixtures/garmin-run.fit` (112 bytes) was rebuilt with the SDK encoder from the session values of one real Garmin watch run. It holds only a `file_id` (type, manufacturer, no serial number) and a `session` (sport, start time, timer and elapsed time, distance, heart rate, calories, ascent). The GPS records, laps, device info and user profile were not copied. The test asserts type, Seoul date and time, duration, distance and the other summary values as the real file gave them, and that the file is also read inside a ZIP.
 - `frontend/src/cardio/activity-file.test.ts`: the unknown-format message names FIT and ZIP.
 - `frontend/src/cardio/cardio-import.test.tsx` (label renamed):
   - A FIT file inside a ZIP previewed and saved, with its elevation gain.
@@ -84,10 +85,32 @@ Local test DB: a throwaway `postgres:17-alpine` container on 127.0.0.1:15468 (tm
 
 ## Limits and follow-up
 
-- Real Garmin FIT samples are still to come from the user (decision 3). Until then the FIT tests use files built with the SDK's own encoder, which shows the format is read but not every quirk of a device file.
+- The FIT tests now include a fixture made from a real Garmin watch file (see Real FIT samples below). The other FIT tests still use files built with the SDK encoder.
 - A whole-account export is read entirely in memory (`unzipSync`, with only activity entries decompressed). A very large export may be slow or run out of memory on a phone.
 - The preview renders every row. Hundreds of rows work, but thousands make the table and its duplicate check slow.
 - A batch refused part way leaves the earlier batches saved by design (decision 4). Re-importing the same files is safe, because saved rows are blocked as "Already imported".
+
+## Real FIT samples (10 files, 2026-11-18)
+
+The user's 10 Garmin watch exports (kept only in the ignored `.local/fit-samples/`, never committed) were run through `readActivityFile` with a throwaway local script, one by one and then all together as one ZIP.
+
+| #   | Sport (sub sport) | Duration (timer) | Distance | Result                          |
+| --- | ----------------- | ---------------- | -------- | ------------------------------- |
+| 1   | running (generic) | 17 min 48 s      | 2.30 km  | imported                        |
+| 2   | running (generic) | 54 min 56 s      | 6.01 km  | imported                        |
+| 3   | running (generic) | 25 min 25 s      | 2.59 km  | imported                        |
+| 4   | running (generic) | 48 min 3 s       | 6.28 km  | imported                        |
+| 5   | running (generic) | 55 min 22 s      | 7.67 km  | imported                        |
+| 6   | running (generic) | 43 min 48 s      | 6.01 km  | imported                        |
+| 7   | running (generic) | 44 min 38 s      | 5.63 km  | imported                        |
+| 8   | running (generic) | 13 min 58 s      | 1.54 km  | imported                        |
+| 9   | running (generic) | 45 min 20 s      | 6.07 km  | imported (used for the fixture) |
+| 10  | running (generic) | 59 min 30 s      | 5.61 km  | imported                        |
+
+- All 10 are activity files that pass the CRC check, decode with no errors, and hold one session each. None was refused and none errored. Every file's Seoul date and start time matches the local time in its name, including one that starts at 23:57 and one whose UTC date is the day before.
+- All 10 together in one ZIP: 10 activities, no problems, none skipped.
+- Heart rate, calories and ascent were in range in every file. Running cadence is not read by design.
+- No bug was found, so no importer change was needed.
 
 ## Review round 1
 

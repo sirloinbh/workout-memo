@@ -40,6 +40,13 @@ Lighthouse 12 no longer has PWA audits, so #109 checked these once in Chrome on 
 - Notes for the next check: a Playwright `newContext` reports only `in-incognito`, so use a persistent profile. Chrome did not keep the service worker registration for a profile under a long path (the session scratchpad); a short path such as `%TEMP%\pwa109` worked.
 - Not checked yet: installing on a real phone and the production address. They can be checked now that the app is on HTTPS (#106, 2026-11-15); the shared sign-in (#303) merged on 2026-11-16 and is not checked in production yet either.
 
+## Rest-timer Web Push (#260, built 2026-11-17)
+
+The app turns on screen-off rest notifications in the rest settings (per device). When a rest starts or resumes, the browser tells the API the end time (`PUT /api/push/rest`); pause and cancel clear it. The API sends one Web Push at that time to every saved subscription of the signed-in user. Details are in [api.md](api.md), keys and turning it on in [deployment.md](deployment.md) (2-2), and the change record in [changes/260-web-push.md](changes/260-web-push.md).
+
+- The push worker is `frontend/public/push/sw.js` at scope `/push/`, not part of `/sw.js`, because `sw.js` is centrally managed.
+- **Not checked yet (the user's real-device check, together with #110):** an installed app on a real Android phone receiving the notification with the screen off, the vibration, and a tap opening the app. The automated tests cover the API, the schedule and the worker's handlers, not a real push service. Push is off until the VAPID keys are in the production `.env`.
+
 ## Comparison of candidates
 
 | Criterion                          | PWA only                                                                                                                                                                                                                        | TWA (Bubblewrap / PWABuilder)                                                                                                | Capacitor                                                                                                                                                                          |
@@ -158,7 +165,7 @@ Reasons for rejecting or deferring
 | Approach                | Finish the PWA first (#106 → #107 → #109), and upload a TWA built with the PWABuilder web service to the Play internal testing track (only me) |
 | Store audience          | Internal testing for me only. No general release                                                                                               |
 | iOS                     | Not needed                                                                                                                                     |
-| Screen-off notification | Server Web Push (#260)                                                                                                                         |
+| Screen-off notification | Server Web Push (#260, built; see below)                                                                                                       |
 | Health Connect          | Decide after the conclusion of #118. If needed then, review Capacitor again                                                                    |
 | Cost                    | Accept the annual domain cost and the one-time Play registration fee of US$25                                                                  |
 | Build tool              | PWABuilder web service. Do not install an npm build tool locally                                                                               |

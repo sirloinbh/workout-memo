@@ -6,6 +6,7 @@ import { z } from 'zod/v4';
 
 import { bodyPartMappingSchema } from './analysis.js';
 import { exportQuery, restoreRequest } from './backup.js';
+import { pushSubscriptionSchema, pushUnsubscribeSchema, restPushSchema } from './contract.js';
 import {
   bodyMeasurementSchema,
   cardioGoalSchema,
@@ -192,6 +193,18 @@ export const operations: Record<string, Operation> = {
     body: ['WeightStep', weightStepSchema],
     status: [200, 400],
   },
+  // #260: Web Push for the rest timer; see docs/api.md.
+  'GET /api/push/config': { status: [200] },
+  'POST /api/push/subscriptions': {
+    body: ['PushSubscription', pushSubscriptionSchema],
+    status: [201, 400, 503],
+  },
+  'DELETE /api/push/subscriptions': {
+    body: ['PushUnsubscribe', pushUnsubscribeSchema],
+    status: [200, 400],
+  },
+  'PUT /api/push/rest': { body: ['RestPush', restPushSchema], status: [200, 400, 503] },
+  'DELETE /api/push/rest': { status: [200] },
   'GET /api/goal-suggestion': { query: goalSuggestionQuery, status: [200, 400] },
   // #114: the server also rejects a date after today (Asia/Seoul); see docs/api.md.
   'GET /api/cardio-sessions': { query: cardioQuery, status: [200, 400] },

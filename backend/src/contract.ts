@@ -527,3 +527,35 @@ export function fieldErrors(error: z.ZodError) {
   for (const issue of error.issues) errors[issue.path.join('.')] ??= issue.message;
   return errors;
 }
+
+// #260: Web Push for the rest timer. The subscription is what the browser's PushManager returns
+// (`subscription.toJSON()`); the server stores it for the signed-in user and sends the rest-end push.
+const httpsUrl = (v: string) => {
+  try {
+    return new URL(v).protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+const pushEndpoint = limitLength(z.string(whenMissing('Enter the push endpoint')).trim(), {
+  min: 1,
+  max: 2048,
+  tooShort: 'Enter the push endpoint',
+}).refine(httpsUrl, 'The push endpoint must be an https address');
+export const pushSubscriptionSchema = z.strictObject({
+  endpoint: pushEndpoint,
+  keys: z.strictObject({
+    p256dh: text('the p256dh key', 200),
+    auth: text('the auth secret', 100),
+  }),
+});
+export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;
+export const pushUnsubscribeSchema = z.strictObject({ endpoint: pushEndpoint });
+// The rest ends at this instant (epoch milliseconds). The server also refuses a time that is
+// already past or more than the longest rest (one hour, #84) ahead.
+export const restPushSchema = z.strictObject({
+  ends_at: z
+    .number(whenMissing('Enter when the rest ends'))
+    .int('Enter when the rest ends as epoch milliseconds'),
+});
+export type RestPushInput = z.infer<typeof restPushSchema>;

@@ -137,7 +137,7 @@ Decided in the #110 comment: package `kr.sirloinbh.workoutmemo` (permanent once 
 ### What the repository already does
 
 - `frontend/public/.well-known/assetlinks.json` is committed and served by the web container at `https://workout-memo.daysofme.com/.well-known/assetlinks.json` with `Content-Type: application/json`. It is a static file: the shared sign-in (#303) guards only `/api`, and `frontend/nginx.conf` has no rule for this path, so nothing needed to be opened up. Fingerprints are public, so the file is committed.
-- Until a fingerprint is added the file is `[]`. This is valid JSON that grants nothing, so the TWA falls back to a Custom Tab with an address bar. A 404 was not chosen because Google and Chrome may cache a missing file for a while.
+- Until a fingerprint is added the file is `[]`. This is valid JSON that grants nothing, so the TWA falls back to a Custom Tab with an address bar. A 404 was not chosen because it is not a valid answer to the check and `[]` is the same outcome with a clearer failure (nothing in the list matches).
 - `frontend/src/assetlinks.test.ts` checks the file's shape (package name, relation, fingerprint format) on every PR, so a typo cannot be deployed.
 
 ### PWABuilder readiness (checked 2026-11-18)
@@ -162,7 +162,7 @@ Digital Asset Links is checked by Google, not only by your phone, and the produc
 
 1. Open <https://www.pwabuilder.com>, enter `https://workout-memo.daysofme.com`, and press Start. Fix anything marked red (nothing is expected); orange suggestions are optional.
 2. Choose Package for stores, then Android, then the Google Play option.
-3. Fill in the options:
+3. Fill in the options (the labels are from the PWABuilder Android docs and may differ slightly on the live page):
    - Package ID: `kr.sirloinbh.workoutmemo`
    - App name: `FORM · My Workout Log`; short name: `Workout Log`
    - App version: `1.0.0`; version code: `1`

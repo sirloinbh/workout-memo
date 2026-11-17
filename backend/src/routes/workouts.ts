@@ -7,26 +7,50 @@ import { z } from 'zod/v4';
 import { dateRange, workoutSchema } from '../domain.js';
 import { auditContext, writeAudit } from '../standard/audit.js';
 import { parseId } from '../standard/http.js';
+import type { Db } from './shared.js';
 
 // The audit summary of a journal (project-standards#553): what identifies it, not every set.
-const summary = (w: { date: string; title: string; version: number }, sets?: number) => ({
+export const summary = (w: { date: string; title: string; version: number }, sets?: number) => ({
   date: w.date,
   title: w.title,
   version: w.version,
   ...(sets === undefined ? {} : { sets }),
 });
 
+type Workout = z.infer<typeof workoutSchema>;
+
+// Shared by the routes and the AI tools (ai-tools.ts).
+export async function listWorkouts(db: Db, range: { from: string; to: string }) {
+  return (
+    await db.query(
+      `SELECT w.*,COALESCE(json_agg(s ORDER BY s.position) FILTER(WHERE s.id IS NOT NULL),'[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id WHERE w.date BETWEEN $1 AND $2 GROUP BY w.id ORDER BY w.date DESC,w.id DESC`,
+      [range.from, range.to],
+    )
+  ).rows;
+}
+
+export async function insertWorkout(db: Db, w: Workout): Promise<number> {
+  const id: number = (
+    await db.query(
+      'INSERT INTO workouts(date,title,notes,feedback) VALUES($1,$2,$3,$4) RETURNING id',
+      [w.date, w.title, w.notes, w.feedback],
+    )
+  ).rows[0].id;
+  await insertSets(db, id, w.sets);
+  return id;
+}
+
+async function insertSets(db: Db, workoutId: number, sets: Workout['sets']) {
+  for (const [i, s] of sets.entries())
+    await db.query(
+      'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes,completed,rpe) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes, s.completed, s.rpe],
+    );
+}
+
 export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
   app.get('/api/workouts', async (req, res) => {
-    const q = dateRange.parse(req.query);
-    res.json(
-      (
-        await pool.query(
-          `SELECT w.*,COALESCE(json_agg(s ORDER BY s.position) FILTER(WHERE s.id IS NOT NULL),'[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id WHERE w.date BETWEEN $1 AND $2 GROUP BY w.id ORDER BY w.date DESC,w.id DESC`,
-          [q.from, q.to],
-        )
-      ).rows,
-    );
+    res.json(await listWorkouts(pool, dateRange.parse(req.query)));
   });
   for (const method of ['post', 'put'] as const)
     app[method]('/api/workouts' + (method === 'put' ? '/:id' : ''), async (req, res) => {
@@ -70,13 +94,7 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
         let workoutId: number;
         let version = 1;
         let before: ReturnType<typeof summary> | null = null;
-        if (method === 'post')
-          workoutId = (
-            await client.query(
-              'INSERT INTO workouts(date,title,notes,feedback) VALUES($1,$2,$3,$4) RETURNING id',
-              [w.date, w.title, w.notes, w.feedback],
-            )
-          ).rows[0].id;
+        if (method === 'post') workoutId = await insertWorkout(client, w);
         else {
           workoutId = target!;
           const existing = await client.query(
@@ -108,12 +126,8 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
           }
           version = r.rows[0].version;
           await client.query('DELETE FROM sets WHERE workout_id=$1', [workoutId]);
+          await insertSets(client, workoutId, w.sets);
         }
-        for (const [i, s] of w.sets.entries())
-          await client.query(
-            'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes,completed,rpe) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-            [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes, s.completed, s.rpe],
-          );
         const status = method === 'post' ? 201 : 200;
         const response = { id: workoutId, version };
         await writeAudit(client, {

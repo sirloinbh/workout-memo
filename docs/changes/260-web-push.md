@@ -2,7 +2,7 @@
 
 ## Change
 
-- Migration `017_web_push.sql`: tables `push_subscriptions` (endpoint, user, keys) and `rest_pushes` (one pending rest end per user).
+- Migration `018_web_push.sql`: tables `push_subscriptions` (endpoint, user, keys) and `rest_pushes` (one pending rest end per user).
 - API (`backend/src/routes/push.ts`, `docs/api.md`, `docs/openapi.json`): `GET /api/push/config`, `POST` and `DELETE /api/push/subscriptions`, `PUT` and `DELETE /api/push/rest`. Schemas are in `shared/contract.ts` (synced to backend and frontend).
 - Sending (`backend/src/web-push.ts`, `web-push` 3.6.7): the server checks every 2 seconds, claims due rests by deleting their row (so each is sent once), pushes "Rest over" to every subscription of the user, removes subscriptions the push service answers 404 or 410 for, and drops a push that is more than 2 minutes late.
 - Subscriptions belong to the signed-in user (`req.user.id`, #303); without sign-in there is one user, `local`.

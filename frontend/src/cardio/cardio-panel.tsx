@@ -263,6 +263,10 @@ export function CardioPanel({
             onChanged?.();
             void load();
           }}
+          savedSome={() => {
+            onChanged?.();
+            void load();
+          }}
         />
       )}
       {editing !== undefined && (

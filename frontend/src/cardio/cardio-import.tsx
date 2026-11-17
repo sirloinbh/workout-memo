@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Notice } from '../components/ui/notice';
 import { type CardioKind, cardioKinds, cardioSessionSchemaFor, fieldErrors } from '../contract';
 import { cn } from '../lib/utils';
-import { activityFileAccept, type ImportedActivity, parseActivityFile } from './activity-file';
+import { activityFileAccept, type ImportedActivity, readActivityFile } from './activity-file';
 import {
   type CardioBody,
   CardioImportError,
@@ -41,6 +41,7 @@ type Row = {
 };
 
 // One request carries at most this many rows (the API's limit, backend/src/routes/cardio.ts).
+// More chosen rows are sent in batches of this size (2026-11-16 decision).
 const importLimit = 200;
 
 // An activity from a file → the body the API takes. Values the file does not have stay null.
@@ -160,21 +161,27 @@ function summaryOf(body: CardioBody) {
     .join(' · ');
 }
 
-// #119: brings activity files (TCX, GPX) in through an editable preview (2026-11-08 user
-// decisions). Files are read in this browser and never uploaded or kept. The table edits the
-// save check, kind, date and start time; "Edit" opens CardioForm without saving for the rest.
-// The chosen rows are saved together: all or none.
+// #119: brings activity files (TCX, GPX, FIT, or a ZIP of them) in through an editable preview
+// (2026-11-08 user decisions). Files are read in this browser and never uploaded or kept. The
+// table edits the save check, kind, date and start time; "Edit" opens CardioForm without saving
+// for the rest. Up to 200 chosen rows are saved together, all or none; more go in batches of
+// 200 in table order (start time as read), and a refused batch stops the save with the batches
+// before it kept.
 export function CardioImport({
   today,
   workouts,
   close,
   done,
+  savedSome,
 }: {
   today: string;
   workouts: readonly LinkableWorkout[];
   close: () => void;
   // After a save, with the number of sessions saved; the caller closes the card and reports it.
   done: (count: number) => void;
+  // After a batched save stopped part way, with the number saved before it; the card stays open
+  // with the rows left, and the caller reloads its records.
+  savedSome?: (count: number) => void;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [existing, setExisting] = useState<CardioSession[]>([]);
@@ -189,7 +196,6 @@ export function CardioImport({
   const checks = checkRows(rows, existing, today);
   const savable = (i: number) => canSave(checks[i]);
   const chosen = rows.filter((r, i) => r.selected && savable(i));
-  const tooMany = chosen.length > importLimit;
 
   // The card opens on its file chooser, so keyboard and screen reader users land in it.
   useEffect(() => fileInput.current?.focus(), []);
@@ -228,16 +234,22 @@ export function CardioImport({
     setRows([]);
     setFileErrors([]);
     setError('');
-    setStatus('');
+    setStatus('Reading files…');
     setBusy(true);
     const found: ImportedActivity[] = [];
     const problems: string[] = [];
     for (const file of files) {
+      let bytes: Uint8Array;
       try {
-        found.push(...parseActivityFile(file.name, await file.text()));
-      } catch (e) {
-        problems.push((e as Error).message);
+        bytes = new Uint8Array(await file.arrayBuffer());
+      } catch {
+        // E.g. the file was moved or deleted after it was chosen.
+        problems.push(`${file.name}: Could not open the file. Choose it again.`);
+        continue;
       }
+      const read = await readActivityFile(file.name, bytes);
+      found.push(...read.activities);
+      problems.push(...read.problems);
     }
     setFileErrors(problems);
     const next = found
@@ -262,6 +274,7 @@ export function CardioImport({
         setError(
           'Could not load the existing cardio records, so duplicates cannot be checked. Choose the files again.',
         );
+        setStatus('');
         setBusy(false);
         return;
       }
@@ -270,10 +283,11 @@ export function CardioImport({
     setBusy(false);
     // The file input was disabled while reading, which drops its focus; it gets it back.
     requestAnimationFrame(() => fileInput.current?.focus());
-    if (next.length)
-      setStatus(
-        `Read ${next.length} ${next.length === 1 ? 'activity' : 'activities'}. Check the values and choose the records to save. Possible duplicates are left unchecked.`,
-      );
+    setStatus(
+      next.length
+        ? `Read ${next.length} ${next.length === 1 ? 'activity' : 'activities'}. Check the values and choose the records to save. Possible duplicates are left unchecked.`
+        : '',
+    );
   }
 
   const choose = (key: number, selected: boolean) =>
@@ -295,29 +309,48 @@ export function CardioImport({
     );
 
   async function saveAll() {
-    if (busy || !chosen.length || tooMany) return;
+    if (busy || !chosen.length) return;
     setBusy(true);
     setError('');
     setStatus('');
+    let saved = 0;
     try {
-      const saved = await importCardioSessions(chosen.map((r) => r.body));
+      for (let start = 0; start < chosen.length; start += importLimit) {
+        const batch = chosen.slice(start, start + importLimit);
+        if (chosen.length > importLimit)
+          setStatus(`Saving records ${start + 1}–${start + batch.length} of ${chosen.length}…`);
+        try {
+          saved += (await importCardioSessions(batch.map((r) => r.body))).length;
+        } catch (e) {
+          // This batch saved nothing; the batches before it stay saved and leave the table.
+          // Each refused row shows the server's reason in its Check column.
+          const kept = new Set(chosen.slice(0, start).map((r) => r.key));
+          const refused = e instanceof CardioImportError ? e.rows : [];
+          const reasons = new Map(refused.map((p) => [batch[p.index]?.key, p.message]));
+          setRows((current) =>
+            current
+              .filter((r) => !kept.has(r.key))
+              .map((r) => (reasons.has(r.key) ? { ...r, result: reasons.get(r.key) } : r)),
+          );
+          // E.g. imported meanwhile in another tab, or rows just saved: the stored sessions are
+          // read again, so a row shows "Already imported" instead of looking savable.
+          if (saved || (e instanceof CardioImportError && e.status === 409))
+            setReload((n) => n + 1);
+          if (saved) savedSome?.(saved);
+          const reason = refused.length
+            ? `${(e as Error).message}. See the Check column for each reason, then fix the row or clear its selection and save again.`
+            : (e as Error).message;
+          setStatus('');
+          setError(
+            saved
+              ? `Saved ${saved} of ${chosen.length} records, then stopped. The next ${batch.length} were not saved: ${reason}`
+              : reason,
+          );
+          return;
+        }
+      }
       setRows([]);
-      done(saved.length);
-    } catch (e) {
-      // Nothing was saved. Each refused row shows the server's reason in its Check column.
-      const refused = e instanceof CardioImportError ? e.rows : [];
-      const reasons = new Map(refused.map((p) => [chosen[p.index]?.key, p.message]));
-      setRows((current) =>
-        current.map((r) => (reasons.has(r.key) ? { ...r, result: reasons.get(r.key) } : r)),
-      );
-      // E.g. imported meanwhile in another tab: the stored sessions are read again, so the row
-      // shows "Already imported" instead of looking savable after the next edit.
-      if (e instanceof CardioImportError && e.status === 409) setReload((n) => n + 1);
-      setError(
-        refused.length
-          ? `${(e as Error).message}. See the Check column for each reason, then fix the row or clear its selection and save again.`
-          : (e as Error).message,
-      );
+      done(saved);
     } finally {
       setBusy(false);
     }
@@ -333,12 +366,14 @@ export function CardioImport({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className={formHint}>
-          Choose TCX or GPX files exported from Garmin Connect or a similar service. You can choose
-          several files at once. Files are read only in this browser and are never sent to the
-          server; only the summary values (time, distance, heart rate, calories) are saved.
+          Choose TCX, GPX or FIT files exported from Garmin Connect or a similar service, or a ZIP
+          of them (such as Garmin&rsquo;s &ldquo;Export Original&rdquo; or a whole-account export).
+          You can choose several files at once. Files are read only in this browser and are never
+          sent to the server; only the summary values (time, distance, heart rate, calories) are
+          saved.
         </p>
         <Label className="mb-0 flex flex-col items-start gap-2 text-meta text-muted-foreground">
-          Activity file (TCX/GPX)
+          Activity file (TCX/GPX/FIT/ZIP)
           <Input
             ref={fileInput}
             className={touchText}
@@ -480,15 +515,14 @@ export function CardioImport({
                 </tbody>
               </table>
             </div>
-            {tooMany && (
-              <p className={cn(formHint, 'text-destructive')}>
-                You can save up to {importLimit} records at a time. Deselect{' '}
-                {chosen.length - importLimit}{' '}
-                {chosen.length - importLimit === 1 ? 'record' : 'records'}.
+            {chosen.length > importLimit && (
+              <p className={formHint}>
+                The records are saved {importLimit} at a time, in the order of the table. If a batch
+                is refused, saving stops there and the batches before it stay saved.
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              <Button disabled={busy || !chosen.length || tooMany} onClick={() => void saveAll()}>
+              <Button disabled={busy || !chosen.length} onClick={() => void saveAll()}>
                 {busy ? 'Saving…' : `Save ${chosen.length} selected`}
               </Button>
               <Button type="button" variant="ghost" disabled={busy} onClick={close}>

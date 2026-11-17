@@ -1160,9 +1160,9 @@ function Workspace() {
         </div>
       )}
       <p className="col-span-full text-meta text-muted-foreground">
-        Kept only in this browser, by end time; reopening the tab corrects the time left. If rest
-        ends while this screen is open (after one tap), supported devices such as Android vibrate;
-        iPhone does not. With notifications on above, a push also arrives when the screen is off.
+        Kept only in this browser, by end time; reopening the tab corrects the time left. No alert
+        while the browser is closed. If rest ends while this screen is open (after one tap),
+        supported devices such as Android vibrate; iPhone does not.
       </p>
       <p className="col-span-full text-meta text-muted-foreground">
         On set completion, rest uses the default for single-joint machines, then lower body, then

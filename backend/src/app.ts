@@ -13,12 +13,14 @@ import { registerCardioGoalRoutes } from './routes/cardio-goals.js';
 import { registerExerciseNameRoutes } from './routes/exercise-names.js';
 import { registerGoalRoutes } from './routes/goals.js';
 import { registerMachineRoutes } from './routes/machines.js';
+import { registerPushRoutes } from './routes/push.js';
 import { registerRoutineRoutes } from './routes/routines.js';
 import { appErrors } from './routes/shared.js';
 import { registerWeightStepRoutes } from './routes/weight-steps.js';
 import { registerWorkoutRoutes } from './routes/workouts.js';
 import { errorHandler, notFound, requestLog } from './standard/http.js';
 import { registerToolRoutes } from './standard/tools.js';
+import { createPushService, type PushService } from './web-push.js';
 // DATE columns stay `YYYY-MM-DD` strings instead of being shifted through JS Date.
 types.setTypeParser(1082, (value) => value);
 
@@ -28,6 +30,8 @@ export function createApp(
   options: {
     today?: () => string;
     auth?: express.RequestHandler;
+    push?: PushService;
+    now?: () => number;
     /** shared-ai's public key (PEM); without it the AI tool routes are off (project-standards#559). */
     toolsPublicKey?: string;
   } = {},
@@ -59,6 +63,8 @@ export function createApp(
   registerExerciseNameRoutes(app, pool);
   registerCardioRoutes(app, pool, today);
   registerCardioGoalRoutes(app, pool, today);
+  // #260: without VAPID keys the service is disabled and the routes say so.
+  registerPushRoutes(app, options.push ?? createPushService(pool, { config: null }), options.now);
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the
   // signed call token, not the session, is the check.
   registerToolRoutes(app, { app: 'workout-memo', tools, pool, publicKey: options.toolsPublicKey });

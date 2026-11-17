@@ -332,6 +332,122 @@
         }
       }
     },
+    "/api/push/rest": {
+      "delete": {
+        "summary": "Cancel the pending rest-end push (cancel or pause) → { ok: true }",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "summary": "Tell the server when the running rest ends (ends_at, epoch ms); it sends one push then. 503 when push is not set up",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestPush"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The shared sign-in service could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/push/subscriptions": {
+      "delete": {
+        "summary": "Remove a push subscription (endpoint in the body) → { ok: true }",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushUnsubscribe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Save this browser's push subscription for the signed-in user → 201. 503 when push is not set up",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscription"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The shared sign-in service could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/routines/{id}/rests/{date}": {
       "delete": {
         "summary": "Cancel the rest on the same day",
@@ -1206,6 +1322,16 @@
         }
       }
     },
+    "/api/push/config": {
+      "get": {
+        "summary": "Whether rest-end Web Push is set up on the server and its public VAPID key (#260)",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/api/routine-progress": {
       "get": {
         "summary": "Today's goal, weekly and 12-week progress, and previous records of the routine in progress. routine: null if none",
@@ -1674,6 +1800,20 @@
         "required": [
           "error"
         ]
+      },
+      "PushUnsubscribe": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "endpoint"
+        ],
+        "additionalProperties": false
       },
       "RestoreRequest": {
         "type": "object",
@@ -2180,6 +2320,41 @@
           "base_weight"
         ]
       },
+      "PushSubscription": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "keys": {
+            "type": "object",
+            "properties": {
+              "p256dh": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "auth": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "required": [
+              "p256dh",
+              "auth"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "endpoint",
+          "keys"
+        ],
+        "additionalProperties": false
+      },
       "Routine": {
         "type": "object",
         "properties": {
@@ -2624,6 +2799,18 @@
           "exercise",
           "weight_step"
         ]
+      },
+      "RestPush": {
+        "type": "object",
+        "properties": {
+          "ends_at": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ends_at"
+        ],
+        "additionalProperties": false
       }
     }
   }

@@ -12,18 +12,25 @@ import { registerCardioGoalRoutes } from './routes/cardio-goals.js';
 import { registerExerciseNameRoutes } from './routes/exercise-names.js';
 import { registerGoalRoutes } from './routes/goals.js';
 import { registerMachineRoutes } from './routes/machines.js';
+import { registerPushRoutes } from './routes/push.js';
 import { registerRoutineRoutes } from './routes/routines.js';
 import { appErrors } from './routes/shared.js';
 import { registerWeightStepRoutes } from './routes/weight-steps.js';
 import { registerWorkoutRoutes } from './routes/workouts.js';
 import { errorHandler, notFound } from './standard/http.js';
+import { createPushService, type PushService } from './web-push.js';
 // DATE columns stay `YYYY-MM-DD` strings instead of being shifted through JS Date.
 types.setTypeParser(1082, (value) => value);
 
 // Feature routes live in routes/; the REST contract is documented in docs/api.md.
 export function createApp(
   pool: Pool,
-  options: { today?: () => string; auth?: express.RequestHandler } = {},
+  options: {
+    today?: () => string;
+    auth?: express.RequestHandler;
+    push?: PushService;
+    now?: () => number;
+  } = {},
 ) {
   const today = options.today ?? (() => seoulToday());
   const app = express();
@@ -50,6 +57,8 @@ export function createApp(
   registerExerciseNameRoutes(app, pool);
   registerCardioRoutes(app, pool, today);
   registerCardioGoalRoutes(app, pool, today);
+  // #260: without VAPID keys the service is disabled and the routes say so.
+  registerPushRoutes(app, options.push ?? createPushService(pool, { config: null }), options.now);
   // #172: an unknown /api path is a JSON 404; the app's own messages come before the central handler.
   app.use('/api', notFound);
   app.use(appErrors);

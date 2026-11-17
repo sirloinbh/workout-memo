@@ -78,6 +78,14 @@ import { cn } from './lib/utils';
 import { RoutineProgress } from './progress';
 import { type Progress, routineDraft, setReference } from './progress-data';
 import {
+  disablePush,
+  enablePush,
+  loadPushStatus,
+  permissionHelp,
+  type PushStatus,
+  syncRest,
+} from './push';
+import {
   cancelTimer,
   endAlertDue,
   endVibration,
@@ -534,6 +542,58 @@ function Workspace() {
     alertedEnd.current = timer.endsAt;
     if ('vibrate' in navigator) navigator.vibrate(endVibration);
   }, [timer, tick]);
+  // #260: rest-end Web Push. The settings toggle appears only when the server has keys and this
+  // browser supports push. While it is on, every start, resume, pause and cancel of the rest is
+  // sent to the server, which pushes at the end time even with the screen off.
+  const [push, setPush] = useState<{ status: PushStatus; publicKey: string | null }>({
+    status: 'checking',
+    publicKey: null,
+  });
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushWarning, setPushWarning] = useState('');
+  useEffect(() => {
+    let current = true;
+    loadPushStatus().then(
+      (loaded) => current && setPush(loaded),
+      // Not knowing means no toggle; the in-screen timer is unaffected.
+      () => current && setPush({ status: 'unavailable', publicKey: null }),
+    );
+    return () => {
+      current = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (push.status !== 'on') return;
+    syncRest(timer, Date.now()).then(
+      () => setPushWarning(''),
+      () =>
+        setPushWarning(
+          'Could not tell the server when the rest ends, so the notification may not arrive. The timer on screen still works.',
+        ),
+    );
+    // Only a change of state or end time is sent, not every tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [push.status, timer.state, timer.endsAt]);
+  async function togglePush(on: boolean) {
+    if (pushBusy || !push.publicKey) return;
+    setPushBusy(true);
+    setPushWarning('');
+    try {
+      if (on) setPush({ ...push, status: await enablePush(push.publicKey) });
+      else {
+        await disablePush();
+        setPush({ ...push, status: 'off' });
+      }
+    } catch (error) {
+      setPushWarning(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Could not change the notification setting.',
+      );
+    } finally {
+      setPushBusy(false);
+    }
+  }
   const [progress, setProgress] = useState<Progress | null>(null);
   const [progressError, setProgressError] = useState('');
   const [restConfirm, setRestConfirm] = useState(false);
@@ -1068,10 +1128,30 @@ function Workspace() {
           </label>
         ))}
       </fieldset>
+      {(push.status === 'off' || push.status === 'on' || push.status === 'denied') && (
+        <div className="col-span-full flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="rest-push"
+              checked={push.status === 'on'}
+              disabled={pushBusy || push.status === 'denied'}
+              onCheckedChange={(on) => void togglePush(on)}
+            />
+            <Label htmlFor="rest-push" className="mb-0 flex-row text-meta text-foreground">
+              Notify me when rest ends, even with the screen off
+            </Label>
+          </div>
+          <p className="text-meta text-muted-foreground" id="rest-push-help">
+            {push.status === 'denied'
+              ? permissionHelp
+              : 'Sent from the server at the end time, so it also arrives when the screen is off. Turn it on for each device you use. Your browser asks for permission the first time.'}
+          </p>
+        </div>
+      )}
       <p className="col-span-full text-meta text-muted-foreground">
-        Kept only in this browser, by end time; reopening the tab corrects the time left. No alert
-        while the browser is closed. If rest ends while this screen is open (after one tap),
-        supported devices such as Android vibrate; iPhone does not.
+        Kept only in this browser, by end time; reopening the tab corrects the time left. If rest
+        ends while this screen is open (after one tap), supported devices such as Android vibrate;
+        iPhone does not. With notifications on above, a push also arrives when the screen is off.
       </p>
       <p className="col-span-full text-meta text-muted-foreground">
         On set completion, rest uses the default for single-joint machines, then lower body, then
@@ -1080,7 +1160,9 @@ function Workspace() {
       </p>
     </section>
   );
-  const timerAlert = timerWarning && <AlertBanner className="mb-4">{timerWarning}</AlertBanner>;
+  const timerAlert = (timerWarning || pushWarning) && (
+    <AlertBanner className="mb-4">{timerWarning || pushWarning}</AlertBanner>
+  );
   // Outside the editor a running or paused rest is pinned under the app header (h-14).
   const pageTimer = !editor && timer.state !== 'idle' && (
     <>

@@ -1,6 +1,6 @@
 # Next steps
 
-Last updated: **2026-11-16 (Asia/Seoul)**. Update the same file on every working day. Before acting, check the real state of GitHub and the worker again.
+Last updated: **2026-11-17 (Asia/Seoul)**. Update the same file on every working day. Before acting, check the real state of GitHub and the worker again.
 
 ## Update rules
 
@@ -11,27 +11,25 @@ Last updated: **2026-11-16 (Asia/Seoul)**. Update the same file on every working
 
 ## Priority work
 
-| Order | Target                                                                                                                                                         | Current confirmed state                                                                                                        | Next action and prerequisite                                                 |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| 1     | [#117](https://github.com/sirloinbh/workout-memo/issues/117) Cardio items in routines and 12-week progression (P3)                                             | In progress by agent2 (3-PR plan)                                                                                              | Finish the three PRs; merge each after CI                                    |
-| 2     | [#312](https://github.com/sirloinbh/workout-memo/issues/312) "View plan" closes an open routine draft (P3)                                                     | Registered from the #311 review. Needs the user's choice: confirm first (recommended), keep the draft, or block                | Implement after the user decides                                             |
-| 3     | Sign-in loading text                                                                                                                                           | The full-page "Checking your sign-in…" in `sign-in.tsx` (#303) is plain text, the last loading spot without the shared Spinner | Small fix with an issue (agent1, 2026-11-16)                                 |
-| 4     | [#260](https://github.com/sirloinbh/workout-memo/issues/260) Rest timer Web Push (P4)                                                                          | #106 HTTPS and #303 sign-in are done                                                                                           | Needs the user's approval to add the `web-push` package                      |
-| 5     | [#119](https://github.com/sirloinbh/workout-memo/issues/119) ② FIT and ZIP import (P4, needs-user)                                                             | ① TCX and GPX merged (#266)                                                                                                    | After the user installs `@garmin/fitsdk` and `fflate` and gives sample files |
-| 6     | [#110](https://github.com/sirloinbh/workout-memo/issues/110), [#111](https://github.com/sirloinbh/workout-memo/issues/111) Android package and Play Store (P4) | PWA install support is done (#109); the app is on HTTPS (#106)                                                                 | Needs the Play developer account and a signing key decision                  |
+| Order | Target                                                                                                                                                         | Current confirmed state                                                                                                        | Next action and prerequisite                                                    |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| 1     | [#119](https://github.com/sirloinbh/workout-memo/issues/119) ② FIT and ZIP import (P4, needs-user)                                                             | [PR #327](https://github.com/sirloinbh/workout-memo/pull/327) is open and CI is green                                          | Add a test from 1 or 2 real Garmin FIT samples from the user, then merge        |
+| 2     | Sign-in loading text                                                                                                                                           | The full-page "Checking your sign-in…" in `sign-in.tsx` (#303) is plain text, the last loading spot without the shared Spinner | Small fix with an issue                                                         |
+| 3     | [#260](https://github.com/sirloinbh/workout-memo/issues/260) Rest timer Web Push, production setup                                                             | Merged (#335), but it does nothing in production until the VAPID keys are set                                                  | After the user sets the keys and restarts the API, check a push on a real phone |
+| 4     | [#110](https://github.com/sirloinbh/workout-memo/issues/110), [#111](https://github.com/sirloinbh/workout-memo/issues/111) Android package and Play Store (P4) | PWA install support is done (#109); the app is on HTTPS (#106)                                                                 | Needs the Play developer account and a signing key decision                     |
 
 ## User steps
 
-- [#312](https://github.com/sirloinbh/workout-memo/issues/312): choose how "View plan" treats an open routine draft.
-- [#260](https://github.com/sirloinbh/workout-memo/issues/260): approve or decline adding the `web-push` package.
+- #260 Web Push: add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and optionally `VAPID_SUBJECT` to the production `.env`, restart the API, and check a push on a real phone (together with the #110 phone check).
 - [#110](https://github.com/sirloinbh/workout-memo/issues/110), [#111](https://github.com/sirloinbh/workout-memo/issues/111): create the Play developer account and decide where the signing key is kept.
-- [#119](https://github.com/sirloinbh/workout-memo/issues/119) FIT and ZIP import: run the install command for `@garmin/fitsdk` and `fflate` (the agent writes the check result and the command in the PR), and provide 1 or 2 Garmin FIT or TCX samples with personal data removed.
+- [#119](https://github.com/sirloinbh/workout-memo/issues/119) FIT and ZIP import: provide 1 or 2 Garmin FIT samples with personal data removed, so a test can be added to PR #327 before it merges.
 - [#120](https://github.com/sirloinbh/workout-memo/issues/120) Nike Run Club: request your own data in the Nike account settings and say what file format arrived.
 - [#121](https://github.com/sirloinbh/workout-memo/issues/121) Garmin auto sync: create a Personal API key in the Garmin Connect web (it is shown only once, when created).
-- Check the 2026-11-16 production deploys (#305, #306, #310, #311, #313, #314) once on the server or in the browser at `https://workout-memo.daysofme.com`: the agents had no server access, so only main CI was confirmed.
+- Check the production deploys of 2026-11-16 and 2026-11-17 (#305, #306, #310, #311, #313, #314, #319, #321, #322, #324, #325, #332, #335, #336) once on the server or in the browser at `https://workout-memo.daysofme.com`: the agents had no server access, so only main CI was confirmed.
 - Check once on a real phone at the HTTPS address: PWA install and the new-version notice (#109), the touch device change (#104), the log edit screen (#105 set cards, bottom sheet, rest timer), exercise analysis (#125), and exercise name autocomplete (#124). So far they were checked only with touch emulation or a localhost build.
 - The local branch `backup/local-main-2026-11-01` is a backup of the old `main`. Delete it if you judge it is not needed. The history differs, so `git branch --delete` is refused and `-D` approval is needed.
-- On this PC, the full `npm run check` stops from running out of memory (2026-10-31, 2026-11-01, 2026-11-16). Free up memory before a local check, or run its parts.
+- The CI `knip` step warns about 48 unused exports and one unused file (`shared/contract.ts`). It predates #260, does not block, and has no issue yet.
+- On this PC, the full `npm run check` stops from running out of memory (2026-10-31, 2026-11-01, 2026-11-16, 2026-11-17). Free up memory before a local check, or run its parts.
 - The items written down on 2026-10-20 were not checked again: the local DB `npm run db:migrate` baseline, and the creation of the production 03:00 snapshot and 03:30 backup.
 
 ## Follow-up features and cleanup

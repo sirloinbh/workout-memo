@@ -1,5 +1,5 @@
 {
-  "centralSha": "9f05ff31ce4c4151dfe85a0ffd38195fe8ecdee4",
+  "centralSha": "d974c93bf39765824b671009f2b2d2cec202e6ee",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -349,7 +349,7 @@
     },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "bc696149ca6f0901092d6f0f4e4c8de3b18e3c915dfaa07e6c2ca8576f46389a",
+      "sha256": "d05467a76d60fa36056868c40969b0c3c0576ae29d666d411d03d563cf6ca4bd",
       "source": "templates/app/deploy/remote-deploy.sh.tmpl"
     },
     "deploy/report.service": {
@@ -359,7 +359,7 @@
     },
     "deploy/report.sh": {
       "mode": "full",
-      "sha256": "78e39decde1efe4c1833c996eabdf0b9103e4b81a51b8128ef239a97c0954de5",
+      "sha256": "c8cc8f2d600b6e8a3ffbef952efd9bfba3de7b3469ffd5ecb3052861e976af17",
       "source": "templates/app/deploy/report.sh.tmpl"
     },
     "deploy/report.timer": {

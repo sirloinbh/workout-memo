@@ -270,3 +270,12 @@ The shared Zod contract for frontend and backend was introduced in #64 as a copy
 ## OpenAPI
 
 [openapi.json](openapi.json) (OpenAPI 3.1) is generated from the registered routes, the endpoint descriptions of this document, and the server Zod schemas (#68, `npm run openapi`). It contains the request bodies, the query parameters, the path variables, and the field constraints (required, range, length, integer, date format, null allowed, default). Response body schemas and cross-field rules (end date >= start date, RPE in 0.5 steps, routine week rules, and so on) were not moved into JSON Schema, so follow the descriptions in this document.
+
+## AI tools (internal)
+
+The shared AI service `shared-ai` calls the app's AI tools on `/internal/tools` (#334, project-standards `docs/ai-tools.md`, ADR-0017). They are not under `/api`: nginx does not forward them, and they are registered only when the server `.env` has `AI_TOOLS_PUBLIC_KEY`. Each call needs a short-lived token signed by `shared-ai` and the `workout-memo:read` or `workout-memo:write` scope, and leaves one `audit_log` row.
+
+| Tool            | Scope | What it does                                                                                         |
+| --------------- | ----- | ---------------------------------------------------------------------------------------------------- |
+| `list_workouts` | read  | Journals and sets between `from` and `to` (at most 366 days), latest first, like `GET /api/workouts` |
+| `add_workout`   | write | Adds a journal with its sets, with the same body rules as `POST /api/workouts` (without `version`)   |

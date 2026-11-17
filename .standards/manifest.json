@@ -1,5 +1,5 @@
 {
-  "centralSha": "8b59da45cab06274d1bdca8ae771819560db195a",
+  "centralSha": "35cf9c97e8e34a1f206c2f95be8c9cb4b81bd14a",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -165,7 +165,7 @@
     },
     ".prettierignore": {
       "mode": "section",
-      "sha256": "a74ca50d14fb8575d9c4270e2d0a98d31d08724df8d4315f562f6ace7d8e1ba3",
+      "sha256": "6cb0d6342fd5cf73f509f93d8679326542e62412f7b05e302c3d4cd700900121",
       "source": "templates/app/.prettierignore.tmpl"
     },
     ".standards/blocked-packages.json": {
@@ -473,8 +473,18 @@
     },
     "frontend/src/components/layout/app-shell.tsx": {
       "mode": "full",
-      "sha256": "b620e29bd8a91e20c4a13fd469dbc011099535797be7889593b52b9988bf0659",
+      "sha256": "14fdfc9f4485c3144dff5de8410fef3e386808ef0df84c1b6b14ff7685232fe8",
       "source": "templates/ui/frontend/src/components/layout/app-shell.tsx"
+    },
+    "frontend/src/components/layout/app-switcher.test.tsx": {
+      "mode": "full",
+      "sha256": "a01330c09a14b1fcf9ec1287fa14938048c6ae72be779c8e21785f0426250c6a",
+      "source": "templates/ui/frontend/src/components/layout/app-switcher.test.tsx"
+    },
+    "frontend/src/components/layout/app-switcher.tsx": {
+      "mode": "full",
+      "sha256": "823918c2d33b6b8bf7c88104fd7f4bf8239d762e154a7409da36e564310675ef",
+      "source": "templates/ui/frontend/src/components/layout/app-switcher.tsx"
     },
     "frontend/src/components/layout/theme-toggle.tsx": {
       "mode": "full",
@@ -670,6 +680,11 @@
       "mode": "full",
       "sha256": "51fbb66f7a56ef041081e43a2ddd352bfc6dcf989847a74a9f821d1d86ba518f",
       "source": "templates/ui/frontend/src/lib/api.ts"
+    },
+    "frontend/src/lib/apps.ts": {
+      "mode": "full",
+      "sha256": "5480e42b70e5bc9a489b4b736f81c2c726189476a82197c820a5e4b39b3d97de",
+      "source": "templates/ui/frontend/src/lib/apps.ts.tmpl"
     },
     "frontend/src/lib/theme-config.ts": {
       "mode": "full",

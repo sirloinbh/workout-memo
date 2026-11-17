@@ -5,7 +5,16 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
 import { dateRange, workoutSchema } from '../domain.js';
+import { auditContext, writeAudit } from '../standard/audit.js';
 import { parseId } from '../standard/http.js';
+
+// The audit summary of a journal (project-standards#553): what identifies it, not every set.
+const summary = (w: { date: string; title: string; version: number }, sets?: number) => ({
+  date: w.date,
+  title: w.title,
+  version: w.version,
+  ...(sets === undefined ? {} : { sets }),
+});
 
 export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
   app.get('/api/workouts', async (req, res) => {
@@ -60,6 +69,7 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
         }
         let workoutId: number;
         let version = 1;
+        let before: ReturnType<typeof summary> | null = null;
         if (method === 'post')
           workoutId = (
             await client.query(
@@ -70,7 +80,7 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
         else {
           workoutId = target!;
           const existing = await client.query(
-            'SELECT version FROM workouts WHERE id=$1 FOR UPDATE',
+            'SELECT date,title,version FROM workouts WHERE id=$1 FOR UPDATE',
             [workoutId],
           );
           if (!existing.rowCount) {
@@ -86,6 +96,7 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
             });
             return;
           }
+          before = summary(existing.rows[0]);
           const r = await client.query(
             'UPDATE workouts SET date=$1,title=$2,notes=$3,feedback=$4,version=version+1 WHERE id=$5 RETURNING id,version',
             [w.date, w.title, w.notes, w.feedback, workoutId],
@@ -105,6 +116,14 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
           );
         const status = method === 'post' ? 201 : 200;
         const response = { id: workoutId, version };
+        await writeAudit(client, {
+          ...auditContext(req, res),
+          action: method === 'post' ? 'create' : 'update',
+          entity: 'workout',
+          entityId: workoutId,
+          before,
+          after: summary({ date: w.date, title: w.title, version }, w.sets.length),
+        });
         if (key)
           await client.query(
             'INSERT INTO workout_requests(key,fingerprint,status,response) VALUES($1,$2,$3,$4)',
@@ -120,11 +139,31 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
       }
     });
   app.delete('/api/workouts/:id', async (req, res) => {
-    const r = await pool.query('DELETE FROM workouts WHERE id=$1', [
-      parseId(req.params.id, 'journal'),
-    ]);
-    res
-      .status(r.rowCount ? 200 : 404)
-      .json(r.rowCount ? { ok: true } : { error: 'Journal not found' });
+    const id = parseId(req.params.id, 'journal');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const r = await client.query(
+        'DELETE FROM workouts WHERE id=$1 RETURNING date,title,version',
+        [id],
+      );
+      if (r.rowCount)
+        await writeAudit(client, {
+          ...auditContext(req, res),
+          action: 'delete',
+          entity: 'workout',
+          entityId: id,
+          before: summary(r.rows[0]),
+        });
+      await client.query('COMMIT');
+      res
+        .status(r.rowCount ? 200 : 404)
+        .json(r.rowCount ? { ok: true } : { error: 'Journal not found' });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   });
 }

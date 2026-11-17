@@ -93,7 +93,8 @@ export function checkApi(sources) {
   for (const source of sources) {
     for (const m of source.text.matchAll(/\bapp\.(get|post|put|patch|delete|use)\(\s*['"]([^'"]+)['"]/g)) {
       const route = m[2];
-      if (!/^\/api(\/|$)/.test(route)) {
+      // /internal/tools is the AI tool endpoint for shared-ai (ADR-0017); nginx forwards only /api.
+      if (!/^\/(api|internal)(\/|$)/.test(route)) {
         warnings.push(`${at(source, m.index)}: API route ${route} must start with /api.`);
         continue;
       }

@@ -1,5 +1,5 @@
 {
-  "centralSha": "630c6de5c0ab4cc1d9565a954239646b04bbe0bd",
+  "centralSha": "8b59da45cab06274d1bdca8ae771819560db195a",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -175,7 +175,7 @@
     },
     ".standards/check.mjs": {
       "mode": "full",
-      "sha256": "e82085acb057e405550f2df6040efe2d999f09668372bcee6387a1e8f8e12755",
+      "sha256": "ea51c44c412ef5cf2ec0272719287371f4a81472fe4ab32da7ca5d32bfabc208",
       "source": "scripts/standards-check.mjs"
     },
     ".standards/ioc-scan.mjs": {
@@ -276,6 +276,11 @@
       "mode": "full",
       "sha256": "d77a5499049593f8e06cb2d6ecba7706769fd82f46fecd52989ccaaedf6c5c32",
       "source": "templates/app/backend/src/standard/http.ts"
+    },
+    "backend/src/standard/tools.ts": {
+      "mode": "full",
+      "sha256": "1f18074ebd5a47d065a32b97985cecf3d5a97c3bb8758332569bffdf0e3c663f",
+      "source": "templates/app/backend/src/standard/tools.ts"
     },
     "backend/tsconfig.json": {
       "mode": "full",

@@ -13,6 +13,7 @@ Each workday's summary is kept in a `YYYY-MM-DD.md` file. Dates use Asia/Seoul t
 
 ## Summaries by date
 
+- [2026-11-18](2026-11-18.md)
 - [2026-11-17](2026-11-17.md)
 - [2026-11-16](2026-11-16.md)
 - [2026-11-15](2026-11-15.md)

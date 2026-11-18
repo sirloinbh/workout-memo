@@ -1,6 +1,6 @@
 # Workout PostgreSQL
 
-PostgreSQL 17. The single source of truth for the schema is `migrations/NNN_name.sql`, applied in file name order. An empty Docker data volume applies all the files on its first run. Adding a SQL file alone does not apply it to an existing volume.
+PostgreSQL 17. The single source of truth for the schema is `migrations/NNN_name.sql`, applied in file name order. Docker does not apply the files: on an empty volume and on an existing one, run `npm run db:migrate`.
 
 ## Applying migrations (#58)
 
@@ -16,7 +16,7 @@ npm run db:migrate -- --status  # only list applied and pending files (no DB cha
 - In the following cases it fails without applying anything: you changed the content of an applied file (checksum mismatch; line ending and UTF-8 BOM differences are ignored), you deleted an applied file, a new file appeared with a number lower than one already applied, or numbers are duplicated or a name does not match the format. Do not edit an applied file; add a file with a new number.
 - The first run on an existing DB with no history applies all the files again from 001 and records them. 001 to 009 are all safe to re-run, so existing logs, sets, and machine values do not change. 009 updates the official reference rows again by the same key.
 - Node reads the files directly as UTF-8, so the Korean text corruption that happens with the PowerShell pipe method below does not occur.
-- **Write new migrations so they are safe to re-run too** (`IF NOT EXISTS`, `ON CONFLICT`, and so on). On an empty volume, the Docker initialization runs the files first without a history, and afterwards `db:migrate` applies the same files again and records them.
+- **Write new migrations so they are safe to re-run too** (`IF NOT EXISTS`, `ON CONFLICT`, and so on). On an existing DB with no history, `db:migrate` applies the same files again and records them.
 - Recovery on failure: check the file name and the cause in the error message. If it is a data problem, make a backup first (`scripts/backup.ps1`), fix the cause, and run it again. A checksum mismatch is solved by restoring the file to its original content in git.
 
 The per-file psql commands below are the procedure from before `db:migrate` was introduced and do not leave a history. A DB that was already migrated that way is recorded as the baseline once you run `db:migrate` one time.
@@ -25,7 +25,7 @@ The per-file psql commands below are the procedure from before `db:migrate` was 
 
 Windows PowerShell 5.1 does not pass UTF-8 through as it is when it sends text to and from an external program through a pipe. When sending, it converts with `$OutputEncoding` (ASCII by default), and when receiving, with the console code page (CP949 by default on Korean Windows). So if you apply a migration with `Get-Content … | docker compose exec … psql`, the `'기타'` ("Other") in 001 is added as a `'??'` brand, and the Korean reference data in 009 goes in as corrupted duplicate rows. For backups too, if you receive the `pg_dump` output into a variable, `기타` is saved corrupted as `湲고?`.
 
-- For migrations, use `npm run db:migrate` (Node reads it directly as UTF-8). If you must apply only one file, run the file inside the container that compose mounted with `psql -f` (the commands below).
+- For migrations, use `npm run db:migrate` (Node reads it directly as UTF-8). If you must apply only one file, copy it into the container and run it with `psql -f` (the commands below).
 - For backups, `scripts/backup.ps1` dumps to a file inside the container and then takes it out byte for byte with `docker compose cp`. For restores too, copy the file into the container and then run it with `-f`.
 - If the pipe method comes back into a PowerShell example in the docs, `npm run test:docs` fails.
 
@@ -38,50 +38,57 @@ docker compose exec -T db psql -U workout -d workout -c "SELECT id, brand, lineu
 
 For an existing volume, apply `002_set_notes.sql`, which adds set notes, before you run the new API.
 Existing logs and sets are kept, and existing set notes start as an empty string. It is safe to re-run.
-An empty volume and CI apply all the migrations in file name order.
+On an empty volume, `npm run db:migrate` and CI apply all the migrations in file name order.
 
 Before you use the routine plan API, also apply `004_routines.sql`. A routine is saved atomically as a JSON document that preserves the order and repeats of body parts and the manual weekly goals. It does not create real logs or achieved goals.
 
 ```powershell
-docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/004_routines.sql
+docker compose cp database/migrations/004_routines.sql db:/tmp/004_routines.sql
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /tmp/004_routines.sql
 ```
 
 Before the routine goals and "Rest today" API (#28), apply `005_routine_progress.sql` after `004_routines.sql`. `routine_rests` stores only the rest dates of each routine, one row each (no duplicate on the same day), and the moved schedule and the "Excluded" goals are calculated from these dates. Existing logs, sets, and routines do not change, and it is safe to re-run. When you delete a routine, its rest records are deleted too.
 
 ```powershell
-docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/005_routine_progress.sql
+docker compose cp database/migrations/005_routine_progress.sql db:/tmp/005_routine_progress.sql
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /tmp/005_routine_progress.sql
 ```
 
 Before you use the exercise analysis API (PR by exercise, estimated 1RM, weekly volume by body part), also apply `007_exercise_body_parts.sql`. It keeps only the exercise-to-body-part mapping that the user assigned. The exercise name is stored as a value normalized by the same rule as goal evaluation (`lower(trim(exercise name))`), and the body part is not guessed from the exercise name. An exercise with no mapping is counted as `미분류` (Unclassified). Existing logs and sets do not change, and it is safe to re-run. PRs and weekly stats are not stored and are calculated on every query. Planned sets that are not completed (`completed=false`) are not counted in PRs, the estimated 1RM, or weekly volume.
 
 ```powershell
-docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/007_exercise_body_parts.sql
+docker compose cp database/migrations/007_exercise_body_parts.sql db:/tmp/007_exercise_body_parts.sql
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /tmp/007_exercise_body_parts.sql
 ```
 
 ```powershell
-docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/002_set_notes.sql
+docker compose cp database/migrations/002_set_notes.sql db:/tmp/002_set_notes.sql
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /tmp/002_set_notes.sql
 ```
 
 Before you use the body records API, also apply `008_body_measurements.sql`. It is safe to re-run (`CREATE TABLE IF NOT EXISTS`).
 `body_measurements` has one row per date (`date`, UNIQUE) and stores `body_weight_kg` and `skeletal_muscle_kg` (kg, greater than 0) and `body_fat_percent` (%, 0 to 100) as `NUMERIC(5,2)`. A value that was not measured is NULL, and a row where all three values are NULL is rejected by a CHECK constraint. The API does not round input with a third or later decimal place and rejects it with 400. A create request for the same date returns 409, and you change it with an update (PUT). It is not linked to workout logs by a foreign key, so deleting a log does not affect body records.
 
 ```powershell
-docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/008_body_measurements.sql
+docker compose cp database/migrations/008_body_measurements.sql db:/tmp/008_body_measurements.sql
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /tmp/008_body_measurements.sql
 ```
 
 The commands above assume the default DB user and name; if you set them separately, replace them with those names.
 
-Before you run the new API that uses official machine reference values, also apply `009_official_machine_weights.sql`. It creates the manufacturer official starting resistance (empty weight) reference table `official_machine_weights` and fills it with the research results, and adds the optional link column `machines.official_weight_id` and the `Newtech` brand (skipped if it already exists). It does not change the base weight of existing machines or the total weight of past sets, and the link of existing machines starts as NULL. Re-running updates the reference rows by the same key and is safe. If you run the new API without this migration, the machine list query fails. For the research criteria and the sources, see [docs/machine-official-weights.md](../docs/machine-official-weights.md). This file contains Korean values, so run the file inside the container that compose mounted directly, not through a pipe. Windows PowerShell 5.1 sends text as ASCII when piping to a native program, which corrupts the Korean (온힘, 뉴텍, and the notes), and corrupted values also break the UNIQUE key match when you re-run.
+Before you run the new API that uses official machine reference values, also apply `009_official_machine_weights.sql`. It creates the manufacturer official starting resistance (empty weight) reference table `official_machine_weights` and fills it with the research results, and adds the optional link column `machines.official_weight_id` and the `Newtech` brand (skipped if it already exists). It does not change the base weight of existing machines or the total weight of past sets, and the link of existing machines starts as NULL. Re-running updates the reference rows by the same key and is safe. If you run the new API without this migration, the machine list query fails. For the research criteria and the sources, see [docs/machine-official-weights.md](../docs/machine-official-weights.md). This file contains Korean values, so run the file inside the container (copied with `docker compose cp`), not through a pipe. Windows PowerShell 5.1 sends text as ASCII when piping to a native program, which corrupts the Korean (온힘, 뉴텍, and the notes), and corrupted values also break the UNIQUE key match when you re-run.
 
 ```powershell
-docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/009_official_machine_weights.sql
+docker compose cp database/migrations/009_official_machine_weights.sql db:/tmp/009_official_machine_weights.sql
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /tmp/009_official_machine_weights.sql
 ```
 
 Before you run the log draft and safe retry API, also apply `003_workout_retries.sql`.
 Existing logs are kept at `version=1`, and the version increases when you edit. The migration is safe to re-run.
 
 ```powershell
-docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/003_workout_retries.sql
+docker compose cp database/migrations/003_workout_retries.sql db:/tmp/003_workout_retries.sql
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /tmp/003_workout_retries.sql
 ```
 
 The UUID `Idempotency-Key` of a log POST/PUT resends the result of the same method, target, and normalized content for 7 days from the first successful commit.
@@ -99,7 +106,8 @@ Existing sets are already-performed records, so they stay `completed=true` and t
 A set with `completed=false` is only kept as a plan and is not counted in goal achievement, volume, set counts, or workout days. A set from an existing client that does not send `completed` is saved as completed. It is safe to re-run.
 
 ```powershell
-docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/006_set_completion_rpe.sql
+docker compose cp database/migrations/006_set_completion_rpe.sql db:/tmp/006_set_completion_rpe.sql
+docker compose exec -T db psql -U workout -d workout -v ON_ERROR_STOP=1 -f /tmp/006_set_completion_rpe.sql
 ```
 
 Before you run the API that uses the log feeling feedback (#83), apply `010_workout_feedback.sql` (`npm run db:migrate`). `workouts.feedback` is NULL (not entered) or `hard`, `medium`, or `easy`, and is also validated by a DB CHECK. Existing logs stay NULL, and it is safe to re-run.

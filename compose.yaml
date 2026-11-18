@@ -30,7 +30,13 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
-    networks: [default, shared-auth]
+      # #346: shared-ai's public key; set, the API serves its AI tools at /internal/tools (#334).
+      AI_TOOLS_PUBLIC_KEY: ${AI_TOOLS_PUBLIC_KEY:-}
+    networks:
+      default: {}
+      shared-auth: {}
+      # shared-ai reads and calls the tools at http://workout-memo-api:3101 (project-standards#611).
+      shared-ai: { aliases: [workout-memo-api] }
     depends_on:
       db: { condition: service_healthy }
     restart: unless-stopped
@@ -46,6 +52,11 @@ volumes:
 # Created by the shared-auth compose project. Locally, run shared-auth first, or once: docker network create shared-auth
 networks:
   shared-auth:
+    external: true
+  # External so this app and shared-ai deploy in either order; deploy/remote-deploy.sh creates it when missing.
+  # Locally, once: docker network create shared-ai
+  shared-ai:
+    name: shared-ai
     external: true
 # The Dockerfiles read the GitHub Packages token as a BuildKit secret, so it never lands in an image layer.
 secrets:

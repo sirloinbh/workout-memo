@@ -61,7 +61,7 @@ const bestTimeSql = `SELECT ${recordColumns} FROM cardio_sessions
   ORDER BY duration_sec, date, id LIMIT 1`;
 type CardioRecord = { id: number; date: string; distance_km: number; duration_sec: number };
 
-export async function cardioRecords(pool: Pool) {
+async function cardioRecords(pool: Pool) {
   const [longest, best5k, best10k] = await Promise.all([
     pool.query<CardioRecord & { kind: (typeof cardioKinds)[number] }>(
       `SELECT DISTINCT ON (kind) kind, ${recordColumns} FROM cardio_sessions
@@ -161,8 +161,8 @@ export function registerCardioRoutes(app: express.Express, pool: Pool, today: ()
 // request), nothing is saved and each such row's reason comes back by its index, so the preview
 // can show it next to the row (2026-11-08 user decision 3). Cross-source look-alikes are only
 // candidates the preview asks about; they are not refused here.
-export const cardioImportLimit = 200;
-export const cardioImportRequest = z.object({
+const cardioImportLimit = 200;
+const cardioImportRequest = z.object({
   sessions: z
     .array(z.unknown(), { error: 'Send the cardio records to import (sessions) as an array' })
     .min(1, 'Select at least 1 cardio record to import')
@@ -221,7 +221,7 @@ function sendImportProblems(
 // A row may carry a 2000-character memo (about 6 KB of Hangul in JSON), so 200 rows do not fit
 // the app-wide 256kb body limit. This route parses its own body and is registered before that
 // parser (app.ts), like the backup routes.
-export const cardioImportMaxBytes = 2 * 1024 * 1024;
+const cardioImportMaxBytes = 2 * 1024 * 1024;
 export function registerCardioImportRoute(
   app: express.Express,
   pool: Pool,

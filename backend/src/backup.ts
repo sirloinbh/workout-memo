@@ -22,9 +22,9 @@ export const backupFormat = 'workout-memo-backup';
 // v3 (#253) adds data.cardio_goals. v1 and v2 files restore as backups without cardio goals; an
 // app older than v3 cannot restore a v3 file (2026-11-08 user decision B1).
 export const backupVersion = 3;
-export const supportedBackupVersions = [1, 2, 3] as const;
-export const backupMaxBytes = 10 * 1024 * 1024;
-export const replaceConfirmation = 'Replace all';
+const supportedBackupVersions = [1, 2, 3] as const;
+const backupMaxBytes = 10 * 1024 * 1024;
+const replaceConfirmation = 'Replace all';
 
 export class BackupInvalid extends Error {}
 
@@ -39,7 +39,7 @@ export function csvCell(value: string | number | null | undefined) {
 export const toCsv = (rows: (string | number | null | undefined)[][]) =>
   String.fromCharCode(0xfeff) + rows.map((row) => row.map(csvCell).join(',') + '\r\n').join('');
 
-export const csvColumns = [
+const csvColumns = [
   'workout_id',
   'date',
   'title',
@@ -59,7 +59,7 @@ export const csvColumns = [
 ];
 
 // #114: cardio sessions get their own CSV; the workouts CSV above keeps its columns.
-export const cardioCsvColumns = [
+const cardioCsvColumns = [
   'cardio_id',
   'date',
   'start_time',

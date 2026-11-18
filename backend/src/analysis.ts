@@ -4,9 +4,9 @@ import { allBodyParts, legacyBodyParts, limitLength } from './domain.js';
 
 // Exercise analysis (#32). Everything is computed on read from saved sets, so
 // edits and deletes are reflected on the next request without stored PRs.
-export const unclassified = '미분류';
+const unclassified = '미분류';
 // Epley estimate, applied only within this inclusive rep range.
-export const estimateMaxReps = 10;
+const estimateMaxReps = 10;
 export const bodyPartMappingSchema = z
   .object({
     exercise: limitLength(z.string().trim(), { min: 1, max: 120 }),
@@ -68,7 +68,7 @@ function best<T extends { date: string; weight: number; reps: number }>(
   return result;
 }
 
-export const mondayOf = (date: string) => {
+const mondayOf = (date: string) => {
   const d = new Date(date + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
   return d.toISOString().slice(0, 10);

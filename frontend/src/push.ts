@@ -4,8 +4,8 @@ import type { RestTimer } from './rest-timer';
 // #260: rest-end Web Push. The app tells the server when a rest ends and the server pushes then, so
 // the alert arrives with the screen off. The worker is public/push/sw.js, at its own scope because
 // public/sw.js is centrally managed and has no push handling.
-export const pushWorkerUrl = '/push/sw.js';
-export const pushWorkerScope = '/push/';
+const pushWorkerUrl = '/push/sw.js';
+const pushWorkerScope = '/push/';
 
 export type PushStatus =
   | 'checking'
@@ -15,7 +15,7 @@ export type PushStatus =
   | 'on'
   | 'denied'; // the browser blocks notifications for this site
 
-export const pushSupported = () =>
+const pushSupported = () =>
   typeof navigator !== 'undefined' &&
   'serviceWorker' in navigator &&
   typeof window !== 'undefined' &&

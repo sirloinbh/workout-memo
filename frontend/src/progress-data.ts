@@ -2,7 +2,7 @@ import type { RoutineCardio } from './contract';
 import { plural } from './labels';
 // Routine goals (#28). Planned targets are shown per exercise exactly as planned;
 // weights of different exercises are never summed. Only saved journals are records.
-export type TargetExercise = {
+type TargetExercise = {
   exercise: string;
   machine_id?: number | null;
   sets: number;

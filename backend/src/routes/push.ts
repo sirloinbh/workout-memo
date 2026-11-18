@@ -10,7 +10,7 @@ const maxAheadMs = 3600 * 1000 + 60_000;
 const maxBehindMs = 10_000;
 
 // The shared sign-in sets req.user (#303). Without it (local development) there is one user.
-export const pushUserId = (req: express.Request) =>
+const pushUserId = (req: express.Request) =>
   (req as express.Request & { user?: { id?: string } }).user?.id || 'local';
 
 // #260: Web Push subscriptions and the rest-end push. See docs/api.md.

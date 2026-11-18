@@ -3,19 +3,15 @@ import { z } from 'zod/v4';
 import { date, limitLength, routineCardioSchema } from './contract.js';
 // Input schemas shared with the frontend live in contract.ts (synced from shared/contract.ts).
 export {
-  type BodyMeasurementInput,
   bodyMeasurementSchema,
   type CardioGoal,
   cardioGoalObject,
-  cardioGoalPeriods,
   cardioGoalSchema,
-  cardioGoalTypes,
   type CardioKind,
   cardioKinds,
   cardioSessionObject,
   cardioSessionSchema,
   cardioSessionSchemaFor,
-  cardioSources,
   checkCardioGoal,
   checkCardioSession,
   date,
@@ -25,7 +21,6 @@ export {
   goalSchema,
   limitLength,
   machineSchema,
-  routineCardioSchema,
   weightStepSchema,
   workoutSchema,
 } from './contract.js';

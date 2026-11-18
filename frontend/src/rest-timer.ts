@@ -31,7 +31,7 @@ export const finished = (t: RestTimer, now: number) =>
   t.state === 'running' && remainingMs(t, now) === 0;
 // #105: the end alert (vibration) is for a rest that ended just now. A rest found ended
 // after a reload or a long background stay ended long ago and stays silent.
-export const endAlertWindow = 5000;
+const endAlertWindow = 5000;
 export const endAlertDue = (t: RestTimer, now: number) =>
   finished(t, now) && t.endsAt !== null && now - t.endsAt <= endAlertWindow;
 export const endVibration = [200, 100, 200];

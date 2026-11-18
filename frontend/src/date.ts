@@ -1,5 +1,5 @@
 // Names for a date's weekday (0 = Sunday) and month (0 = January), for screen text.
-export const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 export const monthNames = [
   'Jan',
   'Feb',

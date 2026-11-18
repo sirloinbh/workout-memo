@@ -17,7 +17,7 @@ export type TargetExercise = {
   result?: 'achieved' | 'missed' | null;
   kind?: 'start' | 'reps' | 'weight' | 'hold' | 'deload';
 };
-export type WeekChange = NonNullable<RoutinePlan['weeks']>[number];
+type WeekChange = NonNullable<RoutinePlan['weeks']>[number];
 export type PlanTarget = {
   order: number;
   week: number;
@@ -31,7 +31,7 @@ export type PlanTarget = {
   // routineProgress adds each item's result from saved cardio records.
   cardio?: TargetCardio[];
 };
-export type TargetCardio = RoutineCardio & { result?: 'achieved' | 'missed' | null };
+type TargetCardio = RoutineCardio & { result?: 'achieved' | 'missed' | null };
 // A saved cardio record as the cardio judgement needs it.
 export type CardioRecord = {
   id: number;
@@ -304,11 +304,6 @@ export function arrangeTargets(
   return { days, excluded: excludedSkeletons.map((t) => full.get(t.order)!) };
 }
 
-export const planTargets = (plan: RoutinePlan) => {
-  const { days, excluded } = arrangeTargets(plan, []);
-  return [...days.flatMap((d) => (d.target ? [d.target] : [])), ...excluded];
-};
-
 // Returns the reason a rest cannot be chosen today, or null when it can.
 export function restUnavailable(plan: RoutinePlan, rests: readonly string[], today: string) {
   if (rests.includes(today)) return 'Today is already set as a rest day';
@@ -349,7 +344,7 @@ export function restPreview(
 // interval item takes any record of its type. One record counts for one item only, matched in
 // session and item order with the earliest record first. A closed window without one is missed.
 // The summary counts the items of sessions on or before today; null when no split has cardio.
-export function judgeCardio(
+function judgeCardio(
   plan: RoutinePlan,
   days: readonly PlanDay[],
   records: readonly CardioRecord[],

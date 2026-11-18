@@ -24,8 +24,8 @@ import { autoRoutineInput } from '../../backend/test/routine-fixture.js';
 // #113: screen checks (visual, responsive, accessibility) use fixed data and a fixed
 // clock instead of the shared test DB, which other specs fill with unique rows. Routine
 // progress and analysis are computed with the real server functions.
-export const today = '2026-10-15'; // Thursday
-export const now = new Date('2026-10-15T10:00:00+09:00');
+const today = '2026-10-15'; // Thursday
+const now = new Date('2026-10-15T10:00:00+09:00');
 
 export const pages = [
   { path: '/', name: 'dashboard' },
@@ -444,7 +444,7 @@ function goalSuggestion(exercise: string) {
 }
 
 // Serves every API call from the fixtures; screen checks never write.
-export async function useFixtures(page: Page) {
+async function useFixtures(page: Page) {
   await page.clock.setFixedTime(now);
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
@@ -458,7 +458,7 @@ export async function useFixtures(page: Page) {
 }
 
 // Waits until data and web fonts are in place so a screenshot is stable.
-export async function settle(page: Page) {
+async function settle(page: Page) {
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByText(/Loading/)).toHaveCount(0);

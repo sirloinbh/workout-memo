@@ -33,14 +33,14 @@ export const restOverPayload: PushPayload = {
 };
 
 // A push the server could not send in time (for example during a restart) is not sent later.
-export const staleAfterMs = 120_000;
+const staleAfterMs = 120_000;
 // A subscription the push service no longer knows (404, 410) is removed.
 const gone = (error: unknown) => {
   const status = (error as { statusCode?: unknown } | null)?.statusCode;
   return status === 404 || status === 410;
 };
 
-export function webPushSender(config: PushConfig): PushSender {
+function webPushSender(config: PushConfig): PushSender {
   return async (subscription, payload) => {
     await webpush.sendNotification(subscription, JSON.stringify(payload), {
       vapidDetails: config,

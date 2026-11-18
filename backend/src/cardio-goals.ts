@@ -9,7 +9,7 @@ export type CardioGoalSession = {
   duration_sec: number;
   distance_km: number | null;
 };
-export type GoalPeriodResult = {
+type GoalPeriodResult = {
   /** Calendar period (Mon~Sun or the month), not clipped to the goal dates. */
   start: string;
   end: string;

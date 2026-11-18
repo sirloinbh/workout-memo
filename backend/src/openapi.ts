@@ -138,7 +138,7 @@ type Operation = {
 };
 const restBody = z.object({ date });
 // Every registered route must appear here exactly once (checked when building).
-export const operations: Record<string, Operation> = {
+const operations: Record<string, Operation> = {
   'GET /api/health': { status: [200, 500] },
   'GET /api/me': { status: [200, 401, 503] },
   'GET /api/brands': { status: [200] },

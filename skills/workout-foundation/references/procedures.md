@@ -55,4 +55,4 @@ If the following artifacts drift from the code, `npm run check` fails. Commit th
 | `docs/openapi.json`                                   | `npm run openapi`                                 | `openapi.test.ts`                  |
 | `backend/src/contract.ts`, `frontend/src/contract.ts` | `npm run contract:sync`                           | `contract:check`                   |
 | `.claude/skills/`                                     | `npm run skills:sync`                             | `test:skills`                      |
-| DB schema                                             | Add a new numbered file to `database/migrations/` | `migrations.test.ts`, `db:migrate` |
+| DB schema                                             | Add a new numbered file to `database/migrations/` | `migrations.integration.test.ts`, `db:migrate` |

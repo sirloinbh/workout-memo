@@ -7,11 +7,16 @@ import { Pool, type PoolClient } from 'pg';
 
 import {
   checksum,
-  migrate,
+  migrate as runMigrate,
   type Migration,
   migrationStatus,
   readMigrations,
-} from '../src/migrations.js';
+} from '../src/standard/migrations.js';
+
+// The runner takes the app's advisory lock key; tests use their own.
+const lockKey = 581_900;
+const migrate = (db: Parameters<typeof runMigrate>[0], files: Migration[]) =>
+  runMigrate(db, files, lockKey);
 
 const repoMigrations = fileURLToPath(new URL('../../database/migrations/', import.meta.url));
 
@@ -128,7 +133,7 @@ test(
           ? { ...f, sql: f.sql + '\n-- edited', checksum: checksum(f.sql + '\n-- edited') }
           : f,
       );
-      await assert.rejects(migrate(client, edited), new RegExp(`was modified: ${files[1].name}`));
+      await assert.rejects(migrate(client, edited), new RegExp(`was changed: ${files[1].name}`));
       const broken: Migration = {
         name: '999_broken.sql',
         sql: 'CREATE TABLE half_applied(id integer); SELECT 1/0;',
@@ -144,9 +149,9 @@ test(
       const other = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
       const session = await other.connect();
       try {
-        const locked = await session.query('SELECT pg_try_advisory_lock(581003) ok');
+        const locked = await session.query('SELECT pg_try_advisory_lock(581900) ok');
         assert.equal(locked.rows[0].ok, true);
-        await session.query('SELECT pg_advisory_unlock(581003)');
+        await session.query('SELECT pg_advisory_unlock(581900)');
       } finally {
         session.release();
         await other.end();

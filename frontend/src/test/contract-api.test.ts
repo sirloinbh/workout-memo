@@ -2,7 +2,7 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 
-import { contractHandlers, sample, setupContractApi, takeUnhandledRequests } from './contract-api';
+import { contractHandlers, overrideResponder, sample, setupContractApi, successStatus, takeUnhandledRequests } from './contract-api';
 
 describe('sample', () => {
   test('uses examples, enums and the smallest value of each type', () => {
@@ -25,6 +25,24 @@ describe('sample', () => {
   });
 });
 
+describe('override status', () => {
+  test('successStatus is the first 2xx status of the contract, 200 when there is none', () => {
+    expect(successStatus({ responses: { '400': {}, '201': {} } })).toBe(201);
+    expect(successStatus({ responses: { '204': {} } })).toBe(204);
+    expect(successStatus({ responses: { '404': {} } })).toBe(200);
+    expect(successStatus({})).toBe(200);
+  });
+
+  test('an override keeps the contract status, and 204 carries no body', async () => {
+    const created = overrideResponder({ id: 1 }, 201)();
+    expect(created.status).toBe(201);
+    expect(await created.json()).toEqual({ id: 1 });
+    const removed = overrideResponder(undefined, 204)();
+    expect(removed.status).toBe(204);
+    expect(removed.body).toBeNull();
+  });
+});
+
 describe('contract mock server', () => {
   const api = setupContractApi();
 
@@ -37,7 +55,9 @@ describe('contract mock server', () => {
 
   test('an override replaces one response for the current test only', async () => {
     api.use(...contractHandlers({ 'GET /api/health': { status: 'override' } }));
-    expect(await (await fetch('/api/health')).json()).toEqual({ status: 'override' });
+    const overridden = await fetch('/api/health');
+    expect(overridden.status).toBe(200); // the contract's status for this operation
+    expect(await overridden.json()).toEqual({ status: 'override' });
     api.use(http.get('/api/health', () => HttpResponse.json({ status: 'inline' })));
     expect(await (await fetch('/api/health')).json()).toEqual({ status: 'inline' });
   });

@@ -33,7 +33,7 @@ export type Schema = {
   allOf?: Schema[];
 };
 type Media = { schema?: Schema; example?: unknown };
-type Operation = { responses?: Record<string, { content?: Record<string, Media> }> };
+export type Operation = { responses?: Record<string, { content?: Record<string, Media> }> };
 type Spec = {
   paths: Record<string, Partial<Record<Method, Operation>>>;
   components?: { schemas?: Record<string, Schema> };
@@ -96,11 +96,29 @@ export function sample(
   }
 }
 
+/** The first 2xx response of an operation as [status, response], 200 when the contract has none. */
+function successResponse(operation: Operation) {
+  return (
+    Object.entries(operation.responses ?? {}).find(([code]) => /^2\d\d$/.test(code)) ?? ['200', {}]
+  );
+}
+
+/** The success status the contract gives an operation (201 for a create, 204 for a delete, ...). */
+export function successStatus(operation: Operation) {
+  return Number(successResponse(operation)[0]);
+}
+
+/** Answers an override: its value as JSON with the contract's success status, and no body for 204/205. */
+export function overrideResponder(value: unknown, status = 200) {
+  return () =>
+    status === 204 || status === 205
+      ? new HttpResponse(null, { status })
+      : HttpResponse.json(value as never, { status });
+}
+
 /** The first 2xx response of an operation: JSON from its example or schema, other media empty, else emptyBody or nothing. */
 function contractResponse(operation: Operation, { emptyBody }: ContractOptions) {
-  const [status, response] = Object.entries(operation.responses ?? {}).find(([code]) =>
-    /^2\d\d$/.test(code),
-  ) ?? ['200', {}];
+  const [status, response] = successResponse(operation);
   const init = { status: Number(status) };
   const json = response.content?.['application/json'];
   if (json) return () => HttpResponse.json((json.example ?? sample(json.schema)) as never, init);
@@ -110,7 +128,7 @@ function contractResponse(operation: Operation, { emptyBody }: ContractOptions) 
   return () => new HttpResponse(null, init);
 }
 
-/** One handler per contract operation; overrides replace the JSON body of "METHOD /path" (path as in the contract). */
+/** One handler per contract operation; overrides replace the JSON body of "METHOD /path" (path as in the contract) and keep its success status. */
 export function contractHandlers(overrides: ContractOverrides = {}, options: ContractOptions = {}) {
   const custom = overrides as Record<string, unknown>;
   return Object.entries(spec.paths).flatMap(([path, operations]) =>
@@ -118,7 +136,7 @@ export function contractHandlers(overrides: ContractOverrides = {}, options: Con
       const key = `${method.toUpperCase()} ${path}`;
       const resolver =
         key in custom
-          ? () => HttpResponse.json(custom[key] as never)
+          ? overrideResponder(custom[key], successStatus(operations[method]!))
           : contractResponse(operations[method]!, options);
       return http[method](path.replace(/\{([^}]+)\}/g, ':$1'), resolver);
     }),

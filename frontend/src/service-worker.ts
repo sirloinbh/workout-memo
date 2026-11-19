@@ -1,3 +1,4 @@
+// Managed file. Edit it in sirloinbh/project-standards templates/ui/frontend/src/
 import { toast } from './components/ui/sonner';
 
 // #109: registers public/sw.js (centrally managed) and tells the user when a new version takes over.
@@ -23,7 +24,7 @@ export function registerServiceWorker(
 export function showUpdateNotice() {
   toast('A new version is available', {
     id: 'app-update',
-    description: 'Reload when you are ready. A workout you are logging is kept as a draft.',
+    description: 'Reload when you are ready. Unsaved input on this page is not kept.',
     duration: Infinity,
     action: { label: 'Reload', onClick: () => location.reload() },
   });

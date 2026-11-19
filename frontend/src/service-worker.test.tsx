@@ -1,3 +1,4 @@
+// Managed file. Edit it in sirloinbh/project-standards templates/ui/frontend/src/
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 

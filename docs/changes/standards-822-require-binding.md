@@ -4,11 +4,11 @@
 
 ## Change
 
-| File | Content |
-|---|---|
-| `backend/src/app.ts` | `requireBinding: true` |
-| `backend/test/ai-tools-binding.test.ts` | New, no database: an unbound token, a token for another tool, and a replayed token are refused |
-| `backend/test/ai-tools.integration.test.ts` | Test tokens carry `tool` and `jti` |
+| File                                        | Content                                                                                        |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `backend/src/app.ts`                        | `requireBinding: true`                                                                         |
+| `backend/test/ai-tools-binding.test.ts`     | New, no database: an unbound token, a token for another tool, and a replayed token are refused |
+| `backend/test/ai-tools.integration.test.ts` | Test tokens carry `tool` and `jti`                                                             |
 
 ## Why now
 

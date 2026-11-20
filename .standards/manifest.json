@@ -1,5 +1,5 @@
 {
-  "centralSha": "cb45d40e7fee77f363857521d90c3c1eee056a32",
+  "centralSha": "c0bc08fd83c82abc50bc5577f261e694b8d7480e",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -290,7 +290,7 @@
     },
     "backend/src/standard/migrate.ts": {
       "mode": "full",
-      "sha256": "79afb5cee4d7d5387ab5db140b97c9b82aec875704e6f0e4a8e1a339147e1755",
+      "sha256": "bb63351dcf33e37c972c31e04dea28ee88b839b2dadeb1c319282cbcfd9dd21b",
       "source": "templates/app/backend/src/standard/migrate.ts.tmpl"
     },
     "backend/src/standard/migrations.ts": {
@@ -405,7 +405,7 @@
     },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "1432808e8a4793849e0f90c6056c5f3cd14005ebb1bf1860e89eca9162053c45",
+      "sha256": "a35475aa33364572049c15affecf20c68e119bffae24471d3ad4cc48daf00d59",
       "source": "templates/deploy/deploy/remote-deploy.sh.tmpl"
     },
     "deploy/report.service": {
@@ -923,7 +923,7 @@
     },
     "frontend/src/lib/use-ai-chat.ts": {
       "mode": "full",
-      "sha256": "5f746d29af05259230ebb76af234c277446e00e615f605409ae6487fe04980b6",
+      "sha256": "5908817117c3059c3808bb1b4726fcde18724ddf3908491ff7ef7be977299c54",
       "source": "templates/ui/frontend/src/lib/use-ai-chat.ts"
     },
     "frontend/src/lib/use-notice.ts": {

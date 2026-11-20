@@ -4,8 +4,8 @@
 
 ## Change
 
-| File | Content |
-|---|---|
+| File                   | Content                                                                                                                                                                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `e2e/ai-judge.spec.ts` | Opens `/body`, saves an empty form, and asks Jev whether the error tells the user what to enter, whether its tone is actionable, and whether the hint explains that one value is required. Only the message and the hint text are judged, so the request is the same on every run |
 
 ## How it behaves

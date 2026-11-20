@@ -7,6 +7,7 @@ import { z } from 'zod/v4';
 import { dateRange, workoutSchema } from '../domain.js';
 import { auditContext, writeAudit } from '../standard/audit.js';
 import { parseId } from '../standard/http.js';
+import { inTransaction } from '../transaction.js';
 import type { Db } from './shared.js';
 
 // The audit summary of a journal (project-standards#553): what identifies it, not every set.
@@ -66,97 +67,94 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
       const fingerprint = createHash('sha256')
         .update(JSON.stringify([method, target, feedback === null ? withoutFeedback : w]))
         .digest('hex');
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        if (key) {
-          // Serialize identical keys across connections, including their first use.
-          await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [key]);
-          const previous = await client.query(
-            'SELECT *, expires_at <= now() expired FROM workout_requests WHERE key=$1',
-            [key],
-          );
-          if (previous.rowCount) {
-            const saved = previous.rows[0];
-            await client.query('ROLLBACK');
-            if (saved.expired)
-              res.status(409).json({
-                error: 'The 7-day validity of the retry key has passed. Check the server record.',
-              });
-            else if (saved.fingerprint !== fingerprint)
-              res.status(409).json({
-                error: 'The request content differs from the one with the same retry key.',
-              });
-            else res.status(saved.status).json(saved.response);
-            return;
+      const reply = await inTransaction(
+        pool,
+        async (client): Promise<{ status: number; body: unknown }> => {
+          if (key) {
+            // Serialize identical keys across connections, including their first use.
+            await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [key]);
+            const previous = await client.query(
+              'SELECT *, expires_at <= now() expired FROM workout_requests WHERE key=$1',
+              [key],
+            );
+            if (previous.rowCount) {
+              const saved = previous.rows[0];
+              if (saved.expired)
+                return {
+                  status: 409,
+                  body: {
+                    error:
+                      'The 7-day validity of the retry key has passed. Check the server record.',
+                  },
+                };
+              if (saved.fingerprint !== fingerprint)
+                return {
+                  status: 409,
+                  body: {
+                    error: 'The request content differs from the one with the same retry key.',
+                  },
+                };
+              return { status: saved.status, body: saved.response };
+            }
           }
-        }
-        let workoutId: number;
-        let version = 1;
-        let before: ReturnType<typeof summary> | null = null;
-        if (method === 'post') workoutId = await insertWorkout(client, w);
-        else {
-          workoutId = target!;
-          const existing = await client.query(
-            'SELECT date,title,version FROM workouts WHERE id=$1 FOR UPDATE',
-            [workoutId],
-          );
-          if (!existing.rowCount) {
-            await client.query('ROLLBACK');
-            res.status(404).json({ error: 'Journal not found' });
-            return;
+          let workoutId: number;
+          let version = 1;
+          let before: ReturnType<typeof summary> | null = null;
+          if (method === 'post') workoutId = await insertWorkout(client, w);
+          else {
+            workoutId = target!;
+            const existing = await client.query(
+              'SELECT date,title,version FROM workouts WHERE id=$1 FOR UPDATE',
+              [workoutId],
+            );
+            if (!existing.rowCount) {
+              return { status: 404, body: { error: 'Journal not found' } };
+            }
+            if (existing.rows[0].version !== w.version) {
+              return {
+                status: 409,
+                body: {
+                  error:
+                    'This record was edited on another device. Keep your draft and check the latest record.',
+                },
+              };
+            }
+            before = summary(existing.rows[0]);
+            const r = await client.query(
+              'UPDATE workouts SET date=$1,title=$2,notes=$3,feedback=$4,version=version+1 WHERE id=$5 RETURNING id,version',
+              [w.date, w.title, w.notes, w.feedback, workoutId],
+            );
+            if (!r.rowCount) {
+              return { status: 404, body: { error: 'Journal not found' } };
+            }
+            version = r.rows[0].version;
+            await client.query('DELETE FROM sets WHERE workout_id=$1', [workoutId]);
+            await insertSets(client, workoutId, w.sets);
           }
-          if (existing.rows[0].version !== w.version) {
-            await client.query('ROLLBACK');
-            res.status(409).json({
-              error:
-                'This record was edited on another device. Keep your draft and check the latest record.',
-            });
-            return;
-          }
-          before = summary(existing.rows[0]);
-          const r = await client.query(
-            'UPDATE workouts SET date=$1,title=$2,notes=$3,feedback=$4,version=version+1 WHERE id=$5 RETURNING id,version',
-            [w.date, w.title, w.notes, w.feedback, workoutId],
-          );
-          if (!r.rowCount) {
-            await client.query('ROLLBACK');
-            res.status(404).json({ error: 'Journal not found' });
-            return;
-          }
-          version = r.rows[0].version;
-          await client.query('DELETE FROM sets WHERE workout_id=$1', [workoutId]);
-          await insertSets(client, workoutId, w.sets);
-        }
-        const status = method === 'post' ? 201 : 200;
-        const response = { id: workoutId, version };
-        await writeAudit(client, {
-          ...auditContext(req, res),
-          action: method === 'post' ? 'create' : 'update',
-          entity: 'workout',
-          entityId: workoutId,
-          before,
-          after: summary({ date: w.date, title: w.title, version }, w.sets.length),
-        });
-        if (key)
-          await client.query(
-            'INSERT INTO workout_requests(key,fingerprint,status,response) VALUES($1,$2,$3,$4)',
-            [key, fingerprint, status, response],
-          );
-        await client.query('COMMIT');
-        res.status(status).json(response);
-      } catch (e) {
-        await client.query('ROLLBACK');
-        throw e;
-      } finally {
-        client.release();
-      }
+          const status = method === 'post' ? 201 : 200;
+          const response = { id: workoutId, version };
+          await writeAudit(client, {
+            ...auditContext(req, res),
+            action: method === 'post' ? 'create' : 'update',
+            entity: 'workout',
+            entityId: workoutId,
+            before,
+            after: summary({ date: w.date, title: w.title, version }, w.sets.length),
+          });
+          if (key)
+            await client.query(
+              'INSERT INTO workout_requests(key,fingerprint,status,response) VALUES($1,$2,$3,$4)',
+              [key, fingerprint, status, response],
+            );
+          return { status, body: response };
+        },
+        { commit: (r) => r.status < 400 },
+      );
+      res.status(reply.status).json(reply.body);
     });
   app.delete('/api/workouts/:id', async (req, res) => {
     const id = parseId(req.params.id, 'journal');
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+    const deleted = await inTransaction(pool, async (client) => {
       const r = await client.query(
         'DELETE FROM workouts WHERE id=$1 RETURNING date,title,version',
         [id],
@@ -169,15 +167,8 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
           entityId: id,
           before: summary(r.rows[0]),
         });
-      await client.query('COMMIT');
-      res
-        .status(r.rowCount ? 200 : 404)
-        .json(r.rowCount ? { ok: true } : { error: 'Journal not found' });
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+      return r.rowCount;
+    });
+    res.status(deleted ? 200 : 404).json(deleted ? { ok: true } : { error: 'Journal not found' });
   });
 }

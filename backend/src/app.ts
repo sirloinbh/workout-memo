@@ -19,6 +19,7 @@ import { appErrors } from './routes/shared.js';
 import { registerWeightStepRoutes } from './routes/weight-steps.js';
 import { registerWorkoutRoutes } from './routes/workouts.js';
 import { errorHandler, notFound, requestLog } from './standard/http.js';
+import { apiRateLimit } from './standard/rate-limit.js';
 import { registerToolRoutes } from './standard/tools.js';
 import { createPushService, type PushService } from './web-push.js';
 // DATE columns stay `YYYY-MM-DD` strings instead of being shifted through JS Date.
@@ -41,6 +42,7 @@ export function createApp(
   app.disable('x-powered-by');
   // project-standards#552: a request ID and one JSON log line for every request, a 401 included.
   app.use(requestLog);
+  apiRateLimit(app);
   // #303: the shared sign-in guards every /api route except /api/health, before any route registers.
   if (options.auth) app.use('/api', options.auth);
   app.get('/api/me', meHandler);

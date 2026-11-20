@@ -13,6 +13,7 @@ import {
   routineSchema,
 } from './domain.js';
 import { cardioPaceSql, cardioSpeedSql } from './routes/cardio.js';
+import { inTransaction } from './transaction.js';
 
 // Two deliberately separate artifacts (#33):
 // - analysis CSV: one row per set for spreadsheets; lossy (formula guard) and never restorable.
@@ -661,21 +662,9 @@ async function restoreCardio(
   }
 }
 
-async function snapshot<T>(pool: Pool, read: (client: PoolClient) => Promise<T>) {
-  const client = await pool.connect();
-  try {
-    // One consistent snapshot across all tables.
-    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const result = await read(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
-  } finally {
-    client.release();
-  }
-}
+// One consistent snapshot across all tables.
+const snapshot = <T>(pool: Pool, read: (client: PoolClient) => Promise<T>) =>
+  inTransaction(pool, read, { setup: 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY' });
 
 const seoulToday = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
@@ -846,19 +835,16 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         });
         return;
       }
-      const client = await pool.connect();
       try {
-        await client.query('BEGIN');
-        const summary = await restore(client, backup, request.mode);
         // Preview runs the exact same steps and rolls back, so its summary matches a real run.
-        if (action === 'preview') await client.query('ROLLBACK');
-        else {
-          await client.query('COMMIT');
-          summary.dry_run = false;
-        }
+        const summary = await inTransaction(
+          pool,
+          (client) => restore(client, backup, request.mode),
+          { commit: () => action !== 'preview' },
+        );
+        if (action !== 'preview') summary.dry_run = false;
         res.json(summary);
       } catch (e) {
-        await client.query('ROLLBACK').catch(() => undefined);
         console.error(
           JSON.stringify({ event: 'backup_restore_error', action, message: (e as Error).message }),
         );
@@ -866,8 +852,6 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
           error:
             'An error occurred during the restore, so everything was rolled back. Existing records are unchanged.',
         });
-      } finally {
-        client.release();
       }
     });
 }

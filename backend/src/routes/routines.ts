@@ -19,6 +19,7 @@ import {
   type WorkoutRecord,
 } from '../progress.js';
 import { parseId } from '../standard/http.js';
+import { inTransaction } from '../transaction.js';
 import { type Db } from './shared.js';
 
 type ActiveRoutine = { id: number; plan: RoutinePlan };
@@ -265,21 +266,16 @@ export function registerRoutineRoutes(app: express.Express, pool: Pool, today: (
     routineId: number,
     run: (client: Db, routine: ActiveRoutine) => Promise<Outcome>,
   ): Promise<Outcome> {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const found = await client.query('SELECT id, plan FROM routines WHERE id=$1 FOR UPDATE', [
-        routineId,
-      ]);
-      const routine = found.rows[0] as ActiveRoutine | undefined;
-      const outcome = routine ? await run(client, routine) : fail(404, 'Routine not found');
-      await client.query(outcome.commit ? 'COMMIT' : 'ROLLBACK');
-      return outcome;
-    } catch (e) {
-      await client.query('ROLLBACK').catch(() => undefined);
-      throw e;
-    } finally {
-      client.release();
-    }
+    return inTransaction(
+      pool,
+      async (client) => {
+        const found = await client.query('SELECT id, plan FROM routines WHERE id=$1 FOR UPDATE', [
+          routineId,
+        ]);
+        const routine = found.rows[0] as ActiveRoutine | undefined;
+        return routine ? await run(client, routine) : fail(404, 'Routine not found');
+      },
+      { commit: (outcome) => outcome.commit },
+    );
   }
 }

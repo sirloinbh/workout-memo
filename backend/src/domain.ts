@@ -34,6 +34,7 @@ export const volume = (sets: { weight: number; reps: number; completed?: boolean
 
 // Routine body parts (#27), also used by the exercise mapping (#32). #88 split 팔 into
 // 이두·삼두 for new choices; 팔 stays valid so saved routines and mappings keep working.
+/** @public Used by a test that loads this file through node:vm, which knip cannot follow (#657). */
 export const bodyParts = [
   '가슴',
   '등',

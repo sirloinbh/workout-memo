@@ -129,6 +129,7 @@ export function weekCardio(plan: RoutinePlan, splitIndex: number, week: number) 
 // Auto routines: double progression (#28 rule change). Keep in sync with
 // frontend/src/progression.ts; a parity test compares the two.
 const to25 = (value: number) => Math.round(value / 2.5) * 2.5;
+/** @public Used by a test that loads this file through node:vm, which knip cannot follow (#657). */
 export const deloadWeight = (weight: number) => Math.max(0, to25(weight * 0.9));
 type Level = { weight: number; reps: number };
 // #86: weight_step is the exercise's increment, attached by the caller from the user's
@@ -136,6 +137,7 @@ type Level = { weight: number; reps: number };
 type AutoExercise = RoutinePlan['splits'][number]['exercises'][number] & {
   weight_step?: number;
 };
+/** @public Used by a test that loads this file through node:vm, which knip cannot follow (#657). */
 export function progressionStep(level: Level, ex: AutoExercise) {
   const max = ex.rep_max ?? 12;
   if (level.reps + 1 <= max)

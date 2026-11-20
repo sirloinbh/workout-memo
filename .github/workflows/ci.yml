@@ -215,8 +215,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The package auth token is passed only as a BuildKit secret. It does not stay in image layers.
-      - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN ./frontend
-      - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN ./backend
+      # Both images build from the repo root with the root package-lock.json (ADR-0022).
+      - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN -f frontend/Dockerfile .
+      - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN -f backend/Dockerfile .
 
   # Builds the images that production will run and pushes them to GHCR, tagged with the commit (ADR-0023, #754). Only on a push to
   # main, only when the app turns it on, and only after docker-build passed. packages: write is granted to this job alone. A failed
@@ -245,7 +246,7 @@ jobs:
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           # The source label links each package to this repository. The package auth token is passed only as a BuildKit secret.
           for part in frontend backend; do
-            docker build --secret id=npm_token,env=NODE_AUTH_TOKEN --label "org.opencontainers.image.source=$SOURCE" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "$IMAGE_PREFIX-$part:$tag" "./$part"
+            docker build --secret id=npm_token,env=NODE_AUTH_TOKEN --label "org.opencontainers.image.source=$SOURCE" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "$IMAGE_PREFIX-$part:$tag" -f "$part/Dockerfile" .
             docker push "$IMAGE_PREFIX-$part:$tag"
           done
       - name: Keep only the newest versions

@@ -194,6 +194,8 @@ export function registerToolRoutes<D extends AuditDb>(
     publicKey: string | undefined;
     /** Reject a token without `tool` and `jti`. Set it once shared-ai signs them (docs/ai-tools.md, deploy order). */
     requireBinding?: boolean;
+    /** Where a failed best-effort audit write is reported. Default: console.error. */
+    log?: (message: string, err: unknown) => void;
   },
 ) {
   if (!options.publicKey) return;
@@ -210,6 +212,16 @@ export function registerToolRoutes<D extends AuditDb>(
   }
   // Built once, so an input schema JSON Schema cannot express fails at start, not on every list call.
   const listed = { app: options.app, tools: options.tools.map((tool) => describeTool(tool, options.app)) };
+  const log = options.log ?? ((message: string, err: unknown) => console.error(message, err));
+  // The rows for a denied, invalid, or failed call and the row of a read are best effort: if the audit table or the
+  // connection is broken, the caller still gets the original answer or error, and the failed write is logged.
+  const auditSoft = async (db: AuditDb, entry: AuditEntry) => {
+    try {
+      await writeAudit(db, entry);
+    } catch (err) {
+      log('Tool audit row could not be written', err);
+    }
+  };
   const fail = (res: Response, err: unknown, next: NextFunction) => {
     if (err instanceof CallError) res.status(err.status).json({ error: err.message });
     else next(err);
@@ -237,12 +249,12 @@ export function registerToolRoutes<D extends AuditDb>(
         requestId: typeof requestId === 'string' ? requestId : null,
       } satisfies Partial<AuditEntry>;
       if (!who.scopes.includes(`${options.app}:${tool.access}`)) {
-        await writeAudit(options.pool, { ...audit, result: 'denied' });
+        await auditSoft(options.pool, { ...audit, result: 'denied' });
         throw new CallError(403, `Scope ${options.app}:${tool.access} is required`);
       }
       const checked = await tool.input['~standard'].validate(req.body ?? {});
       if (checked.issues) {
-        await writeAudit(options.pool, { ...audit, result: 'error' });
+        await auditSoft(options.pool, { ...audit, result: 'error' });
         throw new CallError(400, checked.issues.map((issue) => issue.message).join(', ') || 'Invalid input');
       }
       if (tool.access === 'read') {
@@ -250,10 +262,10 @@ export function registerToolRoutes<D extends AuditDb>(
         try {
           outcome = await tool.run(checked.value, { db: options.pool, caller: who });
         } catch (err) {
-          await writeAudit(options.pool, { ...audit, result: 'error' });
+          await auditSoft(options.pool, { ...audit, result: 'error' });
           throw err;
         }
-        await writeAudit(options.pool, { ...audit, entityId: outcome.entityId ?? null });
+        await auditSoft(options.pool, { ...audit, entityId: outcome.entityId ?? null });
         res.json({ result: outcome.result });
         return;
       }
@@ -271,7 +283,7 @@ export function registerToolRoutes<D extends AuditDb>(
         });
       } catch (err) {
         // The change rolled back with its row; this row records the failed attempt.
-        await writeAudit(options.pool, { ...audit, result: 'error' });
+        await auditSoft(options.pool, { ...audit, result: 'error' });
         throw err;
       }
       res.json({ result: outcome.result });

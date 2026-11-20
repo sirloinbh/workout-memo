@@ -273,13 +273,13 @@ The routine plan format follows `routineSchema` in [domain.ts](../backend/src/do
 
 ## Change procedure
 
-1. Change the shared input schemas in `shared/contract.ts` and copy them to `backend/src/contract.ts` and `frontend/src/contract.ts` with `npm run contract:sync` (do not edit the copies directly; `npm run check` fails on a mismatch). Change other schemas in `domain.ts` (or the feature module), and fix the unit and DB integration tests of that feature too.
+1. Change the shared input schemas in `shared/contract.ts` and copy them to `backend/src/contract.ts` with `npm run contract:sync` (do not edit the copy directly; `npm run check` fails on a mismatch). The frontend imports `shared/contract.ts` itself. Change other schemas in `domain.ts` (or the feature module), and fix the unit and DB integration tests of that feature too.
 2. Put routes in `backend/src/routes/<feature>.ts`. Because of its separate request size limit, the backup route is registered in `backup.ts` before the JSON parser.
 3. Update the endpoint table in this document and the matching request rules. If the table differs from the real routes, `api-contract.test.ts` fails.
 4. Fix `operations` (request schemas and status codes) in `backend/src/openapi.ts`, regenerate [openapi.json](openapi.json) with `npm run openapi`, and commit it. `openapi.test.ts` fails on an old file.
 5. For a change that breaks existing clients (removing a field, changing a meaning), write the effect and the migration method in the issue before you go ahead.
 
-The shared Zod contract for frontend and backend was introduced in #64 as a copy. Because each area is built separately in Docker and in the subtree repositories, there are copies instead of a workspace package.
+The shared Zod contract for frontend and backend was introduced in #64 as a copy. Since #784 the frontend imports `shared/contract.ts` directly (the Docker builds use the repo root). The backend keeps one copy because its `tsc` build is rooted at `src/`.
 
 ## OpenAPI
 

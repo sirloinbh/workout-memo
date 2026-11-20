@@ -2,6 +2,14 @@ import { Plus, Timer } from 'lucide-react';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 
 import {
+  type CardioGoalInput,
+  cardioGoalSchema,
+  type CardioGoalType,
+  type CardioKind,
+  cardioKinds,
+  fieldErrors,
+} from '../../shared/contract';
+import {
   cardioKindLabels,
   formatDistance,
   formatDuration,
@@ -23,14 +31,6 @@ import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
-import {
-  type CardioGoalInput,
-  cardioGoalSchema,
-  type CardioGoalType,
-  type CardioKind,
-  cardioKinds,
-  fieldErrors,
-} from './contract';
 import { seoulDate } from './date';
 import { plural } from './labels';
 

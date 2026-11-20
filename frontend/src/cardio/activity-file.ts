@@ -1,4 +1,4 @@
-import type { CardioKind } from '../contract';
+import type { CardioKind } from '../../../shared/contract';
 
 // #119: activity files exported from a watch or an app (Garmin Connect, Strava, ...), read in
 // this browser. Only the summary values of cardio_sessions are kept (#114: no laps, no GPS

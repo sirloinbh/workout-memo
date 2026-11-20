@@ -1,12 +1,12 @@
 import { BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 
+import type { CardioKind } from '../../../shared/contract';
 import { ChartDot } from '../chart-dot';
 import { SegmentedControl, type SegmentOption } from '../components/segmented-control';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
 import { SkeletonCard } from '../components/ui/skeleton';
-import type { CardioKind } from '../contract';
 import { rangeDays } from '../date-range';
 import { plural } from '../labels';
 import type { CardioSession } from './api';

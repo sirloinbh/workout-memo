@@ -1,4 +1,4 @@
-import type { RoutineCardio } from './contract';
+import type { RoutineCardio } from '../../shared/contract';
 import { plural } from './labels';
 // Routine goals (#28). Planned targets are shown per exercise exactly as planned;
 // weights of different exercises are never summed. Only saved journals are records.

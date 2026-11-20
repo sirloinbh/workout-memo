@@ -1,6 +1,6 @@
 import type { z } from 'zod/v4';
 
-import type { cardioSessionSchema } from '../contract';
+import type { cardioSessionSchema } from '../../../shared/contract';
 import { RequestError, requestJson } from '../lib/api';
 
 // #115: a stored session as GET answers it (backend/src/routes/cardio.ts). Pace and speed are

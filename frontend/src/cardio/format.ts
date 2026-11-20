@@ -1,4 +1,4 @@
-import type { CardioKind, Feedback } from '../contract';
+import type { CardioKind, Feedback } from '../../../shared/contract';
 
 // #115: labels and display formats for cardio sessions. Pace and speed are computed here from
 // the stored duration and distance, so the shown value is rounded once (the API's rounded

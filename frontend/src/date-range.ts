@@ -1,4 +1,4 @@
-import { date } from './contract';
+import { date } from '../../shared/contract';
 import { monthNames } from './date';
 
 // #85: a period chosen directly by start and end date. Both ends are included.

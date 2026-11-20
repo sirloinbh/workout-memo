@@ -6,6 +6,7 @@ import { type AnalysisSet, analyze } from '../../backend/src/analysis';
 import { App } from './app';
 import { bodyPartLabel } from './labels';
 import { fixClock, json, mockApi } from './test/api';
+import { findLive, queryLive } from './test/live';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/analysis-ui.test.ts (vm hook harness) to a real DOM. The
@@ -262,7 +263,7 @@ test('a failed load shows an alert whose Reconnect button reloads the analysis (
   const user = userEvent.setup();
   render(<App />);
   await openPage('Exercise Analysis', user);
-  const alert = await screen.findByRole('alert');
+  const alert = await findLive('alert');
   expect(alert).toHaveTextContent('Cannot connect to the analysis server');
   expect(alert).toHaveAttribute('data-slot', 'alert-banner');
   // The period controls are the shared DateStepper and RangeSummary.
@@ -276,7 +277,7 @@ test('a failed load shows an alert whose Reconnect button reloads the analysis (
   fail = false;
   await user.click(within(alert).getByRole('button', { name: 'Reconnect' }));
   await loaded();
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryLive('alert')).toBeNull();
   expect(api.requests.filter((r) => r.path.startsWith('/api/analysis'))).toHaveLength(2);
 });
 

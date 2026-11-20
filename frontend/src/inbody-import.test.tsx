@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import { fixClock, json, mockApi } from './test/api';
+import { findLive, getLive } from './test/live';
 import { openPage } from './test/nav';
 
 // #89: InBody results become an editable preview; only confirmed rows are saved.
@@ -77,8 +78,8 @@ test('a CSV export is previewed, corrected and saved row by row', async () => {
   // The failed row keeps its values and the server's reason.
   expect(panel().textContent).toMatch(/This date is already recorded/);
   // #223: the partial failure is an alert in the panel, apart from the saved count.
-  expect(within(panel()).getByRole('alert')).toHaveTextContent('1 record was not saved');
-  expect(within(panel()).getByRole('status')).toHaveTextContent('2 records saved.');
+  expect(getLive('alert', panel())).toHaveTextContent('1 record was not saved');
+  expect(getLive('status', panel())).toHaveTextContent('2 records saved.');
   expect(within(panel()).getByLabelText('Save row 2')).toBeChecked();
 });
 
@@ -168,6 +169,6 @@ test('an unreadable file is reported as an alert inside the panel', async () => 
     within(panel()).getByLabelText('InBody file or result sheet photo'),
     file('No columns', 'inbody.csv', 'text/csv'),
   );
-  expect(await within(panel()).findByRole('alert')).toBeVisible();
+  expect(await findLive('alert', panel())).toBeVisible();
   expect(within(panel()).queryByRole('table')).toBeNull();
 });

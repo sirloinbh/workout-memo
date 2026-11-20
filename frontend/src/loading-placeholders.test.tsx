@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { deferred, fixClock, mockApi } from './test/api';
+import { getLive } from './test/live';
 import { openPage } from './test/nav';
 
 // #173: while a page's first load is pending it shows placeholders in a busy region and keeps
@@ -63,7 +64,7 @@ test.each(cases)(
     });
     // The busy region is named (project-standards docs/ui-components.md "Loading screens").
     expect(busy.getAttribute('aria-label')).toBeTruthy();
-    expect(screen.getByText(text)).toHaveClass('sr-only');
+    expect(screen.getByText(text).closest('[data-slot="notice"], .sr-only')).toHaveClass('sr-only');
     // The placeholders are decoration; assistive tech hears only the status line.
     for (const el of busy.querySelectorAll('[data-slot="skeleton"]'))
       expect(el).toHaveAttribute('aria-hidden', 'true');
@@ -124,12 +125,11 @@ test('the journal save button and status line show a spinner while it saves', as
   const saving = await screen.findByRole('button', { name: 'Saving…' });
   expect(saving).toBeDisabled();
   expect(saving.querySelector('[data-slot="spinner"]')).toHaveAttribute('aria-hidden', 'true');
-  const line = screen.getAllByText('Saving…').find((el) => el.dataset.slot === 'notice')!;
+  const line = getLive('status');
   expect(line).toHaveAttribute('role', 'status');
-  expect(line.parentElement!.querySelector('[data-slot="spinner"]')).toHaveAttribute(
-    'aria-hidden',
-    'true',
-  );
+  expect(
+    line.closest('[data-slot="notice"]')!.parentElement!.querySelector('[data-slot="spinner"]'),
+  ).toHaveAttribute('aria-hidden', 'true');
   saved.resolve();
   await waitFor(() => expect(screen.queryByText('Saving…')).toBeNull());
   expect(document.querySelector('[data-slot="spinner"]')).toBeNull();

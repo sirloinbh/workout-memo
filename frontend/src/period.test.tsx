@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import { deferred, fixClock, mockApi } from './test/api';
+import { queryLive } from './test/live';
 
 type Workout = {
   id: number;
@@ -114,7 +115,7 @@ for (const outcome of ['success', 'failure'] as const) {
     expect(chart()).toMatch(/2,000kg/);
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toHaveTextContent('Record 2');
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(queryLive('alert')).toBeNull();
   });
 }
 
@@ -185,7 +186,7 @@ for (const mutation of ['delete'] as const) {
     expect(chart()).toMatch(mutation === 'delete' ? /2,000kg/ : /5,000kg/);
     expect(rows()).toHaveLength(mutation === 'delete' ? 1 : 2);
     expect(rows().every((row) => !row.textContent.includes('Record 1'))).toBe(true);
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(queryLive('alert')).toBeNull();
   });
 }
 
@@ -310,7 +311,7 @@ test('a delayed edit keeps the page blocked until it finishes, then the new peri
   await ui.select('1 month', '2024-03-01');
   await waitFor(() => expect(stat('Total volume')).toBe('5,000kg'));
   expect(rows()).toHaveLength(2);
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryLive('alert')).toBeNull();
 });
 
 // #101: bars are sized against the largest bucket and the latest bucket is highlighted.

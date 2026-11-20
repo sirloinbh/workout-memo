@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { fixClock, json, mockApi } from './test/api';
+import { findLive, queryLive } from './test/live';
 import { openPage } from './test/nav';
 
 // #62: pages are URLs and journal data comes from TanStack Query.
@@ -68,10 +69,10 @@ test('switching pages reuses the loaded period instead of fetching it again', as
 
 test('a failed load is reported and Reconnect reloads the selected period', async () => {
   const ui = mount('/', true);
-  const alert = await screen.findByRole('alert');
+  const alert = await findLive('alert');
   expect(alert).toHaveTextContent('Storage connection failed');
   ui.recover();
   await ui.user.click(within(alert).getByRole('button', { name: 'Reconnect' }));
-  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  await waitFor(() => expect(queryLive('alert')).toBeNull());
   expect(ui.workoutLoads()).toBe(2);
 });

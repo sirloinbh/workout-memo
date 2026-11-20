@@ -3,6 +3,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 
 import { SignInGate } from './sign-in';
 import { deferred, json } from './test/api';
+import { findLive } from './test/live';
 
 // #317: the gate runs only on the production address, so the tests pretend to be there.
 function atProduction(me: Promise<Response>) {
@@ -46,7 +47,7 @@ test('while the session is checked, a named busy region shows the shared spinner
 
 test('a failed check still shows the error and the retry button, without the spinner', async () => {
   atProduction(Promise.resolve(json({ error: 'auth_unavailable' }, 503)));
-  const alert = await screen.findByRole('alert');
+  const alert = await findLive('alert');
   expect(alert).toHaveTextContent('Could not check your sign-in.');
   expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   expect(document.querySelector('[data-slot="spinner"]')).toBeNull();

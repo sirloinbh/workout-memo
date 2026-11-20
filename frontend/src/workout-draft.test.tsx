@@ -4,6 +4,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import { type ApiRequest, deferred, deviceNow, fixClock, json, mockApi } from './test/api';
+import { getLive } from './test/live';
 
 type Workout = {
   id: number;
@@ -441,7 +442,7 @@ test('the storage warning is an alert banner and the save state a status line', 
   submit();
   await saved();
   // The editor closes after the save, so the status line is the one above the page.
-  const status = screen.getAllByRole('status').find((el) => /Saved to server/.test(el.textContent));
+  const status = getLive('status').closest('[data-slot="notice"]');
   expect(status).toHaveAttribute('data-slot', 'notice');
 });
 

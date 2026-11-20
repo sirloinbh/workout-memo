@@ -2,7 +2,11 @@
 # A public repo cannot call a reusable workflow of the private central repo, so the central reusable-app-ci.yml is expanded here with the values of this repo (#209).
 name: ci
 
-on: [push, pull_request]
+# One run per commit: a pull request is tested through pull_request only; push runs on main (#699).
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 permissions:
   contents: read
@@ -17,6 +21,28 @@ env:
   E2E_DATABASE_URL: postgres://app:test@localhost:5432/workout_test
 
 jobs:
+  # A pull request that changes only docs/** or *.md skips the slow e2e and docker-build jobs (#699). verify still runs: it holds the
+  # format check, the central standards check, and the docs tests. A skipped job counts as passed for a required check, so branch
+  # protection is not left waiting. Pushes to main always run everything.
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      docs_only: ${{ steps.docs.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 2 }
+      - id: docs
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          docs_only=false
+          if [ "$EVENT" = pull_request ]; then
+            # The checkout is the merge commit of the pull request; its first parent is the base.
+            files=$(git diff --name-only HEAD^1 HEAD)
+            if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '^docs/|\.md$'; then docs_only=true; fi
+          fi
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+
   verify:
     runs-on: ubuntu-24.04
     services:
@@ -94,7 +120,9 @@ jobs:
           for f in deploy/*.sh; do bash -n "$f" || exit 1; done
 
   e2e:
-    if: true && !true
+    needs: changes
+    # !cancelled() keeps the job running when the changes job failed, so a failure there cannot turn into a skipped (passing) check.
+    if: ${{ !cancelled() && true && !true && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -134,7 +162,8 @@ jobs:
 
   # Screenshot comparison: compare against baseline images only in a container with fixed fonts and Chromium.
   e2e-visual:
-    if: true && true
+    needs: changes
+    if: ${{ !cancelled() && true && true && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
@@ -180,9 +209,55 @@ jobs:
         with: { name: visual-baselines, path: e2e/__screenshots__, retention-days: 7 }
 
   docker-build:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The package auth token is passed only as a BuildKit secret. It does not stay in image layers.
       - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN ./frontend
       - run: docker build --secret id=npm_token,env=NODE_AUTH_TOKEN ./backend
+
+  # Builds the images that production will run and pushes them to GHCR, tagged with the commit (ADR-0023, #754). Only on a push to
+  # main, only when the app turns it on, and only after docker-build passed. packages: write is granted to this job alone. A failed
+  # retention step never fails the run: the images are pushed, old ones are just not removed yet.
+  image-push:
+    needs: [changes, docker-build]
+    if: ${{ !cancelled() && needs.docker-build.result == 'success' && false && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_PREFIX: ghcr.io/sirloinbh/workout
+      IMAGE_KEEP: 2
+      OWNER: ${{ github.repository_owner }}
+      SOURCE: ${{ github.server_url }}/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build and push
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE_PREFIX" in ghcr.io/"$OWNER"/?*) ;; *) echo "image-prefix must start with ghcr.io/$OWNER/" >&2; exit 1 ;; esac
+          tag=${GITHUB_SHA:0:12}
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          # The source label links each package to this repository. The package auth token is passed only as a BuildKit secret.
+          for part in frontend backend; do
+            docker build --secret id=npm_token,env=NODE_AUTH_TOKEN --label "org.opencontainers.image.source=$SOURCE" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "$IMAGE_PREFIX-$part:$tag" "./$part"
+            docker push "$IMAGE_PREFIX-$part:$tag"
+          done
+      - name: Keep only the newest versions
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for part in frontend backend; do
+            name=${IMAGE_PREFIX#ghcr.io/"$OWNER"/}-$part
+            # Newest first; everything after the first IMAGE_KEEP versions is deleted.
+            gh api --paginate "/users/$OWNER/packages/container/$name/versions" --jq '.[] | [.created_at, .id] | @tsv' |
+              sort -r | tail -n +"$((IMAGE_KEEP + 1))" | cut -f2 |
+              while read -r id; do gh api -X DELETE "/users/$OWNER/packages/container/$name/versions/$id"; done
+          done

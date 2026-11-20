@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { fixClock, mockApi } from './test/api';
+import { getLive } from './test/live';
 import { openPage } from './test/nav';
 
 // #85: statistics for a directly chosen start–end range, kept in the address.
@@ -115,7 +116,7 @@ test('invalid ranges are explained per field and not requested', async () => {
 test('a broken range in the address falls back to the default period with a notice', async () => {
   const ui = mount('/?from=2026-10-10&to=2026-10-01');
   await waitFor(() => expect(ui.workoutQueries().length).toBeGreaterThan(0));
-  expect(screen.getByRole('alert').textContent).toMatch(/period in the address is not valid/);
+  expect(getLive('alert').textContent).toMatch(/period in the address is not valid/);
   expect(ui.workoutQueries()[0]).toBe('/api/workouts?from=2026-10-12&to=2026-10-18');
 });
 

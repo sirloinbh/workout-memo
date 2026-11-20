@@ -218,10 +218,12 @@ jobs:
           case "$IMAGE_PREFIX" in ghcr.io/"$OWNER"/?*) ;; *) echo "image-prefix must start with ghcr.io/$OWNER/" >&2; exit 1 ;; esac
           tag=${GITHUB_SHA:0:12}
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          # A network blip (npm ECONNRESET, a registry reset) must not fail main CI and so stop the deploy (#923): try each step up to 3 times.
+          retry() { local n; for n in 1 2 3; do "$@" && return 0; echo "attempt $n of 3 failed: $1 ${2:-}" >&2; sleep $((n * 10)); done; return 1; }
           # The source label links each package to this repository. The package auth token is passed only as a BuildKit secret.
           for part in frontend backend; do
-            docker build --secret id=npm_token,env=NODE_AUTH_TOKEN --label "org.opencontainers.image.source=$SOURCE" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "$IMAGE_PREFIX-$part:$tag" -f "$part/Dockerfile" .
-            docker push "$IMAGE_PREFIX-$part:$tag"
+            retry docker build --secret id=npm_token,env=NODE_AUTH_TOKEN --label "org.opencontainers.image.source=$SOURCE" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "$IMAGE_PREFIX-$part:$tag" -f "$part/Dockerfile" .
+            retry docker push "$IMAGE_PREFIX-$part:$tag"
           done
       - name: Keep only the newest versions
         continue-on-error: true

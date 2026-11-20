@@ -67,7 +67,14 @@ export function createApp(
   registerPushRoutes(app, options.push ?? createPushService(pool, { config: null }), options.now);
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the
   // signed call token, not the session, is the check.
-  registerToolRoutes(app, { app: 'workout-memo', tools, pool, publicKey: options.toolsPublicKey });
+  // #822: shared-ai signs the tool and jti claims (project-standards#670), so the app requires them.
+  registerToolRoutes(app, {
+    app: 'workout-memo',
+    tools,
+    pool,
+    publicKey: options.toolsPublicKey,
+    requireBinding: true,
+  });
   // #172: an unknown /api path is a JSON 404; the app's own messages come before the central handler.
   app.use('/api', notFound);
   app.use(appErrors);

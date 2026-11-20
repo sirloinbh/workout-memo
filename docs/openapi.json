@@ -10,6 +10,11 @@
       "url": "/"
     }
   ],
+  "security": [
+    {
+      "session": []
+    }
+  ],
   "paths": {
     "/api/body-measurements/{id}": {
       "delete": {
@@ -39,8 +44,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -88,6 +113,16 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
             "content": {
@@ -100,6 +135,26 @@
           },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -139,8 +194,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -180,8 +255,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -219,8 +314,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -268,6 +383,16 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
             "content": {
@@ -280,6 +405,26 @@
           },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -319,8 +464,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -338,6 +503,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -359,6 +544,36 @@
           },
           "400": {
             "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -406,6 +621,36 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -427,6 +672,36 @@
           },
           "400": {
             "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -485,6 +760,16 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
             "content": {
@@ -497,6 +782,16 @@
           },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -536,8 +831,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -567,7 +882,8 @@
             "description": "Retry key that applies the same request only once for 7 days",
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
@@ -595,6 +911,16 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
             "content": {
@@ -607,6 +933,26 @@
           },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -654,6 +1000,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -664,6 +1030,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -704,6 +1090,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -733,8 +1139,38 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -752,6 +1188,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -762,6 +1218,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -783,6 +1259,36 @@
           },
           "400": {
             "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -822,8 +1328,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -890,6 +1416,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -919,8 +1465,38 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -938,6 +1514,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -948,6 +1544,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -976,6 +1592,36 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -986,6 +1632,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -996,6 +1662,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -1017,6 +1703,36 @@
           },
           "400": {
             "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1071,6 +1787,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1118,6 +1854,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1150,6 +1906,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1160,6 +1936,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -1188,6 +1984,36 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1198,6 +2024,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
             "description": "Server error",
@@ -1218,6 +2064,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -1247,8 +2113,38 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1269,6 +2165,16 @@
           },
           "401": {
             "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1318,6 +2224,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1328,6 +2254,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1338,6 +2284,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1348,6 +2314,26 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -1369,6 +2355,36 @@
           },
           "400": {
             "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1408,8 +2424,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1457,6 +2493,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -1470,7 +2526,8 @@
             "description": "Retry key that applies the same request only once for 7 days",
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
@@ -1498,8 +2555,38 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1538,8 +2625,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "413": {
             "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1588,8 +2695,28 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "413": {
             "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1638,6 +2765,16 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
             "content": {
@@ -1650,6 +2787,16 @@
           },
           "413": {
             "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1687,13 +2834,30 @@
         },
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "201": {
             "description": "Created"
           },
           "400": {
             "description": "Input validation failed or a referenced item does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1714,6 +2878,26 @@
           },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1763,6 +2947,16 @@
               }
             }
           },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No target",
             "content": {
@@ -1775,6 +2969,26 @@
           },
           "409": {
             "description": "Duplicate, version conflict, retry key mismatch, or date condition mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request size limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1819,12 +3033,12 @@
         "type": "object",
         "properties": {
           "mode": {
+            "default": "merge",
             "type": "string",
             "enum": [
               "merge",
               "replace"
-            ],
-            "default": "merge"
+            ]
           },
           "confirm": {
             "type": "string"
@@ -1840,25 +3054,25 @@
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           },
           "body_weight_kg": {
+            "default": null,
             "type": [
               "number",
               "null"
-            ],
-            "default": null
+            ]
           },
           "body_fat_percent": {
+            "default": null,
             "type": [
               "number",
               "null"
-            ],
-            "default": null
+            ]
           },
           "skeletal_muscle_kg": {
+            "default": null,
             "type": [
               "number",
               "null"
-            ],
-            "default": null
+            ]
           }
         },
         "required": [
@@ -1879,60 +3093,80 @@
             ]
           },
           "kind": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "running",
-              "walking",
-              "outdoor_cycling",
-              "indoor_cycling",
-              "rowing",
-              "stairs",
-              "elliptical",
-              "swimming",
-              "other"
-            ],
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "running",
+                  "walking",
+                  "outdoor_cycling",
+                  "indoor_cycling",
+                  "rowing",
+                  "stairs",
+                  "elliptical",
+                  "swimming",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "period": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "week",
-              "month"
-            ],
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "week",
+                  "month"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "target_distance_km": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "exclusiveMinimum": 0,
-            "maximum": 10000,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "target_duration_sec": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 1,
-            "maximum": 2678400,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2678400
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "target_count": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 1,
-            "maximum": 1000,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "start_date": {
             "type": "string",
@@ -1957,12 +3191,16 @@
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           },
           "start_time": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "kind": {
             "type": "string",
@@ -1984,103 +3222,139 @@
             "maximum": 86400
           },
           "distance_km": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "exclusiveMinimum": 0,
-            "maximum": 1000,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "avg_heart_rate": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 30,
-            "maximum": 250,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 30,
+                "maximum": 250
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "max_heart_rate": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 30,
-            "maximum": 250,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 30,
+                "maximum": 250
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "calories_kcal": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0,
-            "maximum": 20000,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 20000
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "elevation_gain_m": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0,
-            "maximum": 10000,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "avg_cadence": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 1,
-            "maximum": 300,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "effort": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "hard",
-              "medium",
-              "easy"
-            ],
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "hard",
+                  "medium",
+                  "easy"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "workout_id": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "exclusiveMinimum": 0,
-            "maximum": 2147483647,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "source": {
+            "default": "manual",
             "type": "string",
             "enum": [
               "manual",
               "garmin",
               "nike",
               "file"
-            ],
-            "default": "manual"
+            ]
           },
           "external_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "minLength": 1,
-            "maxLength": 200,
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "memo": {
+            "default": "",
             "type": "string",
-            "maxLength": 2000,
-            "default": ""
+            "maxLength": 2000
           }
         },
         "required": [
@@ -2093,6 +3367,8 @@
         "type": "object",
         "properties": {
           "sessions": {
+            "minItems": 1,
+            "maxItems": 200,
             "type": "array",
             "items": {
               "type": "object",
@@ -2102,12 +3378,16 @@
                   "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                 },
                 "start_time": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "kind": {
                   "type": "string",
@@ -2129,103 +3409,139 @@
                   "maximum": 86400
                 },
                 "distance_km": {
-                  "type": [
-                    "number",
-                    "null"
-                  ],
-                  "exclusiveMinimum": 0,
-                  "maximum": 1000,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "avg_heart_rate": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "minimum": 30,
-                  "maximum": 250,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 30,
+                      "maximum": 250
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "max_heart_rate": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "minimum": 30,
-                  "maximum": 250,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 30,
+                      "maximum": 250
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "calories_kcal": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "minimum": 0,
-                  "maximum": 20000,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 20000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "elevation_gain_m": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "minimum": 0,
-                  "maximum": 10000,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "avg_cadence": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "minimum": 1,
-                  "maximum": 300,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "effort": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "enum": [
-                    "hard",
-                    "medium",
-                    "easy"
-                  ],
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "hard",
+                        "medium",
+                        "easy"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "workout_id": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "exclusiveMinimum": 0,
-                  "maximum": 2147483647,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 2147483647
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "source": {
+                  "default": "manual",
                   "type": "string",
                   "enum": [
                     "manual",
                     "garmin",
                     "nike",
                     "file"
-                  ],
-                  "default": "manual"
+                  ]
                 },
                 "external_id": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "minLength": 1,
-                  "maxLength": 200,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "memo": {
+                  "default": "",
                   "type": "string",
-                  "maxLength": 2000,
-                  "default": ""
+                  "maxLength": 2000
                 }
               },
               "required": [
@@ -2233,9 +3549,7 @@
                 "kind",
                 "duration_sec"
               ]
-            },
-            "minItems": 1,
-            "maxItems": 200
+            }
           }
         },
         "required": [
@@ -2282,7 +3596,8 @@
         "properties": {
           "brand_id": {
             "type": "integer",
-            "exclusiveMinimum": 0
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
           },
           "name": {
             "type": "string",
@@ -2290,25 +3605,33 @@
             "maxLength": 120
           },
           "base_weight": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "minimum": 0,
-            "maximum": 99999
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 99999
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "notes": {
+            "default": "",
             "type": "string",
-            "maxLength": 2000,
-            "default": ""
+            "maxLength": 2000
           },
           "official_weight_id": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "exclusiveMinimum": 0,
-            "maximum": 2147483647
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "single_joint": {
             "type": "boolean"
@@ -2385,13 +3708,13 @@
             "maximum": 7
           },
           "rest_days": {
+            "maxItems": 6,
             "type": "array",
             "items": {
               "type": "integer",
               "minimum": 0,
               "maximum": 6
-            },
-            "maxItems": 6
+            }
           },
           "schedule_mode": {
             "type": "string",
@@ -2420,6 +3743,8 @@
             ]
           },
           "splits": {
+            "minItems": 1,
+            "maxItems": 5,
             "type": "array",
             "items": {
               "type": "object",
@@ -2430,6 +3755,8 @@
                   "maxLength": 120
                 },
                 "body_parts": {
+                  "minItems": 1,
+                  "maxItems": 100,
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -2444,11 +3771,11 @@
                       "하체-뒤",
                       "복근"
                     ]
-                  },
-                  "minItems": 1,
-                  "maxItems": 100
+                  }
                 },
                 "exercises": {
+                  "minItems": 1,
+                  "maxItems": 100,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -2459,12 +3786,16 @@
                         "maxLength": 120
                       },
                       "machine_id": {
-                        "type": [
-                          "integer",
-                          "null"
-                        ],
-                        "exclusiveMinimum": 0,
-                        "maximum": 2147483647
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "sets": {
                         "type": "integer",
@@ -2498,11 +3829,10 @@
                       "weight",
                       "reps"
                     ]
-                  },
-                  "minItems": 1,
-                  "maxItems": 100
+                  }
                 },
                 "cardio": {
+                  "maxItems": 10,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -2570,8 +3900,7 @@
                       "kind",
                       "intensity"
                     ]
-                  },
-                  "maxItems": 10
+                  }
                 }
               },
               "required": [
@@ -2579,11 +3908,11 @@
                 "body_parts",
                 "exercises"
               ]
-            },
-            "minItems": 1,
-            "maxItems": 5
+            }
           },
           "weeks": {
+            "minItems": 12,
+            "maxItems": 12,
             "type": "array",
             "items": {
               "type": "object",
@@ -2607,14 +3936,18 @@
                   "maximum": 99999
                 },
                 "deload_metric": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "enum": [
-                    "weight",
-                    "sets",
-                    "reps"
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "weight",
+                        "sets",
+                        "reps"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -2624,9 +3957,7 @@
                 "amount",
                 "deload_metric"
               ]
-            },
-            "minItems": 12,
-            "maxItems": 12
+            }
           }
         },
         "required": [
@@ -2655,7 +3986,8 @@
         "properties": {
           "version": {
             "type": "integer",
-            "exclusiveMinimum": 0
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
           },
           "date": {
             "type": "string",
@@ -2667,23 +3999,29 @@
             "maxLength": 120
           },
           "notes": {
+            "default": "",
             "type": "string",
-            "maxLength": 4000,
-            "default": ""
+            "maxLength": 4000
           },
           "feedback": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "hard",
-              "medium",
-              "easy"
-            ],
-            "default": null
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "hard",
+                  "medium",
+                  "easy"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sets": {
+            "minItems": 1,
+            "maxItems": 200,
             "type": "array",
             "items": {
               "type": "object",
@@ -2694,12 +4032,17 @@
                   "maxLength": 120
                 },
                 "machine_id": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "exclusiveMinimum": 0,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "weight": {
                   "type": "number",
@@ -2712,22 +4055,26 @@
                   "maximum": 1000
                 },
                 "notes": {
+                  "default": "",
                   "type": "string",
-                  "maxLength": 4000,
-                  "default": ""
+                  "maxLength": 4000
                 },
                 "completed": {
-                  "type": "boolean",
-                  "default": true
+                  "default": true,
+                  "type": "boolean"
                 },
                 "rpe": {
-                  "type": [
-                    "number",
-                    "null"
-                  ],
-                  "minimum": 1,
-                  "maximum": 10,
-                  "default": null
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 10
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -2735,9 +4082,7 @@
                 "weight",
                 "reps"
               ]
-            },
-            "minItems": 1,
-            "maxItems": 200
+            }
           }
         },
         "required": [
@@ -2755,6 +4100,7 @@
             "maxLength": 120
           },
           "body_parts": {
+            "maxItems": 9,
             "type": "array",
             "items": {
               "type": "string",
@@ -2769,8 +4115,7 @@
                 "하체-뒤",
                 "복근"
               ]
-            },
-            "maxItems": 9
+            }
           }
         },
         "required": [
@@ -2787,12 +4132,16 @@
             "maxLength": 120
           },
           "weight_step": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "exclusiveMinimum": 0,
-            "maximum": 100
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2804,13 +4153,23 @@
         "type": "object",
         "properties": {
           "ends_at": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           }
         },
         "required": [
           "ends_at"
         ],
         "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sirloinbh.session_token",
+        "description": "The shared sign-in session cookie (ADR-0015)."
       }
     }
   }

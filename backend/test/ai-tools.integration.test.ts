@@ -12,9 +12,10 @@ const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
 // One owner per run, so the audit rows of an earlier run on the same DB do not count.
 const owner = `owner-${randomUUID()}`;
-function token(scope: string, key = privateKey) {
+// project-standards#670, #822: a token names its tool ('@list' for the list) and has its own jti; the app requires both.
+function token(scope: string, tool: string, key = privateKey) {
   const now = Math.floor(Date.now() / 1000);
-  const body = `${b64({ alg: 'EdDSA', typ: 'JWT' })}.${b64({ iss: 'shared-ai', aud: 'workout-memo', sub: owner, client: 'stdio', scope, iat: now, exp: now + 60 })}`;
+  const body = `${b64({ alg: 'EdDSA', typ: 'JWT' })}.${b64({ iss: 'shared-ai', aud: 'workout-memo', sub: owner, client: 'stdio', scope, tool, jti: randomUUID(), iat: now, exp: now + 60 })}`;
   return `${body}.${sign(null, Buffer.from(body), key).toString('base64url')}`;
 }
 
@@ -47,7 +48,7 @@ test(
     };
     try {
       const listed = await fetch(base, {
-        headers: { authorization: `Bearer ${token('workout-memo:read')}` },
+        headers: { authorization: `Bearer ${token('workout-memo:read', '@list')}` },
       });
       assert.equal(listed.status, 200);
       const { tools } = (await listed.json()) as {
@@ -66,22 +67,30 @@ test(
         (
           await call(
             'add_workout',
-            token('workout-memo:write', generateKeyPairSync('ed25519').privateKey),
+            token('workout-memo:write', 'add_workout', generateKeyPairSync('ed25519').privateKey),
             workout,
           )
         ).status,
         401,
       );
-      assert.equal((await call('add_workout', token('workout-memo:read'), workout)).status, 403);
       assert.equal(
-        (await call('add_workout', token('workout-memo:write'), { ...workout, title: '' })).status,
+        (await call('add_workout', token('workout-memo:read', 'add_workout'), workout)).status,
+        403,
+      );
+      assert.equal(
+        (
+          await call('add_workout', token('workout-memo:write', 'add_workout'), {
+            ...workout,
+            title: '',
+          })
+        ).status,
         400,
       );
 
-      const added = await call('add_workout', token('workout-memo:write'), workout);
+      const added = await call('add_workout', token('workout-memo:write', 'add_workout'), workout);
       assert.equal(added.status, 200);
       const { result } = (await added.json()) as { result: { id: number } };
-      const read = await call('list_workouts', token('workout-memo:read'), {
+      const read = await call('list_workouts', token('workout-memo:read', 'list_workouts'), {
         from: '2040-04-01',
         to: '2040-04-01',
       });
@@ -93,7 +102,7 @@ test(
       assert.equal(found?.sets.length, 1);
       assert.equal(
         (
-          await call('list_workouts', token('workout-memo:read'), {
+          await call('list_workouts', token('workout-memo:read', 'list_workouts'), {
             from: '2039-01-01',
             to: '2040-04-01',
           })

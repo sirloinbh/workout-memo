@@ -4,6 +4,7 @@ import { z } from 'zod/v4';
 
 import { type AnalysisSet, analyze, bodyPartMappingSchema } from '../analysis.js';
 import { allBodyParts, date, exerciseKeySql } from '../domain.js';
+import { inTransaction } from '../transaction.js';
 import { seoulTodaySql } from './shared.js';
 
 const partOrder = `array_position(ARRAY[${allBodyParts.map((p) => `'${p}'`).join(',')}]::text[], body_part)`;
@@ -41,9 +42,7 @@ export function registerAnalysisRoutes(app: express.Express, pool: Pool) {
   // An empty list removes the mapping so the exercise is counted as 미분류.
   app.put('/api/exercise-body-parts', async (req, res) => {
     const m = bodyPartMappingSchema.parse(req.body);
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+    const saved = await inTransaction(pool, async (client) => {
       const key: string = (
         await client.query(`SELECT ${exerciseKeySql('$1::text')} AS key`, [m.exercise])
       ).rows[0].key;
@@ -53,16 +52,13 @@ export function registerAnalysisRoutes(app: express.Express, pool: Pool) {
           key,
           part,
         ]);
-      await client.query('COMMIT');
+      return key;
+    });
+    {
       res.json({
-        exercise: key,
+        exercise: saved,
         body_parts: allBodyParts.filter((p) => m.body_parts.includes(p)),
       });
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
     }
   });
 }

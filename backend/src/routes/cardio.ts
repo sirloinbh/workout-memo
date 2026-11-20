@@ -4,6 +4,7 @@ import { z } from 'zod/v4';
 
 import { cardioKinds, cardioSessionObject, cardioSessionSchemaFor, date } from '../domain.js';
 import { parseId, sendError } from '../standard/http.js';
+import { inTransaction } from '../transaction.js';
 
 // #114: pace and speed are never stored. They are computed here from the stored duration (whole
 // seconds) and distance (km): pace in seconds per km (1 decimal), speed in km/h (2 decimals).
@@ -118,31 +119,26 @@ export function registerCardioRoutes(app: express.Express, pool: Pool, today: ()
   app.put('/api/cardio-sessions/:id', async (req, res) => {
     const target = parseId(req.params.id, label);
     const c = cardioSessionSchemaFor(today()).parse(req.body);
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      // Lock the row first so a concurrent delete or update waits for this replacement.
-      const existing = await client.query('SELECT id FROM cardio_sessions WHERE id=$1 FOR UPDATE', [
-        target,
-      ]);
-      if (!existing.rowCount) {
-        await client.query('ROLLBACK');
-        sendError(res, 404, cardioMissing);
-        return;
-      }
-      // A full replacement: omitted optional fields become null (memo '', source 'manual').
-      const r = await client.query(
-        `UPDATE cardio_sessions SET (${cardioFields}, updated_at) = ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,CURRENT_TIMESTAMP) WHERE id=$16 RETURNING ${cardioColumns}`,
-        [...values(c), target],
-      );
-      await client.query('COMMIT');
-      res.json(r.rows[0]);
-    } catch (e) {
-      await client.query('ROLLBACK').catch(() => undefined);
-      throw e;
-    } finally {
-      client.release();
-    }
+    const replaced = await inTransaction(
+      pool,
+      async (client) => {
+        // Lock the row first so a concurrent delete or update waits for this replacement.
+        const existing = await client.query(
+          'SELECT id FROM cardio_sessions WHERE id=$1 FOR UPDATE',
+          [target],
+        );
+        if (!existing.rowCount) return null;
+        // A full replacement: omitted optional fields become null (memo '', source 'manual').
+        const r = await client.query(
+          `UPDATE cardio_sessions SET (${cardioFields}, updated_at) = ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,CURRENT_TIMESTAMP) WHERE id=$16 RETURNING ${cardioColumns}`,
+          [...values(c), target],
+        );
+        return r.rows[0];
+      },
+      { commit: (row) => row !== null },
+    );
+    if (!replaced) sendError(res, 404, cardioMissing);
+    else res.json(replaced);
   });
   app.delete('/api/cardio-sessions/:id', async (req, res) => {
     const r = await pool.query('DELETE FROM cardio_sessions WHERE id=$1', [
@@ -234,44 +230,38 @@ export function registerCardioImportRoute(
       sendImportProblems(res, 400, problems);
       return;
     }
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const existing = await client.query<{ source: string; external_id: string }>(
-        `SELECT source, external_id FROM cardio_sessions
-          WHERE (source, external_id) IN (SELECT * FROM unnest($1::text[], $2::text[]))`,
-        [rows.map((r) => r.source), rows.map((r) => r.external_id)],
-      );
-      const taken = new Set(existing.rows.map((r) => `${r.source}\u0000${r.external_id}`));
-      const repeated = rows.flatMap((r, index) =>
-        taken.has(`${r.source}\u0000${r.external_id}`)
-          ? [{ index, message: 'This activity was already imported' }]
-          : [],
-      );
-      if (repeated.length) {
-        await client.query('ROLLBACK');
-        sendImportProblems(res, 409, repeated);
-        return;
-      }
-      const saved = [];
-      for (const row of rows)
-        saved.push(
-          (
-            await client.query(
-              `INSERT INTO cardio_sessions(${cardioFields}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING ${cardioColumns}`,
-              values(row),
-            )
-          ).rows[0],
+    // A concurrent import of the same activity ends in the unique index (409 by appErrors); an unknown
+    // workout_id in its foreign key (400). Either way nothing is kept.
+    const result = await inTransaction(
+      pool,
+      async (client) => {
+        const existing = await client.query<{ source: string; external_id: string }>(
+          `SELECT source, external_id FROM cardio_sessions
+            WHERE (source, external_id) IN (SELECT * FROM unnest($1::text[], $2::text[]))`,
+          [rows.map((r) => r.source), rows.map((r) => r.external_id)],
         );
-      await client.query('COMMIT');
-      res.status(201).json({ sessions: saved });
-    } catch (e) {
-      // A concurrent import of the same activity ends in the unique index (409 by appErrors);
-      // an unknown workout_id in its foreign key (400). Either way nothing is kept.
-      await client.query('ROLLBACK').catch(() => undefined);
-      throw e;
-    } finally {
-      client.release();
-    }
+        const taken = new Set(existing.rows.map((r) => `${r.source} ${r.external_id}`));
+        const repeated = rows.flatMap((r, index) =>
+          taken.has(`${r.source} ${r.external_id}`)
+            ? [{ index, message: 'This activity was already imported' }]
+            : [],
+        );
+        if (repeated.length) return { repeated };
+        const saved = [];
+        for (const row of rows)
+          saved.push(
+            (
+              await client.query(
+                `INSERT INTO cardio_sessions(${cardioFields}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING ${cardioColumns}`,
+                values(row),
+              )
+            ).rows[0],
+          );
+        return { saved };
+      },
+      { commit: (outcome) => !outcome.repeated },
+    );
+    if (result.repeated) sendImportProblems(res, 409, result.repeated);
+    else res.status(201).json({ sessions: result.saved });
   });
 }

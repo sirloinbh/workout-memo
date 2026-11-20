@@ -1,11 +1,10 @@
-import { Pool } from 'pg';
-
 import { createApp } from './app.js';
+import { connectPool } from './pool.js';
 import { sharedAuth } from './standard/auth.js';
 import { createPushService, pushConfigFromEnv } from './web-push.js';
 
 const auth = sharedAuth();
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = connectPool(process.env.DATABASE_URL);
 // #260: rest-end Web Push is on only when the VAPID keys are set (docs/deployment.md).
 const push = createPushService(pool, { config: pushConfigFromEnv() });
 const stopPush = push.start();

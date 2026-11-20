@@ -1,5 +1,5 @@
 {
-  "centralSha": "063010d6bd9b5da561f43cdadd58e328f08d590f",
+  "centralSha": "04b2f6737785ee8523e013a1bc24450a3fa77cdf",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -135,7 +135,7 @@
     },
     ".github/dependabot.yml": {
       "mode": "full",
-      "sha256": "32c0c2b8ae82d2461b30ca81ea5b576b4026c7cc7d7e450e3ca148b7556e641a",
+      "sha256": "2f0727942c37c1e62ac3900734354a479510ea7ef3ca16231aef9b2ab4701c9c",
       "source": "templates/app/.github/dependabot.yml"
     },
     ".github/ISSUE_TEMPLATE/task.md": {
@@ -377,6 +377,11 @@
       "mode": "full",
       "sha256": "3be34a5fb9986a39c7fae28bf7dfdbc22a06e1fd6a53fe194df501bfc6e232c1",
       "source": "templates/deploy/deploy/backup.timer.tmpl"
+    },
+    "deploy/bootstrap-env.sh": {
+      "mode": "full",
+      "sha256": "f567a1eada7befc92da0e41c1bac41390ac61fdf7ce6530b389abde1f1654e57",
+      "source": "templates/app/deploy/bootstrap-env.sh.tmpl"
     },
     "deploy/health.service": {
       "mode": "full",

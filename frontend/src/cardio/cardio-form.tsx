@@ -1,6 +1,14 @@
 import { ChevronDown } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
+import {
+  type CardioKind,
+  cardioKinds,
+  cardioSessionSchemaFor,
+  type Feedback,
+  feedbackLevels,
+  fieldErrors,
+} from '../../../shared/contract';
 import { AlertBanner } from '../components/alert-banner';
 import { FieldError } from '../components/field';
 import { invalidProps } from '../components/field-props';
@@ -18,14 +26,6 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Spinner } from '../components/ui/spinner';
-import {
-  type CardioKind,
-  cardioKinds,
-  cardioSessionSchemaFor,
-  type Feedback,
-  feedbackLevels,
-  fieldErrors,
-} from '../contract';
 import { cn } from '../lib/utils';
 import type { CardioPreset } from '../routine-cardio';
 import { type CardioBody, type CardioSession, saveCardioSession } from './api';

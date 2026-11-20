@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 
+import { bodyMeasurementSchema, fieldErrors } from '../../shared/contract';
 import { AlertBanner } from './components/alert-banner';
 import {
   fieldLabel as stackedLabel,
@@ -13,7 +14,6 @@ import { Checkbox } from './components/ui/checkbox';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
-import { bodyMeasurementSchema, fieldErrors } from './contract';
 import {
   detectColumns,
   parseCsv,

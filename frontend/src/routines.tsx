@@ -1,6 +1,14 @@
 import { Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
+import {
+  type CardioKind,
+  cardioKinds,
+  cardioWeeklyTargets,
+  defaultWeightStep,
+  routineCardioIntensities,
+  type RoutineCardioIntensity,
+} from '../../shared/contract';
 import { cardioKindLabels } from './cardio/format';
 import { AlertBanner } from './components/alert-banner';
 import { Button } from './components/ui/button';
@@ -13,14 +21,6 @@ import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
-import {
-  type CardioKind,
-  cardioKinds,
-  cardioWeeklyTargets,
-  defaultWeightStep,
-  routineCardioIntensities,
-  type RoutineCardioIntensity,
-} from './contract';
 import { SimilarNameHint } from './exercise-names';
 import { bodyPartLabel, plural } from './labels';
 import { cn } from './lib/utils';

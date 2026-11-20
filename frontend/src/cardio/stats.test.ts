@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import type { CardioKind } from '../contract';
+import type { CardioKind } from '../../../shared/contract';
 import { bucketsOf, kindsOf, runningPaces, totalsOf, weekStart } from './stats';
 
 let id = 0;

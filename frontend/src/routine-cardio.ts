@@ -1,5 +1,5 @@
+import type { CardioKind, RoutineCardio, RoutineCardioIntensity } from '../../shared/contract';
 import { cardioKindLabels } from './cardio/format';
-import type { CardioKind, RoutineCardio, RoutineCardioIntensity } from './contract';
 
 // #117: a routine split's cardio item. In Routine Builder the numbers may still be empty ('').
 export type CardioItem = {

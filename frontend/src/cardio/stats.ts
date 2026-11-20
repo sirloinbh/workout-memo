@@ -1,4 +1,4 @@
-import { type CardioKind, cardioKinds } from '../contract';
+import { type CardioKind, cardioKinds } from '../../../shared/contract';
 import { paceOf } from './format';
 
 // #115: period statistics computed from the sessions the panel already loaded (from..to), so no

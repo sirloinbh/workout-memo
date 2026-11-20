@@ -19,6 +19,17 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { BrowserRouter, useLocation, useNavigate, useSearchParams } from 'react-router';
 
+import {
+  defaultWeightStep,
+  type Feedback,
+  feedbackLevels,
+  fieldErrors,
+  type GoalInput,
+  goalSchema,
+  machineSchema,
+  weightStepSchema,
+  workoutSchema,
+} from '../../shared/contract';
 import { Analysis } from './analysis';
 import { Backup } from './backup';
 import { BodyMeasurements } from './body';
@@ -57,17 +68,6 @@ import { Notice } from './components/ui/notice';
 import { SkeletonList } from './components/ui/skeleton';
 import { Toaster } from './components/ui/sonner';
 import { Spinner } from './components/ui/spinner';
-import {
-  defaultWeightStep,
-  type Feedback,
-  feedbackLevels,
-  fieldErrors,
-  type GoalInput,
-  goalSchema,
-  machineSchema,
-  weightStepSchema,
-  workoutSchema,
-} from './contract';
 import { dateTitle, monthNames, seoulDate } from './date';
 import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range';
 import { candidateNames, type ExerciseName } from './exercise-name-match';

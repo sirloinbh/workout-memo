@@ -1,4 +1,4 @@
-import { defaultWeightStep } from './contract';
+import { defaultWeightStep } from '../../shared/contract';
 
 // Automatic double progression (#28 rule change), used for the routine form
 // preview. Mirrors backend/src/progress.ts without saved records: every session

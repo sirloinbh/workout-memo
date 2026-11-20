@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
+import {
+  type CardioKind,
+  cardioKinds,
+  cardioSessionSchemaFor,
+  fieldErrors,
+} from '../../../shared/contract';
 import { AlertBanner } from '../components/alert-banner';
 import { formHint, selectField, touchText } from '../components/form-styles';
 import { Button } from '../components/ui/button';
@@ -8,7 +14,6 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Notice } from '../components/ui/notice';
-import { type CardioKind, cardioKinds, cardioSessionSchemaFor, fieldErrors } from '../contract';
 import { cn } from '../lib/utils';
 import { activityFileAccept, type ImportedActivity, readActivityFile } from './activity-file';
 import {

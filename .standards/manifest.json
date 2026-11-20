@@ -1,5 +1,5 @@
 {
-  "centralSha": "910f8c9042683eb0785ed925cb2feb4b6c7bb42c",
+  "centralSha": "063010d6bd9b5da561f43cdadd58e328f08d590f",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -175,7 +175,7 @@
     },
     ".prettierignore": {
       "mode": "section",
-      "sha256": "574f9404b392a8fa23546ca0d80b9c7f2423e9b83567fc64ef912b1c04a47a86",
+      "sha256": "eecaa09e597906a8c0bfafaec67567ac980a312a46d0fc47f6d188aac62da3ff",
       "source": "templates/app/.prettierignore.tmpl"
     },
     ".standards/blocked-packages.json": {
@@ -437,6 +437,16 @@
       "mode": "full",
       "sha256": "e71ac619eff3e6481054b54468ebe269d000b9af071d818ab1f9e5d1257a7704",
       "source": "templates/deploy/deploy/ssm-get.sh.tmpl"
+    },
+    "e2e/support/jev.ts": {
+      "mode": "full",
+      "sha256": "83ec5d7d0250919b6f4361125aa8cb6c31f6c8fbb75869ef6140d41c3130086a",
+      "source": "templates/e2e/e2e/support/jev.ts"
+    },
+    "e2e/support/judged.ts": {
+      "mode": "full",
+      "sha256": "34f28bf74fc2d1289226e7e546b92d33f1487b67fc178d633f3faef287f14266",
+      "source": "templates/e2e/e2e/support/judged.ts"
     },
     "e2e/tsconfig.json": {
       "mode": "full",
@@ -1013,7 +1023,7 @@
     },
     "knip.json": {
       "mode": "full",
-      "sha256": "909bde707c1607e4a23fbb310fbda9b0ede39bb495c7d5e4453501ed5518ae55",
+      "sha256": "24b4699f1cf24f37df1e5d5f6f75914b955b06a2b7a913dad04cd63ad14686e3",
       "source": "templates/app/knip.json"
     },
     "lighthouserc.json": {

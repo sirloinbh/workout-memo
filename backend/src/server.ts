@@ -1,11 +1,14 @@
 import { Pool } from 'pg';
 
 import { createApp } from './app.js';
-import { sharedAuth } from './standard/auth.js';
+import { listenHost, sharedAuth } from './standard/auth.js';
 import { createPool } from './standard/db.js';
 import { createPushService, pushConfigFromEnv } from './web-push.js';
 
 const auth = sharedAuth();
+const port = Number(process.env.PORT ?? 3101);
+// 127.0.0.1 when the sign-in is off (local run), so the open API is not reachable from the network (#898).
+const host = listenHost(auth !== undefined);
 const pool = createPool(new Pool({ connectionString: process.env.DATABASE_URL }));
 // #260: rest-end Web Push is on only when the VAPID keys are set (docs/deployment.md).
 const push = createPushService(pool, { config: pushConfigFromEnv() });
@@ -14,9 +17,7 @@ const server = createApp(pool, {
   auth,
   push,
   toolsPublicKey: process.env.AI_TOOLS_PUBLIC_KEY,
-}).listen(Number(process.env.PORT ?? 3101), '0.0.0.0', () =>
-  console.log('API http://localhost:3101'),
-);
+}).listen(port, host, () => console.log(`API http://${host}:${port}`));
 process.on('SIGTERM', () => {
   stopPush();
   server.close(() => {

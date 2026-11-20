@@ -198,7 +198,7 @@ jobs:
   # retention step never fails the run: the images are pushed, old ones are just not removed yet.
   image-push:
     needs: [changes, docker-build]
-    if: ${{ !cancelled() && needs.docker-build.result == 'success' && false && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ !cancelled() && needs.docker-build.result == 'success' && true && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read

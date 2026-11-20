@@ -1,5 +1,5 @@
 {
-  "centralSha": "9c1f654987fbeb535abcfddb0cb2bf5828c53c10",
+  "centralSha": "4833cc9a20fb294bbedfea84bf95e7f4255434e3",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -150,7 +150,7 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "0166106de644d34fa8161c82a07eb0bacd261520074b2b38e5cc352c7743c511",
+      "sha256": "18039a57e3b97d49525dd4b774ee38886aaa401a185a11a256d2803247ee4b4b",
       "source": ".github/workflows/reusable-app-ci.yml"
     },
     ".gitignore": {

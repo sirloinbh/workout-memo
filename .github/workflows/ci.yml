@@ -68,23 +68,9 @@ jobs:
       - name: Supply chain check (after install, including node_modules)
         run: node .standards/ioc-scan.mjs
       - name: DB migration
-        # Rule: docs/conventions/database.md (#27). The e2e job has the same script (a test checks they match).
-        # 1) Like Docker init on an empty volume, apply all files once with psql without recording (checks they are safe to run again).
-        # 2) If the shared runner (db:migrate) exists, apply again and record in schema_migrations.
-        #    Apps without a runner yet apply once more with psql and only get a warning (compatible with the old behavior).
-        run: |
-          shopt -s nullglob
-          for migration in database/migrations/*.sql; do
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
-          done
-          if node -e "process.exit(require('./package.json').scripts?.['db:migrate'] ? 0 : 1)"; then
-            npm run db:migrate
-          else
-            echo "::warning title=DB migration::There is no db:migrate runner, so migrations were applied with psql only. No applied-migration record is kept. Add a runner following the central docs/conventions/database.md."
-            for migration in database/migrations/*.sql; do
-              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
-            done
-          fi
+        # Rule: docs/conventions/database.md (#27). The e2e job runs the same vendored script (#697).
+        # .standards/ci-migrate.sh applies all files once with psql (Docker init order), then runs db:migrate to record them.
+        run: bash .standards/ci-migrate.sh
       - run: npm run check
       - name: Unused files, exports, and dependencies (knip, warning only)
         # It does not fail at first (#263). Apps whose result reached 0 use the failing step via features.knipStrict (#342).
@@ -141,19 +127,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: DB migration
         # Same script as the step with the same name in the verify job.
-        run: |
-          shopt -s nullglob
-          for migration in database/migrations/*.sql; do
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
-          done
-          if node -e "process.exit(require('./package.json').scripts?.['db:migrate'] ? 0 : 1)"; then
-            npm run db:migrate
-          else
-            echo "::warning title=DB migration::There is no db:migrate runner, so migrations were applied with psql only. No applied-migration record is kept. Add a runner following the central docs/conventions/database.md."
-            for migration in database/migrations/*.sql; do
-              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || exit 1
-            done
-          fi
+        run: bash .standards/ci-migrate.sh
       # Playwright uses the Google Chrome installed on the runner image (ubuntu-24.04) as channel 'chrome'.
       - run: npm run test:e2e
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

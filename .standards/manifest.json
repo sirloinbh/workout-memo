@@ -1,5 +1,5 @@
 {
-  "centralSha": "4833cc9a20fb294bbedfea84bf95e7f4255434e3",
+  "centralSha": "231b85c13855402bdb017ac428cd70dd60fc5a5e",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -355,7 +355,7 @@
     },
     "deploy/autodeploy.sh": {
       "mode": "full",
-      "sha256": "b1d31a9b85a998edbc976b42431281a6ff47c7716870572036e90d2b05f22c96",
+      "sha256": "32a100a769b9577ddce2a18e0dc02dc84becf8f5528801655fb456f4913e3a75",
       "source": "templates/deploy/deploy/autodeploy.sh.tmpl"
     },
     "deploy/autodeploy.timer": {

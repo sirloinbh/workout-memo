@@ -6,7 +6,8 @@
     "backend/src/standard/**",
     "frontend/src/components/ui/**",
     "shared/contract.ts",
-    "backend/src/contract.ts"
+    "backend/src/contract.ts",
+    "frontend/src/contract.ts"
   ],
   "ignoreBinaries": ["tsc", "tsx"],
   "ignoreDependencies": ["@lhci/cli", "zod"],

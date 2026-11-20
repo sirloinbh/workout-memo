@@ -1,0 +1,25 @@
+{
+  "request": {
+    "model": "jev-latest",
+    "state": "- paragraph: Only one record is saved per date. Edit an already recorded date from the list. Values are saved to 2 decimal places, and at least one is required.",
+    "questions": {
+      "explains_rules": {
+        "type": "noul",
+        "instructions": "The text is a hint under a form for body measurements. Does it explain that at least one value is required?"
+      }
+    }
+  },
+  "response": {
+    "model": "jev-1.14.0",
+    "answers": {
+      "explains_rules": {
+        "type": "noul",
+        "noul": 0.96
+      }
+    },
+    "usage": {
+      "input_tokens": 325,
+      "output_tokens": 22
+    }
+  }
+}

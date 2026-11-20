@@ -15,7 +15,7 @@ import {
   weightStepSchema,
   workoutSchema,
 } from '../src/domain.js';
-import { jsonSchema } from '../src/openapi.js';
+import { schemaOf as jsonSchema } from '../src/standard/openapi.js';
 
 const workout = {
   date: '2026-01-05',

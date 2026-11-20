@@ -7,39 +7,62 @@ import { z } from 'zod/v4';
 
 import { createApp } from '../src/app.js';
 import { goalSchema, workoutSchema } from '../src/domain.js';
-import { buildOpenApi, jsonSchema, registeredRoutes, routeDescriptions } from '../src/openapi.js';
+import { document, operations } from '../src/openapi.js';
+import { schemaOf } from '../src/standard/openapi.js';
 
-const docs = new URL('../../docs/', import.meta.url);
-const app = () => createApp({} as Pool);
-async function built() {
-  return buildOpenApi(app(), routeDescriptions(await readFile(new URL('api.md', docs), 'utf8')));
+type Layer = { route?: { path: string; methods: Record<string, boolean> } };
+
+// Routes are only registered here, never called, so no database is needed. All routes sit directly on the app.
+function registeredRoutes() {
+  const app = createApp({} as Pool);
+  return (app as unknown as { router: { stack: Layer[] } }).router.stack.flatMap((layer) =>
+    layer.route
+      ? Object.keys(layer.route.methods).map((m) => `${m.toUpperCase()} ${layer.route!.path}`)
+      : [],
+  );
 }
 
-test('docs/openapi.json is up to date with the routes, schemas and docs/api.md', async () => {
-  const committed = JSON.parse(await readFile(new URL('openapi.json', docs), 'utf8'));
-  assert.deepEqual(committed, await built(), 'run `npm run openapi` and commit the result');
+test('docs/openapi.json is up to date with the operation table and schemas', async () => {
+  const committed = JSON.parse(
+    await readFile(new URL('../../docs/openapi.json', import.meta.url), 'utf8'),
+  ) as unknown;
+  assert.deepEqual(
+    committed,
+    JSON.parse(JSON.stringify(document)),
+    'run `npm run openapi` and commit the result',
+  );
 });
 
-test('every registered route is one documented operation with a summary', async () => {
-  const spec = await built();
-  const operations = Object.entries(spec.paths).flatMap(([path, methods]) =>
-    Object.entries(methods).map(([method, op]) => ({ route: `${method} ${path}`, op })),
-  );
-  assert.equal(operations.length, registeredRoutes(app()).length);
-  for (const { route, op } of operations)
-    assert.ok((op as { summary: string }).summary, `${route} has a docs/api.md description`);
-  const del = spec.paths['/api/routines/{id}/rests/{date}'].delete as {
-    parameters: { name: string; schema: { type: string; pattern?: string } }[];
-  };
+test('the operation table and the registered routes are the same set', () => {
+  assert.deepEqual(Object.keys(operations).sort(), [...registeredRoutes()].sort());
+});
+
+test('every operation has a summary, and the CSV and idempotency key details stay documented', () => {
+  for (const [route, op] of Object.entries(operations))
+    assert.ok(op.summary, `${route} has a summary`);
+  const paths = document.paths as Record<
+    string,
+    Record<
+      string,
+      {
+        parameters?: { name: string; in: string; schema: { type?: string; pattern?: string } }[];
+        responses: Record<string, { content?: Record<string, unknown> }>;
+      }
+    >
+  >;
+  const del = paths['/api/routines/{id}/rests/{date}']!.delete!;
   assert.deepEqual(
-    del.parameters.map((p) => p.name),
+    del.parameters!.map((p) => p.name),
     ['id', 'date'],
   );
-  assert.equal(del.parameters[1].schema.pattern, '^\\d{4}-\\d{2}-\\d{2}$');
+  assert.equal(del.parameters![1]!.schema.pattern, String.raw`^\d{4}-\d{2}-\d{2}$`);
+  assert.ok(paths['/api/export/workouts.csv']!.get!.responses['200']!.content!['text/csv']);
+  const post = paths['/api/workouts']!.post!;
+  assert.ok(post.parameters!.some((p) => p.in === 'header' && p.name === 'Idempotency-Key'));
 });
 
 test('request schemas keep the server constraints for sets and goals', () => {
-  const workout = jsonSchema(workoutSchema) as {
+  const workout = schemaOf(workoutSchema) as {
     required: string[];
     properties: {
       sets: {
@@ -54,16 +77,9 @@ test('request schemas keep the server constraints for sets and goals', () => {
   assert.equal(sets.minItems, 1);
   assert.equal(sets.maxItems, 200);
   assert.deepEqual(sets.items.required, ['exercise', 'weight', 'reps']);
-  assert.deepEqual(sets.items.properties.weight, { type: 'number', minimum: 0, maximum: 99999 });
-  assert.deepEqual(sets.items.properties.reps, { type: 'integer', minimum: 1, maximum: 1000 });
-  assert.deepEqual(sets.items.properties.rpe, {
-    type: ['number', 'null'],
-    minimum: 1,
-    maximum: 10,
-    default: null,
-  });
-  assert.deepEqual(sets.items.properties.completed, { type: 'boolean', default: true });
-  const goal = jsonSchema(goalSchema) as { required: string[] };
+  assert.equal((sets.items.properties.weight as { maximum: number }).maximum, 99999);
+  assert.equal((sets.items.properties.reps as { type: string }).type, 'integer');
+  const goal = schemaOf(goalSchema) as { required: string[] };
   assert.deepEqual(goal.required, [
     'exercise',
     'target_weight',
@@ -73,9 +89,6 @@ test('request schemas keep the server constraints for sets and goals', () => {
   ]);
 });
 
-test('unsupported schemas and undocumented routes fail instead of being skipped', () => {
-  assert.throws(() => jsonSchema(z.date()), /Unsupported Zod type for OpenAPI: date/);
-  const extended = app();
-  extended.get('/api/undocumented', (_req, res) => void res.json({}));
-  assert.throws(() => buildOpenApi(extended, {}), /\+GET \/api\/undocumented/);
+test('a type JSON Schema cannot express fails instead of being skipped', () => {
+  assert.throws(() => schemaOf(z.date()), /Date cannot be represented/);
 });

@@ -2093,7 +2093,7 @@ function Workspace() {
                 />
               </label>
               <ModalFooter>
-                <Button className="w-full" disabled={saving}>
+                <Button type="submit" className="w-full" disabled={saving}>
                   {saving && <Spinner size="sm" aria-hidden />}
                   {saving ? 'Saving…' : 'Save record'}
                 </Button>
@@ -2313,7 +2313,7 @@ function Workspace() {
                 completed)
               </Label>
             </div>
-            <Button className="w-full" disabled={saving}>
+            <Button type="submit" className="w-full" disabled={saving}>
               {saving && <Spinner size="sm" aria-hidden />}
               Save machine
             </Button>
@@ -2432,7 +2432,7 @@ function GoalForm({
         It counts as achieved when you hit the goal weight or more and the goal reps or more in a
         single set within the period.
       </p>
-      <Button className="w-full" disabled={saving}>
+      <Button type="submit" className="w-full" disabled={saving}>
         {saving && <Spinner size="sm" aria-hidden />}
         Save goal
       </Button>

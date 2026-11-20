@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
 import { type ApiRequest, deferred, fixClock, json, mockApi } from '../test/api';
+import { findLive, getLive, queryLive } from '../test/live';
 import type { CardioSession } from './api';
 import { CardioPanel } from './cardio-panel';
 
@@ -123,12 +124,12 @@ test('a failed load shows the error with a reconnect action', async () => {
   mount((request) =>
     request.method === 'GET' && fail ? json({ error: 'Server error' }, 500) : undefined,
   );
-  const alert = await screen.findByRole('alert');
+  const alert = await findLive('alert');
   expect(alert).toHaveTextContent('Server error');
   fail = false;
   await userEvent.click(within(alert).getByRole('button', { name: 'Reconnect' }));
   expect(await list()).toBeInTheDocument();
-  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(queryLive('alert')).not.toBeInTheDocument();
 });
 
 test('creating sends the core fields as POST and reloads the list', async () => {
@@ -178,7 +179,7 @@ test('creating sends the core fields as POST and reloads the list', async () => 
     source: 'manual',
     external_id: null,
   });
-  expect(screen.getByRole('status')).toHaveTextContent('Cardio record saved');
+  expect(getLive('status')).toHaveTextContent('Cardio record saved');
   expect(requests.filter((r) => r.method === 'GET')).toHaveLength(2);
 });
 
@@ -468,7 +469,7 @@ test('deleting asks first, then removes and reloads; cancelling sends nothing', 
   await user.click(
     screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   );
-  expect(await screen.findByRole('status')).toHaveTextContent('Cardio record deleted');
+  expect(await findLive('status')).toHaveTextContent('Cardio record deleted');
   const removed = requests.find((r) => r.method === 'DELETE')!;
   expect(removed.path).toBe('/api/cardio-sessions/2');
   expect(requests.filter((r) => r.method === 'GET')).toHaveLength(2);
@@ -483,11 +484,11 @@ test('a failed delete shows its own error, keeps the row and does not reload', a
   await user.click(
     screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   );
-  const alert = await screen.findByRole('alert');
+  const alert = await findLive('alert');
   expect(alert).toHaveTextContent('Could not delete');
   // Not the load failure banner: there is nothing to reconnect.
   expect(within(alert).queryByRole('button', { name: 'Reconnect' })).toBeNull();
-  expect(screen.queryByRole('status')).toBeNull();
+  expect(queryLive('status')).toBeNull();
   expect(
     screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   ).toBeInTheDocument();
@@ -509,11 +510,11 @@ test('deleting a session already removed elsewhere (404) says so and reloads', a
   await user.click(
     screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   );
-  expect(await screen.findByRole('status')).toHaveTextContent('This record was already deleted');
+  expect(await findLive('status')).toHaveTextContent('This record was already deleted');
   await waitFor(() =>
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(2),
   );
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryLive('alert')).toBeNull();
   expect(requests.filter((r) => r.method === 'GET')).toHaveLength(2);
 });
 

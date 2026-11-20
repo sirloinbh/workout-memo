@@ -7,6 +7,7 @@ import { type CardioRecord, routineProgress } from '../../backend/src/progress';
 import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
 import { App } from './app';
 import { deferred, json, mockApi } from './test/api';
+import { findLive } from './test/live';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/routine-progress-ui.test.ts (vm hook harness) to a real
@@ -338,7 +339,7 @@ test('a failed load shows the error with a reload button that recovers the card'
   // The server fails until it recovers, however many times the app asks.
   const ui = mount({ failProgress: true });
   await openPage('Workout journal');
-  const alert = await screen.findByRole('alert');
+  const alert = await findLive('alert');
   expect(card()!.contains(alert), 'error is inside the routine card').toBe(true);
   expect(ui.text(alert)).toMatch(/Could not load routine goals/);
   // #173: a failed load leaves no endless placeholder beside the error.

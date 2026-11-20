@@ -271,7 +271,7 @@ export function BodyMeasurements({
                 Values are saved to 2 decimal places, and at least one is required.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button disabled={saving}>
+                <Button type="submit" disabled={saving}>
                   {saving && <Spinner size="sm" aria-hidden />}
                   {saving ? 'Saving…' : 'Save body record'}
                 </Button>

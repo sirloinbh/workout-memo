@@ -6,6 +6,7 @@ import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixtu
 import { App } from './app';
 import { bodyPartLabel } from './labels';
 import { deferred, json, mockApi } from './test/api';
+import { getLive, queryLive } from './test/live';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/routines-ui.test.ts (vm hook harness) to a real DOM.
@@ -268,10 +269,8 @@ test('routine editor exposes all five splits and keeps a failed save available f
   await ui.save();
   await waitFor(() => expect(ui.text()).toMatch(/Check the rest weekdays and workouts per week/));
   // #102: the failure is an AlertBanner, announced at once. #105: inside the form, on step 4.
-  expect(screen.getByRole('alert')).toHaveTextContent(
-    'Check the rest weekdays and workouts per week',
-  );
-  expect(ui.form()[0]).toContainElement(screen.getByRole('alert'));
+  expect(getLive('alert')).toHaveTextContent('Check the rest weekdays and workouts per week');
+  expect(ui.form()[0]).toContainElement(getLive('alert'));
   await saveSettled();
   expect(ui.form()).toHaveLength(1);
   expect(screen.getByRole('button', { name: 'Save routine' })).toBeEnabled();
@@ -286,7 +285,7 @@ test('routine editor exposes all five splits and keeps a failed save available f
   );
   // Cancelling closes the draft and its error with it.
   await ui.click('Cancel');
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryLive('alert')).toBeNull();
 });
 
 test('new routine requires explicit manual amounts and removes only the selected duplicate body part', async () => {

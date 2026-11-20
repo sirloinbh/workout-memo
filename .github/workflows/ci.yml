@@ -230,7 +230,7 @@ jobs:
       packages: write
     env:
       IMAGE_PREFIX: ghcr.io/sirloinbh/workout
-      IMAGE_KEEP: 5
+      IMAGE_KEEP: 2
       OWNER: ${{ github.repository_owner }}
       SOURCE: ${{ github.server_url }}/${{ github.repository }}
     steps:

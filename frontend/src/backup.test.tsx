@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { deferred, json, mockApi } from './test/api';
+import { getLive } from './test/live';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/backup-ui.test.ts (vm hook harness) to a real DOM. Real file
@@ -125,7 +126,7 @@ test('replace mode previews deletions and requires the typed confirmation', asyn
   await ui.idle();
   await waitFor(() => expect(page()).toMatch(/Existing records will be deleted/));
   // #223: the deletion warning is an alert of its own, outside the live summary.
-  const warning = screen.getByRole('alert');
+  const warning = getLive('alert');
   expect(warning).toHaveTextContent(/Existing records will be deleted/);
   expect(warning.closest('[role="status"]')).toBeNull();
   const previews = ui.requests.filter((r) => r.path === '/api/backup/preview');
@@ -157,7 +158,7 @@ test('unreadable, oversized or rejected files never reach restore', async () => 
   await waitFor(() => expect(page()).toMatch(/Could not read the backup file/));
   await ui.choose(ui.file('{}', 10 * 1024 * 1024 + 1));
   await waitFor(() => expect(page()).toMatch(/10 MB/));
-  expect(screen.getByRole('alert')).toHaveTextContent(/10 MB/);
+  expect(getLive('alert')).toHaveTextContent(/10 MB/);
   expect(ui.requests.filter((r) => r.method === 'POST')).toHaveLength(0);
   expect(ui.restoreButton()).toBeNull();
 

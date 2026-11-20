@@ -1187,9 +1187,9 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                 </Button>
               )}
               {step < routineSteps.length - 1 ? (
-                <Button>Next</Button>
+                <Button type="submit">Next</Button>
               ) : (
-                <Button disabled={saving}>
+                <Button type="submit" disabled={saving}>
                   {saving && <Spinner size="sm" aria-hidden />}
                   {saving ? 'Saving…' : 'Save routine'}
                 </Button>

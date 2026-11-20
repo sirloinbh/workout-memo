@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import { fixClock, json, mockApi } from './test/api';
+import { findLive } from './test/live';
 import { openPage } from './test/nav';
 
 // Ported from backend/test/body-ui.test.ts (vm hook harness) to a real DOM. Real browser
@@ -350,7 +351,7 @@ test('a failed load reports the error without claiming the metrics are empty', a
   const user = userEvent.setup();
   render(<App />);
   await openPage('Body records', user);
-  const alert = await screen.findByRole('alert');
+  const alert = await findLive('alert');
   expect(alert).toHaveTextContent('Reconnect');
   expect(page()).not.toMatch(/Metrics with no values/);
 });
@@ -372,11 +373,11 @@ test('the record form, its messages and the list are named for assistive technol
     expect(screen.getByRole('spinbutton', { name })).toHaveValue(null);
   // A blank form is refused with an alert next to the form.
   await ui.submit();
-  expect(await screen.findByRole('alert')).toHaveTextContent(/Enter at least one/);
+  expect(await findLive('alert')).toHaveTextContent(/Enter at least one/);
   await ui.user.type(screen.getByRole('spinbutton', { name: 'Weight kg' }), '70.5');
   await ui.change('Measurement date', '2024-03-09');
   await ui.submit();
-  expect(await screen.findByRole('status')).toHaveTextContent('Body record saved');
+  expect(await findLive('status')).toHaveTextContent('Body record saved');
   expect(screen.queryByRole('heading', { name: 'New body record' })).toBeNull();
   // Cancel closes the form without saving.
   await ui.click('Add body record');

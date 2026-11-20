@@ -1,5 +1,5 @@
 {
-  "centralSha": "f19cd0bec767bbae0a88591709634cfae8179bb7",
+  "centralSha": "a629f073202de9fc7072d8e0e5f5162bca6c34da",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -55,8 +55,13 @@
     },
     ".claude/skills/std-communication/SKILL.md": {
       "mode": "full",
-      "sha256": "2487a690de4ef5cd52fddef0d7e81bda5e4bd0957b90b5fdd9916c2b78b70b9d",
+      "sha256": "a1ea728d0f38a4e5d88885831eb760480826da89d0ef970c91759ac21f4d7883",
       "source": "templates/common/skills/std-communication/SKILL.md"
+    },
+    ".claude/skills/std-feature-overview/SKILL.md": {
+      "mode": "full",
+      "sha256": "687730f3fee3731588fc0bb4d427441fa1c34ff4a90e3786de9bf6ad44a5fbc9",
+      "source": "templates/common/skills/std-feature-overview/SKILL.md"
     },
     ".claude/skills/std-foundation/SKILL.md": {
       "mode": "full",
@@ -140,7 +145,7 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "99c77a9c252103a82bc3bcb93fd5ef6d3ab0a30e5fc4245dc426f843923c0790",
+      "sha256": "bc3dfb355ded2d9d85b345282940856a5e4c8ea97de709b492ec9da73f98e28c",
       "source": ".github/workflows/reusable-app-ci.yml"
     },
     ".gitignore": {
@@ -320,7 +325,7 @@
     },
     "backend/src/standard/tools.ts": {
       "mode": "full",
-      "sha256": "7b2ebefc1580e6bc5dcd43d1f726bbe5130f2b9117db95f012b74a0277ee021b",
+      "sha256": "c8eb29b0c668d9bc68a0eda908172fa3e19209cbddbadf83f2dc7f40a376eca0",
       "source": "templates/app/backend/src/standard/tools.ts"
     },
     "backend/test/standard-api.test.ts": {
@@ -866,11 +871,6 @@
       "sha256": "84b1bf1e355c9f0ff9f8ca18bccdc4e31b064cd9f52f98f2c4658be21178ab33",
       "source": "templates/ui/frontend/src/components/ui/textarea.tsx"
     },
-    "frontend/src/health.test.ts": {
-      "mode": "full",
-      "sha256": "0a3fe5ab527a79b6b5ef0a2be5c68b49a8ae357c38122451c120f89d6a70da8d",
-      "source": "templates/ui/frontend/src/health.test.ts"
-    },
     "frontend/src/lib/api.test.ts": {
       "mode": "full",
       "sha256": "0d7b00364328f7fb134a2021e87baa844a6cc81c4e1bc3a90902d1a56a8fc2bc",
@@ -1098,8 +1098,13 @@
     },
     "skills/std-communication/SKILL.md": {
       "mode": "full",
-      "sha256": "2487a690de4ef5cd52fddef0d7e81bda5e4bd0957b90b5fdd9916c2b78b70b9d",
+      "sha256": "a1ea728d0f38a4e5d88885831eb760480826da89d0ef970c91759ac21f4d7883",
       "source": "templates/common/skills/std-communication/SKILL.md"
+    },
+    "skills/std-feature-overview/SKILL.md": {
+      "mode": "full",
+      "sha256": "687730f3fee3731588fc0bb4d427441fa1c34ff4a90e3786de9bf6ad44a5fbc9",
+      "source": "templates/common/skills/std-feature-overview/SKILL.md"
     },
     "skills/std-foundation/SKILL.md": {
       "mode": "full",

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
 import { deferred, json, mockApi } from '../test/api';
+import { findLive, queryLive } from '../test/live';
 import type { CardioRecords as Records, CardioSession } from './api';
 import { CardioRecords } from './cardio-records';
 import { CardioStats } from './cardio-stats';
@@ -158,13 +159,13 @@ test('records: a failed load shows an alert with Reconnect and retries', async (
   let fail = true;
   mockApi(() => (fail ? json({ error: 'Cannot connect to the server' }, 500) : noRecords));
   render(<CardioRecords />);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Cannot connect to the server');
+  expect(await findLive('alert')).toHaveTextContent('Cannot connect to the server');
   fail = false;
   await userEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
   expect(
     await screen.findByRole('heading', { name: 'No personal records yet' }),
   ).toBeInTheDocument();
-  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(queryLive('alert')).not.toBeInTheDocument();
 });
 
 test('sessions outside the period never count, in totals or per kind', () => {

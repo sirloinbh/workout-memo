@@ -637,7 +637,7 @@ function CardioGoalForm({
             : 'It counts as achieved when a single record meets the goal distance.'
           : 'Judged per week (Mon–Sun) or month. Cycles that span the start or end date keep the same goal value, and only records within the period are counted.'}
       </p>
-      <Button className="mt-4 w-full" disabled={saving}>
+      <Button type="submit" className="mt-4 w-full" disabled={saving}>
         {saving && <Spinner size="sm" aria-hidden />}
         Save cardio goal
       </Button>

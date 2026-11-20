@@ -12,7 +12,7 @@ test('the body record form explains what to enter, in the error and in the hint'
   await page.goto('/body');
   await page.getByRole('button', { name: 'Add body record' }).click();
   await page.getByRole('button', { name: 'Save body record' }).click();
-  const alert = page.getByRole('alert');
+  const alert = page.getByRole('alert').filter({ hasText: 'Enter at least one' });
   await expect(alert).toBeVisible();
 
   await expectJudged(

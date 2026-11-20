@@ -1,5 +1,5 @@
 {
-  "centralSha": "c0bc08fd83c82abc50bc5577f261e694b8d7480e",
+  "centralSha": "e5a7ee6e2a90090b5dfd687667c7fd8cb0e1cc84",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -150,7 +150,7 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "e7e3a4b8cdd3416eff03b05711219b388186304adcb73fe461f00ea9ed103d00",
+      "sha256": "0166106de644d34fa8161c82a07eb0bacd261520074b2b38e5cc352c7743c511",
       "source": ".github/workflows/reusable-app-ci.yml"
     },
     ".gitignore": {
@@ -483,7 +483,6 @@
         "dependencies.tailwind-merge": "3.7.0",
         "dependencies.tw-animate-css": "1.4.0",
         "dependencies.vaul": "1.1.2",
-        "dependencies.zod": "4.6.7",
         "devDependencies.@tailwindcss/vite": "4.3.3",
         "devDependencies.@testing-library/dom": "10.4.2",
         "devDependencies.@testing-library/jest-dom": "7.0.1",
@@ -497,6 +496,7 @@
         "devDependencies.vite": "6.4.5",
         "devDependencies.vitest": "5.0.3",
         "dependencies.@tanstack/react-query": "5.104.1",
+        "dependencies.zod": "4.6.7",
         "devDependencies.@testing-library/user-event": "14.6.8"
       },
       "source": "templates/index.json"

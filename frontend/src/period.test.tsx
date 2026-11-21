@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
-import { deferred, fixClock, mockApi } from './test/api';
+import { deferred, fixClock, flushRenders, mockApi } from './test/api';
 import { queryLive } from './test/live';
 
 type Workout = {
@@ -58,6 +58,7 @@ function mount(initial: Workout[] = []) {
       .map((r) => r.path);
   return {
     user,
+    flush: () => flushRenders(api),
     workoutQueries,
     holdNextWorkouts() {
       const gate = deferred();
@@ -108,7 +109,7 @@ for (const outcome of ['success', 'failure'] as const) {
     if (outcome === 'success') older.resolve();
     else older.reject(new Error('Old period failed'));
     await older.promise.catch(() => undefined);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await ui.flush();
     expect(stat('Total volume')).toBe('2,000kg');
     expect(stat('Workout days')).toBe('1 day');
     expect(stat('Completed sets')).toBe('1 set');
@@ -128,7 +129,7 @@ test('an older response cannot clear loading while the latest period is still pe
   const latest = ui.holdNextWorkouts();
   await ui.select('1 day', '2024-03-01');
   older.resolve();
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await ui.flush();
   expect(screen.getAllByText('Loading records…')).toHaveLength(1);
   latest.resolve();
   await waitFor(() => expect(stat('Total volume')).toBe('2,000kg'));

@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { expect, test, vi } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import { fixClock, json, mockApi } from './test/api';
@@ -19,6 +19,11 @@ vi.mock('tesseract.js', () => ({
       terminate: () => Promise.resolve(undefined),
     }),
 }));
+
+beforeEach(() => {
+  ocr.text = '';
+  ocr.images = [];
+});
 
 function mount() {
   fixClock();

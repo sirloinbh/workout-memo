@@ -82,6 +82,7 @@ test('a new journal is dated today with a date title even when another day is br
   const ui = mount({ today, routine: null });
   await openPage('Workout journal', ui.user);
   fireEvent.change(screen.getByLabelText('Reference date'), { target: { value: '2026-09-01' } });
+  expect(screen.getByLabelText('Reference date')).toHaveValue('2026-09-01');
   await openEditor(ui.user);
   expect(inputs('Workout date')[0]).toHaveValue(today);
   expect(inputs('Journal title')[0]).toHaveValue('Thu, Oct 15');

@@ -442,7 +442,7 @@ function Workspace() {
                   onClick={() => {
                     persist(null);
                     setRecovery(null);
-                    setSaveState('Discard draft');
+                    setSaveState('Draft discarded');
                   }}
                 >
                   Discard draft

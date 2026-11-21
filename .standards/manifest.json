@@ -1,5 +1,5 @@
 {
-  "centralSha": "55c93a51e450a426406430f35bcc4c97aa2193c5",
+  "centralSha": "52d0d2c2eb7310dae0d93356742a36fc4914fb30",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -125,7 +125,7 @@
     },
     ".dockerignore": {
       "mode": "full",
-      "sha256": "5ed5e711032081e3f5219896e9d11be7e59e67562a55d20f6310e0bf1e5c3aba",
+      "sha256": "f8b83b53552e65e003ebd36ac56870b323a1f1cc9d7062e408ec4a1ad5e62e38",
       "source": "templates/app/.dockerignore.tmpl"
     },
     ".editorconfig": {
@@ -250,7 +250,7 @@
     },
     "backend/Dockerfile": {
       "mode": "full",
-      "sha256": "aaf1e1088382d9c0dc4dd6d963d591564dc6d601a15154634e3f75cf1158e643",
+      "sha256": "e4b2b89e051e38589a1adee093640df53e4bde6d8682daec891b84fbe6c59068",
       "source": "templates/app/backend/Dockerfile.tmpl"
     },
     "backend/package.json": {
@@ -415,7 +415,7 @@
     },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "8945c1379c58715b5aee5a114c9f06e8c31372842aa7526ebe7530fc08ad63a4",
+      "sha256": "99f5772781156b85166b99621bbe355999df1518d8428068ecc2fcf21e8aff47",
       "source": "templates/deploy/deploy/remote-deploy.sh.tmpl"
     },
     "deploy/report.service": {

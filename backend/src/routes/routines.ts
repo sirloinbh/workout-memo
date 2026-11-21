@@ -41,7 +41,6 @@ async function restDates(db: Db, routineId: number) {
 // Planned goals and actual records stay separate: the latest earlier journal sets
 // for each of today's exercises are returned only as a reference.
 // Auto targets adapt to saved sets of the plan's exercises within its 12 weeks.
-// to_jsonb keeps this working before and after sets gain a `completed` column.
 async function planRecords(db: Db, plan: RoutinePlan, today: string) {
   if (!isAuto(plan)) return [];
   const names = [
@@ -49,7 +48,7 @@ async function planRecords(db: Db, plan: RoutinePlan, today: string) {
   ];
   const result = await db.query(
     `SELECT w.id, w.date, w.feedback, lower(trim(s.exercise)) AS key, s.weight, s.reps,
-       to_jsonb(s)->'completed' AS completed
+       s.completed
      FROM sets s JOIN workouts w ON w.id = s.workout_id
      WHERE lower(trim(s.exercise)) = ANY($1::text[]) AND w.date BETWEEN $2 AND $3
      ORDER BY w.date, w.id, s.position`,

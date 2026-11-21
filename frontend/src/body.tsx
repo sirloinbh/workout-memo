@@ -1,5 +1,6 @@
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Scale } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { ChartDot } from './chart-dot';
 import { AlertBanner } from './components/alert-banner';
@@ -64,33 +65,31 @@ export function BodyMeasurements({
   workouts: WorkoutLike[];
   controls: React.ReactNode;
 }) {
-  const [rows, setRows] = useState<BodyRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient();
+  // The period is part of the key, so only the newest period's answer is shown; the old list stays on
+  // screen while the next one loads.
+  const query = useQuery({
+    queryKey: ['body-measurements', from, to],
+    queryFn: () => request<BodyRecord[]>(`?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
+  });
+  const rows = query.data ?? [];
+  const loading = query.isFetching;
+  const [actionError, setError] = useState('');
+  // A later successful load clears an earlier failed delete.
+  useEffect(() => setError(''), [query.dataUpdatedAt]);
+  const error = actionError || (query.error?.message ?? '');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [importing, setImporting] = useState(false);
-  const version = useRef(0);
-  const load = useCallback(async () => {
-    const current = ++version.current;
-    setLoading(true);
-    try {
-      const data = await request<BodyRecord[]>(`?from=${from}&to=${to}`);
-      // Only the newest period request may replace the list.
-      if (current !== version.current) return;
-      setRows(data);
-      setError('');
-    } catch (e) {
-      if (current === version.current) setError((e as Error).message);
-    } finally {
-      if (current === version.current) setLoading(false);
-    }
-  }, [from, to]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const load = () => queryClient.invalidateQueries({ queryKey: ['body-measurements'] });
+  const write = useMutation({
+    mutationFn: ({ path, method, body }: { path: string; method: string; body?: unknown }) =>
+      request(path, method, body),
+    onSuccess: load,
+  });
 
   async function save() {
     if (!draft || saving) return;
@@ -111,10 +110,13 @@ export function BodyMeasurements({
     setSaving(true);
     setFormError('');
     try {
-      await request(draft.id ? '/' + draft.id : '', draft.id ? 'PUT' : 'POST', body);
+      await write.mutateAsync({
+        path: draft.id ? '/' + draft.id : '',
+        method: draft.id ? 'PUT' : 'POST',
+        body,
+      });
       setDraft(null);
       setStatus('Body record saved');
-      await load();
     } catch (e) {
       // Keep the input so the user can change the date or edit the existing record.
       setFormError((e as Error).message);
@@ -126,9 +128,8 @@ export function BodyMeasurements({
     if (saving || !confirm(`Delete the body record for ${row.date.slice(0, 10)}?`)) return;
     setSaving(true);
     try {
-      await request('/' + row.id, 'DELETE');
+      await write.mutateAsync({ path: '/' + row.id, method: 'DELETE' });
       setStatus('Body record deleted');
-      await load();
     } catch (e) {
       setError((e as Error).message);
     } finally {

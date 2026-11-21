@@ -8,7 +8,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Input as CommonInput } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Spinner } from '../components/ui/spinner';
-import { api } from './api';
+import { api, changed, type WriteAction } from './api';
 import { fieldHint, noteText } from './form-text';
 import { type Machine, officialLabel, type OfficialWeight } from './model';
 
@@ -30,7 +30,7 @@ export function MachineEditor({
   brands: { id: number; name: string }[];
   officialWeights: OfficialWeight[] | null;
   saving: boolean;
-  action: (fn: () => Promise<unknown>, done?: () => void) => Promise<void>;
+  action: WriteAction;
 }) {
   const invalid = (key: string) => invalidProps(key, issues[key]);
   const issue = (key: string) => <FieldError name={key}>{issues[key]}</FieldError>;
@@ -56,6 +56,7 @@ export function MachineEditor({
                 machineEditor,
               ),
             () => setMachineEditor(null),
+            changed.machines,
           );
         }}
       >

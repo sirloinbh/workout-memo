@@ -1,4 +1,10 @@
-import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   DatabaseBackup,
   Dumbbell,
@@ -39,7 +45,7 @@ import { routineDraft } from './progress-data';
 import { restKind, startTimer } from './rest-timer';
 import { type CardioPreset } from './routine-cardio';
 import { AccountActions, SignInGate } from './sign-in';
-import { api } from './workspace/api';
+import { api, type Changed, changed, type WriteAction } from './workspace/api';
 import { GoalForm } from './workspace/goal-form';
 import { MachineEditor } from './workspace/machine-editor';
 import {
@@ -139,11 +145,14 @@ function Workspace() {
   const brandsQuery = useQuery({
     queryKey: ['brands'],
     queryFn: () => api<{ id: number; name: string }[]>('/brands'),
+    // Brands change only through a machine save, which refetches them (#376).
+    staleTime: Infinity,
   });
   const officialQuery = useQuery({
     queryKey: ['official-machine-weights'],
     // Reference data is optional: its failure must not block journal data.
     queryFn: () => api<OfficialWeight[]>('/official-machine-weights').catch(() => null),
+    staleTime: Infinity,
   });
   // #84: the user's exercise → body part mapping (#32) picks the rest of a completed set.
   // It is optional: a failed load only falls back to the configured rest.
@@ -185,6 +194,7 @@ function Workspace() {
   useEffect(() => setError(''), [loadedAt]);
   const error = actionError || loadError;
   // Saving refetches only active queries: the selected period and the shared lists.
+  // A restore replaces everything, so it alone refreshes every query; other writes name what they changed.
   const refreshAll = () => queryClient.invalidateQueries();
   const reconnect = () => {
     setError('');
@@ -194,7 +204,7 @@ function Workspace() {
     setSaving,
     onSaved: async () => {
       void loadProgress();
-      await refreshAll();
+      await refetchChanged(changed.workouts);
     },
     onSetCompleted: (set) => {
       if (timer.autoStart) updateTimer(startTimer(timer, Date.now(), restSeconds(set)));
@@ -211,19 +221,23 @@ function Workspace() {
     saveState,
     setSaveState,
   } = draft;
-  async function action(fn: () => Promise<unknown>, done?: () => void) {
+  const refetchChanged = (keys: Changed) =>
+    Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  const write = useMutation({
+    mutationFn: ({ fn }: { fn: () => Promise<unknown>; changes: Changed }) => fn(),
+    onSuccess: (_data, { changes }) => refetchChanged(changes),
+  });
+  const action: WriteAction = async (fn, done, changes = changed.workouts) => {
     setSaving(true);
     try {
-      await fn();
+      await write.mutateAsync({ fn, changes });
       done?.();
-      // A mutation may finish after the user has selected a different period.
-      await refreshAll();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSaving(false);
     }
-  }
+  };
   const machineIds = () => new Set(machines.map((m) => m.id));
   // #82: a new journal is dated today (Asia/Seoul) even when another day is browsed,
   // and starts with today's routine sets when a routine plans a workout today.
@@ -521,6 +535,7 @@ function Workspace() {
               void action(
                 () => api('/goals', 'POST', goal),
                 () => setGoalEditor(false),
+                changed.goals,
               )
             }
           />

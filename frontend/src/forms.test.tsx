@@ -146,3 +146,27 @@ test('clearing the weight shows a field error and sends nothing', async () => {
   );
   expect(ui.posts('/api/workouts')).toHaveLength(0);
 });
+
+// #376: a write refetches only the lists it changed.
+test('saving a goal refetches the goals and not the workouts', async () => {
+  fixClock();
+  const api = mockApi(({ method }) => (method === 'POST' ? json({ id: 1 }, 201) : []));
+  const user = userEvent.setup();
+  render(<App />);
+  const gets = (path: string) =>
+    api.requests.filter((r) => r.method === 'GET' && r.url.pathname === path).length;
+  await loaded();
+  await openPage('My Goals', user);
+  await user.click(screen.getByRole('button', { name: 'Add goal' }));
+  const dialog = screen.getByRole('dialog', { name: 'Progressive overload goals' });
+  await user.type(within(dialog).getByLabelText('Exercise name'), 'Benchpress');
+  await user.type(within(dialog).getByLabelText('Goal total weight (kg)'), '80');
+  fireEvent.change(within(dialog).getByLabelText('End date'), { target: { value: '2026-12-31' } });
+  const goalsBefore = gets('/api/goals');
+  const workoutsBefore = gets('/api/workouts');
+  expect(workoutsBefore).toBeGreaterThan(0);
+  await user.click(within(dialog).getByRole('button', { name: 'Save goal' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await waitFor(() => expect(gets('/api/goals')).toBe(goalsBefore + 1));
+  expect(gets('/api/workouts')).toBe(workoutsBefore);
+});

@@ -1,3 +1,5 @@
+import './activity-deps-lazy';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -165,4 +167,12 @@ describe('activity files (#119)', () => {
       parse.mockRestore();
     }
   });
+});
+
+// #387: a DTD with entities is refused before the XML parser expands it.
+it('refuses a file that declares entities', () => {
+  const bomb =
+    '<?xml version="1.0"?><!DOCTYPE gpx [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;">]><gpx>&b;</gpx>';
+  expect(() => parseGpx('bomb.gpx', bomb)).toThrow('bomb.gpx: Could not read the file');
+  expect(() => parseActivityFile('bomb.gpx', bomb)).toThrow(ActivityFileError);
 });

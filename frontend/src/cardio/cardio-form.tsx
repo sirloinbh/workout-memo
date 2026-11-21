@@ -17,7 +17,6 @@ import {
   touchText,
 } from '../components/form-styles';
 import { Modal, ModalFooter } from '../components/modal';
-import { NumberInput } from '../components/number-input';
 import { ToggleChips } from '../components/toggle-chips';
 import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
@@ -25,6 +24,7 @@ import { FieldError } from '../components/ui/field';
 import { invalidProps } from '../components/ui/field-props';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { NumberInput } from '../components/ui/number-input';
 import { Spinner } from '../components/ui/spinner';
 import { cn } from '../lib/utils';
 import type { CardioPreset } from '../routine-cardio';

@@ -6,6 +6,7 @@ import { Pool, type PoolClient } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { type RoutinePlan, routineSchedule } from '../src/domain.js';
+import { listenApp } from './listen.js';
 import { routineInput } from './routine-fixture.js';
 
 // Far-future dates keep this routine the active one even while other test files
@@ -35,8 +36,7 @@ test(
         });
       },
     } as unknown as Pool;
-    const server = createApp(wrapped, { today: () => today }).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(wrapped, { today: () => today }));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const call = async (path: string, method = 'GET', body?: unknown) => {

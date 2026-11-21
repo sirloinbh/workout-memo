@@ -11,6 +11,7 @@ import {
   type PushPayload,
   restOverPayload,
 } from '../src/web-push.js';
+import { listenApp } from './listen.js';
 
 // #260: the subscription API and the rest-end schedule, without PostgreSQL or a push service.
 // A fake pool records the queries; web-push.integration.test.ts runs them on a real database.
@@ -60,8 +61,7 @@ async function withApi(
       };
     },
   });
-  const server = createApp(pool, { auth, push, now: () => startedAt }).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool, { auth, push, now: () => startedAt }));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {
@@ -203,8 +203,7 @@ test('the rest end is scheduled per user, replaced, bounded and cancelled', asyn
 test('without sign-in (local development) there is one user', async () => {
   const { pool, queries } = fakePool();
   const push = createPushService(pool, { config, send: async () => undefined });
-  const server = createApp(pool, { push, now: () => startedAt }).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool, { push, now: () => startedAt }));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {

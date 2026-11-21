@@ -16,6 +16,7 @@ import {
   workoutSchema,
 } from '../src/domain.js';
 import { schemaOf as jsonSchema } from '../src/standard/openapi.js';
+import { listenApp } from './listen.js';
 
 const workout = {
   date: '2026-01-05',
@@ -131,9 +132,8 @@ test('the API answers 400, not 500, for bad bodies, constructor keys and retry k
     throw Error('Invalid input must not reach storage');
   };
   const pool = { query: forbidden, connect: forbidden } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
+  const server = await listenApp(createApp(pool));
   t.after(() => new Promise((resolve) => server.close(resolve)));
-  await new Promise((resolve) => server.once('listening', resolve));
   const { port } = server.address() as { port: number };
   const send = (path: string, body: string, headers: Record<string, string> = {}) =>
     fetch(`http://127.0.0.1:${port}${path}`, {

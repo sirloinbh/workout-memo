@@ -8,6 +8,7 @@ import { Pool } from 'pg';
 import { createApp } from '../src/app.js';
 import type { Backup, RestoreSummary } from '../src/backup.js';
 import { parseCsv } from './csv-reader.js';
+import { listenApp } from './listen.js';
 import { routineInput } from './routine-fixture.js';
 
 // Restore in "replace" mode deletes every row. Each scenario therefore runs in its own
@@ -47,12 +48,8 @@ async function isolated(run: (...dbs: Db[]) => Promise<void>, n = 1, wrap?: (p: 
         .filter((f) => f.endsWith('.sql'))
         .sort();
       for (const file of files) await pool.query(readFileSync(new URL(file, migrations), 'utf8'));
-      const server = createApp(wrap && i === 0 ? wrap(pool) : pool).listen(0, '127.0.0.1');
+      const server = await listenApp(createApp(wrap && i === 0 ? wrap(pool) : pool));
       created.push({ schema, pool, server });
-      await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-      });
       const address = server.address();
       assert.ok(address && typeof address !== 'string');
       const api: Api = async (path, method = 'GET', body, raw) => {

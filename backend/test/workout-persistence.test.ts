@@ -5,15 +5,14 @@ import { test } from 'node:test';
 import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 test(
   'workout persistence and atomic edits',
   { skip: !process.env.TEST_DATABASE_URL },
   async (t) => {
     let pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-    let server = createApp(pool).listen(0, '127.0.0.1');
-    const listening = () => new Promise<void>((resolve) => server.once('listening', resolve));
-    await listening();
+    let server = await listenApp(createApp(pool));
     const close = () =>
       new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve())));
     const call = async (path: string, method = 'GET', body?: unknown) => {
@@ -147,8 +146,7 @@ test(
         await close();
         await pool.end();
         pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-        server = createApp(pool).listen(0, '127.0.0.1');
-        await listening();
+        server = await listenApp(createApp(pool));
         assert.deepEqual(await read(edited.date), before);
         assertRecord(await read(edited.date), edited);
       });

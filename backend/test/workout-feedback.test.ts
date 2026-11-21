@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { workoutSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 
 // #83: one feedback level per workout (hard · medium · easy); missing stays NULL.
 const workout = {
@@ -27,8 +28,7 @@ test('a missing feedback stays null and only the three levels are accepted', () 
 });
 
 async function listen(pool: Pool) {
-  const server = createApp(pool).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   return {

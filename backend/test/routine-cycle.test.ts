@@ -11,6 +11,7 @@ import { createApp } from '../src/app.js';
 import * as contract from '../src/contract.js';
 import { type RoutinePlan, routineSchedule, routineSchema } from '../src/domain.js';
 import { arrangeTargets, routineProgress } from '../src/progress.js';
+import { listenApp } from './listen.js';
 import { autoRoutineInput, routineInput } from './routine-fixture.js';
 
 // #88: "N training days + M rest days" cycles counted from the start date. Saved weekday
@@ -130,8 +131,7 @@ test(
   { skip: !process.env.TEST_DATABASE_URL },
   async () => {
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-    const server = createApp(pool).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const call = async (path: string, method = 'GET', body?: unknown) => {

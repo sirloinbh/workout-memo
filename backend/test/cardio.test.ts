@@ -11,6 +11,7 @@ import {
   cardioSources,
   fieldErrors,
 } from '../src/contract.js';
+import { listenApp } from './listen.js';
 
 // #114: cardio input rules and route behavior without PostgreSQL. The DB side (constraints,
 // FK, partial unique index) is covered by cardio.integration.test.ts.
@@ -181,8 +182,7 @@ async function withApi(
     query,
     connect: async () => ({ query, release: () => releases++ }),
   } as unknown as Pool;
-  const server = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool, { today: () => today }));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {

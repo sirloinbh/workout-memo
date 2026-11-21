@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 type Row = {
   id: number;
@@ -25,9 +26,8 @@ test(
     const cleanup = () =>
       pool.query('DELETE FROM body_measurements WHERE date BETWEEN $1 AND $2', [first, last]);
     await cleanup();
-    let server = createApp(pool).listen(0, '127.0.0.1');
+    let server = await listenApp(createApp(pool));
     const start = async () => {
-      await new Promise<void>((resolve) => server.once('listening', resolve));
       const address = server.address();
       assert.ok(address && typeof address !== 'string');
       return `http://127.0.0.1:${address.port}/api/body-measurements`;
@@ -164,7 +164,7 @@ test(
       await stop();
       await pool.end();
       pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-      server = createApp(pool).listen(0, '127.0.0.1');
+      server = await listenApp(createApp(pool));
       base = await start();
       list = (await call(`?from=${first}&to=${last}`)).data as Row[];
       assert.deepEqual(

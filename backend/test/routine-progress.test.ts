@@ -14,6 +14,7 @@ import {
   routineProgress,
   weekExercises,
 } from '../src/progress.js';
+import { listenApp } from './listen.js';
 import { autoRoutineInput, routineInput } from './routine-fixture.js';
 
 // Fixture: starts Thursday 2024-02-29 (a rest day), trains Mon/Wed/Fri, two splits,
@@ -227,8 +228,7 @@ function fakePool(script: Script) {
   return { pool, log };
 }
 async function call(pool: Pool, today: string, path: string, method: string, body?: unknown) {
-  const server = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool, { today: () => today }));
   try {
     const address = server.address();
     assert.ok(address && typeof address !== 'string');

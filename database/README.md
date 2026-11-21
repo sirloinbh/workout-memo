@@ -19,6 +19,8 @@ npm run db:migrate -- --status  # only list applied and pending files (no DB cha
 - **Write new migrations so they are safe to re-run too** (`IF NOT EXISTS`, `ON CONFLICT`, and so on). On an existing DB with no history, `db:migrate` applies the same files again and records them.
 - Recovery on failure: check the file name and the cause in the error message. If it is a data problem, make a backup first (`scripts/backup.ps1`), fix the cause, and run it again. A checksum mismatch is solved by restoring the file to its original content in git.
 
+- **Seed files run only through `db:migrate`.** `009_official_machine_weights.sql` upserts the original values, so running it by hand on a live database writes them back over the corrections of `013_official_weights_followup.sql`, and it does not remove rows dropped from the seed. `db:migrate` applies each file once, in order, so the corrections always come last. An applied file must stay unchanged (checksum), so this note lives here and not in 009 or 013. `021_official_weights_check.sql` (#367) fails the run if any of the 28 rows 013 corrects is missing.
+
 The per-file psql commands below are the procedure from before `db:migrate` was introduced and do not leave a history. A DB that was already migrated that way is recorded as the baseline once you run `db:migrate` one time.
 
 ## Why we do not use a PowerShell pipe (#55)

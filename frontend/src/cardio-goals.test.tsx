@@ -302,3 +302,14 @@ test('an achieved goal offers its next goal and fills the add form with it', asy
   await user.click(within(dialog).getByRole('button', { name: 'Save cardio goal' }));
   await waitFor(() => expect(posted).toEqual([next]));
 });
+
+// #386: a goal whose target is 0 has a 0% bar, never NaN.
+test('a progress bar with a zero target reads 0, not NaN', async () => {
+  const ui = mount([{ ...weekly, target_distance_km: 0 }]);
+  render(<App />);
+  await openPage('My Goals', ui.user);
+  await within(section()).findByRole('progressbar');
+  const bar = within(section()).getByRole('progressbar');
+  expect(bar).toHaveAttribute('aria-valuenow', '0');
+  expect(section().innerHTML).not.toMatch(/NaN|Infinity/);
+});

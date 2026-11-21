@@ -84,6 +84,9 @@ const amount = (goal: GoalShape, value: number) =>
 // Swimming goals read in metres like the session screen; every kind together stays in km.
 const distanceOf = (goal: GoalShape, value: number) =>
   goal.kind ? formatDistance(goal.kind, value)! : `${km(value)} km`;
+// Progress as 0-100; a target of 0 (or less) gives 0 instead of NaN (#386).
+const percentOf = (value: number, target: number) =>
+  target > 0 ? Math.min(100, (value / target) * 100) : 0;
 const targetOf = (goal: GoalShape) =>
   goal.goal_type === 'count'
     ? goal.target_count!
@@ -292,13 +295,13 @@ function GoalCard({
                 aria-label={`${title} progress this ${unit}`}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={Math.min(100, Math.round((p.current.value / targetOf(goal)) * 100))}
+                aria-valuenow={Math.round(percentOf(p.current.value, targetOf(goal)))}
                 className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted"
               >
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{
-                    width: `${Math.min(100, (p.current.value / targetOf(goal)) * 100)}%`,
+                    width: `${percentOf(p.current.value, targetOf(goal))}%`,
                   }}
                 />
               </div>

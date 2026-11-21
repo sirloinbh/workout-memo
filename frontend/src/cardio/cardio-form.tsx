@@ -128,6 +128,9 @@ function initialDraft(
 }
 
 const moreKeys = [...extras.map((e) => e.key), 'start_time', 'workout_id'];
+// The fields that have an input and show their own error; any other key (an imported record's
+// source or external_id) is reported once at the form level (#386).
+const shownKeys = ['kind', 'date', 'duration_sec', 'distance_km', 'effort', 'memo', ...moreKeys];
 
 // #115: create or edit one cardio session in a Modal. Only kind, date, duration, distance,
 // effort and memo show at first; "Show more fields" reveals the rest (decision 6). The input is
@@ -223,6 +226,12 @@ export function CardioForm({
     )
       found.distance_km = 'Enter a swimming distance as a whole number from 1 to 1,000,000 m';
     setIssues(found);
+    const hidden = Object.entries(found).filter(([key]) => !shownKeys.includes(key));
+    setServerError(
+      hidden.length
+        ? `This record cannot be used: ${hidden.map(([key, message]) => `${key} - ${message}`).join('; ')}`
+        : '',
+    );
     if (Object.keys(found).length) {
       if (moreKeys.some((key) => found[key])) setMore(true);
       return;

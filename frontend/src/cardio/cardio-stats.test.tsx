@@ -6,7 +6,7 @@ import { deferred, json, mockApi } from '../test/api';
 import { findLive, queryLive } from '../test/live';
 import type { CardioRecords as Records, CardioSession } from './api';
 import { CardioRecords } from './cardio-records';
-import { CardioStats } from './cardio-stats';
+import { CardioStats, Trend } from './cardio-stats';
 
 const base = {
   start_time: null,
@@ -214,4 +214,14 @@ test('stats and records show placeholders while they first load', async () => {
   rerender(<CardioStats from="2026-11-02" to="2026-11-15" sessions={sessions} />);
   records.resolve(noRecords);
   await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
+});
+
+// #386: no data never becomes -Infinity heights or a label with nothing after the title.
+test('a trend with no buckets says there are no records instead of drawing a chart', () => {
+  render(
+    <Trend title="Distance per week" buckets={[]} unit="week" metric="distance" kind={null} />,
+  );
+  expect(screen.getByText('No records in this period')).toBeInTheDocument();
+  expect(screen.queryByRole('img')).toBeNull();
+  expect(document.body.innerHTML).not.toMatch(/Infinity|NaN/);
 });

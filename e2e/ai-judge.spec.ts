@@ -3,9 +3,10 @@ import { expect, test } from '@playwright/test';
 import { expectJudged } from './support/judged.js';
 
 // project-standards ADR-0028, #574 (pilot): Jev judges what a selector cannot, here whether the text of the empty
-// body record form is understandable. Without JEV_API_KEY and JEV_API_URL the recorded answers in
-// e2e/fixtures/jev/ are replayed; with no recording the checks are skipped (jev-fixture-missing). Only the text of
-// the message and the hint is judged, so it is the same on every run (no date, no typed values).
+// body record form is understandable. Without JEV_API_KEY the recorded answers in e2e/fixtures/jev/ are
+// replayed (recorded on 2026-11-21, project-standards#933); with no recording the checks are skipped
+// (jev-fixture-missing). Only the text of the message and the hint is judged, so it is the same on every run
+// (no date, no typed values).
 test('the body record form explains what to enter, in the error and in the hint', async ({
   page,
 }) => {

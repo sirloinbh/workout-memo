@@ -1,0 +1,44 @@
+{
+  "request": {
+    "model": "jev-latest",
+    "state": "- alert: Enter at least one of weight, body fat, or skeletal muscle mass",
+    "questions": {
+      "tells_what_to_enter": {
+        "type": "noul",
+        "instructions": "The text is the error a form shows after the user pressed Save with every field empty. Does it tell the user what to enter?"
+      },
+      "tone": {
+        "type": "choice",
+        "instructions": "Which describes this error message for the user who sees it?",
+        "criteria": {
+          "actionable": "Says what the user should do next, politely and briefly",
+          "vague": "Says something went wrong without saying what to do",
+          "blaming": "Blames the user or is rude"
+        }
+      }
+    }
+  },
+  "response": {
+    "model": "jev-1.14.0",
+    "answers": {
+      "tells_what_to_enter": {
+        "type": "noul",
+        "noul": 0.93
+      },
+      "tone": {
+        "type": "choice",
+        "choice": "actionable",
+        "confidence": 1,
+        "probabilities": {
+          "actionable": 1,
+          "vague": 0,
+          "blaming": 0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 405,
+      "output_tokens": 65
+    }
+  }
+}

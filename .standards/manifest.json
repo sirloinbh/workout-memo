@@ -1,5 +1,5 @@
 {
-  "centralSha": "7b3ac617f273ccfa7daea42b549f94e7a6fc66bc",
+  "centralSha": "55c93a51e450a426406430f35bcc4c97aa2193c5",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -42,6 +42,11 @@
       "mode": "full",
       "sha256": "e67554ab7dd656ab57a1690d5a0ef18df592c96c562f482f92beb78045286003",
       "source": "templates/common/.claude/settings.json.tmpl"
+    },
+    ".claude/skills/orca-lanes/SKILL.md": {
+      "mode": "full",
+      "sha256": "c82722c8e36622482062325abb0761deb43b7d5b23bc33f5f93d27e973c2612c",
+      "source": "templates/common/skills/orca-lanes/SKILL.md"
     },
     ".claude/skills/std-backlog/SKILL.md": {
       "mode": "full",
@@ -150,7 +155,7 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "18039a57e3b97d49525dd4b774ee38886aaa401a185a11a256d2803247ee4b4b",
+      "sha256": "3c840b6c8bb1b1bba616f52d03313d986e480b1062f51af86831e100f252c462",
       "source": ".github/workflows/reusable-app-ci.yml"
     },
     ".gitignore": {
@@ -175,7 +180,7 @@
     },
     ".prettierignore": {
       "mode": "section",
-      "sha256": "eecaa09e597906a8c0bfafaec67567ac980a312a46d0fc47f6d188aac62da3ff",
+      "sha256": "b2e51dd2a014403c87e744232b7c2b71f2e88c85ecf2a4cdfcffaa1e367732f1",
       "source": "templates/app/.prettierignore.tmpl"
     },
     ".standards/blocked-packages.json": {
@@ -355,7 +360,7 @@
     },
     "deploy/autodeploy.sh": {
       "mode": "full",
-      "sha256": "32a100a769b9577ddce2a18e0dc02dc84becf8f5528801655fb456f4913e3a75",
+      "sha256": "920a654c81c6c26ceb0e7c2ed2e81d9ebebaa4abd8c29124df63bce400c9d741",
       "source": "templates/deploy/deploy/autodeploy.sh.tmpl"
     },
     "deploy/autodeploy.timer": {
@@ -445,7 +450,7 @@
     },
     "e2e/support/jev.ts": {
       "mode": "full",
-      "sha256": "83ec5d7d0250919b6f4361125aa8cb6c31f6c8fbb75869ef6140d41c3130086a",
+      "sha256": "1d22cca3fb7e6c1c210c0d8f3652c9e9e1a8fe805c37aaf48692df1bd1cf12b7",
       "source": "templates/e2e/e2e/support/jev.ts"
     },
     "e2e/support/judged.ts": {
@@ -1109,6 +1114,11 @@
       "mode": "full",
       "sha256": "29763254f7b3d81db6eae67536e00362a9e495edf2bc5d66059ae6ef4277807b",
       "source": "templates/app/scripts/test/contract.test.mjs"
+    },
+    "skills/orca-lanes/SKILL.md": {
+      "mode": "full",
+      "sha256": "c82722c8e36622482062325abb0761deb43b7d5b23bc33f5f93d27e973c2612c",
+      "source": "templates/common/skills/orca-lanes/SKILL.md"
     },
     "skills/std-backlog/SKILL.md": {
       "mode": "full",

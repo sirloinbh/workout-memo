@@ -78,9 +78,9 @@ export type Machine = {
   official_status?: OfficialWeight['status'] | null;
   official_model_name?: string | null;
   official_setting?: string | null;
-  official_raw_value?: number | string | null;
+  official_raw_value?: number | null;
   official_raw_unit?: string | null;
-  official_weight_kg?: number | string | null;
+  official_weight_kg?: number | null;
   official_basis?: OfficialWeight['basis'];
   official_source_url?: string | null;
   official_checked_date?: string | null;
@@ -97,10 +97,10 @@ export type OfficialWeight = {
   official_item_name: string;
   setting: string;
   status: 'verified' | 'unverified' | 'conflict';
-  raw_value: number | string | null;
+  raw_value: number | null;
   raw_unit: string | null;
   official_kg_text: string | null;
-  weight_kg: number | string | null;
+  weight_kg: number | null;
   basis: 'per_arm' | 'combined' | 'unspecified' | null;
   source_url: string | null;
   checked_date: string;
@@ -113,17 +113,17 @@ export const basisLabel = {
 } as const;
 export function officialLabel(r: {
   status?: OfficialWeight['status'] | null;
-  raw_value?: number | string | null;
+  raw_value?: number | null;
   raw_unit?: string | null;
-  weight_kg?: number | string | null;
+  weight_kg?: number | null;
   basis?: OfficialWeight['basis'];
 }) {
   if (r.status !== 'verified' && r.status !== 'conflict') return 'Official value unconfirmed';
   if (r.raw_value === null || r.raw_value === undefined || r.weight_kg == null)
     return 'Official value unconfirmed';
-  const raw = r.raw_unit === 'kg' ? '' : `${fmt(Number(r.raw_value))} ${r.raw_unit} = `;
+  const raw = r.raw_unit === 'kg' ? '' : `${fmt(r.raw_value)} ${r.raw_unit} = `;
   return (
-    `${raw}${fmt(Number(r.weight_kg))} kg · ${r.basis ? basisLabel[r.basis] : 'Basis not stated'}` +
+    `${raw}${fmt(r.weight_kg)} kg · ${r.basis ? basisLabel[r.basis] : 'Basis not stated'}` +
     (r.status === 'conflict' ? ' · Official sources disagree' : '')
   );
 }

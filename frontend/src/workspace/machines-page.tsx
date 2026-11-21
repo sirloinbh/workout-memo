@@ -111,7 +111,7 @@ export function MachinesPage({
                     onClick={() =>
                       setMachineEditor({
                         ...m,
-                        base_weight: m.base_weight === null ? null : Number(m.base_weight),
+                        base_weight: m.base_weight,
                       })
                     }
                   >

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { expect, test, vi } from 'vitest';
 
 import { NumberInput, NumberValueInput } from './number-input';
-import { stepValue } from './number-step';
+import { optionalNumber, stepValue } from './number-step';
 
 function Weight({
   initial = '100',
@@ -109,13 +109,23 @@ test('stepValue rounds to the step, clamps, and treats an empty field as the min
   expect(stepValue('abc', 1)).toBe('1');
 });
 
+// #383: the stepper reads text the way the forms do.
+test('stepValue treats hex and thousands-separated text as unreadable, like the form reader', () => {
+  expect(optionalNumber('0x10')).toBeNaN();
+  expect(optionalNumber('1,000')).toBeNaN();
+  expect(optionalNumber('')).toBeNull();
+  expect(stepValue('0x10', 1)).toBe('1');
+  expect(stepValue('1,000', 1)).toBe('1');
+  expect(stepValue('0x10', 1, 5)).toBe('6');
+});
+
 // #105: a set's weight is a number in the editor state.
 function NumericWeight({ initial = 100 }: { initial?: number }) {
-  const [value, setValue] = useState(initial);
+  const [value, setValue] = useState<number | undefined>(initial);
   return (
     <>
       <NumberValueInput label="Weight" value={value} onValueChange={setValue} step={2.5} min={0} />
-      <output>{String(value)}</output>
+      <output>{value === undefined ? '' : String(value)}</output>
       <button type="button" onClick={() => setValue(60)}>
         Restore draft
       </button>
@@ -131,7 +141,7 @@ test('a number field keeps typed text while it reads as the stored number', () =
   expect(stored()).toBe('12');
   fireEvent.change(field(), { target: { value: '' } });
   expect(field()).toHaveValue('');
-  expect(stored()).toBe('0');
+  expect(stored()).toBe('');
 });
 
 test('a number field shows a value set from outside and steps from it', () => {

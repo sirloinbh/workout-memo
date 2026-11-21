@@ -152,3 +152,78 @@ test(
     }
   },
 );
+
+// #362: a retried add_workout call with the same idempotency key adds one journal, not two.
+test(
+  'add_workout with the same idempotency key adds one journal',
+  { skip: !process.env.TEST_DATABASE_URL },
+  async () => {
+    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    const toolsPublicKey = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const server = createApp(pool, { toolsPublicKey }).listen(0, '127.0.0.1');
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const base = `http://127.0.0.1:${address.port}/internal/tools`;
+    const add = async (body: unknown) => {
+      const response = await fetch(`${base}/add_workout`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${token('workout-memo:write', 'add_workout')}`,
+        },
+        body: JSON.stringify(body),
+      });
+      return {
+        status: response.status,
+        result: ((await response.json()) as { result: never }).result as {
+          id?: number;
+          error?: string;
+        },
+      };
+    };
+    const key = randomUUID();
+    const title = `AI-retry-${randomUUID()}`;
+    const workout = {
+      date: '2040-05-01',
+      title,
+      notes: '',
+      sets: [{ exercise: 'Squat', machine_id: null, weight: 60, reps: 5, notes: '' }],
+      idempotency_key: key,
+    };
+    try {
+      const first = await add(workout);
+      const second = await add(workout);
+      assert.equal(first.status, 200);
+      assert.equal(second.status, 200);
+      assert.ok(first.result.id);
+      assert.equal(second.result.id, first.result.id);
+      assert.equal(
+        (await pool.query('SELECT count(*)::int n FROM workouts WHERE title=$1', [title])).rows[0]
+          .n,
+        1,
+      );
+      // The same key with other content is refused, and nothing is added.
+      const other = await add({ ...workout, title: title + '-2' });
+      assert.match(other.result.error ?? '', /differs/);
+      assert.equal(
+        (await pool.query('SELECT count(*)::int n FROM workouts WHERE title=$1', [title + '-2']))
+          .rows[0].n,
+        0,
+      );
+      // Without a key every call adds a journal, as before.
+      const { idempotency_key: _unused, ...plain } = workout;
+      void _unused;
+      await add(plain);
+      await add(plain);
+      assert.equal(
+        (await pool.query('SELECT count(*)::int n FROM workouts WHERE title=$1', [title])).rows[0]
+          .n,
+        3,
+      );
+    } finally {
+      server.close();
+      await pool.end();
+    }
+  },
+);

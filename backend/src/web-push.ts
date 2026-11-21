@@ -58,48 +58,50 @@ export function createPushService(pool: Pick<Pool, 'query'>, options: Options) {
   const log = options.log ?? ((message: string) => console.error(message));
   const enabled = Boolean(config && send);
   let running = false;
+  // The send in progress, so shutdown can wait for it (#361).
+  let current: Promise<number> | null = null;
 
   // Claims the rests that ended (deleting the row, so each is sent at most once) and pushes to
   // every subscription of the user. Returns how many users were notified.
-  async function sendDue() {
-    if (!send || running) return 0;
+  function sendDue() {
+    if (!send || running) return Promise.resolve(0);
     running = true;
-    try {
-      await pool.query(
-        `DELETE FROM rest_pushes WHERE ends_at < now() - make_interval(secs => $1::float8 / 1000)`,
-        [staleAfterMs],
-      );
-      const due = (
-        await pool.query('DELETE FROM rest_pushes WHERE ends_at <= now() RETURNING user_id')
-      ).rows as { user_id: string }[];
-      for (const { user_id } of due) {
-        const subscriptions = (
-          await pool.query(
-            'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id=$1',
-            [user_id],
-          )
-        ).rows as { endpoint: string; p256dh: string; auth: string }[];
-        await Promise.all(
-          subscriptions.map(async (row) => {
-            try {
-              await send(
-                { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-                restOverPayload,
-              );
-            } catch (error) {
-              if (gone(error))
-                await pool.query('DELETE FROM push_subscriptions WHERE endpoint=$1', [
-                  row.endpoint,
-                ]);
-              else log(`Rest push failed: ${(error as Error).message}`);
-            }
-          }),
-        );
-      }
-      return due.length;
-    } finally {
+    current = claimAndSend(send).finally(() => {
       running = false;
+      current = null;
+    });
+    return current;
+  }
+  async function claimAndSend(send: PushSender) {
+    await pool.query(
+      `DELETE FROM rest_pushes WHERE ends_at < now() - make_interval(secs => $1::float8 / 1000)`,
+      [staleAfterMs],
+    );
+    const due = (
+      await pool.query('DELETE FROM rest_pushes WHERE ends_at <= now() RETURNING user_id')
+    ).rows as { user_id: string }[];
+    for (const { user_id } of due) {
+      const subscriptions = (
+        await pool.query('SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id=$1', [
+          user_id,
+        ])
+      ).rows as { endpoint: string; p256dh: string; auth: string }[];
+      await Promise.all(
+        subscriptions.map(async (row) => {
+          try {
+            await send(
+              { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+              restOverPayload,
+            );
+          } catch (error) {
+            if (gone(error))
+              await pool.query('DELETE FROM push_subscriptions WHERE endpoint=$1', [row.endpoint]);
+            else log(`Rest push failed: ${(error as Error).message}`);
+          }
+        }),
+      );
     }
+    return due.length;
   }
 
   return {
@@ -137,13 +139,17 @@ export function createPushService(pool: Pick<Pool, 'query'>, options: Options) {
     },
     sendDue,
     // Checks for due pushes every 2 seconds; the returned function stops it (server shutdown).
-    start(intervalMs = 2000) {
-      if (!send) return () => undefined;
+    start(intervalMs = 2000): () => Promise<void> {
+      if (!send) return () => Promise.resolve();
       const id = setInterval(() => {
         sendDue().catch((error: Error) => log(`Rest push check failed: ${error.message}`));
       }, intervalMs);
       id.unref();
-      return () => clearInterval(id);
+      // Stops the timer and resolves once a send in progress has finished, so the pool can end after it.
+      return async () => {
+        clearInterval(id);
+        await current?.catch(() => undefined);
+      };
     },
   };
 }

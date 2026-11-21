@@ -43,6 +43,11 @@ export function createApp(
   // project-standards#552: a request ID and one JSON log line for every request, a 401 included.
   app.use(requestLog);
   apiRateLimit(app);
+  // #361: the health check registers before the sign-in, so it never depends on the auth package skipping it.
+  app.get('/api/health', async (_req, res) => {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok' });
+  });
   // #303: the shared sign-in guards every /api route except /api/health, before any route registers.
   if (options.auth) app.use('/api', options.auth);
   app.get('/api/me', meHandler);
@@ -52,10 +57,6 @@ export function createApp(
   registerCardioImportRoute(app, pool, today);
   app.use(express.json({ limit: '256kb' }));
   registerRoutineRoutes(app, pool, today);
-  app.get('/api/health', async (_req, res) => {
-    await pool.query('SELECT 1');
-    res.json({ status: 'ok' });
-  });
   registerMachineRoutes(app, pool);
   registerWorkoutRoutes(app, pool);
   registerBodyMeasurementRoutes(app, pool);

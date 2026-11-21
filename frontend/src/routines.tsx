@@ -30,7 +30,6 @@ import { hint } from './routines/styles';
 
 const request = <T,>(path: string, body?: unknown) =>
   requestJson<T>('/api/routines' + path, { method: body ? 'POST' : 'GET', body });
-}
 
 // #124: exercise name candidates come from the page (GET /api/exercise-names plus local names).
 export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly string[] }) {

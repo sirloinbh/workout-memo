@@ -150,7 +150,8 @@ function mount(
 }
 type UI = ReturnType<typeof mount>;
 
-const content = () => document.body.textContent ?? '';
+// Text is looked up the way a user reads the screen: by the element that shows it.
+const shows = (text: RegExp) => screen.queryAllByText(text);
 const loaded = () => waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
 const stat = (label: string) => {
   const card = screen
@@ -197,14 +198,14 @@ async function fill(ui: UI) {
 function submit() {
   fireEvent.submit(dialog().querySelector('form')!);
 }
-const saveFailed = () => waitFor(() => expect(content()).toMatch(/Save failed/));
-const saved = () => waitFor(() => expect(content()).toMatch(/Saved to server/));
+const saveFailed = () => waitFor(() => expect(shows(/Save failed/).length).toBeGreaterThan(0));
+const saved = () => waitFor(() => expect(shows(/Saved to server/).length).toBeGreaterThan(0));
 
 test('refresh offers recovery and restores input without affecting server statistics', async () => {
   const first = mount();
   await fill(first);
   expect(storageSize(), 'input is persisted before submission').toBeGreaterThan(0);
-  expect(content()).toMatch(/Local|draft/);
+  expect(shows(/Local|draft/).length).toBeGreaterThan(0);
   expect(stat('Completed sets')).toBe('0 sets');
   const second = mount();
   await loaded();
@@ -253,11 +254,11 @@ test('pending submission cannot report success or send duplicate requests', asyn
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   });
   try {
-    await waitFor(() => expect(content()).toMatch(/Saving/));
+    await waitFor(() => expect(shows(/Saving/).length).toBeGreaterThan(0));
     await ui.flush();
     expect(ui.mutations(), 'duplicate submit sends one request').toHaveLength(1);
-    expect(content()).toMatch(/Saving/);
-    expect(content()).not.toMatch(/Saved/);
+    expect(shows(/Saving/).length).toBeGreaterThan(0);
+    expect(shows(/Saved/)).toHaveLength(0);
     expect(storageSize(), 'keep draft until acknowledgment').toBeGreaterThan(0);
   } finally {
     pending.resolve();
@@ -275,7 +276,7 @@ for (const failure of ['offline', 'timeout'] as const) {
     expect(ui.mutations()).toHaveLength(1);
     expect(storageSize(), 'offline submission keeps draft').toBeGreaterThan(0);
     expect(screen.getByDisplayValue('Recovery workout')).toBeInTheDocument();
-    expect(content()).not.toMatch(/Saved/);
+    expect(shows(/Saved/)).toHaveLength(0);
     ui.online();
     await ui.user.click(matchingButton(/Retry|save again/i));
     await waitFor(() => expect(ui.mutations()).toHaveLength(2));
@@ -327,7 +328,7 @@ test('unavailable storage warns but permits editing and server saving', async ()
   const ui = mount([], true);
   await fill(ui);
   expect(screen.getByDisplayValue('Recovery workout')).toBeInTheDocument();
-  expect(content()).toMatch(/local storage|draft.*failed/i);
+  expect(shows(/local storage|draft.*failed/i).length).toBeGreaterThan(0);
   submit();
   await waitFor(() => expect(ui.mutations()).toHaveLength(1));
 });
@@ -349,7 +350,7 @@ test('a draft at the seven day retention boundary is not offered for recovery', 
   mount();
   await loaded();
   expect(recoverButtons()).toHaveLength(0);
-  expect(content()).toMatch(/7 days/);
+  expect(shows(/7 days/).length).toBeGreaterThan(0);
   expect(storageSize()).toBe(0);
 });
 
@@ -397,7 +398,7 @@ test('the request deadline aborts pending transport and permits an explicit retr
   }
   await saveFailed();
   expect(storageSize(), 'aborted request keeps draft').toBeGreaterThan(0);
-  expect(content()).toMatch(/The server did not answer within 15 seconds/);
+  expect(shows(/The server did not answer within 15 seconds/).length).toBeGreaterThan(0);
   pending.resolve();
   await ui.user.click(matchingButton(/Retry/));
   await waitFor(() => expect(ui.mutations()).toHaveLength(2));
@@ -410,8 +411,8 @@ test('a conflicting device edit is visible and keeps the local draft', async () 
   await fill(ui);
   ui.conflict();
   submit();
-  await waitFor(() => expect(content()).toMatch(/edited on another device/));
-  expect(content()).not.toMatch(/Saved/);
+  await waitFor(() => expect(shows(/edited on another device/).length).toBeGreaterThan(0));
+  expect(shows(/Saved/)).toHaveLength(0);
   expect(storageSize(), 'conflict keeps local draft').toBeGreaterThan(0);
   expect(stat('Completed sets')).toBe('0 sets');
 });
@@ -426,18 +427,18 @@ test('a phone on local HTTP can generate a UUID key without randomUUID', async (
   expect(key(ui.mutations()[0])).toMatch(
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
   );
-  expect(content()).toMatch(/Saved to server/);
+  expect(shows(/Saved to server/).length).toBeGreaterThan(0);
 });
 
 test('write quota failure still permits server save and reports the local persistence failure', async () => {
   const ui = mount([], 'write');
   await fill(ui);
-  expect(content()).toMatch(/Local storage error/);
+  expect(shows(/Local storage error/).length).toBeGreaterThan(0);
   expect(storageSize()).toBe(0);
   submit();
   await saved();
   expect(ui.mutations()).toHaveLength(1);
-  expect(content()).toMatch(/Saved to server/);
+  expect(shows(/Saved to server/).length).toBeGreaterThan(0);
 });
 
 // #223: the warning is announced at once and the save progress politely, in the common parts.
@@ -480,9 +481,9 @@ test('an offline save explains the lost connection and the kept draft instead of
   ui.offline();
   submit();
   await saveFailed();
-  expect(content()).toMatch(/Cannot reach the server\. Check your connection\./);
-  expect(content()).toMatch(/kept as a draft on this device/);
-  expect(content()).not.toMatch(/Failed to fetch/);
+  expect(shows(/Cannot reach the server\. Check your connection\./).length).toBeGreaterThan(0);
+  expect(shows(/kept as a draft on this device/).length).toBeGreaterThan(0);
+  expect(shows(/Failed to fetch/)).toHaveLength(0);
   // The claim holds: a reload offers the same input back.
   mount();
   await loaded();
@@ -496,9 +497,9 @@ test('a proxy error page reads as an unreachable server and keeps the draft', as
   ui.errorPage(502);
   submit();
   await saveFailed();
-  expect(content()).toMatch(/The server is not answering \(HTTP 502\)\./);
-  expect(content()).toMatch(/kept as a draft on this device/);
-  expect(content()).not.toMatch(/Unexpected token|JSON/);
+  expect(shows(/The server is not answering \(HTTP 502\)\./).length).toBeGreaterThan(0);
+  expect(shows(/kept as a draft on this device/).length).toBeGreaterThan(0);
+  expect(shows(/Unexpected token|JSON/)).toHaveLength(0);
 });
 
 test('a non-JSON 4xx page is a request error, not an unreachable server', async () => {
@@ -507,8 +508,8 @@ test('a non-JSON 4xx page is a request error, not an unreachable server', async 
   ui.errorPage(401);
   submit();
   await saveFailed();
-  expect(content()).toMatch(/The request failed \(HTTP 401\)\./);
-  expect(content()).not.toMatch(/not answering|kept as a draft on this device/);
+  expect(shows(/The request failed \(HTTP 401\)\./).length).toBeGreaterThan(0);
+  expect(shows(/not answering|kept as a draft on this device/)).toHaveLength(0);
 });
 
 test('an offline save does not promise a draft when local storage failed', async () => {
@@ -517,8 +518,8 @@ test('an offline save does not promise a draft when local storage failed', async
   ui.offline();
   submit();
   await saveFailed();
-  expect(content()).toMatch(/Cannot reach the server/);
-  expect(content()).not.toMatch(/kept as a draft on this device/);
+  expect(shows(/Cannot reach the server/).length).toBeGreaterThan(0);
+  expect(shows(/kept as a draft on this device/)).toHaveLength(0);
 });
 
 test('cleanup failure keeps server acknowledgment separate from the local storage warning', async () => {
@@ -527,8 +528,8 @@ test('cleanup failure keeps server acknowledgment separate from the local storag
   submit();
   await saved();
   expect(ui.mutations()).toHaveLength(1);
-  expect(content()).toMatch(/Saved to server/);
-  expect(content()).toMatch(/clearing.*failed|Local storage error/);
+  expect(shows(/Saved to server/).length).toBeGreaterThan(0);
+  expect(shows(/clearing.*failed|Local storage error/).length).toBeGreaterThan(0);
   expect(storageSize(), 'failed cleanup leaves the old draft on disk').toBeGreaterThan(0);
 });
 
@@ -555,7 +556,7 @@ test('refreshing an edit preserves its original revision so newer device data ca
   expect(request.path).toBe('/api/workouts/71');
   expect((request.body as Workout).version).toBe(3);
   expect((request.body as Workout).title).toBe('Unsaved edit');
-  await waitFor(() => expect(content()).toMatch(/edited on another device/));
+  await waitFor(() => expect(shows(/edited on another device/).length).toBeGreaterThan(0));
   expect(storageSize(), 'conflicting edit remains recoverable').toBeGreaterThan(0);
 });
 

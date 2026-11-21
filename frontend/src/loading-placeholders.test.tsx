@@ -7,6 +7,14 @@ import { deferred, fixClock, mockApi } from './test/api';
 import { getLive } from './test/live';
 import { openPage } from './test/nav';
 
+// Each endpoint answers with the shape the API documents (docs/api.md), so a screen never
+// sees an array where the real server sends an object.
+const emptyBody = (pathname: string) => {
+  if (pathname === '/api/analysis') return { exercises: [], weeks: [], today: '2026-10-15' };
+  if (pathname === '/api/routine-progress') return { routine: null };
+  return [];
+};
+
 // #173: while a page's first load is pending it shows placeholders in a busy region and keeps
 // the loading line for screen readers only; once the data arrives both go away.
 const cases = [
@@ -49,9 +57,7 @@ test.each(cases)(
     const pending = deferred();
     mockApi(async ({ url }) => {
       if (url.pathname === api) await pending.promise;
-      if (url.pathname === '/api/analysis')
-        return { exercises: [], weeks: [], today: '2026-10-15' };
-      return [];
+      return emptyBody(url.pathname);
     });
     const user = userEvent.setup();
     render(<App />);
@@ -84,7 +90,7 @@ test('the body record save button shows a spinner while it saves', async () => {
       await saved.promise;
       return { id: 1, date: '2026-10-15' };
     }
-    return [];
+    return emptyBody(url.pathname);
   });
   const user = userEvent.setup();
   render(<App />);
@@ -109,7 +115,7 @@ test('the journal save button and status line show a spinner while it saves', as
       await saved.promise;
       return { id: 42, version: 1 };
     }
-    return [];
+    return emptyBody(url.pathname);
   });
   const user = userEvent.setup();
   render(<App />);

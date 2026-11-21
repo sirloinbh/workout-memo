@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
 import { App } from './app';
-import { json, mockApi } from './test/api';
+import { flushRenders, json, mockApi } from './test/api';
 import { queryLive } from './test/live';
 import { openPage } from './test/nav';
 
@@ -102,8 +102,7 @@ function mount(failReferences = false) {
       for (const path of ['/api/brands', '/api/machines', '/api/official-machine-weights'])
         expect(paths).toContain(path);
     });
-    await Promise.allSettled(api.fetch.mock.results.map((r) => r.value));
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await flushRenders(api, true);
   };
   const button = (label: string) => screen.getAllByRole('button', { name: label })[0];
   const labelled = <T extends 'select' | 'input'>(label: string, type: T) => {

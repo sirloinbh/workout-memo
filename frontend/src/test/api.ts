@@ -1,3 +1,4 @@
+import { act } from '@testing-library/react';
 import { vi } from 'vitest';
 
 // 00:30 on 2026-10-15 in Seoul is still 2026-10-14 on a UTC device clock.
@@ -26,6 +27,15 @@ export function json(body: unknown, status = 200) {
   });
 }
 
+function rejectOnAbort<T>(pending: Promise<T>, signal?: AbortSignal | null): Promise<T> {
+  if (!signal) return pending;
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    pending.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
 export function mockApi(handler: ApiHandler) {
   const requests: ApiRequest[] = [];
   const fetch = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -41,7 +51,8 @@ export function mockApi(handler: ApiHandler) {
     };
     requests.push(request);
     init.signal?.throwIfAborted();
-    const result = await handler(request);
+    // Like a browser, a pending request rejects as soon as its signal aborts.
+    const result = await rejectOnAbort(Promise.resolve(handler(request)), init.signal);
     init.signal?.throwIfAborted();
     return result instanceof Response ? result : json(result ?? []);
   });
@@ -57,4 +68,16 @@ export function deferred<T = void>() {
     reject = rej;
   });
   return { promise, resolve, reject };
+}
+
+/**
+ * Lets the renders caused by finished work settle, without waiting for a timer. With
+ * `awaitRequests` it first waits for every request sent so far, so use it only when none is held.
+ */
+export async function flushRenders(
+  api: { fetch: { mock: { results: { value: unknown }[] } } },
+  awaitRequests = false,
+) {
+  if (awaitRequests) await Promise.allSettled(api.fetch.mock.results.map((r) => r.value));
+  for (let i = 0; i < 5; i++) await act(() => Promise.resolve());
 }

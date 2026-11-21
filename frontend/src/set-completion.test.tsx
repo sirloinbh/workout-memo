@@ -1,9 +1,12 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
-import { deviceNow, fixClock, json, mockApi } from './test/api';
+import { deviceNow, json, mockApi } from './test/api';
+import { fakeClock, installFakeTimerHarness, waitForFake as waitFor } from './test/fake-timers';
+
+installFakeTimerHarness();
 
 type SetInput = {
   exercise: string;
@@ -26,11 +29,12 @@ type Workout = {
 const start = Date.parse(deviceNow);
 
 // Ported from backend/test/set-completion-ui.test.ts (vm hook harness) to a real DOM.
-// The legacy harness moved a fake clock and re-rendered by hand; here only Date is
-// faked (fixClock) and the clock is moved with vi.setSystemTime. Real layout is not
+// The legacy harness moved a fake clock and re-rendered by hand; here Date and the app's timeouts are
+// faked from the first line (test/fake-timers.ts) and the clock is moved with vi.setSystemTime. Real layout is not
 // covered, as before.
 function mount(initial: Workout[] = [], now = start) {
-  fixClock(new Date(now).toISOString());
+  // Date and the app's timeouts are faked from the start; every tick is fired by the test.
+  fakeClock(now);
   vi.stubGlobal('confirm', () => true);
   const api = mockApi(({ method, url }) => {
     if (method === 'POST' || method === 'PUT') return json({ id: 42, version: 1 }, 201);
@@ -41,7 +45,7 @@ function mount(initial: Workout[] = [], now = start) {
       ),
     );
   });
-  const user = userEvent.setup();
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
   const view = render(<App />);
   const mutations = () => api.requests.filter((r) => r.method === 'POST' || r.method === 'PUT');
   return {
@@ -163,26 +167,22 @@ test('rest timer can be set, started, paused, resumed and cancelled', async () =
   expect(timer()).toMatch(/1:00/);
   fireEvent.change(duration(), { target: { value: '3' } });
   expect(timer(), 'durations under 5 seconds are ignored').toMatch(/1:00/);
-  // From here the app's own redraw timeout is faked too, so a foreground tick can be
-  // fired deterministically (the legacy tick()) while keeping the same clock.
-  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'], now: Date.now() });
-  // user-event waits on setTimeout, so clicks below are dispatched with fireEvent.
-  fireEvent.click(screen.getByRole('button', { name: 'Start rest' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
   // A foreground tick: the clock moves and the due redraw timeout fires once.
   act(() => {
     vi.advanceTimersByTime(1000);
   });
   expect(timer()).toMatch(/0:59 left/);
   advance(9000);
-  fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Pause' }));
   expect(timer()).toMatch(/0:50 paused/);
   ui.returnToTab(120000);
   expect(timer(), 'paused rest does not run').toMatch(/0:50 paused/);
-  fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Resume' }));
   advance(20000);
   ui.redraw();
   expect(timer()).toMatch(/0:30 left/);
-  fireEvent.click(screen.getByRole('button', { name: 'Cancel rest' }));
+  await ui.user.click(screen.getByRole('button', { name: 'Cancel rest' }));
   expect(timer()).toMatch(/1:00/);
   expect(timer()).not.toMatch(/left|paused/);
 });

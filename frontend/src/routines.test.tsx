@@ -93,6 +93,8 @@ function mount(failPost = false, failReadAfterPost = false, initialPlan: Plan = 
     requests,
     user,
     text,
+    // Looks text up by the element that shows it, the way a user reads the screen.
+    shows: (pattern: RegExp) => screen.queryAllByText(pattern),
     labels,
     click,
     change,
@@ -130,11 +132,11 @@ test('routine screen re-queries saved plans and displays all 12 manual weeks wit
   const ui = mount();
   await openRoutines();
   expect(ui.requests.some((r) => r.path === '/api/routines' && r.method === 'GET')).toBe(true);
-  await waitFor(() => expect(ui.text()).toMatch(/Manual 12-week routine/));
+  await waitFor(() => expect(ui.shows(/Manual 12-week routine/).length).toBeGreaterThan(0));
   await ui.click('View plan');
   await waitFor(() => expect(document.querySelector('article')).not.toBeNull());
   for (let week = 1; week <= 12; week++)
-    expect(ui.text()).toMatch(new RegExp(`Week ${week}(?!\\d)`));
+    expect(ui.shows(new RegExp(`Week ${week}(?!\\d)`)).length).toBeGreaterThan(0);
   for (const week of [4, 8, 12]) {
     const row = [...document.querySelectorAll('tr, li, article, section')].filter(
       (el) =>
@@ -144,8 +146,8 @@ test('routine screen re-queries saved plans and displays all 12 manual weeks wit
     );
     expect(row.length, `Week ${week} has its own deload label`).toBeGreaterThan(0);
   }
-  expect(ui.text()).toMatch(/7\.25/);
-  expect(ui.text()).toMatch(/100\.25/);
+  expect(ui.shows(/7\.25/).length).toBeGreaterThan(0);
+  expect(ui.shows(/100\.25/).length).toBeGreaterThan(0);
   for (const part of ['가슴', '등', '어깨', '팔', '하체-앞', '하체-뒤', '복근'])
     expect(ui.text()).toContain(bodyPartLabel(part));
   expect(
@@ -159,7 +161,7 @@ test('routine screen re-queries saved plans and displays all 12 manual weeks wit
   cleanup();
   const reopened = mount();
   await openRoutines();
-  await waitFor(() => expect(reopened.text()).toMatch(/Manual 12-week routine/));
+  await waitFor(() => expect(reopened.shows(/Manual 12-week routine/).length).toBeGreaterThan(0));
 });
 
 for (const failRead of [false, true]) {
@@ -216,32 +218,35 @@ for (const failRead of [false, true]) {
     // #28: the form now states the mode explicitly; manual plans keep every manual week.
     expect(post!.body).toEqual({ ...expected, progression: 'manual', schedule_mode: 'weekday' });
     expect(ui.requests.some((r) => r.path === '/api/routines/27')).toBe(true);
-    if (failRead) await waitFor(() => expect(ui.text()).toMatch(/Lookup after save failed/));
-    expect(ui.text()).toMatch(/7\.25/);
-    expect(ui.text()).toMatch(/100\.25/);
-    expect(ui.text()).toMatch(/Week 12 · Deload/);
+    if (failRead)
+      await waitFor(() => expect(ui.shows(/Lookup after save failed/).length).toBeGreaterThan(0));
+    expect(ui.shows(/7\.25/).length).toBeGreaterThan(0);
+    expect(ui.shows(/100\.25/).length).toBeGreaterThan(0);
+    expect(ui.shows(/Week 12 · Deload/).length).toBeGreaterThan(0);
     expect(ui.form(), 'Successful save closes the draft').toHaveLength(0);
     expect(ui.nonGet()).toHaveLength(1);
-    expect(ui.text()).toMatch(/Routine #27 saved/);
+    expect(ui.shows(/Routine #27 saved/).length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole('status').some((el) => /Routine #27 saved/.test(el.textContent)),
     ).toBe(true);
-    if (failRead) expect(ui.text()).toMatch(/Lookup after save failed/);
+    if (failRead) expect(ui.shows(/Lookup after save failed/).length).toBeGreaterThan(0);
     else {
       // Use the actual posted plan, not the default fixture, in a new component session.
       cleanup();
       const reopened = mount(false, false, post!.body as Plan);
       await openRoutines();
       await reopened.click('View plan');
-      await waitFor(() => expect(reopened.text()).toMatch(/New routine 27/));
+      await waitFor(() => expect(reopened.shows(/New routine 27/).length).toBeGreaterThan(0));
       expect(reopened.requests.some((r) => r.path === '/api/routines/27')).toBe(true);
-      expect(reopened.text()).toMatch(/No split · Start date 2024-02-29 · 3 workouts\/week/);
+      expect(
+        reopened.shows(/No split · Start date 2024-02-29 · 3 workouts\/week/).length,
+      ).toBeGreaterThan(0);
       expect(reopened.text()).toContain(
         expected.splits[0].body_parts.map(bodyPartLabel).join(' → '),
       );
-      expect(reopened.text()).toMatch(/Week 5 · Total weight kg \+7\.25/);
-      expect(reopened.text()).toMatch(/Week 8 · Deload · Sets -1/);
-      expect(reopened.text()).toMatch(/Week 12 · Deload · Reps -3/);
+      expect(reopened.shows(/Week 5 · Total weight kg \+7\.25/).length).toBeGreaterThan(0);
+      expect(reopened.shows(/Week 8 · Deload · Sets -1/).length).toBeGreaterThan(0);
+      expect(reopened.shows(/Week 12 · Deload · Reps -3/).length).toBeGreaterThan(0);
       expect(reopened.nonGet()).toHaveLength(0);
     }
   });
@@ -267,7 +272,9 @@ test('routine editor exposes all five splits and keeps a failed save available f
   await ui.click('Add Chest');
   ui.next();
   await ui.save();
-  await waitFor(() => expect(ui.text()).toMatch(/Check the rest weekdays and workouts per week/));
+  await waitFor(() =>
+    expect(ui.shows(/Check the rest weekdays and workouts per week/).length).toBeGreaterThan(0),
+  );
   // #102: the failure is an AlertBanner, announced at once. #105: inside the form, on step 4.
   expect(getLive('alert')).toHaveTextContent('Check the rest weekdays and workouts per week');
   expect(ui.form()[0]).toContainElement(getLive('alert'));
@@ -386,8 +393,10 @@ test('new routines default to automatic double progression with a 12-week previe
   const post = ui.requests.find((r) => r.method === 'POST');
   expect(post).toBeTruthy();
   expect(post!.body).toEqual(expected);
-  await waitFor(() => expect(ui.text()).toMatch(/Auto · double progressive overload/));
-  expect(ui.text()).toMatch(/Week 5: Session 1 110 kg × 9 reps \(Reps \+1\)/);
+  await waitFor(() =>
+    expect(ui.shows(/Auto · double progressive overload/).length).toBeGreaterThan(0),
+  );
+  expect(ui.shows(/Week 5: Session 1 110 kg × 9 reps \(Reps \+1\)/).length).toBeGreaterThan(0);
 });
 
 test('a new routine defaults to a cycle and fills each split count with its cycle and parts (#88)', async () => {
@@ -497,7 +506,9 @@ test('a routine exercise can name a machine that the plan keeps (#82)', async ()
   expect(exercises[0].machine_id).toBe(5);
   // A free exercise omits the field, keeping the plan shape of older routines.
   expect('machine_id' in exercises[1]).toBe(false);
-  await waitFor(() => expect(ui.text()).toMatch(/Benchpress \(Hammer · Leg Press\)/));
+  await waitFor(() =>
+    expect(ui.shows(/Benchpress \(Hammer · Leg Press\)/).length).toBeGreaterThan(0),
+  );
 });
 
 test('the plan view is a region named by the routine with its deload weeks marked (#102)', async () => {
@@ -657,7 +668,9 @@ test('a split takes cardio items with 12 weekly targets that the plan keeps (#11
   ]);
   // Splits without cardio keep the older plan shape.
   expect(post.splits.slice(1).every((s) => !('cardio' in s))).toBe(true);
-  await waitFor(() => expect(ui.text()).toMatch(/Cardio · Running · Zone 2 · 30 min/));
+  await waitFor(() =>
+    expect(ui.shows(/Cardio · Running · Zone 2 · 30 min/).length).toBeGreaterThan(0),
+  );
 });
 
 test('removing a cardio item or switching it to distance keeps one target (#117)', async () => {

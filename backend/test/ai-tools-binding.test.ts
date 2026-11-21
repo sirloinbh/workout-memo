@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 // project-standards#670, #822: the AI tool routes need a token that names its tool and was not used before. A fake
 // pool stands in for PostgreSQL: every check here fails before the database, and a passing list call needs none.
@@ -19,8 +20,7 @@ function token(claims: Record<string, unknown> = {}) {
 test('the AI tool routes refuse a token without tool and jti, for another tool, or used twice', async () => {
   const pool = { query: async () => ({ rows: [] }) } as unknown as Pool;
   const toolsPublicKey = publicKey.export({ type: 'spki', format: 'pem' }).toString();
-  const server = createApp(pool, { toolsPublicKey }).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool, { toolsPublicKey }));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   const list = (auth: string) =>

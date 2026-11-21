@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 // project-standards#553: saving, editing and deleting a journal each write one audit_log row in the
 // same transaction, with the request ID from the X-Request-Id header.
@@ -13,8 +14,7 @@ test(
   { skip: !process.env.TEST_DATABASE_URL },
   async () => {
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-    const server = createApp(pool).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const base = 'http://127.0.0.1:' + address.port + '/api/workouts';

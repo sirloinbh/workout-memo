@@ -7,6 +7,7 @@ import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { volume, workoutSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 
 const workout = {
   date: '2026-10-15',
@@ -70,8 +71,7 @@ test('invalid RPE is rejected by the API before any write', async () => {
       throw Error('Invalid RPE must not reach persistence');
     },
   } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {
@@ -145,8 +145,7 @@ test(
   { skip: !process.env.TEST_DATABASE_URL },
   async (t) => {
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-    const server = createApp(pool).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool));
     const call = async (path: string, method = 'GET', body?: unknown, key?: string) => {
       const address = server.address();
       assert.ok(address && typeof address !== 'string');

@@ -5,6 +5,7 @@ import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { workoutSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 
 const set = { exercise: 'Leg Press', machine_id: null, weight: 120.25, reps: 10 };
 const workout = { date: '2024-02-29', title: 'Lower body', notes: 'Journal memo', sets: [set] };
@@ -40,8 +41,7 @@ test('API rejects invalid workouts on create and update before accessing storage
     throw new Error('Invalid input must not reach storage');
   };
   const app = createApp({ query: unavailable, connect: unavailable } as unknown as Pool);
-  const server = app.listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(app);
   t.after(
     () => new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve()))),
   );

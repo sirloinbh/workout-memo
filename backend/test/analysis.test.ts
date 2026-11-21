@@ -10,6 +10,7 @@ import {
   estimatedOneRepMax,
 } from '../src/analysis.js';
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 let nextId = 1;
 const set = (
@@ -229,8 +230,7 @@ test('recomputes from the current rows after an edit or delete', () => {
 });
 
 async function withServer(pool: Pool, run: (base: string) => Promise<void>) {
-  const server = createApp(pool).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {

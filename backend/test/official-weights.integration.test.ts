@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 const migration = readFileSync(
   new URL('../../database/migrations/009_official_machine_weights.sql', import.meta.url),
@@ -22,14 +23,10 @@ test(
   { skip: !process.env.TEST_DATABASE_URL },
   async (t) => {
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-    const server = createApp(pool).listen(0, '127.0.0.1');
+    const server = await listenApp(createApp(pool));
     const machineIds: number[] = [];
     let workoutId: number | undefined;
     try {
-      await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-      });
       const address = server.address();
       if (!address || typeof address === 'string') throw Error('server');
       const call = async (path: string, method = 'GET', body?: unknown) => {

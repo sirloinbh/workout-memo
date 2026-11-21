@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { exerciseNameLimit, listExerciseNames } from '../src/routes/exercise-names.js';
+import { listenApp } from './listen.js';
 
 // #124: autocomplete candidates from journals, goals, routines and machines. The rows are
 // written inside a transaction that is rolled back, so other test files never see them.
@@ -77,8 +78,7 @@ test(
     }
 
     // The route answers with the same list.
-    const server = createApp(pool).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool));
     try {
       const address = server.address();
       assert.ok(address && typeof address !== 'string');

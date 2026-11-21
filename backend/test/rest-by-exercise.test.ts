@@ -14,6 +14,7 @@ import {
 } from '../../frontend/src/rest-timer.js';
 import { createApp } from '../src/app.js';
 import { machineSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 
 // #84: rest by exercise kind. Lower 2:30, upper 2:00, single-joint 1:30.
 test('default per-kind rests match the issue table', () => {
@@ -63,8 +64,7 @@ test(
   { skip: !process.env.TEST_DATABASE_URL },
   async () => {
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-    const server = createApp(pool).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const call = async (path: string, method = 'GET', body?: unknown) => {

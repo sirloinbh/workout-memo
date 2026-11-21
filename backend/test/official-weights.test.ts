@@ -6,6 +6,7 @@ import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { machineSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 
 // Parse the seed tuples of migration 009 without a database so data integrity is
 // checked on every run, not only when TEST_DATABASE_URL is configured.
@@ -201,12 +202,8 @@ test('official reference API validates the query before touching storage', async
       return Promise.resolve({ rows: [] });
     },
   } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
+  const server = await listenApp(createApp(pool));
   try {
-    await new Promise<void>((resolve, reject) => {
-      server.once('listening', resolve);
-      server.once('error', reject);
-    });
     const address = server.address();
     if (!address || typeof address === 'string') throw Error('server');
     const base = `http://127.0.0.1:${address.port}/api/official-machine-weights`;
@@ -248,12 +245,8 @@ test('machine PUT keeps an omitted link and maps an unknown reference id to 400'
       return Promise.resolve({ rowCount: 1, rows: [{ id: 1 }] });
     },
   } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
+  const server = await listenApp(createApp(pool));
   try {
-    await new Promise<void>((resolve, reject) => {
-      server.once('listening', resolve);
-      server.once('error', reject);
-    });
     const address = server.address();
     if (!address || typeof address === 'string') throw Error('server');
     const send = (method: string, body: object) =>

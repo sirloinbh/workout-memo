@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 import { routineInput } from './routine-fixture.js';
 
 // #117 part 3: /api/routine-progress judges a routine's cardio against the saved cardio
@@ -20,8 +21,7 @@ test(
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
     const memo = `Routine117-${randomUUID()}`;
     let routineId: number | undefined;
-    const server = createApp(pool, { today: () => '2099-03-04' }).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool, { today: () => '2099-03-04' }));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const call = async (path: string, method = 'GET', body?: unknown) => {

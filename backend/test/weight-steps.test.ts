@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { weightStepSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 import { autoRoutineInput } from './routine-fixture.js';
 
 // #86: per-exercise progressive overload increment (default 5 kg) and goal suggestions.
@@ -28,8 +29,7 @@ test(
     const prefix = `Step86-${randomUUID()}`;
     const bench = `${prefix}-Bench`;
     const today = '2097-03-04';
-    const server = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool, { today: () => today }));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const call = async (path: string, method = 'GET', body?: unknown) => {

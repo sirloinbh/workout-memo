@@ -5,6 +5,7 @@ import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { machineSchema, volume, workoutSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 
 const machine = { brand_id: 1, name: 'Arsenal test machine', notes: 'Verified test fixture' };
 const invalidWeights: unknown[] = [-0.25, 100000, '', '20', 'unknown', false, {}, [], undefined];
@@ -58,12 +59,8 @@ test('machine create and update reject invalid input before touching storage', a
       throw Error('Invalid input must never reach storage');
     },
   } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
+  const server = await listenApp(createApp(pool));
   try {
-    await new Promise<void>((resolve, reject) => {
-      server.once('listening', resolve);
-      server.once('error', reject);
-    });
     const address = server.address();
     if (!address || typeof address === 'string') throw Error('server');
     for (const method of ['POST', 'PUT']) {

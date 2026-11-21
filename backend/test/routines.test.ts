@@ -5,6 +5,7 @@ import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import * as domain from '../src/domain.js';
+import { listenApp } from './listen.js';
 import { type RoutineInput, routineInput } from './routine-fixture.js';
 
 type Schema = { safeParse(value: unknown): { success: boolean; data?: unknown } };
@@ -270,12 +271,8 @@ test('routine API rejects invalid selections, schedule and manual targets before
     throw Error('Invalid routine must not reach storage');
   };
   const pool = { query: forbidden, connect: forbidden } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
+  const server = await listenApp(createApp(pool));
   try {
-    await new Promise<void>((resolve, reject) => {
-      server.once('listening', resolve);
-      server.once('error', reject);
-    });
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     for (const [name, mutate] of invalid) {

@@ -17,3 +17,7 @@ Screens now import `Switch`, `SegmentedControl`, `DateStepper`/`RangeSummary`, `
 ## Checks
 
 `npm run check` (see the PR).
+
+## Visual baselines
+
+34 of 48 files in `e2e/__screenshots__/` are updated from the `visual-baselines` artifact of the failing CI run. The only visible difference (checked on `body-390`) is the page header: larger eyebrow and description text and no closing dot after the title. Nothing else on the screens moved.

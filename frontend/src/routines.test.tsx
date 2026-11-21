@@ -768,3 +768,32 @@ test('Create new routine asks before it discards an open draft (#323)', async ()
   expect(fromPlan).toHaveTextContent('Opening this plan closes the new routine form');
   expect(within(fromPlan).getByRole('button', { name: 'Discard and view plan' })).toBeEnabled();
 });
+
+// #385: changing the split count keeps what the user customised.
+test('changing the split count keeps a split whose body parts were customised (#385)', async () => {
+  const ui = mount();
+  await openRoutines();
+  await ui.click('Create new routine');
+  await ui.change('Routine name', 'Custom split');
+  await ui.change('Start date', '2026-10-21');
+  ui.next();
+  const listed = (i: number) =>
+    [...document.querySelectorAll('fieldset')]
+      .filter((el) => ui.text(el).startsWith(`Split ${i + 1}`))[0]
+      .querySelectorAll('ol li');
+  const names = (i: number) => [...listed(i)].map((li) => ui.text(li).replace('Delete', '').trim());
+  await ui.change('Split type', '2');
+  ui.next();
+  // Remove the last default part of split 1 (the user's customisation).
+  fireEvent.click(within(listed(0)[3] as HTMLElement).getByRole('button', { name: /Delete/ }));
+  const customised = names(0);
+  expect(customised).toHaveLength(3);
+  await ui.click('Previous');
+  await ui.change('Split type', '3');
+  ui.next();
+  expect(names(0)).toEqual(customised);
+  // The split that was not customised follows the new count's default.
+  expect(names(1)).toEqual(['하체-앞', '하체-뒤', '복근'].map(bodyPartLabel));
+  // A new split gets its default parts.
+  expect(names(2)).toEqual(['가슴', '어깨', '삼두'].map(bodyPartLabel));
+});

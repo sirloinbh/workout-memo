@@ -103,3 +103,20 @@ test('a result sheet photo yields only values that follow their labels', () => {
     skeletal_muscle_kg: '',
   });
 });
+
+// #384: a pound value is never saved as kg, and only the line's own label is read.
+test('a photo sheet in pounds is refused instead of read as kg', () => {
+  expect(rowFromText('Weight(lbs) 160').body_weight_kg).toBe('');
+  expect(rowFromText('Weight (lb) 160').body_weight_kg).toBe('');
+  expect(rowFromText('체중(파운드) 160').body_weight_kg).toBe('');
+  expect(rowFromText('Weight(kg) 72.4').body_weight_kg).toBe('72.4');
+  expect(rowFromText('체중(kg) 72.4').body_weight_kg).toBe('72.4');
+});
+
+test('target and lean body weight lines are not read as the weight', () => {
+  const text = ['Target Weight 65.0', 'Lean Body Weight 55.2', 'Weight 72.4'].join('\n');
+  expect(rowFromText(text).body_weight_kg).toBe('72.4');
+  expect(rowFromText('Target Weight 65.0').body_weight_kg).toBe('');
+  expect(rowFromText('목표 체중 65.0').body_weight_kg).toBe('');
+  expect(rowFromText('Body Weight 70.1').body_weight_kg).toBe('70.1');
+});

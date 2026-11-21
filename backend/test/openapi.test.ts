@@ -92,3 +92,14 @@ test('request schemas keep the server constraints for sets and goals', () => {
 test('a type JSON Schema cannot express fails instead of being skipped', () => {
   assert.throws(() => schemaOf(z.date()), /Date cannot be represented/);
 });
+
+test('nullable enums accept null in the document (#364)', () => {
+  const schemas = (document.components as { schemas: Record<string, unknown> }).schemas;
+  const feedback = (schemas.Workout as { properties: { feedback: { anyOf: { type: string }[] } } })
+    .properties.feedback;
+  assert.ok(feedback.anyOf.some((branch) => branch.type === 'null'));
+});
+
+test('the route list is not empty, so a changed Express internal cannot hide missing routes (#364)', () => {
+  assert.ok(registeredRoutes().length > 30);
+});

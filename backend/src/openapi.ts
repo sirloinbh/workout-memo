@@ -312,7 +312,8 @@ const statusText: Record<number, string> = {
   409: 'Duplicate, version conflict, retry key mismatch, or date condition mismatch',
   413: 'Request size limit exceeded',
   500: 'Server error',
-  503: 'The shared sign-in service could not be reached',
+  // The sign-in route and the push routes (not set up on this server) share this status.
+  503: 'Service unavailable: the shared sign-in service could not be reached, or Web Push is not set up',
 };
 
 export const document = buildOpenApi({

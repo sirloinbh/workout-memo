@@ -8,6 +8,11 @@ import { cn } from '../lib/utils';
 export const fieldLabel =
   'mb-4 flex-col items-stretch gap-2 text-meta font-normal text-muted-foreground';
 
+// A tighter label (the routine builder): the control sits 6px under the text and the form
+// spaces its fields itself.
+export const stackedFieldLabel =
+  'flex-col items-stretch gap-1.5 text-meta font-normal text-muted-foreground';
+
 // The common Input drops to 14px from 768px; touch screens keep 16px so iOS does not zoom (#104).
 export const touchText = 'md:pointer-coarse:text-base';
 

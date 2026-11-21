@@ -17,6 +17,7 @@ import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { InbodyImport } from './inbody-import';
+import { requestJson } from './lib/api';
 import { cn } from './lib/utils';
 
 export type BodyRecord = {
@@ -30,7 +31,7 @@ type MetricKey = 'body_weight_kg' | 'body_fat_percent' | 'skeletal_muscle_kg';
 type Draft = { id?: number; date: string } & Record<MetricKey, string>;
 type WorkoutLike = {
   date: string;
-  sets: { weight: number | string; reps: number; completed?: boolean }[];
+  sets: { weight: number | string | undefined; reps: number | undefined; completed?: boolean }[];
 };
 
 // Units match the API: kg and %, stored with at most two decimals.
@@ -49,23 +50,8 @@ const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigit
 const day = (value: string) => new Date(value.slice(0, 10) + 'T12:00:00Z');
 const days = (from: string, to: string) => Math.round((+day(to) - +day(from)) / 86400000);
 
-async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  try {
-    const res = await fetch('/api/body-measurements' + path, {
-      method,
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? 'The body record request failed');
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const request = <T,>(path: string, method = 'GET', body?: unknown) =>
+  requestJson<T>('/api/body-measurements' + path, { method, body, timeoutMs: 15000 });
 
 export function BodyMeasurements({
   from,
@@ -113,7 +99,7 @@ export function BodyMeasurements({
       const raw = draft[m.key].trim();
       const value = raw === '' ? null : Number(raw);
       if (value !== null && !Number.isFinite(value)) {
-        setFormError(`Enter ${m.label} as a number`);
+        setFormError(`Enter ${m.label.toLowerCase()} as a number`);
         return;
       }
       body[m.key] = value;
@@ -155,7 +141,7 @@ export function BodyMeasurements({
     // Planned (not completed) sets are not performance (#31); missing means completed.
     const volume = w.sets
       .filter((s) => s.completed !== false)
-      .reduce((n, s) => n + Number(s.weight) * s.reps, 0);
+      .reduce((n, s) => n + Number(s.weight) * (s.reps ?? 0), 0);
     volumeByDate.set(date, (volumeByDate.get(date) ?? 0) + volume);
   }
   // #123: a metric without any value in the period gets one line instead of an empty chart.
@@ -428,10 +414,6 @@ function Trend({
     <figure
       data-slot="body-trend"
       className="m-0 rounded-xl border bg-card p-4 text-card-foreground"
-      role="img"
-      aria-label={`${metric.label} trend (${metric.unit}): ${points
-        .map((p) => `${p.date} ${fmt(p.value)}`)
-        .join(', ')}`}
     >
       <figcaption className="mb-2 flex justify-between gap-2 text-meta text-muted-foreground">
         <strong className="font-semibold text-foreground">
@@ -447,7 +429,11 @@ function Trend({
         className="block h-30 w-full border-y border-dashed"
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
-        aria-hidden="true"
+        // Only the drawing is an image: the caption and range around it stay readable text (#384).
+        role="img"
+        aria-label={`${metric.label} trend (${metric.unit}): ${points
+          .map((p) => `${p.date} ${fmt(p.value)}`)
+          .join(', ')}`}
       >
         {segments
           .filter((s) => s.length > 1)

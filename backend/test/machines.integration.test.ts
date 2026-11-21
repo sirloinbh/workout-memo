@@ -56,6 +56,9 @@ test(
             (machine: { id: number }) => machine.id === created.data.id,
           );
           assert.ok(stored);
+          // #364: numeric columns come back as numbers (or null), never strings.
+          assert.equal(stored.base_weight, base_weight);
+          assert.equal(created.data.base_weight, base_weight);
           assert.equal(stored.brand_id, arsenal.id);
           assert.equal(stored.brand, 'Arsenal Strength');
           assert.equal(

@@ -583,7 +583,7 @@
             }
           },
           "503": {
-            "description": "The shared sign-in service could not be reached",
+            "description": "Service unavailable: the shared sign-in service could not be reached, or Web Push is not set up",
             "content": {
               "application/json": {
                 "schema": {
@@ -711,7 +711,7 @@
             }
           },
           "503": {
-            "description": "The shared sign-in service could not be reached",
+            "description": "Service unavailable: the shared sign-in service could not be reached, or Web Push is not set up",
             "content": {
               "application/json": {
                 "schema": {
@@ -2184,7 +2184,7 @@
             }
           },
           "503": {
-            "description": "The shared sign-in service could not be reached",
+            "description": "Service unavailable: the shared sign-in service could not be reached, or Web Push is not set up",
             "content": {
               "application/json": {
                 "schema": {

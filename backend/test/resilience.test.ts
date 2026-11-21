@@ -70,6 +70,7 @@ test('/api/health answers 200 even when the auth middleware rejects everything',
 test('the push stop function waits for a send in progress', async () => {
   const pool = {
     query: async (sql: string) => {
+      if (sql.includes('min(ends_at)')) return { rows: [{ at: Date.now() + 5 }] };
       if (sql.includes('RETURNING user_id')) return { rows: [{ user_id: 'u1' }] };
       if (sql.startsWith('SELECT'))
         return { rows: [{ endpoint: 'https://push.example/1', p256dh: 'k', auth: 'a' }] };
@@ -91,7 +92,7 @@ test('the push stop function waits for a send in progress', async () => {
       });
     },
   });
-  const stop = push.start(5);
+  const stop = push.start();
   while (!started) await new Promise((resolve) => setTimeout(resolve, 5));
   let stopped = false;
   const stopping = stop().then(() => (stopped = true));

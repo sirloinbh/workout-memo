@@ -290,3 +290,72 @@ test('a subscription the push service has dropped (410) is removed; other failur
   );
   assert.deepEqual(logged, ['Rest push failed: push service down']);
 });
+
+// #371: a send that never answers is cut off by its deadline, so it cannot hold back other pushes.
+test('a sender that never answers does not block the next due push', async () => {
+  const sent: string[] = [];
+  const logged: string[] = [];
+  let due = [{ user_id: 'stuck' }, { user_id: 'fine' }];
+  const { pool } = fakePool((sql, params) => {
+    if (/DELETE FROM rest_pushes WHERE ends_at <= now\(\) RETURNING/.test(sql)) {
+      const rows = due;
+      due = [];
+      return rows;
+    }
+    if (/SELECT endpoint/.test(sql))
+      return [{ ...row, endpoint: `https://push.example/${String(params[0])}` }];
+    return [];
+  });
+  const push = createPushService(pool, {
+    config,
+    sendTimeoutMs: 30,
+    log: (message) => logged.push(message),
+    send: (sub) => {
+      if (sub.endpoint.endsWith('/stuck')) return new Promise<void>(() => undefined);
+      sent.push(sub.endpoint);
+      return Promise.resolve();
+    },
+  });
+  assert.equal(await push.sendDue(), 2);
+  assert.deepEqual(sent, ['https://push.example/fine']);
+  assert.match(logged.join('\n'), /timed out after 30 ms/);
+  // The next check still sends a later push.
+  due = [{ user_id: 'later' }];
+  assert.equal(await push.sendDue(), 1);
+  assert.deepEqual(sent, ['https://push.example/fine', 'https://push.example/later']);
+});
+
+// #371: one timer for the earliest rest; with no rest pending nothing runs and no query is issued.
+test('with no pending rest the service issues one query and then none', async () => {
+  const { pool, queries } = fakePool((sql) => (sql.includes('min(ends_at)') ? [{ at: null }] : []));
+  const stop = createPushService(pool, { config, send: async () => undefined }).start();
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  await stop();
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /min\(ends_at\)/);
+});
+
+test('a scheduled rest fires one check at its end time, then the timer rests again', async () => {
+  const sent: string[] = [];
+  let pending = false;
+  const { pool, queries } = fakePool((sql) => {
+    if (sql.includes('min(ends_at)')) return [{ at: pending ? Date.now() + 40 : null }];
+    if (/DELETE FROM rest_pushes WHERE ends_at <= now\(\) RETURNING/.test(sql)) {
+      const rows = pending ? [{ user_id: 'u1' }] : [];
+      pending = false;
+      return rows;
+    }
+    if (/SELECT endpoint/.test(sql)) return [row];
+    return [];
+  });
+  const push = createPushService(pool, { config, send: async (s) => void sent.push(s.endpoint) });
+  const stop = push.start();
+  pending = true;
+  await push.scheduleRest('u1', Date.now() + 40);
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.deepEqual(sent, [subscription.endpoint]);
+  const afterFire = queries.length;
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal(queries.length, afterFire, 'no query while nothing is pending');
+  await stop();
+});

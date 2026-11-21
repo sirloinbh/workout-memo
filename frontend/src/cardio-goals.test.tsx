@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import { fixClock, mockApi } from './test/api';
+import { confirmDelete } from './test/confirm';
 import { openPage } from './test/nav';
 
 // #116: cardio goals on the My Goals page. The server's judgment is shown as given. Today is
@@ -56,7 +57,6 @@ const ended = {
 
 function mount(goals: unknown[]) {
   fixClock();
-  vi.stubGlobal('confirm', () => true);
   const posted: unknown[] = [];
   const api = mockApi(({ method, url, body }) => {
     if (url.pathname === '/api/cardio-goals' && method === 'POST') {
@@ -176,6 +176,7 @@ test('deleting a cardio goal removes only that card', async () => {
   await openPage('My Goals', ui.user);
   await within(section()).findByRole('heading', { level: 3, name: 'Weekly running 15 km' });
   await ui.user.click(screen.getByRole('button', { name: 'Delete Weekly running 15 km goal' }));
+  await confirmDelete(ui.user);
   await waitFor(() =>
     expect(within(section()).queryByRole('heading', { name: 'Weekly running 15 km' })).toBeNull(),
   );

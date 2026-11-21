@@ -23,7 +23,6 @@ test.afterAll(async ({ request }) => {
 test('Create, view, edit, and delete workout journals in the browser and store them in the DB', async ({
   page,
 }) => {
-  page.on('dialog', (dialog) => void dialog.accept());
   await page.goto('/');
   await showDay(page);
 
@@ -65,6 +64,7 @@ test('Create, view, edit, and delete workout journals in the browser and store t
 
   // Delete
   await page.getByRole('button', { name: `Delete ${title}` }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(row(page)).toHaveCount(0);
   await page.reload();
   await showDay(page);

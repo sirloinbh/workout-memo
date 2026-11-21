@@ -5,6 +5,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
+import { useConfirmDelete } from '../components/use-confirm-delete';
 import { api, changed, type WriteAction } from './api';
 import { cleanDate, type Goal, today } from './model';
 
@@ -20,6 +21,11 @@ export function GoalsPage({
   action: WriteAction;
   to: string;
 }) {
+  // #381: one request per delete, asked in a dialog instead of the browser's confirm().
+  const deleting = useConfirmDelete<Goal>({
+    title: () => 'Delete this goal?',
+    onConfirm: (g) => action(() => api('/goals/' + g.id, 'DELETE'), undefined, changed.goals),
+  });
   return (
     <>
       {goals.length === 0 ? (
@@ -63,10 +69,7 @@ export function GoalsPage({
                   className="mt-3 px-0"
                   aria-label={`Delete ${g.exercise} goal`}
                   disabled={saving}
-                  onClick={() => {
-                    if (confirm('Delete this goal?'))
-                      void action(() => api('/goals/' + g.id, 'DELETE'), undefined, changed.goals);
-                  }}
+                  onClick={(e) => deleting.ask(g, e.currentTarget)}
                 >
                   Delete goal
                 </Button>
@@ -77,6 +80,7 @@ export function GoalsPage({
       )}
       {/* #116: cardio goals load and save on their own, below the strength goals. */}
       <CardioGoals deadline={to} />
+      {deleting.dialog}
     </>
   );
 }

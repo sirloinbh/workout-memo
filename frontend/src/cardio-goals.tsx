@@ -32,6 +32,7 @@ import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
+import { useConfirmDelete } from './components/use-confirm-delete';
 import { seoulDate } from './date';
 import { plural } from './labels';
 import { requestJson } from './lib/api';
@@ -146,7 +147,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
     }
   }
   async function remove(goal: StoredGoal) {
-    if (!confirm('Delete this cardio goal?')) return;
+    if (saving) return;
     setSaving(true);
     setError('');
     try {
@@ -158,6 +159,11 @@ export function CardioGoals({ deadline }: { deadline: string }) {
       setSaving(false);
     }
   }
+
+  const deleting = useConfirmDelete<StoredGoal>({
+    title: () => 'Delete this cardio goal?',
+    onConfirm: remove,
+  });
 
   return (
     <section aria-labelledby="cardio-goals-title" className="mt-10">
@@ -211,7 +217,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
               goal={g}
               today={today}
               saving={saving}
-              remove={(goal) => void remove(goal)}
+              remove={(goal, button) => deleting.ask(goal, button)}
               suggest={(next) => setEditor({ initial: next })}
             />
           ))}
@@ -227,6 +233,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
           />
         </Modal>
       )}
+      {deleting.dialog}
     </section>
   );
 }
@@ -241,7 +248,7 @@ function GoalCard({
   goal: StoredGoal;
   today: string;
   saving: boolean;
-  remove: (goal: StoredGoal) => void;
+  remove: (goal: StoredGoal, button: HTMLButtonElement) => void;
   suggest: (next: GoalShape) => void;
 }) {
   const title = goalTitle(goal);
@@ -345,7 +352,7 @@ function GoalCard({
         className="mt-3 px-0"
         aria-label={`Delete ${title} goal`}
         disabled={saving}
-        onClick={() => remove(goal)}
+        onClick={(e) => remove(goal, e.currentTarget)}
       >
         Delete goal
       </Button>

@@ -174,6 +174,67 @@ export type BodyMeasurementInput = z.infer<typeof bodyMeasurementSchema>;
 // #86: progressive overload adds this much total kg per exercise. A missing setting is
 // the default; null in a request resets the exercise back to the default.
 export const defaultWeightStep = 5;
+
+// #377: automatic double progression, written once for the server and the routine form preview.
+const roundKg = (value: number) => Math.round(value * 100) / 100;
+const to25 = (value: number) => Math.round(value / 2.5) * 2.5;
+export const deloadWeight = (weight: number) => Math.max(0, to25(weight * 0.9));
+export type ProgressionLevel = { weight: number; reps: number };
+export type ProgressionKind = 'start' | 'reps' | 'weight' | 'hold' | 'deload';
+// #86: weight_step is the exercise's increment, attached by the caller from the user's
+// per-exercise settings (never stored in the plan). Missing means the 5 kg default.
+export function progressionStep(
+  level: ProgressionLevel,
+  ex: { rep_min?: number; rep_max?: number; weight_step?: number },
+) {
+  const max = ex.rep_max ?? 12;
+  if (level.reps + 1 <= max)
+    return { level: { ...level, reps: level.reps + 1 }, kind: 'reps' as const };
+  // Bodyweight (0 kg) exercises only add reps; at the maximum they hold.
+  if (level.weight === 0) return { level, kind: 'hold' as const };
+  return {
+    level: {
+      weight: Math.min(
+        99999,
+        Math.max(0, roundKg(level.weight + (ex.weight_step ?? defaultWeightStep))),
+      ),
+      reps: ex.rep_min ?? 8,
+    },
+    kind: 'weight' as const,
+  };
+}
+
+// Routine body parts (#27), also used by the exercise mapping (#32). #88 split 팔 into
+// 이두·삼두 for new choices; 팔 stays valid so saved routines and mappings keep working.
+export const bodyParts = [
+  '가슴',
+  '등',
+  '어깨',
+  '이두',
+  '삼두',
+  '하체-앞',
+  '하체-뒤',
+  '복근',
+] as const;
+export const legacyBodyParts = ['팔'] as const;
+// Display and validation order, with the legacy part next to its successors.
+export const allBodyParts = [
+  '가슴',
+  '등',
+  '어깨',
+  '팔',
+  '이두',
+  '삼두',
+  '하체-앞',
+  '하체-뒤',
+  '복근',
+] as const;
+
+// How a manual routine week changes the base targets, and what a deload week lowers.
+export const changeKinds = ['increase_weight', 'increase_reps', 'deload'] as const;
+export type ChangeKind = (typeof changeKinds)[number];
+export const deloadMetrics = ['weight', 'sets', 'reps'] as const;
+export type DeloadMetric = (typeof deloadMetrics)[number];
 export const weightStepSchema = z.object({
   exercise: text('an exercise name', 120),
   weight_step: z

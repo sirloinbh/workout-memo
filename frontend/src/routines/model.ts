@@ -1,8 +1,8 @@
-import { defaultWeightStep } from '../../../shared/contract';
+import { bodyParts, defaultWeightStep } from '../../../shared/contract';
 import { type CardioItem } from '../routine-cardio';
 
 // #88: 이두·삼두 replace 팔 for new choices; a saved 팔 still shows and can be removed.
-export const parts = ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'];
+export const parts: string[] = [...bodyParts];
 export const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export type Exercise = {
   exercise: string;

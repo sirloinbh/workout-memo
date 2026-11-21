@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 import ts from 'typescript';
 
+import * as contract from '../src/contract.js';
 import { type RoutinePlan, routineSchema } from '../src/domain.js';
 import * as progress from '../src/progress.js';
 import { autoRoutineInput, routineInput } from './routine-fixture.js';
@@ -415,8 +416,8 @@ test('the routine form preview uses the same per-session progression as the serv
       readFileSync(new URL('../../frontend/src/progression.ts', import.meta.url), 'utf8'),
       { compilerOptions: { module: ts.ModuleKind.CommonJS } },
     ).outputText,
-    // The preview reads the default increment from the shared contract.
-    { exports, Date, Math, require: () => ({ defaultWeightStep: 5 }) },
+    // The preview reads the default increment and the progression rule from the shared contract.
+    { exports, Date, Math, require: () => contract },
   );
   type Row = { week: number; session: number; weight: number; reps: number; kind: string };
   const preview = exports.previewTargets as (

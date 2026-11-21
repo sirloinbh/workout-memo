@@ -1,4 +1,10 @@
-import { cardioWeeklyTargets, type RoutineCardio } from './contract.js';
+import {
+  cardioWeeklyTargets,
+  deloadWeight,
+  type ProgressionLevel,
+  progressionStep,
+  type RoutineCardio,
+} from './contract.js';
 import { defaultWeightStep, type Feedback, type RoutinePlan, routineSchedule } from './domain.js';
 
 // Routine progress (#28). A plan's targets keep their original order; a rest day
@@ -126,32 +132,9 @@ export function weekCardio(plan: RoutinePlan, splitIndex: number, week: number) 
   });
 }
 
-// Auto routines: double progression (#28 rule change). Keep in sync with
-// frontend/src/progression.ts; a parity test compares the two.
-const to25 = (value: number) => Math.round(value / 2.5) * 2.5;
-/** @public Used by a test that loads this file through node:vm, which knip cannot follow (#657). */
-export const deloadWeight = (weight: number) => Math.max(0, to25(weight * 0.9));
-type Level = { weight: number; reps: number };
-// #86: weight_step is the exercise's increment, attached by the caller from the user's
-// per-exercise settings (never stored in the plan). Missing means the 5 kg default.
-type AutoExercise = RoutinePlan['splits'][number]['exercises'][number] & {
-  weight_step?: number;
-};
-/** @public Used by a test that loads this file through node:vm, which knip cannot follow (#657). */
-export function progressionStep(level: Level, ex: AutoExercise) {
-  const max = ex.rep_max ?? 12;
-  if (level.reps + 1 <= max)
-    return { level: { ...level, reps: level.reps + 1 }, kind: 'reps' as const };
-  // Bodyweight (0 kg) exercises only add reps; at the maximum they hold.
-  if (level.weight === 0) return { level, kind: 'hold' as const };
-  return {
-    level: {
-      weight: clamp(round(level.weight + (ex.weight_step ?? defaultWeightStep)), 0, 99999),
-      reps: ex.rep_min ?? 8,
-    },
-    kind: 'weight' as const,
-  };
-}
+// Auto routines: double progression (#28 rule change). The rule itself (progressionStep,
+// deloadWeight) lives in the shared contract, so the routine form preview uses the same code (#377).
+export { deloadWeight, progressionStep };
 
 type Skeleton = Omit<PlanTarget, 'exercises'>;
 type Placed = { target: Skeleton; date: string | null };
@@ -179,11 +162,11 @@ function autoExercises(
     for (const o of occ) out.set(o.target.order, []);
     split.exercises.forEach((ex) => {
       const key = exerciseKey(ex.exercise);
-      let level: Level = { weight: ex.weight, reps: ex.reps };
+      let level: ProgressionLevel = { weight: ex.weight, reps: ex.reps };
       let kind: NonNullable<TargetExercise['kind']> = 'start';
-      let previous: Level | null = null;
+      let previous: ProgressionLevel | null = null;
       occ.forEach((o, index) => {
-        let target: Level;
+        let target: ProgressionLevel;
         let result: TargetExercise['result'] = null;
         let shown: NonNullable<TargetExercise['kind']> = kind;
         if (o.target.is_deload) {

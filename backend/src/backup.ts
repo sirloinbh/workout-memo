@@ -13,6 +13,8 @@ import {
   routineSchema,
 } from './domain.js';
 import { cardioPaceSql, cardioSpeedSql } from './routes/cardio.js';
+import { insertSets } from './routes/workouts.js';
+import { auditContext, writeAudit } from './standard/audit.js';
 import { inTransaction } from './transaction.js';
 
 // Two deliberately separate artifacts (#33):
@@ -22,8 +24,11 @@ export const backupFormat = 'workout-memo-backup';
 // v2 (#114) adds data.cardio_sessions. A v1 file is still restored, as a backup without cardio.
 // v3 (#253) adds data.cardio_goals. v1 and v2 files restore as backups without cardio goals; an
 // app older than v3 cannot restore a v3 file (2026-11-08 user decision B1).
-export const backupVersion = 3;
-const supportedBackupVersions = [1, 2, 3] as const;
+// v4 (#359) adds set completion and RPE, body measurements, body-part mappings, weight steps,
+// routine rests, and machines' official-weight links. A v1-v3 file restores as before: the tables
+// it does not carry are left untouched, even by "Replace all".
+export const backupVersion = 4;
+const supportedBackupVersions = [1, 2, 3, 4] as const;
 const backupMaxBytes = 10 * 1024 * 1024;
 const replaceConfirmation = 'Replace all';
 
@@ -93,9 +98,42 @@ const cardioRow = cardioSessionObject
   .superRefine(checkCardioSession);
 // #253: the same rules as POST /api/cardio-goals, five-year span included.
 const cardioGoalRow = cardioGoalObject.extend({ id }).superRefine(checkCardioGoal);
+// #359: the same limits as the database columns.
+const rpe = z
+  .number()
+  .min(1)
+  .max(10)
+  .refine((v) => Number.isInteger(v * 2), 'RPE goes in steps of 0.5');
+const bodyMeasurementRow = z
+  .object({
+    id,
+    date,
+    body_weight_kg: z.number().positive().max(999.99).nullable(),
+    body_fat_percent: z.number().min(0).max(100).nullable(),
+    skeletal_muscle_kg: z.number().positive().max(999.99).nullable(),
+    created_at: timestamp,
+    updated_at: timestamp,
+  })
+  .refine(
+    (m) =>
+      m.body_weight_kg !== null || m.body_fat_percent !== null || m.skeletal_muscle_kg !== null,
+    'A body record needs at least one value',
+  );
+// The body-part names the database accepts (migration 014).
+const bodyParts = [
+  '\uAC00\uC2B4',
+  '\uB4F1',
+  '\uC5B4\uAE68',
+  '\uD314',
+  '\uC774\uB450',
+  '\uC0BC\uB450',
+  '\uD558\uCCB4-\uC55E',
+  '\uD558\uCCB4-\uB4A4',
+  '\uBCF5\uADFC',
+] as const;
 const backupSchema = z.object({
   format: z.literal(backupFormat),
-  version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   exported_at: timestamp,
   data: z
     .object({
@@ -110,6 +148,8 @@ const backupSchema = z.object({
             notes: notes(2000),
             // #84: backups made before single-joint machines have no field.
             single_joint: z.boolean().default(false),
+            // #359: the official-weight link; backups made before v4 have none.
+            official_weight_id: id.nullable().default(null),
           }),
         )
         .max(5000),
@@ -131,6 +171,9 @@ const backupSchema = z.object({
                   weight: kg,
                   reps: z.number().int().min(1).max(1000),
                   notes: notes(4000),
+                  // #359: backups made before v4 lack these; a set was then always performed.
+                  completed: z.boolean().default(true),
+                  rpe: rpe.nullable().default(null),
                 }),
               )
               .max(200),
@@ -156,6 +199,20 @@ const backupSchema = z.object({
       cardio_sessions: z.array(cardioRow).max(50000).optional(),
       // #253: required in v3 (checked in parseBackup); v1 and v2 files have none.
       cardio_goals: z.array(cardioGoalRow).max(5000).optional(),
+      // #359: required in v4 (checked in parseBackup); older files have none.
+      body_measurements: z.array(bodyMeasurementRow).max(50000).optional(),
+      exercise_body_parts: z
+        .array(z.object({ exercise: name, body_part: z.enum(bodyParts) }))
+        .max(20000)
+        .optional(),
+      exercise_weight_steps: z
+        .array(z.object({ exercise: name, weight_step: z.number().positive().max(100) }))
+        .max(5000)
+        .optional(),
+      routine_rests: z
+        .array(z.object({ routine_id: id, rest_date: date }))
+        .max(50000)
+        .optional(),
     })
     .superRefine((data, ctx) => {
       const issue = (message: string) => ctx.addIssue({ code: 'custom', message });
@@ -167,6 +224,7 @@ const backupSchema = z.object({
         'routines',
         'cardio_sessions',
         'cardio_goals',
+        'body_measurements',
       ] as const) {
         const seen = new Set<number>();
         for (const row of data[table] ?? []) {
@@ -209,6 +267,36 @@ const backupSchema = z.object({
           );
         externalIds.add(key);
       });
+      const dupes = (table: string, keys: string[]) => {
+        const seen = new Set<string>();
+        for (const k of keys) {
+          if (seen.has(k)) issue(`${table}: duplicate entry ${k.replace('\u0000', ' / ')}`);
+          seen.add(k);
+        }
+      };
+      dupes(
+        'body_measurements',
+        (data.body_measurements ?? []).map((m) => m.date),
+      );
+      dupes(
+        'exercise_body_parts',
+        (data.exercise_body_parts ?? []).map((r) => r.exercise + '\u0000' + r.body_part),
+      );
+      dupes(
+        'exercise_weight_steps',
+        (data.exercise_weight_steps ?? []).map((r) => r.exercise),
+      );
+      dupes(
+        'routine_rests',
+        (data.routine_rests ?? []).map((r) => r.routine_id + '\u0000' + r.rest_date),
+      );
+      const routineIds = new Set(data.routines.map((r) => r.id));
+      (data.routine_rests ?? []).forEach((r, i) => {
+        if (!routineIds.has(r.routine_id))
+          issue(
+            `routine_rests[${i}]: references routine ${r.routine_id} that is not in the backup`,
+          );
+      });
       data.routines.forEach((r, i) =>
         r.plan.splits.forEach((s) =>
           s.exercises.forEach((e) => {
@@ -220,15 +308,24 @@ const backupSchema = z.object({
     }),
 });
 type ParsedBackup = z.infer<typeof backupSchema>;
+type BodyRow = Backup['data']['body_measurements'][number];
 type CardioBackupRow = NonNullable<ParsedBackup['data']['cardio_sessions']>[number];
 type CardioGoalBackupRow = NonNullable<ParsedBackup['data']['cardio_goals']>[number];
-// After parseBackup every backup has cardio_sessions (empty for a v1 file) and cardio_goals
-// (empty for v1 and v2 files).
+// #359: the lists a v4 file carries and an older file does not.
+const v4Lists = [
+  'body_measurements',
+  'exercise_body_parts',
+  'exercise_weight_steps',
+  'routine_rests',
+] as const;
+type V4List = (typeof v4Lists)[number];
+// After parseBackup every backup has cardio_sessions (empty for a v1 file), cardio_goals
+// (empty for v1 and v2 files) and the v4 lists (empty for older files).
 export type Backup = Omit<ParsedBackup, 'data'> & {
-  data: Omit<ParsedBackup['data'], 'cardio_sessions' | 'cardio_goals'> & {
+  data: Omit<ParsedBackup['data'], 'cardio_sessions' | 'cardio_goals' | V4List> & {
     cardio_sessions: CardioBackupRow[];
     cardio_goals: CardioGoalBackupRow[];
-  };
+  } & { [K in V4List]: NonNullable<ParsedBackup['data'][K]> };
 };
 
 export function parseBackup(value: unknown): Backup {
@@ -245,8 +342,10 @@ export function parseBackup(value: unknown): Backup {
   // an older file are ignored, not validated, so they never make an otherwise valid restore fail.
   const input = (() => {
     const file = value as { version?: unknown; data?: unknown };
-    if (file.version === 3 || typeof file.data !== 'object' || file.data === null) return value;
+    if (file.version === 4 || typeof file.data !== 'object' || file.data === null) return value;
     const rest = { ...(file.data as Record<string, unknown>) };
+    for (const list of v4Lists) delete rest[list];
+    if (file.version === 3) return { ...file, data: rest };
     delete rest.cardio_goals;
     if (file.version === 1) delete rest.cardio_sessions;
     return { ...file, data: rest };
@@ -259,9 +358,14 @@ export function parseBackup(value: unknown): Backup {
       version >= 2 && !data.cardio_sessions
         ? `data.cardio_sessions: a v${version} backup needs a cardio records list`
         : null,
-      version === 3 && !data.cardio_goals
-        ? 'data.cardio_goals: a v3 backup needs a cardio goals list'
+      version >= 3 && !data.cardio_goals
+        ? `data.cardio_goals: a v${version} backup needs a cardio goals list`
         : null,
+      ...(version === 4
+        ? v4Lists
+            .filter((list) => !data[list])
+            .map((list) => `data.${list}: a v4 backup needs this list`)
+        : []),
     ].filter((m) => m !== null);
     if (missing.length)
       throw new BackupInvalid('Backup validation failed — ' + missing.join(' / '));
@@ -281,7 +385,12 @@ export function parseBackup(value: unknown): Backup {
       ...data,
       cardio_sessions: version === 1 ? [] : (data.cardio_sessions ?? []),
       // #253: v1 and v2 predate cardio goals.
-      cardio_goals: version === 3 ? (data.cardio_goals ?? []) : [],
+      cardio_goals: version >= 3 ? (data.cardio_goals ?? []) : [],
+      // #359: older files carry none of these.
+      body_measurements: data.body_measurements ?? [],
+      exercise_body_parts: data.exercise_body_parts ?? [],
+      exercise_weight_steps: data.exercise_weight_steps ?? [],
+      routine_rests: data.routine_rests ?? [],
     },
   };
 }
@@ -295,6 +404,10 @@ const tables = [
   'routines',
   'cardio_sessions',
   'cardio_goals',
+  'body_measurements',
+  'exercise_body_parts',
+  'exercise_weight_steps',
+  'routine_rests',
 ] as const;
 type Counts = { added: number; skipped: number; conflicts: number; deleted: number };
 export type RestoreSummary = {
@@ -343,13 +456,15 @@ const workoutKey = (
     weight: number;
     reps: number;
     notes: string;
+    completed: boolean;
+    rpe: number | null;
   }[],
 ) =>
   JSON.stringify([
     w.date,
     w.title,
     w.notes,
-    sets.map((s) => [s.exercise, s.machine_id, s.weight, s.reps, s.notes]),
+    sets.map((s) => [s.exercise, s.machine_id, s.weight, s.reps, s.notes, s.completed, s.rpe]),
   ]);
 
 async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'replace') {
@@ -365,11 +480,14 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   const t = summary.tables;
   // Readers continue; concurrent writers wait so the preview/restore sees a stable state.
   await client.query(
-    'LOCK TABLE brands, machines, workouts, sets, goals, routines, cardio_sessions, cardio_goals IN EXCLUSIVE MODE',
+    'LOCK TABLE brands, machines, workouts, sets, goals, routines, cardio_sessions, cardio_goals, body_measurements, exercise_body_parts, exercise_weight_steps, routine_rests IN EXCLUSIVE MODE',
   );
+  // #359: only a v4 file carries these tables, so only a v4 replace clears them.
+  const v4Tables = ['body_measurements', 'exercise_body_parts', 'exercise_weight_steps'] as const;
   if (mode === 'replace') {
     for (const table of tables)
-      t[table].deleted = (await client.query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n;
+      if (backup.version >= 4 || !(table === 'routine_rests' || v4Tables.some((v) => v === table)))
+        t[table].deleted = (await client.query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n;
     // Locked last, after the data tables, matching the order a workout save takes them.
     await client.query('LOCK TABLE workout_requests IN EXCLUSIVE MODE');
     // A kept key would replay {id} of a workout deleted here, so a client whose response
@@ -386,6 +504,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
       'routines',
       'machines',
       'brands',
+      ...(backup.version >= 4 ? v4Tables : []),
     ])
       await client.query(`DELETE FROM ${table}`);
   }
@@ -409,6 +528,11 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     t.brands.added++;
   }
 
+  // #359: official_machine_weights is seeded reference data; a link to a row this database
+  // does not have is dropped instead of failing the restore.
+  const officialIds = new Set<number>(
+    (await client.query('SELECT id FROM official_machine_weights')).rows.map((r) => r.id),
+  );
   const machineMap = new Map<number, number>();
   const machines = new Map<string, { id: number; base_weight: number | null; notes: string }>();
   for (const r of (
@@ -435,8 +559,17 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
     }
     const inserted = (
       await client.query(
-        'INSERT INTO machines(brand_id,name,base_weight,notes,single_joint) VALUES($1,$2,$3,$4,$5) RETURNING id',
-        [brandId, m.name, m.base_weight, m.notes, m.single_joint],
+        'INSERT INTO machines(brand_id,name,base_weight,notes,single_joint,official_weight_id) VALUES($1,$2,$3,$4,$5,$6) RETURNING id',
+        [
+          brandId,
+          m.name,
+          m.base_weight,
+          m.notes,
+          m.single_joint,
+          m.official_weight_id !== null && officialIds.has(m.official_weight_id)
+            ? m.official_weight_id
+            : null,
+        ],
       )
     ).rows[0].id;
     machines.set(brandId + '\u0000' + m.name, {
@@ -450,7 +583,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
 
   const seenWorkouts = new Seen();
   const existingWorkouts = await client.query(
-    `SELECT w.id, w.date, w.title, w.notes, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id`,
+    `SELECT w.id, w.date, w.title, w.notes, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes,'completed',s.completed,'rpe',s.rpe) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id`,
   );
   for (const r of existingWorkouts.rows) seenWorkouts.add(workoutKey(r, r.sets), r.id);
   // Backup workout id → the restored or matched existing workout, for cardio links (#114).
@@ -475,11 +608,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
       )
     ).rows[0].id;
     workoutMap.set(w.id, workoutId);
-    for (const [i, s] of sets.entries())
-      await client.query(
-        'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes) VALUES($1,$2,$3,$4,$5,$6,$7)',
-        [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes],
-      );
+    await insertSets(client, workoutId, sets);
     t.workouts.added++;
     t.sets.added += sets.length;
   }
@@ -534,8 +663,10 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
   }
 
   const seenRoutines = new Seen();
-  for (const r of (await client.query('SELECT plan FROM routines')).rows)
-    seenRoutines.add(canonical(r.plan));
+  for (const r of (await client.query('SELECT id, plan FROM routines')).rows)
+    seenRoutines.add(canonical(r.plan), r.id);
+  // Backup routine id → the restored or matched existing routine, for rest days (#359).
+  const routineMap = new Map<number, number>();
   for (const r of backup.data.routines) {
     // Machine ids in a plan point to the restored (or matched existing) machines (#82).
     const plan = {
@@ -547,15 +678,102 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
         ),
       })),
     };
-    if (seenRoutines.take(canonical(plan)) !== undefined) {
+    const matched = seenRoutines.take(canonical(plan));
+    if (matched !== undefined) {
+      routineMap.set(r.id, matched);
       t.routines.skipped++;
       continue;
     }
-    await client.query('INSERT INTO routines(plan, created_at) VALUES($1::jsonb, $2)', [
-      JSON.stringify(plan),
-      r.created_at,
-    ]);
+    const routineId = (
+      await client.query(
+        'INSERT INTO routines(plan, created_at) VALUES($1::jsonb, $2) RETURNING id',
+        [JSON.stringify(plan), r.created_at],
+      )
+    ).rows[0].id;
+    routineMap.set(r.id, routineId);
     t.routines.added++;
+  }
+
+  // #359: rest days follow their routine; a day already marked is skipped.
+  for (const r of backup.data.routine_rests) {
+    const added = await client.query(
+      'INSERT INTO routine_rests(routine_id, rest_date) VALUES($1,$2) ON CONFLICT DO NOTHING',
+      [routineMap.get(r.routine_id)!, r.rest_date],
+    );
+    if (added.rowCount) t.routine_rests.added++;
+    else t.routine_rests.skipped++;
+  }
+
+  // Body records are unique per date: an existing date is kept, and a different value is a conflict.
+  const bodyByDate = new Map<string, string>();
+  const bodyKey = (m: Omit<BodyRow, 'id' | 'created_at' | 'updated_at'>) =>
+    JSON.stringify([m.body_weight_kg, m.body_fat_percent, m.skeletal_muscle_kg]);
+  for (const r of (
+    await client.query(
+      'SELECT date, body_weight_kg::float8 body_weight_kg, body_fat_percent::float8 body_fat_percent, skeletal_muscle_kg::float8 skeletal_muscle_kg FROM body_measurements',
+    )
+  ).rows)
+    bodyByDate.set(r.date, bodyKey(r));
+  for (const m of backup.data.body_measurements) {
+    const existing = bodyByDate.get(m.date);
+    if (existing !== undefined) {
+      if (existing === bodyKey(m)) t.body_measurements.skipped++;
+      else {
+        t.body_measurements.conflicts++;
+        if (summary.conflicts.length < 20)
+          summary.conflicts.push(`Body record ${m.date}: existing value kept`);
+      }
+      continue;
+    }
+    await client.query(
+      'INSERT INTO body_measurements(date,body_weight_kg,body_fat_percent,skeletal_muscle_kg,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6)',
+      [
+        m.date,
+        m.body_weight_kg,
+        m.body_fat_percent,
+        m.skeletal_muscle_kg,
+        m.created_at,
+        m.updated_at,
+      ],
+    );
+    bodyByDate.set(m.date, bodyKey(m));
+    t.body_measurements.added++;
+  }
+
+  for (const r of backup.data.exercise_body_parts) {
+    const added = await client.query(
+      'INSERT INTO exercise_body_parts(exercise, body_part) VALUES($1,$2) ON CONFLICT DO NOTHING',
+      [r.exercise, r.body_part],
+    );
+    if (added.rowCount) t.exercise_body_parts.added++;
+    else t.exercise_body_parts.skipped++;
+  }
+
+  const stepByExercise = new Map<string, number>(
+    (
+      await client.query(
+        'SELECT exercise, weight_step::float8 weight_step FROM exercise_weight_steps',
+      )
+    ).rows.map((r) => [r.exercise, r.weight_step]),
+  );
+  for (const r of backup.data.exercise_weight_steps) {
+    const existing = stepByExercise.get(r.exercise);
+    if (existing !== undefined) {
+      if (existing === r.weight_step) t.exercise_weight_steps.skipped++;
+      else {
+        t.exercise_weight_steps.conflicts++;
+        if (summary.conflicts.length < 20)
+          summary.conflicts.push(
+            `${r.exercise}: existing weight step kept (${existing}kg, backup ${r.weight_step}kg)`,
+          );
+      }
+      continue;
+    }
+    await client.query('INSERT INTO exercise_weight_steps(exercise, weight_step) VALUES($1,$2)', [
+      r.exercise,
+      r.weight_step,
+    ]);
+    t.exercise_weight_steps.added++;
   }
   return summary;
 }
@@ -783,12 +1001,12 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         brands: (await client.query('SELECT id, name FROM brands ORDER BY id')).rows,
         machines: (
           await client.query(
-            'SELECT id, brand_id, name, base_weight, notes, single_joint FROM machines ORDER BY id',
+            'SELECT id, brand_id, name, base_weight, notes, single_joint, official_weight_id FROM machines ORDER BY id',
           )
         ).rows.map((m) => ({ ...m, base_weight: num(m.base_weight) })),
         workouts: (
           await client.query(
-            `SELECT w.id, w.date, w.title, w.notes, w.feedback, w.created_at, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id ORDER BY w.date, w.id`,
+            `SELECT w.id, w.date, w.title, w.notes, w.feedback, w.created_at, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes,'completed',s.completed,'rpe',s.rpe) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id ORDER BY w.date, w.id`,
           )
         ).rows,
         goals: (
@@ -805,6 +1023,27 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         ).rows,
         cardio_goals: (
           await client.query(`SELECT id, ${cardioGoalValues} FROM cardio_goals ORDER BY id`)
+        ).rows,
+        body_measurements: (
+          await client.query(
+            `SELECT id, date, body_weight_kg::float8 body_weight_kg, body_fat_percent::float8 body_fat_percent,
+              skeletal_muscle_kg::float8 skeletal_muscle_kg, created_at, updated_at FROM body_measurements ORDER BY date`,
+          )
+        ).rows,
+        exercise_body_parts: (
+          await client.query(
+            'SELECT exercise, body_part FROM exercise_body_parts ORDER BY exercise, body_part',
+          )
+        ).rows,
+        exercise_weight_steps: (
+          await client.query(
+            'SELECT exercise, weight_step::float8 weight_step FROM exercise_weight_steps ORDER BY exercise',
+          )
+        ).rows,
+        routine_rests: (
+          await client.query(
+            'SELECT routine_id, rest_date FROM routine_rests ORDER BY routine_id, rest_date',
+          )
         ).rows,
       },
     }));
@@ -831,7 +1070,7 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         request.confirm !== replaceConfirmation
       ) {
         res.status(400).json({
-          error: `Replace all deletes every existing record. Type the confirmation phrase "${replaceConfirmation}" exactly.`,
+          error: `Replace all deletes every existing record (workouts, machines, goals, routines, cardio, body records, and settings the backup carries). Type the confirmation phrase "${replaceConfirmation}" exactly.`,
         });
         return;
       }
@@ -839,14 +1078,30 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         // Preview runs the exact same steps and rolls back, so its summary matches a real run.
         const summary = await inTransaction(
           pool,
-          (client) => restore(client, backup, request.mode),
+          async (client) => {
+            const result = await restore(client, backup, request.mode);
+            // #360: a real restore leaves one audit row in the same transaction; a preview rolls back.
+            if (action === 'restore')
+              await writeAudit(client, {
+                ...auditContext(req, res),
+                action: request.mode === 'replace' ? 'delete' : 'create',
+                entity: 'backup',
+                after: { mode: request.mode, version: backup.version, tables: result.tables },
+              });
+            return result;
+          },
           { commit: () => action !== 'preview' },
         );
         if (action !== 'preview') summary.dry_run = false;
         res.json(summary);
       } catch (e) {
         console.error(
-          JSON.stringify({ event: 'backup_restore_error', action, message: (e as Error).message }),
+          JSON.stringify({
+            event: 'backup_restore_error',
+            action,
+            requestId: res.locals.requestId,
+            message: (e as Error).message,
+          }),
         );
         res.status(500).json({
           error:

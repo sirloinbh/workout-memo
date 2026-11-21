@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
-import { fieldErrors, goalSchema, workoutSchema } from '../src/contract.js';
+import { fieldErrors, goalSchema, machineSchema, workoutSchema } from '../src/contract.js';
 
 // #64: the server and the screens share these schemas and their messages.
 const set = { exercise: 'Squat', weight: 100, reps: 5 };
@@ -69,4 +69,41 @@ test('the API rejects invalid input with the same message', async () => {
   } finally {
     server.close();
   }
+});
+
+test('ids beyond the integer column range and weights with extra decimals are rejected (#363)', () => {
+  const set = { exercise: 'Squat', weight: 60, reps: 5 };
+  const base = { date: '2026-10-20', title: 'Lower body', sets: [set] };
+  assert.equal(workoutSchema.safeParse(base).success, true);
+  assert.equal(
+    workoutSchema.safeParse({ ...base, sets: [{ ...set, machine_id: 3000000000 }] }).success,
+    false,
+  );
+  assert.equal(workoutSchema.safeParse({ ...base, version: 3000000000 }).success, false);
+  assert.equal(
+    workoutSchema.safeParse({ ...base, sets: [{ ...set, weight: 42.555 }] }).success,
+    false,
+  );
+  assert.equal(
+    workoutSchema.safeParse({ ...base, sets: [{ ...set, weight: 42.55 }] }).success,
+    true,
+  );
+  assert.equal(
+    machineSchema.safeParse({ brand_id: 3000000000, name: 'Press', base_weight: null }).success,
+    false,
+  );
+  assert.equal(
+    machineSchema.safeParse({ brand_id: 1, name: 'Press', base_weight: 1.234 }).success,
+    false,
+  );
+  assert.equal(
+    goalSchema.safeParse({
+      exercise: 'Squat',
+      target_weight: 100.123,
+      target_reps: 5,
+      start_date: '2026-10-01',
+      deadline: '2026-10-31',
+    }).success,
+    false,
+  );
 });

@@ -41,12 +41,26 @@ export async function insertWorkout(db: Db, w: Workout): Promise<number> {
   return id;
 }
 
-async function insertSets(db: Db, workoutId: number, sets: Workout['sets']) {
-  for (const [i, s] of sets.entries())
-    await db.query(
-      'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes,completed,rpe) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes, s.completed, s.rpe],
-    );
+// #368: one multi-row INSERT for all sets (the arrays keep their order, which is the position).
+export async function insertSets(db: Db, workoutId: number, sets: Workout['sets']) {
+  if (!sets.length) return;
+  await db.query(
+    `INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes,completed,rpe)
+     SELECT $1, exercise, machine_id, weight, reps, position - 1, notes, completed, rpe
+     FROM unnest($2::text[], $3::int[], $4::numeric[], $5::int[], $6::text[], $7::boolean[], $8::numeric[])
+       WITH ORDINALITY AS t(exercise, machine_id, weight, reps, notes, completed, rpe, position)
+     ORDER BY position`,
+    [
+      workoutId,
+      sets.map((s) => s.exercise),
+      sets.map((s) => s.machine_id),
+      sets.map((s) => s.weight),
+      sets.map((s) => s.reps),
+      sets.map((s) => s.notes),
+      sets.map((s) => s.completed),
+      sets.map((s) => s.rpe),
+    ],
+  );
 }
 
 export function registerWorkoutRoutes(app: express.Express, pool: Pool) {

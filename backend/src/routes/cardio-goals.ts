@@ -21,13 +21,16 @@ export function registerCardioGoalRoutes(app: express.Express, pool: Pool, today
       )
     ).rows;
     const day = today();
-    const from = goals.reduce((min, g) => (g.start_date < min ? g.start_date : min), day);
-    // One read for every goal: sessions from the earliest start up to today (Seoul).
+    // One read for every goal, limited to the sessions inside some goal's own dates (start up to the
+    // deadline or today, Seoul): a session outside every window never counts toward any goal (#369).
     const sessions = goals.length
       ? (
           await pool.query<CardioGoalSession>(
-            'SELECT date, kind, duration_sec, distance_km::float8 AS distance_km FROM cardio_sessions WHERE date BETWEEN $1 AND $2',
-            [from, day],
+            `SELECT date, kind, duration_sec, distance_km::float8 AS distance_km FROM cardio_sessions c
+             WHERE date <= $3 AND EXISTS (
+               SELECT 1 FROM unnest($1::date[], $2::date[]) AS g(start_date, deadline)
+               WHERE c.date BETWEEN g.start_date AND g.deadline)`,
+            [goals.map((g) => g.start_date), goals.map((g) => g.deadline), day],
           )
         ).rows
       : [];

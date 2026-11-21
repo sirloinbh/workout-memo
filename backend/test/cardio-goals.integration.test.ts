@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 // #116: cardio goals against PostgreSQL. Each run uses its own schema in the test DB (like
 // cardio.integration.test.ts) so the rows never meet other test files.
@@ -32,14 +33,9 @@ async function isolated(run: (api: Api, pool: Pool) => Promise<void>) {
       .filter((f) => f.endsWith('.sql'))
       .sort())
       await pool.query(readFileSync(new URL(file, migrations), 'utf8'));
-    // Listen only after the migrations and wait right away: 'listening' fires once, so a
-    // listener attached after other awaits would never run and the test would hang.
-    const listening = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
+    // Listen only after the migrations.
+    const listening = await listenApp(createApp(pool, { today: () => today }));
     server = listening;
-    await new Promise<void>((resolve, reject) => {
-      listening.once('listening', resolve);
-      listening.once('error', reject);
-    });
     const address = listening.address();
     assert.ok(address && typeof address !== 'string');
     const api: Api = async (path, method = 'GET', body) => {

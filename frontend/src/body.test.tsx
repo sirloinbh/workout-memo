@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { expect, test, vi } from 'vitest';
+import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { fixClock, json, mockApi } from './test/api';
+import { confirmDelete } from './test/confirm';
 import { findLive } from './test/live';
 import { openPage } from './test/nav';
 
@@ -58,7 +59,6 @@ const fixture = (): Body[] => [
 
 function mount(now?: string) {
   if (now) fixClock(now);
-  vi.stubGlobal('confirm', () => true);
   let records = fixture();
   let nextId = 100;
   const workouts = [
@@ -338,6 +338,7 @@ test('edit sends a full replacement via PUT and delete removes the record', asyn
   expect(ui.chart('Weight').lines).toBe(1);
 
   await ui.click('Delete body record 2024-03-06');
+  await confirmDelete(ui.user);
   await waitFor(() => expect(ui.requests.filter((r) => r.method === 'DELETE')).toHaveLength(1));
   const del = ui.requests.filter((r) => r.method === 'DELETE').at(-1);
   expect(del?.path).toBe('/api/body-measurements/4');

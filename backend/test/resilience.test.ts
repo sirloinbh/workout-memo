@@ -8,6 +8,7 @@ import { createApp } from '../src/app.js';
 import { createPool } from '../src/standard/db.js';
 import { inTransaction } from '../src/transaction.js';
 import { createPushService } from '../src/web-push.js';
+import { listenApp } from './listen.js';
 
 // #361: the API keeps serving when the database drops a connection, a failed ROLLBACK does not hide
 // the real error, /api/health does not depend on the auth middleware, and shutdown waits for a push.
@@ -52,8 +53,7 @@ test('/api/health answers 200 even when the auth middleware rejects everything',
   const auth = (_req: unknown, res: { status: (n: number) => { json: (b: object) => void } }) =>
     res.status(401).json({ error: 'unauthorized' });
   const pool = { query: async () => ({ rows: [] }) } as unknown as Pool;
-  const server = createApp(pool, { auth: auth as never }).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool, { auth: auth as never }));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {
@@ -70,6 +70,7 @@ test('/api/health answers 200 even when the auth middleware rejects everything',
 test('the push stop function waits for a send in progress', async () => {
   const pool = {
     query: async (sql: string) => {
+      if (sql.includes('min(ends_at)')) return { rows: [{ at: Date.now() + 5 }] };
       if (sql.includes('RETURNING user_id')) return { rows: [{ user_id: 'u1' }] };
       if (sql.startsWith('SELECT'))
         return { rows: [{ endpoint: 'https://push.example/1', p256dh: 'k', auth: 'a' }] };
@@ -91,7 +92,7 @@ test('the push stop function waits for a send in progress', async () => {
       });
     },
   });
-  const stop = push.start(5);
+  const stop = push.start();
   while (!started) await new Promise((resolve) => setTimeout(resolve, 5));
   let stopped = false;
   const stopping = stop().then(() => (stopped = true));

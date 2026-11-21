@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
 import { defaultWeightStep, exerciseKeySql, limitLength, weightStepSchema } from '../domain.js';
+import { seoulTodaySql } from './shared.js';
 
 export const goalSuggestionQuery = z
   .object({ exercise: limitLength(z.string().trim(), { min: 1, max: 120 }) })
@@ -39,7 +40,8 @@ export function registerWeightStepRoutes(app: express.Express, pool: Pool) {
     });
   });
   // The next goal adds the increment to the latest goal of the exercise, or without one
-  // to the heaviest completed set of its latest workout. Nothing is saved here.
+  // to the heaviest completed set of its latest past workout (#365: today or earlier, weight above
+  // 0, like the analysis page, so a bodyweight set never suggests "0 kg + 5 kg"). Nothing is saved here.
   app.get('/api/goal-suggestion', async (req, res) => {
     const q = goalSuggestionQuery.parse(req.query);
     const key: string = (
@@ -63,7 +65,7 @@ export function registerWeightStepRoutes(app: express.Express, pool: Pool) {
       : (
           await pool.query(
             `SELECT s.weight::float8 weight, s.reps, w.date FROM sets s JOIN workouts w ON w.id=s.workout_id
-             WHERE s.completed AND ${exerciseKeySql('s.exercise')}=$1
+             WHERE s.completed AND s.weight>0 AND w.date<=${seoulTodaySql} AND ${exerciseKeySql('s.exercise')}=$1
              ORDER BY w.date DESC, w.id DESC, s.weight DESC, s.reps DESC LIMIT 1`,
             [key],
           )

@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import { fixClock, mockApi } from './test/api';
+import { confirmDelete } from './test/confirm';
 import { openPage } from './test/nav';
 
 // #116: cardio goals on the My Goals page. The server's judgment is shown as given. Today is
@@ -56,7 +57,6 @@ const ended = {
 
 function mount(goals: unknown[]) {
   fixClock();
-  vi.stubGlobal('confirm', () => true);
   const posted: unknown[] = [];
   const api = mockApi(({ method, url, body }) => {
     if (url.pathname === '/api/cardio-goals' && method === 'POST') {
@@ -176,6 +176,7 @@ test('deleting a cardio goal removes only that card', async () => {
   await openPage('My Goals', ui.user);
   await within(section()).findByRole('heading', { level: 3, name: 'Weekly running 15 km' });
   await ui.user.click(screen.getByRole('button', { name: 'Delete Weekly running 15 km goal' }));
+  await confirmDelete(ui.user);
   await waitFor(() =>
     expect(within(section()).queryByRole('heading', { name: 'Weekly running 15 km' })).toBeNull(),
   );
@@ -301,4 +302,15 @@ test('an achieved goal offers its next goal and fills the add form with it', asy
   expect(posted).toEqual([]);
   await user.click(within(dialog).getByRole('button', { name: 'Save cardio goal' }));
   await waitFor(() => expect(posted).toEqual([next]));
+});
+
+// #386: a goal whose target is 0 has a 0% bar, never NaN.
+test('a progress bar with a zero target reads 0, not NaN', async () => {
+  const ui = mount([{ ...weekly, target_distance_km: 0 }]);
+  render(<App />);
+  await openPage('My Goals', ui.user);
+  await within(section()).findByRole('progressbar');
+  const bar = within(section()).getByRole('progressbar');
+  expect(bar).toHaveAttribute('aria-valuenow', '0');
+  expect(section().innerHTML).not.toMatch(/NaN|Infinity/);
 });

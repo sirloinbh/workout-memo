@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { weightStepSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 import { autoRoutineInput } from './routine-fixture.js';
 
 // #86: per-exercise progressive overload increment (default 5 kg) and goal suggestions.
@@ -28,8 +29,7 @@ test(
     const prefix = `Step86-${randomUUID()}`;
     const bench = `${prefix}-Bench`;
     const today = '2097-03-04';
-    const server = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool, { today: () => today }));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const call = async (path: string, method = 'GET', body?: unknown) => {
@@ -60,12 +60,14 @@ test(
         completed,
       });
       for (const [date, sets] of [
-        ['2097-03-01', [set(120, 5)]],
-        ['2097-03-02', [set(100, 8), set(102.5, 6), set(150, 1, false)]],
+        ['2000-03-01', [set(120, 5)]],
+        // Bodyweight sets (0 kg) and future workouts are never the base (#365).
+        ['2000-03-02', [set(100, 8), set(102.5, 6), set(150, 1, false), set(0, 20)]],
+        ['2097-03-02', [set(200, 3)]],
       ] as const)
         assert.equal((await call('/workouts', 'POST', { date, title: prefix, sets })).status, 201);
       let s = await suggest();
-      assert.deepEqual(s.base, { source: 'record', weight: 102.5, reps: 6, date: '2097-03-02' });
+      assert.deepEqual(s.base, { source: 'record', weight: 102.5, reps: 6, date: '2000-03-02' });
       assert.equal(s.target_weight, 107.5);
 
       const saved = await call('/exercise-weight-steps', 'PUT', {

@@ -1,11 +1,11 @@
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Scale } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { ChartDot } from './chart-dot';
-import { AlertBanner } from './components/alert-banner';
 import { fieldLabel, formHint as hint, touchText } from './components/form-styles';
 import { List, ListItem } from './components/list';
-import { PageHeader } from './components/page-header';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
@@ -13,10 +13,13 @@ import { EmptyState } from './components/ui/empty-state';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { PageHeader } from './components/ui/page-header';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
+import { useConfirmDelete } from './components/use-confirm-delete';
 import { seoulDate } from './date';
 import { InbodyImport } from './inbody-import';
+import { requestJson } from './lib/api';
 import { cn } from './lib/utils';
 
 export type BodyRecord = {
@@ -49,23 +52,8 @@ const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigit
 const day = (value: string) => new Date(value.slice(0, 10) + 'T12:00:00Z');
 const days = (from: string, to: string) => Math.round((+day(to) - +day(from)) / 86400000);
 
-async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  try {
-    const res = await fetch('/api/body-measurements' + path, {
-      method,
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? 'The body record request failed');
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const request = <T,>(path: string, method = 'GET', body?: unknown) =>
+  requestJson<T>('/api/body-measurements' + path, { method, body, timeoutMs: 15000 });
 
 export function BodyMeasurements({
   from,
@@ -78,33 +66,31 @@ export function BodyMeasurements({
   workouts: WorkoutLike[];
   controls: React.ReactNode;
 }) {
-  const [rows, setRows] = useState<BodyRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient();
+  // The period is part of the key, so only the newest period's answer is shown; the old list stays on
+  // screen while the next one loads.
+  const query = useQuery({
+    queryKey: ['body-measurements', from, to],
+    queryFn: () => request<BodyRecord[]>(`?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
+  });
+  const rows = query.data ?? [];
+  const loading = query.isFetching;
+  const [actionError, setError] = useState('');
+  // A later successful load clears an earlier failed delete.
+  useEffect(() => setError(''), [query.dataUpdatedAt]);
+  const error = actionError || (query.error?.message ?? '');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [importing, setImporting] = useState(false);
-  const version = useRef(0);
-  const load = useCallback(async () => {
-    const current = ++version.current;
-    setLoading(true);
-    try {
-      const data = await request<BodyRecord[]>(`?from=${from}&to=${to}`);
-      // Only the newest period request may replace the list.
-      if (current !== version.current) return;
-      setRows(data);
-      setError('');
-    } catch (e) {
-      if (current === version.current) setError((e as Error).message);
-    } finally {
-      if (current === version.current) setLoading(false);
-    }
-  }, [from, to]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const load = () => queryClient.invalidateQueries({ queryKey: ['body-measurements'] });
+  const write = useMutation({
+    mutationFn: ({ path, method, body }: { path: string; method: string; body?: unknown }) =>
+      request(path, method, body),
+    onSuccess: load,
+  });
 
   async function save() {
     if (!draft || saving) return;
@@ -125,10 +111,13 @@ export function BodyMeasurements({
     setSaving(true);
     setFormError('');
     try {
-      await request(draft.id ? '/' + draft.id : '', draft.id ? 'PUT' : 'POST', body);
+      await write.mutateAsync({
+        path: draft.id ? '/' + draft.id : '',
+        method: draft.id ? 'PUT' : 'POST',
+        body,
+      });
       setDraft(null);
       setStatus('Body record saved');
-      await load();
     } catch (e) {
       // Keep the input so the user can change the date or edit the existing record.
       setFormError((e as Error).message);
@@ -137,18 +126,21 @@ export function BodyMeasurements({
     }
   }
   async function remove(row: BodyRecord) {
-    if (saving || !confirm(`Delete the body record for ${row.date.slice(0, 10)}?`)) return;
+    if (saving) return;
     setSaving(true);
     try {
-      await request('/' + row.id, 'DELETE');
+      await write.mutateAsync({ path: '/' + row.id, method: 'DELETE' });
       setStatus('Body record deleted');
-      await load();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSaving(false);
     }
   }
+  const deleting = useConfirmDelete<BodyRecord>({
+    title: (row) => `Delete the body record for ${row.date.slice(0, 10)}?`,
+    onConfirm: remove,
+  });
   const volumeByDate = new Map<string, number>();
   for (const w of workouts) {
     const date = w.date.slice(0, 10);
@@ -184,6 +176,7 @@ export function BodyMeasurements({
   return (
     <section>
       <PageHeader
+        className="mb-6 md:mb-9"
         eyebrow="BODY CHANGES, SIDE BY SIDE"
         title="Track your body changes too"
         description="Record weight, body fat, and skeletal muscle mass by date. Values you did not measure can be left blank and are stored as not entered; nothing is estimated."
@@ -206,7 +199,7 @@ export function BodyMeasurements({
       {controls}
       {error && (
         <AlertBanner
-          className="mt-4"
+          className="mt-4 mb-5"
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
               Reconnect
@@ -234,7 +227,7 @@ export function BodyMeasurements({
                 void save();
               }}
             >
-              {formError && <AlertBanner>{formError}</AlertBanner>}
+              {formError && <AlertBanner className="mb-5">{formError}</AlertBanner>}
               <fieldset
                 disabled={saving}
                 className="m-0 grid min-w-0 grid-cols-2 gap-x-3 border-0 p-0 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1"
@@ -377,7 +370,7 @@ export function BodyMeasurements({
                       size="sm"
                       disabled={saving}
                       aria-label={`Delete body record ${date}`}
-                      onClick={() => void remove(row)}
+                      onClick={(e) => deleting.ask(row, e.currentTarget)}
                     >
                       Delete
                     </Button>
@@ -388,6 +381,7 @@ export function BodyMeasurements({
           </List>
         )}
       </Card>
+      {deleting.dialog}
     </section>
   );
 }

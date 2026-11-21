@@ -5,6 +5,7 @@ import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { bodyMeasurementSchema } from '../src/domain.js';
+import { listenApp } from './listen.js';
 
 type Query = { text: string; values?: unknown[] };
 async function withServer(
@@ -20,8 +21,7 @@ async function withServer(
       return respond({ text, values });
     },
   } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {

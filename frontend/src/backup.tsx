@@ -1,8 +1,8 @@
 import { Download } from 'lucide-react';
 import React, { useState } from 'react';
 
-import { AlertBanner } from './components/alert-banner';
 import { selectField, touchText } from './components/form-styles';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './components/ui/card';
 import { Input } from './components/ui/input';
@@ -10,6 +10,7 @@ import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { Spinner } from './components/ui/spinner';
 import { plural } from './labels';
+import { requestJson } from './lib/api';
 import { cn } from './lib/utils';
 
 // Analysis CSV and restore backup are separate artifacts (#33). The server validates and
@@ -57,16 +58,8 @@ const rowsFor = (tables: Record<string, Counts>): [string, string][] => [
     .filter((key) => !knownTables.has(key))
     .map((key): [string, string] => [key, humanize(key)]),
 ];
-async function post(path: string, body: unknown): Promise<Summary> {
-  const response = await fetch('/api/backup/' + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json();
-  if (!response.ok) throw Error(data.error ?? 'The backup request failed');
-  return data;
-}
+const post = (path: string, body: unknown) =>
+  requestJson<Summary>('/api/backup/' + path, { method: 'POST', body });
 
 export function Backup({ onRestored }: { onRestored: () => void }) {
   const [backup, setBackup] = useState<unknown>(null);

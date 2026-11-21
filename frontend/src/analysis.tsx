@@ -1,18 +1,21 @@
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { AlertBanner } from './components/alert-banner';
-import { DateStepper, RangeSummary } from './components/date-stepper';
-import { SegmentedControl } from './components/segmented-control';
+import { bodyParts, legacyBodyParts } from '../../shared/contract';
 import { ToggleChips } from './components/toggle-chips';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { DateStepper, RangeSummary } from './components/ui/date-stepper';
 import { EmptyState } from './components/ui/empty-state';
+import { SegmentedControl } from './components/ui/segmented-control';
 import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { bodyPartLabel, plural } from './labels';
+import { requestJson } from './lib/api';
 import { cn } from './lib/utils';
 
 // #102: the whole analysis page is on the common components: period controls from #224
@@ -26,8 +29,8 @@ const cell =
   '[&>td]:px-2 [&>td]:py-1 [&>td]:text-left [&>th]:px-2 [&>th]:py-1 [&>th]:text-left [&>th]:font-medium';
 
 // #88: 이두·삼두 replace 팔 for new choices; a saved 팔 is still listed so it can be cleared.
-const parts = ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'];
-const legacyParts = ['팔'];
+const parts: string[] = [...bodyParts];
+const legacyParts: string[] = [...legacyBodyParts];
 type PersonalRecord = { value: number; weight: number; reps: number; date: string; ties: number };
 type Exercise = {
   key: string;
@@ -73,16 +76,8 @@ function analysisRange(anchor: string, weeks: number) {
   const monday = shift(anchor, -((day + 6) % 7));
   return { from: shift(monday, -7 * (weeks - 1)), to: shift(monday, 6) };
 }
-async function request<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch('/api' + path, {
-    method: body ? 'PUT' : 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await response.json();
-  if (!response.ok) throw Error(data.error ?? 'The analysis request failed');
-  return data;
-}
+const request = <T,>(path: string, body?: unknown) =>
+  requestJson<T>('/api' + path, { method: body ? 'PUT' : 'GET', body });
 // #125: one line per exercise in the list: best weight, estimated 1RM and the last date.
 const summary = (x: Exercise) =>
   [
@@ -98,9 +93,8 @@ const record = (r: PersonalRecord | null, value: (r: PersonalRecord) => string, 
 export function Analysis() {
   const [anchor, setAnchor] = useState(seoulDate());
   const [weeks, setWeeks] = useState(1);
-  const [data, setData] = useState<Result | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<{ exercise: string; key: string; parts: string[] } | null>(
     null,
@@ -121,37 +115,39 @@ export function Analysis() {
     } else if (target) listButtons.current.get(target.key)?.focus();
   }, [selected]);
   const { from, to } = analysisRange(anchor, weeks);
-  const version = useRef(0);
-  const load = useCallback(async () => {
-    const current = ++version.current;
-    setLoading(true);
-    try {
-      const result = await request<Result>(`/analysis?from=${from}&to=${to}`);
-      // An older range's late response must not replace the latest one.
-      if (current !== version.current) return;
-      setData(result);
-      setError('');
-    } catch (e) {
-      if (current === version.current) setError((e as Error).message);
-    } finally {
-      if (current === version.current) setLoading(false);
-    }
-  }, [from, to]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // The range is part of the key, so an older range's late answer never replaces the latest one; the
+  // previous cards stay on screen while the next range loads.
+  const query = useQuery({
+    queryKey: ['analysis', from, to],
+    queryFn: () => request<Result>(`/analysis?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
+  });
+  const data = query.data ?? null;
+  const error = query.error?.message ?? '';
+  const loading = query.isFetching;
+  const load = () => query.refetch();
+  const saveBodyParts = useMutation({
+    mutationFn: (body: { exercise: string; body_parts: string[] }) =>
+      request('/exercise-body-parts', body),
+    // The mapping also picks the rest of a set in the journal.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['analysis'] }),
+        queryClient.invalidateQueries({ queryKey: ['exercise-body-parts'] }),
+      ]),
+  });
   async function saveParts() {
     if (!editing || saving) return;
     setSaving(true);
+    setSaveError('');
     try {
-      await request('/exercise-body-parts', {
+      await saveBodyParts.mutateAsync({
         exercise: editing.exercise,
         body_parts: [...legacyParts, ...parts].filter((p) => editing.parts.includes(p)),
       });
       setEditing(null);
-      await load();
     } catch (e) {
-      setError((e as Error).message);
+      setSaveError((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -216,6 +212,7 @@ export function Analysis() {
       </RangeSummary>
       {error && (
         <AlertBanner
+          className="mb-5"
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
               Reconnect
@@ -224,6 +221,9 @@ export function Analysis() {
         >
           {error}
         </AlertBanner>
+      )}
+      {saveError && (
+        <AlertBanner className="mb-5">Could not save the body parts: {saveError}</AlertBanner>
       )}
       {/* #173: placeholders in the shape of the two cards on the first load; a reload keeps the
           cards and shows a short status line instead. */}

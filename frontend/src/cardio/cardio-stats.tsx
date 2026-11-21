@@ -3,9 +3,9 @@ import { useState } from 'react';
 
 import type { CardioKind } from '../../../shared/contract';
 import { ChartDot } from '../chart-dot';
-import { SegmentedControl, type SegmentOption } from '../components/segmented-control';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
+import { SegmentedControl, type SegmentOption } from '../components/ui/segmented-control';
 import { SkeletonCard } from '../components/ui/skeleton';
 import { rangeDays } from '../date-range';
 import { plural } from '../labels';
@@ -189,7 +189,7 @@ export function CardioStats({
 // Bars in the volume chart's style (rounded top, bg-primary), with the values as the image's
 // text alternative. Kinds share one monochrome palette, so each kind gets its own small chart
 // instead of a coloured stack.
-function Trend({
+export function Trend({
   title,
   buckets,
   unit,
@@ -206,7 +206,8 @@ function Trend({
 }) {
   const Heading = small ? 'h4' : 'h3';
   const values = buckets.map((b) => value(b, metric));
-  const max = Math.max(...values);
+  // No buckets gives no bars, not -Infinity heights and a label with nothing after the title (#386).
+  const max = values.length ? Math.max(...values) : 0;
   // Up to a year of weeks: only every few labels are drawn so they do not overlap.
   const labelStep = Math.ceil(buckets.length / (small ? 6 : 12));
   const name = (b: Bucket) => (unit === 'week' ? `week of ${b.label}` : b.label);
@@ -217,8 +218,10 @@ function Trend({
         {max > 0 && <span>Max {text(buckets[values.indexOf(max)], metric, kind)}</span>}
       </figcaption>
       {max === 0 ? (
-        // Only possible for distance: the sessions here have time but no distance.
-        <p className="text-body-sm text-muted-foreground">No records with a distance</p>
+        // No buckets, or only for distance: the sessions here have time but no distance.
+        <p className="text-body-sm text-muted-foreground">
+          {buckets.length ? 'No records with a distance' : 'No records in this period'}
+        </p>
       ) : (
         <div
           data-slot="cardio-trend"

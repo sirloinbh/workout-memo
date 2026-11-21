@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
-import { type AnalysisSet, analyze } from '../../backend/src/analysis';
+import { type AnalysisSet, analyze } from '../../shared/contract';
 import { App } from './app';
 import { bodyPartLabel } from './labels';
 import { fixClock, json, mockApi } from './test/api';
@@ -55,7 +55,8 @@ function mount(initialRows: Row[] = []) {
   return { server, requests: api.requests, user, analysisRequests };
 }
 
-const page = () => document.body.textContent ?? '';
+// Text is looked up the way a user reads the screen: by the element that shows it.
+const shows = (text: RegExp) => screen.queryAllByText(text);
 const loaded = () =>
   waitFor(() => {
     expect(screen.queryByText('Loading analysis…')).toBeNull();
@@ -109,12 +110,12 @@ test('empty analysis shows Monday-start week totals, 미분류 and the 1RM polic
   await openPage('Exercise Analysis', ui.user);
   await loaded();
   expect(ui.analysisRequests()).toEqual(['/api/analysis?from=2026-10-12&to=2026-10-18']);
-  expect(page()).toMatch(/No records to analyze/);
-  expect(page()).toMatch(/Est\. 1RM = total weight kg × \(1 \+ reps ÷ 30\)/);
-  expect(page()).toMatch(/applies only to sets of 1-10 reps/);
-  expect(page()).toMatch(/measured 1RM/);
-  expect(page()).toMatch(/body part totals can be larger than the weekly total/);
-  expect(page()).toMatch(/2026-10-12 — 2026-10-18 · Total 0 sets · 0kg/);
+  expect(shows(/No records to analyze/).length).toBeGreaterThan(0);
+  expect(shows(/Est\. 1RM = total weight kg × \(1 \+ reps ÷ 30\)/).length).toBeGreaterThan(0);
+  expect(shows(/applies only to sets of 1-10 reps/).length).toBeGreaterThan(0);
+  expect(shows(/measured 1RM/).length).toBeGreaterThan(0);
+  expect(shows(/body part totals can be larger than the weekly total/).length).toBeGreaterThan(0);
+  expect(shows(/2026-10-12 — 2026-10-18 · Total 0 sets · 0kg/).length).toBeGreaterThan(0);
   expect(partRow('2026-10-12', '미분류')).toBe('Unclassified0 sets0kg');
   expect(ui.requests.filter((r) => r.method !== 'GET')).toHaveLength(0);
 });
@@ -180,7 +181,7 @@ test('PRs show ties, exclusions and trends; mapping and journal changes recomput
   expect(partRow('2026-10-12', '가슴')).toBe('Chest4 sets1,060kg');
   expect(partRow('2026-10-12', '어깨')).toBe('Shoulders4 sets1,060kg');
   expect(partRow('2026-10-12', '미분류')).toBe('Unclassified1 set640kg');
-  expect(page()).toMatch(/2026-10-12 — 2026-10-18 · Total 5 sets · 1,700kg/);
+  expect(shows(/2026-10-12 — 2026-10-18 · Total 5 sets · 1,700kg/).length).toBeGreaterThan(0);
 
   // Journal edits/deletes happen elsewhere; returning re-reads the server records.
   ui.server.rows = ui.server.rows

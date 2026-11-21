@@ -1,8 +1,14 @@
-import { defaultWeightStep } from '../../shared/contract';
+import {
+  defaultWeightStep,
+  deloadWeight,
+  type ProgressionKind,
+  type ProgressionLevel,
+  progressionStep,
+} from '../../shared/contract';
 
 // Automatic double progression (#28 rule change), used for the routine form
-// preview. Mirrors backend/src/progress.ts without saved records: every session
-// is assumed met. Targets advance once per session (workout day) of the
+// preview. The rule itself (progressionStep, deloadWeight) is the shared contract's, the same code
+// the server runs; this file only walks the sessions without saved records: every session is assumed met. Targets advance once per session (workout day) of the
 // exercise's split; sessions in weeks 4/8/12 are deloads. A backend test
 // compares both implementations.
 export type AutoExercise = {
@@ -30,13 +36,9 @@ export type PreviewRow = {
   sets: number;
   weight: number;
   reps: number;
-  kind: 'start' | 'reps' | 'weight' | 'hold' | 'deload';
+  kind: ProgressionKind;
   increment: number;
 };
-
-const round = (value: number) => Math.round(value * 100) / 100;
-const to25 = (value: number) => Math.round(value / 2.5) * 2.5;
-export const deloadWeight = (weight: number) => Math.max(0, to25(weight * 0.9));
 
 export type Session = { week: number; session: number };
 // Sessions of each split in plan order; `session` is the n-th training day of its week.
@@ -68,7 +70,7 @@ export function projectExercise(ex: AutoExercise, sessions: Session[]): PreviewR
   const sets = Number(ex.sets);
   const min = Number(ex.rep_min);
   const max = Number(ex.rep_max);
-  let level = { weight: Number(ex.weight), reps: Number(ex.reps) };
+  let level: ProgressionLevel = { weight: Number(ex.weight), reps: Number(ex.reps) };
   let kind: PreviewRow['kind'] = 'start';
   let increment = 0;
   let previous: typeof level | null = null;
@@ -89,18 +91,15 @@ export function projectExercise(ex: AutoExercise, sessions: Session[]): PreviewR
     }
     rows.push({ week, session, sets, ...level, kind, increment });
     previous = level;
-    if (level.reps + 1 <= max) {
-      level = { ...level, reps: level.reps + 1 };
-      kind = 'reps';
-      increment = 0;
-    } else if (level.weight === 0) {
-      kind = 'hold';
-      increment = 0;
-    } else {
-      increment = ex.weight_step ?? defaultWeightStep;
-      level = { weight: Math.min(99999, round(level.weight + increment)), reps: min };
-      kind = 'weight';
-    }
+    // The rule is the server's: one shared function (#377).
+    const next = progressionStep(level, {
+      rep_min: min,
+      rep_max: max,
+      weight_step: ex.weight_step,
+    });
+    increment = next.kind === 'weight' ? (ex.weight_step ?? defaultWeightStep) : 0;
+    level = next.level;
+    kind = next.kind;
   }
   return rows;
 }

@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { type RoutinePlan, routineSchedule } from '../src/domain.js';
+import { listenApp } from './listen.js';
 import { autoRoutineInput } from './routine-fixture.js';
 
 // Adaptive auto targets read the real saved journal sets. Far-future dates keep
@@ -27,8 +28,7 @@ test(
     const slots = routineSchedule(input as unknown as RoutinePlan);
     const third = slots[2].date; // week 1, session 3
     let today = slots[0].date;
-    const server = createApp(pool, { today: () => today }).listen(0, '127.0.0.1');
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const server = await listenApp(createApp(pool, { today: () => today }));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const call = async (path: string, method = 'GET', body?: unknown) => {

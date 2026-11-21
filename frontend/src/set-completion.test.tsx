@@ -83,7 +83,7 @@ const pressed = (i = 0) => completion(i).getAttribute('aria-pressed');
 const autoStart = () => screen.getByRole('switch', { name: 'Auto-start when a set is done' });
 const duration = () => screen.getByRole('spinbutton', { name: 'Rest time (sec)' });
 // #83: workout feedback replaced the per-set RPE input.
-const feedback = (label: string) => screen.getByRole('button', { name: label });
+const feedback = (label: string) => screen.getByRole('radio', { name: label });
 const timer = () => document.querySelector('[data-slot=rest-timer]')?.textContent ?? '';
 const content = () => document.body.textContent ?? '';
 const stat = (label: string) => {
@@ -216,7 +216,7 @@ test('refresh restores timer from its end time and set state from the draft', as
   await second.user.click(screen.getByRole('button', { name: /Restore/ }));
   await loaded();
   expect(pressed()).toBe('true');
-  expect(feedback('Hard')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Hard')).toHaveAttribute('aria-checked', 'true');
   expect(autoStart(), 'auto-start preference persists').toBeChecked();
   await submit(second);
   expect(second.sentFeedback()).toBe('hard');
@@ -234,14 +234,14 @@ test('pressing the chosen feedback again sends null, and corrupt timer storage d
   expect(timer()).toMatch(/1:30/);
   expect(document.querySelector('input[step="0.5"]'), 'no RPE input').toBeNull();
   await ui.user.click(feedback('Medium'));
-  expect(feedback('Medium')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Medium')).toHaveAttribute('aria-checked', 'true');
   await ui.user.click(feedback('Medium'));
-  expect(feedback('Medium')).toHaveAttribute('aria-pressed', 'false');
+  expect(feedback('Medium')).toHaveAttribute('aria-checked', 'false');
   await ui.user.click(feedback('Easy'));
   await ui.user.click(feedback('Hard'));
-  expect(feedback('Hard')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Hard')).toHaveAttribute('aria-checked', 'true');
   expect(feedback('Easy'), 'only one level stays selected').toHaveAttribute(
-    'aria-pressed',
+    'aria-checked',
     'false',
   );
   await ui.user.click(feedback('Hard'));
@@ -313,7 +313,7 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
   await loaded();
   await waitFor(() => expect(content()).toMatch(/Effort Easy/));
   await ui.user.click(screen.getByRole('button', { name: 'Edit' }));
-  expect(feedback('Easy')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Easy')).toHaveAttribute('aria-checked', 'true');
   await ui.user.click(feedback('Hard'));
   await submit(ui);
   expect(ui.mutations().at(-1)!.method).toBe('PUT');
@@ -325,8 +325,9 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
 // ended long ago (a reload or a long background stay), and never twice for the same end.
 test('a rest that ends while the app is open vibrates once, a long-past end stays silent', async () => {
   const vibrate = vi.fn(() => true);
-  Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
-  try {
+  // The shared afterEach unstubs globals, so nothing is left on navigator.
+  vi.stubGlobal('navigator', Object.create(navigator, { vibrate: { value: vibrate } }));
+  {
     const ui = mount();
     await openNew(ui);
     await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
@@ -343,8 +344,6 @@ test('a rest that ends while the app is open vibrates once, a long-past end stay
     ui.returnToTab(90000 + 60000);
     expect(timer()).toMatch(/Rest over/);
     expect(vibrate, 'an end found a minute late is silent').toHaveBeenCalledTimes(1);
-  } finally {
-    delete (navigator as Partial<Navigator>).vibrate;
   }
 });
 
@@ -375,4 +374,32 @@ test('a running rest comes first on a page drawn by its own component', async ()
     page.querySelector<HTMLElement>('[data-slot=rest-timer]'),
   );
   expect(page.firstElementChild).toHaveClass('sticky');
+});
+
+// #382: rows are keyed by a client id, so removing a middle set leaves the others' state with their own set.
+test('deleting the second of three sets keeps the third set completed and its undo guard', async () => {
+  const ui = mount();
+  await openNew(ui);
+  await ui.user.click(completion(2));
+  expect(pressed(2)).toBe('true');
+  await ui.user.click(screen.getAllByRole('button', { name: 'Delete set' })[1]);
+  expect(screen.getAllByRole('button', { name: /Set \d+ done/ })).toHaveLength(2);
+  expect(pressed(0)).toBe('false');
+  expect(pressed(1), 'the former third set is still completed').toBe('true');
+  // The quick second tap right after completing is a double tap: the guard follows the set, not the index.
+  await ui.user.click(completion(1));
+  expect(pressed(1), 'a repeat tap does not undo it').toBe('true');
+});
+
+test('the ticking readout is not a live region; a state change is announced separately', async () => {
+  const ui = mount();
+  await openNew(ui);
+  const readout = () => screen.getByRole('timer');
+  expect(readout()).not.toHaveAttribute('aria-live');
+  const announcement = () => document.querySelector('[data-slot=rest-announcement]') as HTMLElement;
+  expect(announcement()).toHaveAttribute('aria-live', 'polite');
+  expect(announcement()).toBeEmptyDOMElement();
+  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
+  expect(announcement()).toHaveTextContent('Rest running');
+  expect(readout()).not.toHaveAttribute('aria-live');
 });

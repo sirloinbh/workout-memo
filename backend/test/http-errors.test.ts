@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 // #172: the API answers with the central standard/http.ts shapes. A fake pool stands in for
 // PostgreSQL, so these run without a test database.
@@ -17,8 +18,7 @@ async function withApi(query: Query, run: (base: string, queries: string[]) => P
       return query(sql);
     },
   } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {

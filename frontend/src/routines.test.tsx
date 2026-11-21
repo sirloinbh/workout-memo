@@ -2,12 +2,16 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
-import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
+import { autoRoutineInput, routineInput } from '../../shared/contract';
 import { App } from './app';
 import { bodyPartLabel } from './labels';
 import { deferred, json, mockApi } from './test/api';
 import { getLive, queryLive } from './test/live';
 import { openPage } from './test/nav';
+
+// The editor tests drive a long multi-step form; under CPU load a single one has taken over
+// the shared 15 s limit, so this file allows a minute per test (#380).
+vi.setConfig({ testTimeout: 60_000 });
 
 // Ported from backend/test/routines-ui.test.ts (vm hook harness) to a real DOM.
 // Like the legacy harness, forms are submitted with fireEvent.submit, which skips
@@ -127,12 +131,8 @@ test('routine screen re-queries saved plans and displays all 12 manual weeks wit
   await openRoutines();
   expect(ui.requests.some((r) => r.path === '/api/routines' && r.method === 'GET')).toBe(true);
   await waitFor(() => expect(ui.text()).toMatch(/Manual 12-week routine/));
-  // The list may show the complete plan or expose a detail button.
-  const detail = screen.queryAllByRole('button', { name: 'View plan' })[0];
-  if (detail) {
-    await ui.user.click(detail);
-    await waitFor(() => expect(document.querySelector('article')).not.toBeNull());
-  }
+  await ui.click('View plan');
+  await waitFor(() => expect(document.querySelector('article')).not.toBeNull());
   for (let week = 1; week <= 12; week++)
     expect(ui.text()).toMatch(new RegExp(`Week ${week}(?!\\d)`));
   for (const week of [4, 8, 12]) {

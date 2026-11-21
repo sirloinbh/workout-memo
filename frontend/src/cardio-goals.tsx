@@ -1,5 +1,6 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Timer } from 'lucide-react';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 
 import {
   type CardioGoalInput,
@@ -17,22 +18,25 @@ import {
   metresToKm,
   optionalNumber,
 } from './cardio/format';
-import { AlertBanner } from './components/alert-banner';
-import { FieldError } from './components/field';
-import { invalidProps } from './components/field-props';
 import { fieldLabel, formHint as hint, selectField, touchText } from './components/form-styles';
 import { Modal } from './components/modal';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardDescription, CardTitle } from './components/ui/card';
 import { EmptyState } from './components/ui/empty-state';
+import { FieldError } from './components/ui/field';
+import { invalidProps } from './components/ui/field-props';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
+import { useConfirmDelete } from './components/use-confirm-delete';
 import { seoulDate } from './date';
 import { plural } from './labels';
+import { requestJson } from './lib/api';
+import { useApiQuery } from './lib/query';
 
 // #116: cardio goals on the My Goals page, next to the strength goals. The server judges them;
 // this screen only shows the judgment. Kind labels and time/distance formats come from the
@@ -83,6 +87,9 @@ const amount = (goal: GoalShape, value: number) =>
 // Swimming goals read in metres like the session screen; every kind together stays in km.
 const distanceOf = (goal: GoalShape, value: number) =>
   goal.kind ? formatDistance(goal.kind, value)! : `${km(value)} km`;
+// Progress as 0-100; a target of 0 (or less) gives 0 instead of NaN (#386).
+const percentOf = (value: number, target: number) =>
+  target > 0 ? Math.min(100, (value / target) * 100) : 0;
 const targetOf = (goal: GoalShape) =>
   goal.goal_type === 'count'
     ? goal.target_count!
@@ -100,72 +107,61 @@ function goalTitle(goal: GoalShape) {
   return `${goal.period === 'week' ? 'Weekly' : 'Monthly'} ${kind.toLowerCase()} ${amount(goal, targetOf(goal))}`;
 }
 
-async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  try {
-    const res = await fetch('/api/cardio-goals' + path, {
-      method,
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? 'The cardio goal request failed');
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const request = <T,>(path: string, method = 'GET', body?: unknown) =>
+  requestJson<T>('/api/cardio-goals' + path, { method, body, timeoutMs: 15000 });
 
 export function CardioGoals({ deadline }: { deadline: string }) {
-  const [goals, setGoals] = useState<StoredGoal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient();
+  const query = useApiQuery<StoredGoal[]>(['cardio-goals'], '/api/cardio-goals');
+  const goals = query.data ?? [];
+  const loading = query.isFetching;
+  const [actionError, setError] = useState('');
+  // A reload that works clears an earlier failed delete, as a fresh load always did.
+  useEffect(() => setError(''), [query.dataUpdatedAt]);
+  const error =
+    actionError || (query.error ? `Could not load cardio goals: ${query.error.message}` : '');
   const [status, setStatus] = useState('');
   // The add form, empty or filled with a suggested next goal (#251).
   const [editor, setEditor] = useState<{ initial: GoalShape | null } | null>(null);
   const [saving, setSaving] = useState(false);
   const today = seoulDate();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      setGoals(await request<StoredGoal[]>(''));
-    } catch (e) {
-      setError(`Could not load cardio goals: ${(e as Error).message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useEffect(() => void load(), [load]);
+  const load = () => query.refetch();
+  // A saved goal stays saved even if the list refetch fails: the mutation only waits for the refetch.
+  const write = useMutation({
+    mutationFn: ({ path, method, body }: { path: string; method: string; body?: unknown }) =>
+      request(path, method, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cardio-goals'] }),
+  });
 
   async function save(goal: CardioGoalInput) {
     setSaving(true);
     try {
-      await request('', 'POST', goal);
+      await write.mutateAsync({ path: '', method: 'POST', body: goal });
       setEditor(null);
       setStatus('Cardio goal saved.');
-      await load();
     } finally {
       setSaving(false);
     }
   }
   async function remove(goal: StoredGoal) {
-    if (!confirm('Delete this cardio goal?')) return;
+    if (saving) return;
     setSaving(true);
     setError('');
     try {
-      await request('/' + goal.id, 'DELETE');
+      await write.mutateAsync({ path: '/' + goal.id, method: 'DELETE' });
       setStatus('Cardio goal deleted.');
-      await load();
     } catch (e) {
       setError(`Could not delete the cardio goal: ${(e as Error).message}`);
     } finally {
       setSaving(false);
     }
   }
+
+  const deleting = useConfirmDelete<StoredGoal>({
+    title: () => 'Delete this cardio goal?',
+    onConfirm: remove,
+  });
 
   return (
     <section aria-labelledby="cardio-goals-title" className="mt-10">
@@ -186,6 +182,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
       </div>
       {error && (
         <AlertBanner
+          className="mb-5"
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
               Reconnect
@@ -219,7 +216,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
               goal={g}
               today={today}
               saving={saving}
-              remove={(goal) => void remove(goal)}
+              remove={(goal, button) => deleting.ask(goal, button)}
               suggest={(next) => setEditor({ initial: next })}
             />
           ))}
@@ -235,6 +232,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
           />
         </Modal>
       )}
+      {deleting.dialog}
     </section>
   );
 }
@@ -249,7 +247,7 @@ function GoalCard({
   goal: StoredGoal;
   today: string;
   saving: boolean;
-  remove: (goal: StoredGoal) => void;
+  remove: (goal: StoredGoal, button: HTMLButtonElement) => void;
   suggest: (next: GoalShape) => void;
 }) {
   const title = goalTitle(goal);
@@ -306,13 +304,13 @@ function GoalCard({
                 aria-label={`${title} progress this ${unit}`}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={Math.min(100, Math.round((p.current.value / targetOf(goal)) * 100))}
+                aria-valuenow={Math.round(percentOf(p.current.value, targetOf(goal)))}
                 className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted"
               >
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{
-                    width: `${Math.min(100, (p.current.value / targetOf(goal)) * 100)}%`,
+                    width: `${percentOf(p.current.value, targetOf(goal))}%`,
                   }}
                 />
               </div>
@@ -353,7 +351,7 @@ function GoalCard({
         className="mt-3 px-0"
         aria-label={`Delete ${title} goal`}
         disabled={saving}
-        onClick={() => remove(goal)}
+        onClick={(e) => remove(goal, e.currentTarget)}
       >
         Delete goal
       </Button>
@@ -499,7 +497,7 @@ function CardioGoalForm({
 
   return (
     <form noValidate onSubmit={(event) => void submit(event)}>
-      {failure && <AlertBanner>{failure}</AlertBanner>}
+      {failure && <AlertBanner className="mb-5">{failure}</AlertBanner>}
       <div className="grid grid-cols-2 gap-x-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
         <Label className={fieldLabel}>
           Goal type

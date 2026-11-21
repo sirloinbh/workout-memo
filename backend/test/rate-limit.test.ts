@@ -5,6 +5,7 @@ import test from 'node:test';
 import express from 'express';
 
 import { apiRateLimit } from '../src/standard/rate-limit.js';
+import { listenApp } from './listen.js';
 
 // Behind nginx every request reaches the API from the proxy; the client is the last X-Forwarded-For entry.
 async function withApp(
@@ -15,7 +16,7 @@ async function withApp(
   apiRateLimit(app, { limitPerMinute });
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
   app.get('/api/items', (_req, res) => res.json([]));
-  const server = app.listen(0);
+  const server = await listenApp(app);
   try {
     const { port } = server.address() as AddressInfo;
     await run(async (ip, path = '/api/items') => {

@@ -5,6 +5,7 @@ import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { fieldErrors, goalSchema, machineSchema, workoutSchema } from '../src/contract.js';
+import { listenApp } from './listen.js';
 
 // #64: the server and the screens share these schemas and their messages.
 const set = { exercise: 'Squat', weight: 100, reps: 5 };
@@ -48,8 +49,7 @@ test('the API rejects invalid input with the same message', async () => {
       throw Error('Invalid input must not reach storage');
     },
   } as unknown as Pool;
-  const server = createApp(pool).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool));
   try {
     const address = server.address();
     assert.ok(address && typeof address !== 'string');

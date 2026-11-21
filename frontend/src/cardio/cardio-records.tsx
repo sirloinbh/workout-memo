@@ -1,8 +1,8 @@
 import { Trophy } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { AlertBanner } from '../components/alert-banner';
 import { List, ListItem } from '../components/list';
+import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
@@ -76,6 +76,7 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
       <div className="px-4 pt-3 pb-5 md:px-6 md:pb-6">
         {error && (
           <AlertBanner
+            className="mb-5"
             action={
               <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
                 Reconnect

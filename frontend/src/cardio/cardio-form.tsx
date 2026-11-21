@@ -9,9 +9,6 @@ import {
   feedbackLevels,
   fieldErrors,
 } from '../../../shared/contract';
-import { AlertBanner } from '../components/alert-banner';
-import { FieldError } from '../components/field';
-import { invalidProps } from '../components/field-props';
 import {
   fieldLabel,
   formHint,
@@ -22,7 +19,10 @@ import {
 import { Modal, ModalFooter } from '../components/modal';
 import { NumberInput } from '../components/number-input';
 import { ToggleChips } from '../components/toggle-chips';
+import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
+import { FieldError } from '../components/ui/field';
+import { invalidProps } from '../components/ui/field-props';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Spinner } from '../components/ui/spinner';
@@ -128,6 +128,9 @@ function initialDraft(
 }
 
 const moreKeys = [...extras.map((e) => e.key), 'start_time', 'workout_id'];
+// The fields that have an input and show their own error; any other key (an imported record's
+// source or external_id) is reported once at the form level (#386).
+const shownKeys = ['kind', 'date', 'duration_sec', 'distance_km', 'effort', 'memo', ...moreKeys];
 
 // #115: create or edit one cardio session in a Modal. Only kind, date, duration, distance,
 // effort and memo show at first; "Show more fields" reveals the rest (decision 6). The input is
@@ -223,6 +226,12 @@ export function CardioForm({
     )
       found.distance_km = 'Enter a swimming distance as a whole number from 1 to 1,000,000 m';
     setIssues(found);
+    const hidden = Object.entries(found).filter(([key]) => !shownKeys.includes(key));
+    setServerError(
+      hidden.length
+        ? `This record cannot be used: ${hidden.map(([key, message]) => `${key} - ${message}`).join('; ')}`
+        : '',
+    );
     if (Object.keys(found).length) {
       if (moreKeys.some((key) => found[key])) setMore(true);
       return;
@@ -342,19 +351,14 @@ export function CardioForm({
           <div className="mb-4 flex flex-col items-start gap-2 text-meta text-muted-foreground">
             <span>Perceived effort (optional)</span>
             <ToggleChips
+              type="single"
               label="Perceived effort"
-              options={feedbackLevels.map((level) => effortLabels[level])}
-              value={draft.effort ? [effortLabels[draft.effort]] : []}
-              // At most one level: a new press replaces the old one, and pressing the selected
-              // level again clears it back to not recorded (the #83 feedback pattern).
-              onValueChange={(next) =>
-                set(
-                  'effort',
-                  feedbackLevels.find(
-                    (level) => level !== draft.effort && next.includes(effortLabels[level]),
-                  ) ?? null,
-                )
-              }
+              options={feedbackLevels}
+              renderOption={(level) => effortLabels[level as Feedback]}
+              value={draft.effort}
+              // A new press replaces the old level; pressing it again clears it to not recorded
+              // (the #83 feedback pattern).
+              onValueChange={(next) => set('effort', next as Feedback | null)}
             />
             {issue('effort')}
           </div>
@@ -449,7 +453,7 @@ export function CardioForm({
             </div>
           )}
         </fieldset>
-        {serverError && <AlertBanner className="mt-2">{serverError}</AlertBanner>}
+        {serverError && <AlertBanner className="mt-2 mb-5">{serverError}</AlertBanner>}
         <ModalFooter>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={saving}>

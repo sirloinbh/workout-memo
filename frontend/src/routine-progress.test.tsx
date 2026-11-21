@@ -2,9 +2,14 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
-import { type RoutinePlan, routineSchema } from '../../backend/src/domain';
-import { type CardioRecord, routineProgress } from '../../backend/src/progress';
-import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
+import {
+  autoRoutineInput,
+  type CardioRecord,
+  routineInput,
+  type RoutinePlan,
+  routineProgress,
+  routineSchema,
+} from '../../shared/contract';
 import { App } from './app';
 import { deferred, json, mockApi } from './test/api';
 import { findLive } from './test/live';

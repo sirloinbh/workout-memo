@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 const goal = {
   exercise: 'Squat',
@@ -32,9 +33,8 @@ const invalidGoals = [
 ];
 
 async function withApi(pool: Pool, run: (call: ApiCall) => Promise<void>) {
-  const server = createApp(pool).listen(0, '127.0.0.1');
+  const server = await listenApp(createApp(pool));
   try {
-    await new Promise<void>((resolve) => server.once('listening', resolve));
     const address = server.address();
     if (!address || typeof address === 'string') throw Error('Missing HTTP address');
     const base = `http://127.0.0.1:${address.port}/api`;

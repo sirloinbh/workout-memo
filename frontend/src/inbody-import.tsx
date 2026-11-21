@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 
 import { bodyMeasurementSchema, fieldErrors } from '../../shared/contract';
-import { AlertBanner } from './components/alert-banner';
 import {
   fieldLabel as stackedLabel,
   formHint as hint,
   selectField,
   touchText,
 } from './components/form-styles';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Checkbox } from './components/ui/checkbox';

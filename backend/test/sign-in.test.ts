@@ -5,6 +5,7 @@ import { createAuthMiddleware } from '@sirloinbh/auth-client';
 import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { listenApp } from './listen.js';
 
 // #303: the shared sign-in guards /api. A fake auth service stands in for sirloinbh/shared-auth
 // and a fake pool for PostgreSQL, so these run without either.
@@ -22,8 +23,7 @@ async function withApi(run: (base: string, sessionChecks: () => number) => Promi
     },
   });
   const pool = { query: async () => ({ rows: [] }) } as unknown as Pool;
-  const server = createApp(pool, { auth }).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server = await listenApp(createApp(pool, { auth }));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {

@@ -51,6 +51,16 @@ export class CardioImportError extends RequestError {
     this.rows = rows;
   }
 }
+type ImportAnswer = { error?: unknown; rows?: CardioImportProblem[]; sessions?: CardioSession[] };
+// The answer body as JSON, or {} when it is not JSON (a proxy's HTML page): the message then comes
+// from the status, never from a JSON parse error.
+const readAnswer = async (response: Response): Promise<ImportAnswer | null> => {
+  try {
+    return JSON.parse(await response.text()) as ImportAnswer;
+  } catch {
+    return null;
+  }
+};
 export async function importCardioSessions(sessions: CardioBody[]) {
   let response: Response;
   try {
@@ -58,22 +68,19 @@ export async function importCardioSessions(sessions: CardioBody[]) {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ sessions }),
+      signal: AbortSignal.timeout(30_000),
     });
   } catch {
-    throw new CardioImportError('Cannot connect to the server', undefined);
+    throw new CardioImportError('Cannot reach the server', undefined);
   }
-  const data = (await response.json().catch(() => ({}))) as {
-    error?: unknown;
-    rows?: CardioImportProblem[];
-    sessions?: CardioSession[];
-  };
+  const data = await readAnswer(response);
   if (!response.ok)
     throw new CardioImportError(
-      typeof data.error === 'string' && data.error
+      typeof data?.error === 'string' && data.error
         ? data.error
-        : 'The request could not be processed',
+        : `The server could not process the import (HTTP ${response.status})`,
       response.status,
-      Array.isArray(data.rows) ? data.rows : [],
+      Array.isArray(data?.rows) ? data.rows : [],
     );
-  return data.sessions ?? [];
+  return data?.sessions ?? [];
 }

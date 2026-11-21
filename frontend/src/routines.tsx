@@ -1,13 +1,16 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
-import { AlertBanner } from './components/alert-banner';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Button } from './components/ui/button';
 import { Card } from './components/ui/card';
 import { ConfirmDialog } from './components/ui/confirm-dialog';
 import { Notice } from './components/ui/notice';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
+import { requestJson } from './lib/api';
+import { useApiQuery } from './lib/query';
 import { cn } from './lib/utils';
 import {
   autoRule,
@@ -27,28 +30,31 @@ import { SplitEditor } from './routines/split-editor';
 import { BasicsStep, ScheduleStep, WeeklyGoals } from './routines/steps';
 import { hint } from './routines/styles';
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch('/api/routines' + path, {
-    method: body ? 'POST' : 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await response.json();
-  if (!response.ok) throw Error(data.error ?? 'The routine request failed');
-  return data;
-}
+const request = <T,>(path: string, body?: unknown) =>
+  requestJson<T>('/api/routines' + path, { method: body ? 'POST' : 'GET', body });
 
 // #124: exercise name candidates come from the page (GET /api/exercise-names plus local names).
 export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly string[] }) {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const queryClient = useQueryClient();
+  const plansQuery = useApiQuery<Plan[]>(['routines'], '/api/routines');
+  const plans = plansQuery.data ?? [];
+  const loading = plansQuery.isPending;
   const [selected, setSelected] = useState<Plan | null>(null);
   const [draft, setDraft] = useState<Plan | null>(null);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
-  const [steps, setSteps] = useState<Steps>({});
-  const [machines, setMachines] = useState<Machine[]>([]);
+  // Weight steps and machines are optional: a failed load leaves them empty. Machines share the journal's
+  // cached list (#376).
+  const stepsQuery = useApiQuery<{ exercise: string; weight_step: number }[]>(
+    ['exercise-weight-steps'],
+    '/api/exercise-weight-steps',
+  );
+  const steps: Steps = Array.isArray(stepsQuery.data)
+    ? Object.fromEntries(stepsQuery.data.map((r) => [r.exercise, r.weight_step]))
+    : {};
+  const machinesQuery = useApiQuery<Machine[]>(['machines'], '/api/machines');
+  const machines = Array.isArray(machinesQuery.data) ? machinesQuery.data : [];
   // #105: the form is entered one step at a time; only earlier steps can be revisited.
   const [step, setStep] = useState(0);
   const stepHeading = useRef<HTMLHeadingElement>(null);
@@ -95,35 +101,8 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
       .finally(() => setOpening(null));
   };
   useEffect(() => {
-    let active = true;
-    void fetch('/api/exercise-weight-steps')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: { exercise: string; weight_step: number }[]) => {
-        if (active && Array.isArray(rows))
-          setSteps(Object.fromEntries(rows.map((r) => [r.exercise, r.weight_step])));
-      })
-      .catch(() => undefined);
-    // #82: machines are optional; a failed load only leaves the select empty.
-    void fetch('/api/machines')
-      .then((r) => (r.ok ? (r.json() as Promise<Machine[]>) : []))
-      .then((m) => {
-        if (active && Array.isArray(m)) setMachines(m);
-      })
-      .catch(() => undefined);
-    request<Plan[]>('')
-      .then((p) => {
-        if (active) setPlans(p);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (plansQuery.error) setError(plansQuery.error.message);
+  }, [plansQuery.error]);
   const changeSplit = (index: number, value: Split) => {
     if (draft)
       setDraft({ ...draft, splits: draft.splits.map((s, i) => (i === index ? value : s)) });
@@ -140,7 +119,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
         A plan is only a goal. Record what you actually did separately in the workout journal.
       </p>
       {/* An open form shows its error beside its buttons, on whichever step it is. */}
-      {error && !draft && <AlertBanner>{error}</AlertBanner>}
+      {error && !draft && <AlertBanner className="mb-5">{error}</AlertBanner>}
       <Notice
         className="mb-3"
         notice={
@@ -224,9 +203,17 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                   setSavedId(result.id);
                   setDraft(null);
                   setSelected(saved);
-                  setPlans((previous) => [saved, ...previous]);
+                  queryClient.setQueryData<Plan[]>(['routines'], (previous = []) => [
+                    saved,
+                    ...previous,
+                  ]);
                   const detail = await request<Plan>('/' + result.id);
-                  setPlans(await request<Plan[]>(''));
+                  // A failed re-read is shown, not hidden: fetchQuery rejects where an invalidation would not.
+                  await queryClient.fetchQuery({
+                    queryKey: ['routines'],
+                    queryFn: () => request<Plan[]>(''),
+                    staleTime: 0,
+                  });
                   setSelected(detail);
                 })
                 .catch((e) => setError(e.message))

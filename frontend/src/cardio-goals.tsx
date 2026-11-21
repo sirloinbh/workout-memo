@@ -33,6 +33,7 @@ import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { plural } from './labels';
+import { requestJson } from './lib/api';
 
 // #116: cardio goals on the My Goals page, next to the strength goals. The server judges them;
 // this screen only shows the judgment. Kind labels and time/distance formats come from the
@@ -103,23 +104,8 @@ function goalTitle(goal: GoalShape) {
   return `${goal.period === 'week' ? 'Weekly' : 'Monthly'} ${kind.toLowerCase()} ${amount(goal, targetOf(goal))}`;
 }
 
-async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  try {
-    const res = await fetch('/api/cardio-goals' + path, {
-      method,
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? 'The cardio goal request failed');
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const request = <T,>(path: string, method = 'GET', body?: unknown) =>
+  requestJson<T>('/api/cardio-goals' + path, { method, body, timeoutMs: 15000 });
 
 export function CardioGoals({ deadline }: { deadline: string }) {
   const [goals, setGoals] = useState<StoredGoal[]>([]);

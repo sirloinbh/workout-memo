@@ -162,7 +162,9 @@ function mount(now?: string) {
       label: found!.getAttribute('aria-label')!,
       points: found!.querySelectorAll('[data-slot="chart-dot"]').length,
       lines: found!.querySelectorAll('polyline').length,
-      text: found!.textContent,
+      text: found!.closest('figure')!.textContent,
+      figure: found!.closest('figure')!,
+      role: found!.getAttribute('role'),
     };
   };
   return {
@@ -384,4 +386,17 @@ test('the record form, its messages and the list are named for assistive technol
   await ui.click('Cancel');
   expect(screen.queryByRole('heading', { name: 'New body record' })).toBeNull();
   expect(ui.requests.filter((r) => r.method === 'POST')).toHaveLength(1);
+});
+
+// #384: only the drawing is an image; the figure's caption and range stay readable text.
+test('a trend chart names only its drawing as an image and keeps the caption readable', async () => {
+  const ui = await openWeek();
+  await waitFor(() => expect(page()).toMatch(/1,002\.5/));
+  const weight = ui.chart('Weight');
+  expect(weight.role).toBe('img');
+  expect(weight.figure).not.toHaveAttribute('role');
+  expect(weight.figure).not.toHaveAttribute('aria-label');
+  expect(weight.text).toMatch(/Weight \(kg\)/);
+  expect(weight.text).toMatch(/2024-03-04/);
+  expect(screen.getAllByRole('img', { name: /Weight trend \(kg\)/ })).toHaveLength(1);
 });

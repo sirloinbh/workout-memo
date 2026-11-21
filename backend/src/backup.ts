@@ -13,6 +13,7 @@ import {
   routineSchema,
 } from './domain.js';
 import { cardioPaceSql, cardioSpeedSql } from './routes/cardio.js';
+import { insertSets } from './routes/workouts.js';
 import { auditContext, writeAudit } from './standard/audit.js';
 import { inTransaction } from './transaction.js';
 
@@ -607,11 +608,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
       )
     ).rows[0].id;
     workoutMap.set(w.id, workoutId);
-    for (const [i, s] of sets.entries())
-      await client.query(
-        'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes,completed,rpe) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-        [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes, s.completed, s.rpe],
-      );
+    await insertSets(client, workoutId, sets);
     t.workouts.added++;
     t.sets.added += sets.length;
   }

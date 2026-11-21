@@ -1,6 +1,6 @@
 # FORM · My Workout Log
 
-A service for logging my own workouts and checking training volume and progressive overload goals by period. There is one user and no login. It runs locally.
+A service for logging my own workouts and checking training volume and progressive overload goals by period. There is one user. In production every `/api` route sits behind the shared sign-in (`sirloinbh/shared-auth`, except `/api/health`); a local run without the sign-in listens on `127.0.0.1` only. Apply the database schema with `npm run db:migrate` (see [database/README.md](database/README.md)).
 
 ## Development standards
 
@@ -8,7 +8,7 @@ It uses Node.js **24.21.0** and npm **11.19.0**. Install with `npm ci`, format w
 
 ## Development procedure and Codex skills
 
-Changes follow this order: **register a GitHub issue → a branch based on the issue number → implementation with a docs record per commit → tests, then a PR → the user merges it directly**. The detailed rules are in [AGENTS.md](AGENTS.md) and the [implementation procedure skill](skills/workout-implementation/SKILL.md).
+Changes follow this order: **register a GitHub issue → a branch based on the issue number → implementation with a docs record per commit → tests, then a PR → self-review and merge by the agent once the required CI passes (merging to `main` deploys to production)**. The detailed rules are in [AGENTS.md](AGENTS.md) and the [implementation procedure skill](skills/workout-implementation/SKILL.md).
 
 The earlier recommendations for the tech setup, code rules, API, design, verification, and operations are kept in the [development foundation skill](skills/workout-foundation/SKILL.md). The source of the skills is `skills/` in this repo; if you install them in the Codex skills path you can use them as `$workout-implementation` and `$workout-foundation`. Rather than editing a local installed copy, update the source in the repo and install it again. The copy for Claude Code is in `.claude/skills/`; after editing the source, refresh it with `npm run skills:sync` (`npm run check` detects a mismatch). The skill list is refreshed in a new session. When you implement or fix something, also write test code and run it before committing and before creating or updating a PR. The [testing skill](skills/workout-testing/SKILL.md) can be used as `$workout-testing`. A PR goes through automatic code review at most 2 times and gets the fix commits applied (large fixes are split into new issues), and when the required CI passes the agent merges it.
 

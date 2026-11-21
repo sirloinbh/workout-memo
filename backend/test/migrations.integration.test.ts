@@ -72,6 +72,21 @@ test(
         ).rows.map((r) => /workout_id, "?position"?\)/.test(r.indexdef)),
         [true],
       );
+      // #367: the corrections of 013 are present after a clean run, and 021 fails when a corrected row is missing.
+      assert.deepEqual(
+        (
+          await client.query(
+            "SELECT status, weight_kg::float8 w FROM official_machine_weights WHERE model_name='Plate Loaded Reverse V-Squat'",
+          )
+        ).rows,
+        [{ status: 'verified', w: 34.02 }],
+      );
+      const check = files.find((f) => f.name === '021_official_weights_check.sql');
+      assert.ok(check);
+      await client.query(
+        "DELETE FROM official_machine_weights WHERE model_name='Plate Loaded Reverse V-Squat'",
+      );
+      await assert.rejects(client.query(check.sql), /27 of 28 rows corrected by 013/);
       // Korean seed values arrive intact without a console pipe.
       const brands = (await client.query('SELECT name FROM brands')).rows.map((r) => r.name);
       assert.ok(brands.includes('기타'));

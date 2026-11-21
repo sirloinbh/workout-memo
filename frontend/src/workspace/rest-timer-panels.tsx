@@ -29,59 +29,71 @@ import type { RestTimerState } from './use-rest-timer';
 export function TimerBar({ rest }: { rest: RestTimerState }) {
   const { timer, timerEnded, timerLeft, updateTimer } = rest;
   return (
-    <section
-      data-slot="rest-timer"
-      aria-label="Rest timer"
-      className="grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 min-[480px]:grid-cols-[1fr_auto]"
-    >
-      <strong
-        role="timer"
-        aria-live="polite"
-        className={cn('text-2xl tabular-nums', timerEnded && 'text-muted-foreground')}
+    <>
+      <section
+        data-slot="rest-timer"
+        aria-label="Rest timer"
+        className="grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 min-[480px]:grid-cols-[1fr_auto]"
       >
+        <strong
+          role="timer"
+          className={cn('text-2xl tabular-nums', timerEnded && 'text-muted-foreground')}
+        >
+          {timerEnded
+            ? 'Rest over'
+            : timer.state === 'running'
+              ? `${formatRemaining(timerLeft)} left`
+              : timer.state === 'paused'
+                ? `${formatRemaining(timerLeft)} paused`
+                : `Rest ${formatRemaining(timerLeft)}`}
+        </strong>
+        <div className="flex flex-wrap gap-2 min-[480px]:justify-end">
+          {(timer.state === 'idle' || timerEnded) && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => updateTimer(startTimer(timer, Date.now()))}
+            >
+              Start rest
+            </Button>
+          )}
+          {timer.state === 'running' && !timerEnded && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => updateTimer(pauseTimer(timer, Date.now()))}
+            >
+              Pause
+            </Button>
+          )}
+          {timer.state === 'paused' && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => updateTimer(resumeTimer(timer, Date.now()))}
+            >
+              Resume
+            </Button>
+          )}
+          {timer.state !== 'idle' && (
+            <Button type="button" variant="ghost" onClick={() => updateTimer(cancelTimer(timer))}>
+              Cancel rest
+            </Button>
+          )}
+        </div>
+      </section>
+      {/* #382: the ticking readout is a timer (not live), so it is not read every second; only a change of
+        state (started, paused, ended) is announced, here. */}
+      <span aria-live="polite" className="sr-only" data-slot="rest-announcement">
         {timerEnded
-          ? 'Rest over'
+          ? 'Rest ended'
           : timer.state === 'running'
-            ? `${formatRemaining(timerLeft)} left`
+            ? 'Rest running'
             : timer.state === 'paused'
-              ? `${formatRemaining(timerLeft)} paused`
-              : `Rest ${formatRemaining(timerLeft)}`}
-      </strong>
-      <div className="flex flex-wrap gap-2 min-[480px]:justify-end">
-        {(timer.state === 'idle' || timerEnded) && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => updateTimer(startTimer(timer, Date.now()))}
-          >
-            Start rest
-          </Button>
-        )}
-        {timer.state === 'running' && !timerEnded && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => updateTimer(pauseTimer(timer, Date.now()))}
-          >
-            Pause
-          </Button>
-        )}
-        {timer.state === 'paused' && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => updateTimer(resumeTimer(timer, Date.now()))}
-          >
-            Resume
-          </Button>
-        )}
-        {timer.state !== 'idle' && (
-          <Button type="button" variant="ghost" onClick={() => updateTimer(cancelTimer(timer))}>
-            Cancel rest
-          </Button>
-        )}
-      </div>
-    </section>
+              ? 'Rest paused'
+              : ''}
+      </span>
+    </>
   );
 }
 

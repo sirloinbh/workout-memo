@@ -127,8 +127,9 @@ function readRestDurations(): RestDurations {
 type SetRow = {
   exercise: string;
   machine_id: number | null;
-  weight: number;
-  reps: number;
+  // #383: undefined only while the field is emptied in the editor; saved rows always have both.
+  weight: number | undefined;
+  reps: number | undefined;
   notes: string;
   // Missing on rows saved before completion tracking; those count as completed.
   completed?: boolean;
@@ -203,8 +204,8 @@ function readDraft(): { draft: Draft | null; warning: string } {
           typeof s.exercise === 'string' &&
           (s.notes === undefined || typeof s.notes === 'string') &&
           (s.machine_id === null || (Number.isInteger(s.machine_id) && s.machine_id > 0)) &&
-          Number.isFinite(s.weight) &&
-          Number.isFinite(s.reps) &&
+          (s.weight === undefined || Number.isFinite(s.weight)) &&
+          (s.reps === undefined || Number.isFinite(s.reps)) &&
           (s.completed === undefined || typeof s.completed === 'boolean') &&
           (s.rpe === undefined || s.rpe === null || Number.isFinite(s.rpe)),
       ) ||
@@ -315,7 +316,8 @@ const dateLabel = (v: string) =>
     day: 'numeric',
     weekday: 'short',
   });
-const vol = (w: Workout) => w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * s.reps, 0);
+const vol = (w: Workout) =>
+  w.sets.filter(done).reduce((n, s) => n + Number(s.weight) * (s.reps ?? 0), 0);
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n);
 // #105: weight − / + moves by 5 kg (user decision); typing still allows 0.25 kg.
 const weightStep = 5;
@@ -698,7 +700,15 @@ function Workspace() {
   async function saveWorkout() {
     if (!editor || workoutSaving.current) return;
     // #64: the server's schema checks the input first; nothing is sent while it is invalid.
-    const checked = workoutSchema.safeParse(editor);
+    // An emptied weight or reps field is undefined; NaN makes the schema answer "Enter ... as a number" (#383).
+    const checked = workoutSchema.safeParse({
+      ...editor,
+      sets: editor.sets?.map((s) => ({
+        ...s,
+        weight: s.weight ?? Number.NaN,
+        reps: s.reps ?? Number.NaN,
+      })),
+    });
     setIssues(checked.success ? {} : fieldErrors(checked.error));
     if (!checked.success) {
       setSaveState('Check your input · Not sent to the server');
@@ -1519,8 +1529,8 @@ function Workspace() {
                             <ol>
                               {w.sets.map((s, i) => (
                                 <li key={i}>
-                                  {s.exercise} · {fmt(Number(s.weight))}kg × {plural(s.reps, 'rep')}{' '}
-                                  ·{' '}
+                                  {s.exercise} · {fmt(Number(s.weight))}kg ×{' '}
+                                  {plural(s.reps ?? 0, 'rep')} ·{' '}
                                   {machines.find((m) => m.id === s.machine_id)?.name ??
                                     'No machine'}
                                   {s.rpe != null && ` · RPE ${fmt(Number(s.rpe))}`}

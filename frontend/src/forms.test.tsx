@@ -122,3 +122,27 @@ test('the machine form requires a brand before registering', async () => {
   expectInvalid(within(dialog).getByLabelText('Machine name'), 'Enter a machine name');
   expect(ui.posts('/api/machines')).toHaveLength(0);
 });
+
+// #383: an emptied weight is not saved as 0 kg.
+test('clearing the weight shows a field error and sends nothing', async () => {
+  const ui = mount();
+  await loaded();
+  await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
+  const dialog = screen.getByRole('dialog', { name: 'New workout record' });
+  await ui.user.type(within(dialog).getByLabelText('Journal title'), 'Lower body');
+  fireEvent.change(within(dialog).getAllByLabelText('Exercise name')[0], {
+    target: { value: 'Squat' },
+  });
+  fireEvent.change(within(dialog).getAllByLabelText('Total weight kg')[0], {
+    target: { value: '' },
+  });
+  expect(within(dialog).getAllByLabelText('Total weight kg')[0]).toHaveValue('');
+  fireEvent.submit(dialog.querySelector('form')!);
+  expectInvalid(
+    await within(dialog)
+      .findAllByLabelText('Total weight kg')
+      .then((w) => w[0]),
+    'Enter a total weight as a number',
+  );
+  expect(ui.posts('/api/workouts')).toHaveLength(0);
+});

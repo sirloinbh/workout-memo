@@ -19,8 +19,9 @@ const server = createApp(pool, {
   toolsPublicKey: process.env.AI_TOOLS_PUBLIC_KEY,
 }).listen(port, host, () => console.log(`API http://${host}:${port}`));
 process.on('SIGTERM', () => {
-  stopPush();
+  // #361: wait for a running push send before the pool ends, so a claimed rest push is not lost.
+  const pushStopped = stopPush();
   server.close(() => {
-    void pool.end();
+    void pushStopped.then(() => pool.end());
   });
 });

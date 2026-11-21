@@ -166,7 +166,7 @@ export function WorkoutEditor({
                 'mb-3 grid gap-x-3 gap-y-2.5 rounded-lg border border-border bg-card p-3 md:grid-cols-2',
                 done(s) && 'border-primary/60',
               )}
-              key={i}
+              key={s._key ?? i}
             >
               <div className="flex items-center justify-between gap-2 md:col-span-2">
                 <span

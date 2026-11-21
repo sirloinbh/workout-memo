@@ -1,5 +1,5 @@
 {
-  "centralSha": "52d0d2c2eb7310dae0d93356742a36fc4914fb30",
+  "centralSha": "b205088594b7c7295df8eba87cb06a37e0a32e0e",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -405,7 +405,7 @@
     },
     "deploy/install-backup.sh": {
       "mode": "full",
-      "sha256": "0743147086ef97af8e359ca10ad156fc5048bc6199e1221456e129dd086a3f02",
+      "sha256": "b3e6bea0a1c49fc12c31ad2fc4bc4937cc5418946d3f196623193f1a8811238f",
       "source": "templates/deploy/deploy/install-backup.sh.tmpl"
     },
     "deploy/notify.sh": {
@@ -420,18 +420,18 @@
     },
     "deploy/report.service": {
       "mode": "full",
-      "sha256": "af418f1612c7b9e638c2e3a6e0c586baa86cc985ab347968b667c51fb7616052",
-      "source": "templates/app/deploy/report.service.tmpl"
+      "sha256": "4a9490e28924231b63c4bf10384164ae0511d9d5babe45464149b8e0fc9da097",
+      "source": "templates/deploy/deploy/report.service.tmpl"
     },
     "deploy/report.sh": {
       "mode": "full",
-      "sha256": "c8cc8f2d600b6e8a3ffbef952efd9bfba3de7b3469ffd5ecb3052861e976af17",
-      "source": "templates/app/deploy/report.sh.tmpl"
+      "sha256": "0858137a90ac9a30bf9b043c9056714528fd1bf0c2c7582bc6911daf6a2b9f9d",
+      "source": "templates/deploy/deploy/report.sh.tmpl"
     },
     "deploy/report.timer": {
       "mode": "full",
-      "sha256": "36473695db227107f22beccb4866353641d536ad8f1f7e198ca0dea29ffa5b7e",
-      "source": "templates/app/deploy/report.timer.tmpl"
+      "sha256": "ebd0c7efcb01932b438c49e485a4a8774c1d9a4f8650c7723bde281ae37bfc16",
+      "source": "templates/deploy/deploy/report.timer.tmpl"
     },
     "deploy/restore-check.service": {
       "mode": "full",

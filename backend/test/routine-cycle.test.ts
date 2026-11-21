@@ -8,6 +8,7 @@ import { Pool } from 'pg';
 import ts from 'typescript';
 
 import { createApp } from '../src/app.js';
+import * as contract from '../src/contract.js';
 import { type RoutinePlan, routineSchedule, routineSchema } from '../src/domain.js';
 import { arrangeTargets, routineProgress } from '../src/progress.js';
 import { autoRoutineInput, routineInput } from './routine-fixture.js';
@@ -112,7 +113,7 @@ test('the routine form preview uses the same cycle schedule as the server', () =
       readFileSync(new URL('../../frontend/src/progression.ts', import.meta.url), 'utf8'),
       { compilerOptions: { module: ts.ModuleKind.CommonJS } },
     ).outputText,
-    { exports, Date, Math, require: () => ({ defaultWeightStep: 5 }) },
+    { exports, Date, Math, require: () => contract },
   );
   type Row = { week: number; weight: number; reps: number };
   const previewTargets = exports.previewTargets as (plan: unknown) => { rows: Row[] }[][];

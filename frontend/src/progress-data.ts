@@ -1,4 +1,9 @@
-import type { RoutineCardio } from '../../shared/contract';
+import type {
+  ChangeKind,
+  DeloadMetric,
+  ProgressionKind,
+  RoutineCardio,
+} from '../../shared/contract';
 import { plural } from './labels';
 // Routine goals (#28). Planned targets are shown per exercise exactly as planned;
 // weights of different exercises are never summed. Only saved journals are records.
@@ -11,8 +16,15 @@ type TargetExercise = {
   base: { sets: number; weight: number; reps: number };
   projected?: boolean;
   result?: 'achieved' | 'missed' | null;
+  // Auto routines: how the value changed from the previous target (#377).
+  kind?: ProgressionKind;
 };
-type Change = { week: number; kind: string; amount: number; deload_metric: string | null };
+type Change = {
+  week: number;
+  kind: ChangeKind;
+  amount: number;
+  deload_metric: DeloadMetric | null;
+};
 export type Target = {
   order: number;
   week: number;
@@ -75,14 +87,30 @@ export const kg = (n: number) =>
   new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n);
 export const exerciseKey = (name: string) => name.trim().toLowerCase();
 // Auto routines (#28 rule change) have no manual change; the target is computed.
-export const changeLabel = (c: Change | null, deload = false) =>
-  !c
-    ? deload
+const deloadMetricLabel: Record<DeloadMetric, string> = {
+  weight: 'Total weight',
+  sets: 'Sets',
+  reps: 'Reps',
+};
+// Exhaustive on the change kind: a new kind fails type checking here instead of showing "Reps +n".
+export const changeLabel = (c: Change | null, deload = false): string => {
+  if (!c)
+    return deload
       ? "Deload · auto (90% of last week's weight)"
-      : 'Auto · double progressive overload'
-    : c.kind === 'deload'
-      ? `Deload · ${c.deload_metric === 'weight' ? 'Total weight' : c.deload_metric === 'sets' ? 'Sets' : 'Reps'} -${c.amount}${c.deload_metric === 'weight' ? ' kg' : ''}`
-      : `${c.kind === 'increase_weight' ? 'Total weight' : 'Reps'} +${c.amount}${c.kind === 'increase_weight' ? ' kg' : ''}`;
+      : 'Auto · double progressive overload';
+  switch (c.kind) {
+    case 'deload':
+      return `Deload · ${c.deload_metric ? deloadMetricLabel[c.deload_metric] : 'Reps'} -${c.amount}${c.deload_metric === 'weight' ? ' kg' : ''}`;
+    case 'increase_weight':
+      return `Total weight +${c.amount} kg`;
+    case 'increase_reps':
+      return `Reps +${c.amount}`;
+    default: {
+      const unknown: never = c.kind;
+      return unknown;
+    }
+  }
+};
 export const targetLabel = (t: { week: number; is_deload: boolean; split_name: string }) =>
   `Week ${t.week}${t.is_deload ? ' deload' : ''} · ${t.split_name}`;
 // Auto routines advance per session, so label the session within its week.

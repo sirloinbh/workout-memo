@@ -1,9 +1,18 @@
 import { z } from 'zod/v4';
 
-import { date, limitLength, routineCardioSchema } from './contract.js';
+import {
+  allBodyParts,
+  changeKinds,
+  date,
+  deloadMetrics,
+  limitLength,
+  routineCardioSchema,
+} from './contract.js';
 // Input schemas shared with the frontend live in contract.ts (synced from shared/contract.ts).
 export {
+  allBodyParts,
   bodyMeasurementSchema,
+  bodyParts,
   type CardioGoal,
   cardioGoalObject,
   cardioGoalSchema,
@@ -19,6 +28,7 @@ export {
   type Feedback,
   feedbackLevels,
   goalSchema,
+  legacyBodyParts,
   limitLength,
   machineSchema,
   weightStepSchema,
@@ -32,32 +42,6 @@ export const officialWeightQuery = z
 export const volume = (sets: { weight: number; reps: number; completed?: boolean }[]) =>
   sets.reduce((sum, s) => (s.completed === false ? sum : sum + s.weight * s.reps), 0);
 
-// Routine body parts (#27), also used by the exercise mapping (#32). #88 split 팔 into
-// 이두·삼두 for new choices; 팔 stays valid so saved routines and mappings keep working.
-/** @public Used by a test that loads this file through node:vm, which knip cannot follow (#657). */
-export const bodyParts = [
-  '가슴',
-  '등',
-  '어깨',
-  '이두',
-  '삼두',
-  '하체-앞',
-  '하체-뒤',
-  '복근',
-] as const;
-export const legacyBodyParts = ['팔'] as const;
-// Display and validation order, with the legacy part next to its successors.
-export const allBodyParts = [
-  '가슴',
-  '등',
-  '어깨',
-  '팔',
-  '이두',
-  '삼두',
-  '하체-앞',
-  '하체-뒤',
-  '복근',
-] as const;
 // Same-exercise identity shared by goal judgment and exercise analysis: case and
 // outer spaces are ignored. Evaluated by PostgreSQL so both use one collation.
 export const exerciseKeySql = (column: string) => `lower(trim(${column}))`;
@@ -117,9 +101,9 @@ export const routineSchema = z
       .array(
         z.object({
           week: z.number().int().min(1).max(12),
-          kind: z.enum(['increase_weight', 'increase_reps', 'deload']),
+          kind: z.enum(changeKinds),
           amount: z.number().positive().max(99999),
-          deload_metric: z.enum(['weight', 'sets', 'reps']).nullable(),
+          deload_metric: z.enum(deloadMetrics).nullable(),
         }),
       )
       .length(12)

@@ -31,7 +31,7 @@ const config = {
   subject: 'mailto:me@example.com',
 };
 const subscription = {
-  endpoint: 'https://push.example/send/abc',
+  endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
   keys: { p256dh: 'p256dh-key', auth: 'auth-secret' },
 };
 const user = { id: 'u1', email: 'me@example.com', name: 'Me', image: null };
@@ -135,6 +135,11 @@ test('a subscription is saved for the signed-in user and validated', async () =>
       {},
       { ...subscription, endpoint: 'http://push.example/x' },
       { ...subscription, endpoint: 'not a url' },
+      { ...subscription, endpoint: 'https://internal.example/' },
+      { ...subscription, endpoint: 'https://fcm.googleapis.com.evil.example/x' },
+      { ...subscription, endpoint: 'https://fcm.googleapis.com:8443/x' },
+      { ...subscription, endpoint: 'https://user@fcm.googleapis.com/x' },
+      { ...subscription, endpoint: 'https://notify.windows.com.evil.example/x' },
       { endpoint: subscription.endpoint, keys: { p256dh: '', auth: 'x' } },
       { ...subscription, extra: 1 },
     ]) {
@@ -142,7 +147,17 @@ test('a subscription is saved for the signed-in user and validated', async () =>
       assert.equal(response.status, 400, JSON.stringify(bad));
       assert.equal(typeof response.body.error, 'string');
     }
-    assert.equal(queries.filter((q) => /INSERT INTO push_subscriptions/.test(q.sql)).length, 1);
+    for (const endpoint of [
+      'https://updates.push.services.mozilla.com/wpush/v2/abc',
+      'https://web.push.apple.com/abc',
+      'https://wns2-par02p.notify.windows.com/w/?token=abc',
+    ]) {
+      assert.equal(
+        (await call('/push/subscriptions', 'POST', { ...subscription, endpoint })).status,
+        201,
+      );
+    }
+    assert.equal(queries.filter((q) => /INSERT INTO push_subscriptions/.test(q.sql)).length, 4);
   });
 });
 

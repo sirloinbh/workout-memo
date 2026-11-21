@@ -83,6 +83,10 @@ const within = (value: number | null, min: number, max: number) =>
 const kmOf = (metres: number) => (metres >= 1 ? Math.round(metres) / 1000 : null);
 
 function parseXml(file: string, text: string) {
+  // TCX and GPX never declare a DTD. Refusing one rules out entity expansion (a "billion laughs"
+  // file) before the parser sees it (#387, CodeQL).
+  if (/<!(DOCTYPE|ENTITY)/i.test(text))
+    throw new ActivityFileError(`${file}: Could not read the file. It is damaged or not XML.`);
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length)
     throw new ActivityFileError(`${file}: Could not read the file. It is damaged or not XML.`);

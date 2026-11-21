@@ -1,9 +1,10 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { expect, test, vi } from 'vitest';
+import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { fixClock, mockApi } from './test/api';
+import { cancelDelete, confirmDelete } from './test/confirm';
 import { openPage } from './test/nav';
 
 // #102: the goal list on the common Card and Badge. Today is 2026-10-15 in Seoul.
@@ -17,9 +18,8 @@ const goal = (id: number, exercise: string, deadline: string, achieved: boolean)
   achieved,
 });
 
-function mount(goals: ReturnType<typeof goal>[], answer = true) {
+function mount(goals: ReturnType<typeof goal>[]) {
   fixClock();
-  vi.stubGlobal('confirm', () => answer);
   const api = mockApi(({ method, url }) => {
     if (url.pathname.startsWith('/api/goals/') && method === 'DELETE') {
       const id = Number(url.pathname.split('/').at(-1));
@@ -63,6 +63,7 @@ test('deleting a goal asks first and removes only that card', async () => {
   render(<App />);
   await openPage('My Goals', ui.user);
   await ui.user.click(await screen.findByRole('button', { name: 'Delete Benchpress goal' }));
+  await confirmDelete(ui.user);
   await waitFor(() =>
     expect(screen.queryByRole('heading', { level: 2, name: 'Benchpress' })).toBeNull(),
   );
@@ -73,10 +74,11 @@ test('deleting a goal asks first and removes only that card', async () => {
 });
 
 test('a cancelled delete sends nothing', async () => {
-  const ui = mount([goal(1, 'Benchpress', '2026-12-31', false)], false);
+  const ui = mount([goal(1, 'Benchpress', '2026-12-31', false)]);
   render(<App />);
   await openPage('My Goals', ui.user);
   await ui.user.click(await screen.findByRole('button', { name: 'Delete Benchpress goal' }));
+  await cancelDelete(ui.user);
   expect(ui.requests.some((r) => r.method === 'DELETE')).toBe(false);
   expect(screen.getByRole('heading', { level: 2, name: 'Benchpress' })).toBeInTheDocument();
 });

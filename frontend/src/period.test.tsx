@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { expect, test, vi } from 'vitest';
+import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { deferred, fixClock, flushRenders, mockApi } from './test/api';
+import { confirmDelete } from './test/confirm';
 import { queryLive } from './test/live';
 
 type Workout = {
@@ -24,7 +25,6 @@ const workout = (id: number, date: string, weight: number | string = 100): Worko
 // Ported from backend/test/period-ui.test.ts (vm hook harness) to a real DOM.
 function mount(initial: Workout[] = []) {
   fixClock();
-  vi.stubGlobal('confirm', () => true);
   let records = structuredClone(initial);
   let holdWorkouts: Promise<void> | undefined;
   let holdMutation: Promise<void> | undefined;
@@ -59,6 +59,7 @@ function mount(initial: Workout[] = []) {
   return {
     user,
     flush: () => flushRenders(api),
+    requests: api.requests,
     workoutQueries,
     holdNextWorkouts() {
       const gate = deferred();
@@ -146,50 +147,29 @@ test('the records form a named list with edit and delete on each row', async () 
   expect(within(row).getByRole('button', { name: /^Delete/ })).toBeEnabled();
 });
 
-// #159: an edit is saved from the modal, which blocks the page behind it and cannot be closed
-// while its save is pending, so only a delete can race with a period change.
-for (const mutation of ['delete'] as const) {
-  test(`a delayed ${mutation} refreshes the currently selected period`, async () => {
-    const ui = mount([
-      workout(1, '2024-02-29', 100),
-      workout(2, '2024-03-01', 200),
-      workout(3, '2024-03-02', 300),
-    ]);
-    await loaded();
-    await ui.select('1 day', '2024-02-29');
-    await waitFor(() => expect(rows()).toHaveLength(1));
-    const pending = ui.holdNextMutation();
-    if (mutation === 'delete') {
-      await ui.user.click(screen.getByRole('button', { name: 'Delete Record 1' }));
-    } else {
-      await ui.user.click(screen.getByRole('button', { name: 'Edit' }));
-      const dialog = screen.getByRole('dialog');
-      const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', {
-        name: 'Total weight kg',
-      })[0];
-      await ui.user.clear(weight);
-      await ui.user.type(weight, '150');
-      await ui.user.click(within(dialog).getByRole('button', { name: /Save/ }));
-    }
-    const period = mutation === 'delete' ? '1 day' : '1 month';
-    const expectedVolume = mutation === 'delete' ? '2,000kg' : '5,000kg';
-    await ui.select(period, '2024-03-01');
-    await waitFor(() => expect(stat('Total volume')).toBe(expectedVolume));
-    const requestCount = ui.workoutQueries().length;
-    pending.resolve();
-    await waitFor(() => expect(ui.workoutQueries()).toHaveLength(requestCount + 1));
-    expect(ui.workoutQueries().at(-1)).toBe(
-      `/api/workouts?from=2024-03-01&to=${mutation === 'delete' ? '2024-03-01' : '2024-03-31'}`,
-    );
-    await waitFor(() => expect(stat('Total volume')).toBe(expectedVolume));
-    expect(stat('Workout days')).toBe(mutation === 'delete' ? '1 day' : '2 days');
-    expect(stat('Completed sets')).toBe(mutation === 'delete' ? '1 set' : '2 sets');
-    expect(chart()).toMatch(mutation === 'delete' ? /2,000kg/ : /5,000kg/);
-    expect(rows()).toHaveLength(mutation === 'delete' ? 1 : 2);
-    expect(rows().every((row) => !row.textContent.includes('Record 1'))).toBe(true);
-    expect(queryLive('alert')).toBeNull();
-  });
-}
+// #381: while a delete runs its dialog stays open and the page behind it is inert, so the period
+// cannot change mid-delete; when it finishes, the selected period refetches without the record.
+test('a delayed delete keeps its dialog open, then refreshes the selected period', async () => {
+  const ui = mount([
+    workout(1, '2024-02-29', 100),
+    workout(2, '2024-03-01', 200),
+    workout(3, '2024-03-02', 300),
+  ]);
+  await loaded();
+  await ui.select('1 day', '2024-02-29');
+  await waitFor(() => expect(rows()).toHaveLength(1));
+  const pending = ui.holdNextMutation();
+  await ui.user.click(screen.getByRole('button', { name: 'Delete Record 1' }));
+  await confirmDelete(ui.user);
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  const requestCount = ui.workoutQueries().length;
+  pending.resolve();
+  await waitFor(() => expect(ui.workoutQueries()).toHaveLength(requestCount + 1));
+  expect(ui.workoutQueries().at(-1)).toBe('/api/workouts?from=2024-02-29&to=2024-02-29');
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await waitFor(() => expect(stat('Total volume')).toBe('0kg'));
+  expect(queryLive('alert')).toBeNull();
+});
 
 const ranges = [
   ['1 day', '2024-02-29', '2024-02-29', '2024-02-29'],
@@ -271,6 +251,7 @@ test('period statistics and graph combine same-day sessions and refresh after ed
   await waitFor(() => expect(stat('Total volume')).toBe('2,202.5kg'));
   expect(chart()).toMatch(/2,202.5kg/);
   await ui.user.click(screen.getByRole('button', { name: 'Delete Record 3' }));
+  await confirmDelete(ui.user);
   await waitFor(() => expect(stat('Total volume')).toBe('1,602.5kg'));
   expect(stat('Workout days')).toBe('1 day');
   expect(stat('Completed sets')).toBe('3 sets');
@@ -278,6 +259,7 @@ test('period statistics and graph combine same-day sessions and refresh after ed
   expect(rows()).toHaveLength(2);
   for (const id of [1, 2]) {
     await ui.user.click(screen.getByRole('button', { name: `Delete Record ${id}` }));
+    await confirmDelete(ui.user);
     await waitFor(() => expect(rows()).toHaveLength(2 - id));
   }
   expect(stat('Workout days')).toBe('0 days');
@@ -386,4 +368,19 @@ test('workout list card names its count, links to the journal and starts a recor
     }),
   );
   expect(screen.getByRole('dialog', { name: 'New workout record' })).toBeInTheDocument();
+});
+
+// #381: a double click on Delete sends one DELETE, not a second one that would answer 404.
+test('double-clicking the delete confirmation sends one DELETE', async () => {
+  const ui = mount([workout(1, '2024-03-01', 200)]);
+  await loaded();
+  await ui.select('1 day', '2024-03-01');
+  const pending = ui.holdNextMutation();
+  await ui.user.click(await screen.findByRole('button', { name: 'Delete Record 1' }));
+  const button = within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' });
+  await ui.user.dblClick(button);
+  pending.resolve();
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(ui.requests.filter((r) => r.method === 'DELETE')).toHaveLength(1);
+  expect(queryLive('alert')).toBeNull();
 });

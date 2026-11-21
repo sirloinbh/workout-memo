@@ -30,7 +30,6 @@ test.afterAll(async ({ request }) => {
 test("Create, view, edit, and delete running records on the journal's cardio tab and store them in the DB", async ({
   page,
 }) => {
-  page.on('dialog', (dialog) => void dialog.accept());
   await page.goto('/journal');
   await page
     .getByRole('radiogroup', { name: 'Record type' })
@@ -80,6 +79,7 @@ test("Create, view, edit, and delete running records on the journal's cardio tab
   await row(page)
     .getByRole('button', { name: /^Delete cardio record/ })
     .click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(row(page)).toHaveCount(0);
   await page.reload();
   await showDay(page);

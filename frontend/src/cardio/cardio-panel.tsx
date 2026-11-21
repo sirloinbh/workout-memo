@@ -8,6 +8,7 @@ import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '../com
 import { EmptyState } from '../components/ui/empty-state';
 import { Notice } from '../components/ui/notice';
 import { SkeletonList } from '../components/ui/skeleton';
+import { useConfirmDelete } from '../components/use-confirm-delete';
 import { seoulDate } from '../date';
 import { RequestError } from '../lib/api';
 import type { CardioPreset } from '../routine-cardio';
@@ -132,7 +133,7 @@ export function CardioPanel({
   }, [load]);
 
   async function remove(session: CardioSession) {
-    if (busy || !confirm(`Delete the ${sessionLabel(session)} cardio record?`)) return;
+    if (busy) return;
     setBusy(true);
     setStatus('');
     setActionError('');
@@ -157,6 +158,10 @@ export function CardioPanel({
     if (reload) await load();
   }
 
+  const deleting = useConfirmDelete<CardioSession>({
+    title: (session) => `Delete the ${sessionLabel(session)} cardio record?`,
+    onConfirm: remove,
+  });
   // A new session starts today when today is in the period, otherwise on the period's last
   // day that is not in the future.
   const newDate = today >= from && today <= to ? today : to < today ? to : today;
@@ -248,7 +253,7 @@ export function CardioPanel({
               setFormPreset(undefined);
               setEditing(session);
             }}
-            onDelete={(session) => void remove(session)}
+            onDelete={(session, button) => deleting.ask(session, button)}
           />
         )}
       </Card>
@@ -287,6 +292,7 @@ export function CardioPanel({
           }}
         />
       )}
+      {deleting.dialog}
     </section>
   );
 }

@@ -52,12 +52,18 @@ const text = (label: string, max: number) =>
   });
 const memo = (max: number) =>
   limitLength(z.string(), { max, tooLong: `Enter a memo of ${max} characters or fewer` });
+// Decimal columns are NUMERIC(n,2). Values with more than two decimals are rejected instead of
+// silently rounded, so the stored value is exactly what was entered.
+const twoDecimals = (v: number) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
+// Integer ids and versions are Postgres integer columns, so larger values would be a 500.
+const maxId = 2147483647;
 // Weight always means the total moved load in kg, including a machine's base weight.
 const kg = (label: string) =>
   z
     .number(numberError(`Enter ${label} as a number`, `Enter ${label} from 0 to 99999 kg`))
     .min(0, `Enter ${label} from 0 to 99999 kg`)
-    .max(99999, `Enter ${label} from 0 to 99999 kg`);
+    .max(99999, `Enter ${label} from 0 to 99999 kg`)
+    .refine(twoDecimals, `Enter ${label} with at most 2 decimal places`);
 const reps = (label: string) =>
   z
     .number(
@@ -72,7 +78,7 @@ export const feedbackLevels = ['hard', 'medium', 'easy'] as const;
 export type Feedback = (typeof feedbackLevels)[number];
 
 export const workoutSchema = z.object({
-  version: z.number().int().positive().optional(),
+  version: z.number().int().positive().max(maxId).optional(),
   date,
   title: text('a journal title', 120),
   notes: memo(4000).default(''),
@@ -85,7 +91,7 @@ export const workoutSchema = z.object({
     .array(
       z.object({
         exercise: text('an exercise name', 120),
-        machine_id: z.number().int().positive().nullable().default(null),
+        machine_id: z.number().int().positive().max(maxId).nullable().default(null),
         weight: kg('a total weight'),
         reps: reps('reps'),
         notes: memo(4000).default(''),
@@ -107,14 +113,18 @@ export const workoutSchema = z.object({
 export type WorkoutInput = z.input<typeof workoutSchema>;
 
 export const machineSchema = z.object({
-  brand_id: z.number({ error: 'Choose a brand' }).int('Choose a brand').positive('Choose a brand'),
+  brand_id: z
+    .number({ error: 'Choose a brand' })
+    .int('Choose a brand')
+    .positive('Choose a brand')
+    .max(maxId, 'Choose a brand'),
   name: text('a machine name', 120),
   // Unknown base weight stays null; a confirmed 0 kg is a different value.
   base_weight: kg('a base weight').nullable(),
   notes: memo(2000).default(''),
   // A link to a manufacturer reference row; it never sets or changes base_weight.
   // Omitted keeps the stored link on update (none on create); explicit null unlinks.
-  official_weight_id: z.number().int().positive().max(2147483647).nullable().optional(),
+  official_weight_id: z.number().int().positive().max(maxId).nullable().optional(),
   // #84: single-joint machines use the single-joint rest. Omitted keeps the stored value
   // on update (false on create), so older clients do not clear it.
   single_joint: z.boolean({ error: 'Check whether it is single-joint' }).optional(),
@@ -134,9 +144,7 @@ export const goalSchema = z
   });
 export type GoalInput = z.input<typeof goalSchema>;
 
-// Body metrics are stored as NUMERIC(5,2). Values with more than two decimals are
-// rejected instead of silently rounded, so the stored value is exactly what was entered.
-const twoDecimals = (v: number) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
+// Body metrics are stored as NUMERIC(5,2) and use twoDecimals (defined above).
 const metric = (label: string, min: number, max: number, minInclusive: boolean) =>
   z
     .number(
@@ -263,7 +271,7 @@ export const cardioSessionObject = z.object({
     .number({ error: 'Choose the strength journal to link again' })
     .int('Choose the strength journal to link again')
     .positive('Choose the strength journal to link again')
-    .max(2147483647, 'Choose the strength journal to link again')
+    .max(maxId, 'Choose the strength journal to link again')
     .nullable()
     .default(null),
   source: z

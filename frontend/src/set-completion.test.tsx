@@ -325,8 +325,9 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
 // ended long ago (a reload or a long background stay), and never twice for the same end.
 test('a rest that ends while the app is open vibrates once, a long-past end stays silent', async () => {
   const vibrate = vi.fn(() => true);
-  Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
-  try {
+  // The shared afterEach unstubs globals, so nothing is left on navigator.
+  vi.stubGlobal('navigator', Object.create(navigator, { vibrate: { value: vibrate } }));
+  {
     const ui = mount();
     await openNew(ui);
     await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
@@ -343,8 +344,6 @@ test('a rest that ends while the app is open vibrates once, a long-past end stay
     ui.returnToTab(90000 + 60000);
     expect(timer()).toMatch(/Rest over/);
     expect(vibrate, 'an end found a minute late is silent').toHaveBeenCalledTimes(1);
-  } finally {
-    delete (navigator as Partial<Navigator>).vibrate;
   }
 });
 

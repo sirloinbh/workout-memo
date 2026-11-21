@@ -3,7 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, expect, test, vi } from 'vitest';
 
 import { App } from './app';
-import { type ApiRequest, deferred, deviceNow, fixClock, json, mockApi } from './test/api';
+import {
+  type ApiRequest,
+  deferred,
+  deviceNow,
+  fixClock,
+  flushRenders,
+  json,
+  mockApi,
+} from './test/api';
 import { getLive } from './test/live';
 
 type Workout = {
@@ -110,6 +118,7 @@ function mount(
   unmountPrevious = view.unmount;
   const mutations = () => api.requests.filter((r) => r.method === 'POST' || r.method === 'PUT');
   return {
+    flush: () => flushRenders(api),
     user,
     mutations,
     conflict() {
@@ -245,7 +254,7 @@ test('pending submission cannot report success or send duplicate requests', asyn
   });
   try {
     await waitFor(() => expect(content()).toMatch(/Saving/));
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await ui.flush();
     expect(ui.mutations(), 'duplicate submit sends one request').toHaveLength(1);
     expect(content()).toMatch(/Saving/);
     expect(content()).not.toMatch(/Saved/);

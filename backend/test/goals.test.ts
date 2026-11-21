@@ -103,7 +103,9 @@ test(
         };
         const saved = await readGoal();
         assert.equal(saved.exercise, exercise);
-        assert.equal(Number(saved.target_weight), input.target_weight);
+        // #364: numeric columns come back as numbers, not strings.
+        assert.equal(saved.target_weight, input.target_weight);
+        assert.equal((created.data as SavedGoal).target_weight, input.target_weight);
         assert.equal(saved.target_reps, input.target_reps);
         assert.equal(saved.start_date, input.start_date);
         assert.equal(saved.deadline, input.deadline);

@@ -538,9 +538,18 @@ export function fieldErrors(error: z.ZodError) {
 
 // #260: Web Push for the rest timer. The subscription is what the browser's PushManager returns
 // (`subscription.toJSON()`); the server stores it for the signed-in user and sends the rest-end push.
-const httpsUrl = (v: string) => {
+// #372: the server POSTs to this address, so only the push services browsers register with are
+// accepted (FCM for Chrome, Mozilla autopush, Apple web push, Windows WNS), never an arbitrary host.
+const pushHosts = ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com'];
+const pushHostSuffixes = ['.notify.windows.com'];
+const knownPushService = (v: string) => {
   try {
-    return new URL(v).protocol === 'https:';
+    const url = new URL(v);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return false;
+    return (
+      pushHosts.includes(url.hostname) ||
+      pushHostSuffixes.some((suffix) => url.hostname.endsWith(suffix))
+    );
   } catch {
     return false;
   }
@@ -549,7 +558,7 @@ const pushEndpoint = limitLength(z.string(whenMissing('Enter the push endpoint')
   min: 1,
   max: 2048,
   tooShort: 'Enter the push endpoint',
-}).refine(httpsUrl, 'The push endpoint must be an https address');
+}).refine(knownPushService, 'The push endpoint must be an https address of a known push service');
 export const pushSubscriptionSchema = z.strictObject({
   endpoint: pushEndpoint,
   keys: z.strictObject({

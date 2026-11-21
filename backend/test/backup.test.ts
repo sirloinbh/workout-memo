@@ -109,9 +109,78 @@ function validBackup() {
           deadline: '2024-03-31',
         },
       ],
+      // #359 (v4)
+      body_measurements: [
+        {
+          id: 8,
+          date: '2024-02-29',
+          body_weight_kg: 72.5 as number | null,
+          body_fat_percent: null as number | null,
+          skeletal_muscle_kg: 33.1 as number | null,
+          created_at: '2024-02-29T09:00:00.000Z',
+          updated_at: '2024-03-01T09:00:00.000Z',
+        },
+      ],
+      exercise_body_parts: [{ exercise: 'Leg Press', body_part: '하체-앞' }],
+      exercise_weight_steps: [{ exercise: 'Leg Press', weight_step: 2.5 }],
+      routine_rests: [{ routine_id: 2, rest_date: '2024-03-02' }],
     },
   };
 }
+
+test('a v4 backup carries set completion, RPE and the v4 lists; older files get defaults (#359)', () => {
+  const backup = validBackup();
+  Object.assign(backup.data.workouts[0].sets[0], { completed: false, rpe: 8.5 });
+  const sets = parseBackup(backup).data.workouts[0].sets;
+  assert.equal(sets[0].completed, false);
+  assert.equal(sets[0].rpe, 8.5);
+  // A set without the fields is a performed set with no RPE.
+  const plain = parseBackup(validBackup()).data.workouts[0].sets[0];
+  assert.equal(plain.completed, true);
+  assert.equal(plain.rpe, null);
+  assert.equal(parseBackup(validBackup()).data.machines[0].official_weight_id, null);
+  // Every v4 list is required in v4, and all missing ones are reported together.
+  rejects((b) => {
+    delete (b.data as Partial<typeof b.data>).body_measurements;
+    delete (b.data as Partial<typeof b.data>).routine_rests;
+  }, /data\.body_measurements: a v4 backup needs this list \/ data\.routine_rests: a v4/);
+  // A v3 file restores with empty v4 lists, and its stray (even broken) v4 lists are ignored.
+  const {
+    body_measurements: _b,
+    exercise_body_parts: _p,
+    exercise_weight_steps: _w,
+    routine_rests: _r,
+    ...v3
+  } = validBackup().data;
+  for (const version of [1, 2, 3]) {
+    const parsed = parseBackup({
+      ...validBackup(),
+      version,
+      data: { ...v3, body_measurements: [{ nonsense: true }] },
+    });
+    assert.deepEqual(parsed.data.body_measurements, []);
+    assert.deepEqual(parsed.data.routine_rests, []);
+  }
+});
+
+test('backup validation rejects bad v4 values (#359)', () => {
+  rejects((b) => {
+    b.data.workouts[0].sets[0] = { ...b.data.workouts[0].sets[0], rpe: 8.3 } as never;
+  }, /rpe/);
+  rejects((b) => {
+    b.data.body_measurements[0].body_weight_kg = null;
+    b.data.body_measurements[0].skeletal_muscle_kg = null;
+  }, /at least one value/);
+  rejects((b) => {
+    b.data.body_measurements.push({ ...b.data.body_measurements[0], id: 9 });
+  }, /Body record date is duplicated|body_measurements: duplicate/);
+  rejects((b) => {
+    b.data.routine_rests[0].routine_id = 99;
+  }, /references routine 99/);
+  rejects((b) => {
+    b.data.exercise_body_parts[0].body_part = 'nope';
+  }, /exercise_body_parts/);
+});
 
 function rejects(mutate: (b: ReturnType<typeof validBackup>) => unknown, pattern: RegExp) {
   const backup = validBackup();
@@ -146,7 +215,7 @@ test('a v2 backup carries cardio sessions; a v1 backup restores as one without a
   // v2 and v3 must list them, even when empty.
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).cardio_sessions;
-  }, /data\.cardio_sessions: a v3/);
+  }, /data\.cardio_sessions: a v4/);
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).cardio_sessions;
     return { ...b, version: 2 };
@@ -216,8 +285,8 @@ test('backup validation rejects other files and unsupported versions first', () 
   rejects(() => [], /Not a Workout Memo backup file/);
   rejects((b) => ({ ...b, format: 'other-app' }), /Not a Workout Memo backup file/);
   rejects(
-    (b) => ({ ...b, version: 4 }),
-    /Unsupported backup version.*v4.*Supported versions: v1, v2, v3/,
+    (b) => ({ ...b, version: 5 }),
+    /Unsupported backup version.*v5.*Supported versions: v1, v2, v3, v4/,
   );
   rejects((b) => ({ ...b, version: '1' }), /Unsupported backup version/);
 });
@@ -266,19 +335,19 @@ test('backup validation accepts a routine that names a machine in the backup (#8
 });
 
 test('a v3 backup carries cardio goals; v1 and v2 backups restore as ones without any (#253)', () => {
-  assert.equal(backupVersion, 3);
+  assert.equal(backupVersion, 4);
   const parsed = parseBackup(validBackup());
-  assert.equal(parsed.version, 3);
+  assert.equal(parsed.version, 4);
   assert.deepEqual(parsed.data.cardio_goals, validBackup().data.cardio_goals);
   // v3 must list them, even when empty.
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).cardio_goals;
-  }, /data\.cardio_goals: a v3 backup needs a cardio goals list/);
+  }, /data\.cardio_goals: a v4 backup needs a cardio goals list/);
   // Both missing lists are reported at once.
   rejects((b) => {
     delete (b.data as Partial<typeof b.data>).cardio_goals;
     delete (b.data as Partial<typeof b.data>).cardio_sessions;
-  }, /data\.cardio_sessions: a v3 .* \/ data\.cardio_goals: a v3/);
+  }, /data\.cardio_sessions: a v4 .* \/ data\.cardio_goals: a v4/);
   assert.deepEqual(
     parseBackup({ ...validBackup(), data: { ...validBackup().data, cardio_goals: [] } }).data
       .cardio_goals,

@@ -3,7 +3,6 @@ import React from 'react';
 
 import { type Feedback, feedbackLevels } from '../../../shared/contract';
 import { Modal, ModalFooter } from '../components/modal';
-import { NumberValueInput } from '../components/number-input';
 import { ToggleChips } from '../components/toggle-chips';
 import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
@@ -11,6 +10,7 @@ import { Combobox } from '../components/ui/combobox';
 import { FieldError } from '../components/ui/field';
 import { invalidProps } from '../components/ui/field-props';
 import { Notice } from '../components/ui/notice';
+import { NumberValueInput } from '../components/ui/number-input';
 import { Spinner } from '../components/ui/spinner';
 import { SimilarNameHint } from '../exercise-names';
 import { cn } from '../lib/utils';
@@ -264,6 +264,7 @@ export function WorkoutEditor({
                     min={0}
                     max={99999}
                     required
+                    allowEmpty
                     value={s.weight}
                     onValueChange={(weight) => {
                       const sets = [...editor.sets!];
@@ -284,6 +285,7 @@ export function WorkoutEditor({
                     min={1}
                     max={1000}
                     required
+                    allowEmpty
                     value={s.reps}
                     onValueChange={(reps) => {
                       const sets = [...editor.sets!];

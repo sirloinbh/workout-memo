@@ -23,8 +23,8 @@ export const effortLabels: Record<Feedback, string> = {
   easy: 'Easy',
 };
 
-// Typed number text: one reader shared with the stepper (components/number-step.ts, #383).
-export { optionalNumber } from '../components/number-step';
+// Typed number text: one reader shared with the stepper (components/ui/number-step.ts, #383).
+export { optionalNumber } from '../components/ui/number-step';
 
 type DurationParts = { hours: string; minutes: string; seconds: string };
 

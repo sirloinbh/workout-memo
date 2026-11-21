@@ -26,7 +26,7 @@ export function CardioList({
   sessions: readonly CardioSession[];
   busy: boolean;
   onEdit: (session: CardioSession) => void;
-  onDelete: (session: CardioSession) => void;
+  onDelete: (session: CardioSession, button: HTMLButtonElement) => void;
 }) {
   return (
     <List aria-label="Cardio records" className="px-4 py-1 md:px-6 md:py-2.5">
@@ -67,7 +67,7 @@ export function CardioList({
                 size="sm"
                 disabled={busy}
                 aria-label={`Delete cardio record ${label}`}
-                onClick={() => onDelete(s)}
+                onClick={(e) => onDelete(s, e.currentTarget)}
               >
                 Delete
               </Button>

@@ -1,25 +1,22 @@
 import { expect, type Page } from '@playwright/test';
 
-import { type AnalysisSet, analyze } from '../../backend/src/analysis.js';
 import {
-  type CardioGoalSession,
-  judgeCardioGoal,
-  suggestCardioGoal,
-} from '../../backend/src/cardio-goals.js';
-import {
+  type AnalysisSet,
+  analyze,
+  autoRoutineInput,
   cardioGoalSchema,
+  type CardioGoalSession,
   cardioKinds,
   defaultWeightStep,
+  judgeCardioGoal,
   type RoutinePlan,
+  routineProgress,
   routineSchedule,
   routineSchema,
-} from '../../backend/src/domain.js';
-import {
-  routineProgress,
+  suggestCardioGoal,
   withWeightSteps,
   type WorkoutRecord,
-} from '../../backend/src/progress.js';
-import { autoRoutineInput } from '../../backend/test/routine-fixture.js';
+} from '../../shared/contract.js';
 
 // #113: screen checks (visual, responsive, accessibility) use fixed data and a fixed
 // clock instead of the shared test DB, which other specs fill with unique rows. Routine

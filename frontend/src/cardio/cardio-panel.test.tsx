@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
 import { type ApiRequest, deferred, fixClock, json, mockApi } from '../test/api';
+import { cancelDelete, confirmDelete } from '../test/confirm';
 import { findLive, getLive, queryLive } from '../test/live';
 import type { CardioSession } from './api';
 import { CardioPanel } from './cardio-panel';
@@ -70,10 +71,6 @@ const workouts = [
 ];
 
 function mount(respond?: (request: ApiRequest) => unknown) {
-  vi.stubGlobal(
-    'confirm',
-    vi.fn(() => true),
-  );
   const sessions = fixture();
   const api = mockApi((request) => {
     const custom = respond?.(request);
@@ -458,17 +455,19 @@ test('deleting asks first, then removes and reloads; cancelling sends nothing', 
   const user = userEvent.setup();
   const { requests } = mount();
   await list();
-  const confirm = vi.mocked(window.confirm);
-  confirm.mockReturnValueOnce(false);
   await user.click(
     screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   );
-  expect(confirm).toHaveBeenLastCalledWith('Delete the 2026-11-06 Swimming 40:00 cardio record?');
+  expect(
+    screen.getByRole('dialog', { name: 'Delete the 2026-11-06 Swimming 40:00 cardio record?' }),
+  ).toBeInTheDocument();
+  await cancelDelete(user);
   expect(requests.some((r) => r.method === 'DELETE')).toBe(false);
 
   await user.click(
     screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   );
+  await confirmDelete(user);
   expect(await findLive('status')).toHaveTextContent('Cardio record deleted');
   const removed = requests.find((r) => r.method === 'DELETE')!;
   expect(removed.path).toBe('/api/cardio-sessions/2');
@@ -484,6 +483,7 @@ test('a failed delete shows its own error, keeps the row and does not reload', a
   await user.click(
     screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   );
+  await confirmDelete(user);
   const alert = await findLive('alert');
   expect(alert).toHaveTextContent('Could not delete');
   // Not the load failure banner: there is nothing to reconnect.
@@ -510,6 +510,7 @@ test('deleting a session already removed elsewhere (404) says so and reloads', a
   await user.click(
     screen.getByRole('button', { name: 'Delete cardio record 2026-11-06 Swimming 40:00' }),
   );
+  await confirmDelete(user);
   expect(await findLive('status')).toHaveTextContent('This record was already deleted');
   await waitFor(() =>
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(2),
@@ -539,10 +540,6 @@ test('a reload after saving keeps the list on screen until the answer arrives', 
 });
 
 test('a new period clears the old rows and ignores a late answer for the old period', async () => {
-  vi.stubGlobal(
-    'confirm',
-    vi.fn(() => true),
-  );
   const old = deferred<CardioSession[]>();
   const fresh = deferred<CardioSession[]>();
   const { requests } = mockApi((request) =>

@@ -16,6 +16,7 @@ import { Notice } from './components/ui/notice';
 import { PageHeader } from './components/ui/page-header';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
+import { useConfirmDelete } from './components/use-confirm-delete';
 import { seoulDate } from './date';
 import { InbodyImport } from './inbody-import';
 import { requestJson } from './lib/api';
@@ -125,7 +126,7 @@ export function BodyMeasurements({
     }
   }
   async function remove(row: BodyRecord) {
-    if (saving || !confirm(`Delete the body record for ${row.date.slice(0, 10)}?`)) return;
+    if (saving) return;
     setSaving(true);
     try {
       await write.mutateAsync({ path: '/' + row.id, method: 'DELETE' });
@@ -136,6 +137,10 @@ export function BodyMeasurements({
       setSaving(false);
     }
   }
+  const deleting = useConfirmDelete<BodyRecord>({
+    title: (row) => `Delete the body record for ${row.date.slice(0, 10)}?`,
+    onConfirm: remove,
+  });
   const volumeByDate = new Map<string, number>();
   for (const w of workouts) {
     const date = w.date.slice(0, 10);
@@ -365,7 +370,7 @@ export function BodyMeasurements({
                       size="sm"
                       disabled={saving}
                       aria-label={`Delete body record ${date}`}
-                      onClick={() => void remove(row)}
+                      onClick={(e) => deleting.ask(row, e.currentTarget)}
                     >
                       Delete
                     </Button>
@@ -376,6 +381,7 @@ export function BodyMeasurements({
           </List>
         )}
       </Card>
+      {deleting.dialog}
     </section>
   );
 }

@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
 import { SkeletonList } from '../components/ui/skeleton';
+import { useConfirmDelete } from '../components/use-confirm-delete';
 import { monthNames } from '../date';
 import { plural } from '../labels';
 import { api, type WriteAction } from './api';
@@ -44,6 +45,12 @@ export function WorkoutRecords({
   action,
   onAll,
 }: RecordsProps & { onAll?: () => void }) {
+  // #381: one request per delete, asked in a dialog instead of the browser's confirm().
+  const deleting = useConfirmDelete<{ id: number; title: string }>({
+    title: () => 'Delete this workout journal and its sets?',
+    description: 'The journal and all of its sets are deleted. This cannot be undone.',
+    onConfirm: (w) => action(() => api('/workouts/' + w.id, 'DELETE')),
+  });
   return (
     <Card className="gap-0 py-0 shadow-none">
       <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
@@ -166,10 +173,8 @@ export function WorkoutRecords({
                 size="icon"
                 className="text-muted-foreground"
                 aria-label={`Delete ${w.title}`}
-                onClick={() => {
-                  if (confirm('Delete this workout journal and its sets?'))
-                    void action(() => api('/workouts/' + w.id, 'DELETE'));
-                }}
+                disabled={saving}
+                onClick={(e) => deleting.ask(w, e.currentTarget)}
               >
                 <Trash2 size={16} />
               </Button>
@@ -177,6 +182,7 @@ export function WorkoutRecords({
           ))}
         </List>
       )}
+      {deleting.dialog}
     </Card>
   );
 }

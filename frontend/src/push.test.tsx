@@ -6,7 +6,7 @@ import pushWorkerSource from '../public/push/sw.js?raw';
 import { App } from './app';
 import { keyToBytes, syncRest } from './push';
 import { defaultTimer, pauseTimer, resumeTimer, startTimer } from './rest-timer';
-import { deviceNow, fixClock, json, mockApi } from './test/api';
+import { deferred, deviceNow, fixClock, flushRenders, json, mockApi } from './test/api';
 
 // #260: rest-end Web Push. The worker is public/push/sw.js (its own scope, because public/sw.js
 // is centrally managed); the toggle and the schedule calls are in the app.
@@ -167,6 +167,44 @@ test('syncRest sends a running end, and clears it for pause, idle and an ended r
   expect(api.requests.at(-1)).toMatchObject({ method: 'DELETE' });
   await syncRest(running, now + 91_000);
   expect(api.requests.at(-1)).toMatchObject({ method: 'DELETE' });
+});
+
+// #370: a start followed at once by a pause must leave no scheduled push, even when the first request is slow.
+test('syncRest sends calls in order: a slow PUT is finished before the later DELETE starts', async () => {
+  const slowPut = deferred();
+  let scheduled: number | null = null;
+  const api = mockApi(async ({ method, body }) => {
+    if (method === 'PUT') {
+      await slowPut.promise;
+      scheduled = (body as { ends_at: number }).ends_at;
+    } else scheduled = null;
+    return { ok: true };
+  });
+  const now = Date.parse(deviceNow);
+  const running = startTimer(defaultTimer(), now, 90);
+  const first = syncRest(running, now);
+  const second = syncRest(pauseTimer(running, now + 1_000), now + 1_000);
+  await flushRenders(api);
+  expect(
+    api.requests.map((r) => r.method),
+    'the DELETE waits for the PUT',
+  ).toEqual(['PUT']);
+  slowPut.resolve();
+  await Promise.all([first, second]);
+  expect(api.requests.map((r) => r.method)).toEqual(['PUT', 'DELETE']);
+  expect(scheduled, 'the pause leaves no scheduled push').toBeNull();
+});
+
+test('syncRest keeps sending after a failed call', async () => {
+  let calls = 0;
+  const api = mockApi(({ method }) =>
+    ++calls === 1 ? json({ error: 'down' }, 500) : { ok: method === 'DELETE' },
+  );
+  const now = Date.parse(deviceNow);
+  const running = startTimer(defaultTimer(), now, 90);
+  await expect(syncRest(running, now)).rejects.toThrow('down');
+  await syncRest(defaultTimer(), now);
+  expect(api.requests.map((r) => r.method)).toEqual(['PUT', 'DELETE']);
 });
 
 // ---- the settings toggle and the schedule calls in the app ----

@@ -2,7 +2,7 @@ import { Activity, Dumbbell, NotebookPen, Target } from 'lucide-react';
 
 import type { CardioSession } from '../cardio/api';
 import { CardioSummaryCard } from '../cardio/cardio-tab';
-import { StatCard } from '../components/stat-card';
+import { StatCard } from '../components/ui/stat-card';
 import { plural } from '../labels';
 import { cleanDate, done, fmt, type Goal, vol, type Workout } from './model';
 

@@ -1,7 +1,7 @@
 import { Activity, FileUp, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { AlertBanner } from '../components/alert-banner';
+import { AlertBanner } from '../components/ui/alert-banner';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -170,6 +170,7 @@ export function CardioPanel({
     <section>
       {error && (
         <AlertBanner
+          className="mb-5"
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load(true)}>
               Reconnect
@@ -179,7 +180,7 @@ export function CardioPanel({
           {error}
         </AlertBanner>
       )}
-      {actionError && <AlertBanner>{actionError}</AlertBanner>}
+      {actionError && <AlertBanner className="mb-5">{actionError}</AlertBanner>}
       <Notice className="mb-4" notice={status ? { kind: 'status', text: status } : undefined} />
       <Card className="gap-0 py-0 shadow-none">
         <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">

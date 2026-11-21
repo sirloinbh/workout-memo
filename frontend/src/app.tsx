@@ -13,13 +13,13 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 
 import { listCardioSessions } from './cardio/api';
-import { AlertBanner } from './components/alert-banner';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { Modal } from './components/modal';
-import { PageHeader } from './components/page-header';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Button } from './components/ui/button';
 import { Card } from './components/ui/card';
 import { Notice } from './components/ui/notice';
+import { PageHeader } from './components/ui/page-header';
 import { SkeletonCard } from './components/ui/skeleton';
 import { Toaster } from './components/ui/sonner';
 import { dateTitle } from './date';
@@ -348,6 +348,7 @@ function Workspace() {
           </Suspense>
           {!ownPage && (
             <PageHeader
+              className="mb-6 md:mb-9"
               eyebrow="YOUR PROGRESS, IN FOCUS"
               title={
                 page === 'overview'
@@ -401,6 +402,7 @@ function Workspace() {
           )}
           {error && (
             <AlertBanner
+              className="mb-5"
               action={
                 <Button type="button" variant="outline" size="sm" onClick={reconnect}>
                   Reconnect
@@ -410,7 +412,9 @@ function Workspace() {
               {error}
             </AlertBanner>
           )}
-          {storageWarning && !editor && <AlertBanner>{storageWarning}</AlertBanner>}
+          {storageWarning && !editor && (
+            <AlertBanner className="mb-5">{storageWarning}</AlertBanner>
+          )}
           {!editor && <Notice className="mb-5" notice={statusNotice(saveState)} />}
           {recovery && !editor && (
             <Card

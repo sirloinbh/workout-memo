@@ -1,8 +1,8 @@
 import { Download } from 'lucide-react';
 import React, { useState } from 'react';
 
-import { AlertBanner } from './components/alert-banner';
 import { selectField, touchText } from './components/form-styles';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './components/ui/card';
 import { Input } from './components/ui/input';

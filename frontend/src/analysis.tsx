@@ -3,14 +3,14 @@ import { ChevronLeft } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { bodyParts, legacyBodyParts } from '../../shared/contract';
-import { AlertBanner } from './components/alert-banner';
-import { DateStepper, RangeSummary } from './components/date-stepper';
-import { SegmentedControl } from './components/segmented-control';
 import { ToggleChips } from './components/toggle-chips';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { DateStepper, RangeSummary } from './components/ui/date-stepper';
 import { EmptyState } from './components/ui/empty-state';
+import { SegmentedControl } from './components/ui/segmented-control';
 import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
@@ -212,6 +212,7 @@ export function Analysis() {
       </RangeSummary>
       {error && (
         <AlertBanner
+          className="mb-5"
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
               Reconnect
@@ -221,7 +222,9 @@ export function Analysis() {
           {error}
         </AlertBanner>
       )}
-      {saveError && <AlertBanner>Could not save the body parts: {saveError}</AlertBanner>}
+      {saveError && (
+        <AlertBanner className="mb-5">Could not save the body parts: {saveError}</AlertBanner>
+      )}
       {/* #173: placeholders in the shape of the two cards on the first load; a reload keeps the
           cards and shows a short status line instead. */}
       {loading && !data && (

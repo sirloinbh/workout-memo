@@ -1,10 +1,10 @@
 import { fieldErrors, machineSchema } from '../../../shared/contract';
-import { FieldError } from '../components/field';
-import { invalidProps } from '../components/field-props';
 import { fieldLabel, selectField, textareaField, touchText } from '../components/form-styles';
 import { Modal } from '../components/modal';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
+import { FieldError } from '../components/ui/field';
+import { invalidProps } from '../components/ui/field-props';
 import { Input as CommonInput } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Spinner } from '../components/ui/spinner';

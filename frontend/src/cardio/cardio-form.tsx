@@ -9,9 +9,6 @@ import {
   feedbackLevels,
   fieldErrors,
 } from '../../../shared/contract';
-import { AlertBanner } from '../components/alert-banner';
-import { FieldError } from '../components/field';
-import { invalidProps } from '../components/field-props';
 import {
   fieldLabel,
   formHint,
@@ -22,7 +19,10 @@ import {
 import { Modal, ModalFooter } from '../components/modal';
 import { NumberInput } from '../components/number-input';
 import { ToggleChips } from '../components/toggle-chips';
+import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
+import { FieldError } from '../components/ui/field';
+import { invalidProps } from '../components/ui/field-props';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Spinner } from '../components/ui/spinner';
@@ -453,7 +453,7 @@ export function CardioForm({
             </div>
           )}
         </fieldset>
-        {serverError && <AlertBanner className="mt-2">{serverError}</AlertBanner>}
+        {serverError && <AlertBanner className="mt-2 mb-5">{serverError}</AlertBanner>}
         <ModalFooter>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={saving}>

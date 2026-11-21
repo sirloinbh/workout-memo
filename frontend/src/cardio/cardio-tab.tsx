@@ -1,7 +1,7 @@
 import { Footprints } from 'lucide-react';
 import { useState } from 'react';
 
-import { StatCard } from '../components/stat-card';
+import { StatCard } from '../components/ui/stat-card';
 import { plural } from '../labels';
 import type { CardioPreset } from '../routine-cardio';
 import type { CardioSession } from './api';

@@ -1,8 +1,8 @@
-import { AlertBanner } from '../components/alert-banner';
-import { Switch } from '../components/switch';
+import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
 import { Input as CommonInput } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Switch } from '../components/ui/switch';
 import { cn } from '../lib/utils';
 import { permissionHelp } from '../push';
 import {

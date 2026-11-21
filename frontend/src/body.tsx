@@ -3,10 +3,9 @@ import { Plus, Scale } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 import { ChartDot } from './chart-dot';
-import { AlertBanner } from './components/alert-banner';
 import { fieldLabel, formHint as hint, touchText } from './components/form-styles';
 import { List, ListItem } from './components/list';
-import { PageHeader } from './components/page-header';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
@@ -14,6 +13,7 @@ import { EmptyState } from './components/ui/empty-state';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { PageHeader } from './components/ui/page-header';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { useConfirmDelete } from './components/use-confirm-delete';
@@ -176,6 +176,7 @@ export function BodyMeasurements({
   return (
     <section>
       <PageHeader
+        className="mb-6 md:mb-9"
         eyebrow="BODY CHANGES, SIDE BY SIDE"
         title="Track your body changes too"
         description="Record weight, body fat, and skeletal muscle mass by date. Values you did not measure can be left blank and are stored as not entered; nothing is estimated."
@@ -198,7 +199,7 @@ export function BodyMeasurements({
       {controls}
       {error && (
         <AlertBanner
-          className="mt-4"
+          className="mt-4 mb-5"
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
               Reconnect
@@ -226,7 +227,7 @@ export function BodyMeasurements({
                 void save();
               }}
             >
-              {formError && <AlertBanner>{formError}</AlertBanner>}
+              {formError && <AlertBanner className="mb-5">{formError}</AlertBanner>}
               <fieldset
                 disabled={saving}
                 className="m-0 grid min-w-0 grid-cols-2 gap-x-3 border-0 p-0 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1"

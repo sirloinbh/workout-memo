@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 
 import { CardioTab } from '../cardio/cardio-tab';
-import { SegmentedControl } from '../components/segmented-control';
+import { SegmentedControl } from '../components/ui/segmented-control';
 import { RoutineProgress } from '../progress';
 import type { CardioPreset } from '../routine-cardio';
 import { cleanDate, type Goal, type JournalTab, journalTabs, today } from './model';

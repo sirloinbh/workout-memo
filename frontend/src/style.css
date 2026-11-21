@@ -105,8 +105,8 @@
   padding: 0;
   min-width: 0;
 }
-/* #64: per-field messages from the shared input contract. */
-.field-error {
+/* #64: per-field messages from the shared input contract (FieldError from components/ui, #393): span the form grid. */
+[data-slot='field-error'] {
   display: block;
   grid-column: 1 / -1;
   color: var(--destructive);

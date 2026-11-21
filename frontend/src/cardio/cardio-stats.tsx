@@ -3,9 +3,9 @@ import { useState } from 'react';
 
 import type { CardioKind } from '../../../shared/contract';
 import { ChartDot } from '../chart-dot';
-import { SegmentedControl, type SegmentOption } from '../components/segmented-control';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
+import { SegmentedControl, type SegmentOption } from '../components/ui/segmented-control';
 import { SkeletonCard } from '../components/ui/skeleton';
 import { rangeDays } from '../date-range';
 import { plural } from '../labels';

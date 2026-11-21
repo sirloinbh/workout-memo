@@ -2,14 +2,14 @@ import { Plus, X } from 'lucide-react';
 import React from 'react';
 
 import { type Feedback, feedbackLevels } from '../../../shared/contract';
-import { AlertBanner } from '../components/alert-banner';
-import { FieldError } from '../components/field';
-import { invalidProps } from '../components/field-props';
 import { Modal, ModalFooter } from '../components/modal';
 import { NumberValueInput } from '../components/number-input';
 import { ToggleChips } from '../components/toggle-chips';
+import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
 import { Combobox } from '../components/ui/combobox';
+import { FieldError } from '../components/ui/field';
+import { invalidProps } from '../components/ui/field-props';
 import { Notice } from '../components/ui/notice';
 import { Spinner } from '../components/ui/spinner';
 import { SimilarNameHint } from '../exercise-names';

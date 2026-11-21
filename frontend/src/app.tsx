@@ -73,6 +73,7 @@ import { checkRange, maxRangeDays, parseRange, rangeBuckets } from './date-range
 import { candidateNames, type ExerciseName } from './exercise-name-match';
 import { SimilarNameHint } from './exercise-names';
 import { plural } from './labels';
+import { RequestError, requestJson } from './lib/api';
 import type { NoticeValue } from './lib/use-notice';
 import { cn } from './lib/utils';
 import { RoutineProgress } from './progress';
@@ -328,45 +329,29 @@ const statusNotice = (text: string): NoticeValue | undefined =>
 // proxy or the 15 s deadline), as opposed to an error the API returned. Its message replaces the
 // browser's "Failed to fetch".
 class Unreachable extends Error {}
+const GENERIC_FAILURE = 'Could not process the request';
 async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  const late = (cause: unknown) =>
-    controller.signal.aborted || (cause as Error).name === 'TimeoutError';
   try {
-    let res: Response;
-    try {
-      res = await fetch('/api' + path, {
-        method,
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-    } catch (cause) {
-      throw new Unreachable(
-        late(cause)
-          ? 'The server did not answer within 15 seconds.'
-          : 'Cannot reach the server. Check your connection.',
-        { cause },
-      );
+    return await requestJson<T>('/api' + path, {
+      method,
+      body,
+      timeoutMs: 15000,
+      headers: key ? { 'Idempotency-Key': key } : undefined,
+    });
+  } catch (cause) {
+    if (!(cause instanceof RequestError)) throw cause;
+    if (cause.kind === 'timeout')
+      throw new Unreachable('The server did not answer within 15 seconds.', { cause });
+    if (cause.kind === 'network')
+      throw new Unreachable('Cannot reach the server. Check your connection.', { cause });
+    // A non-JSON 5xx is the proxy's page (for example 502 while the API restarts). Other
+    // non-JSON errors (such as a 401 page) did reach a server, so they are not Unreachable.
+    if (cause.kind === 'http' && cause.message === GENERIC_FAILURE && cause.status !== undefined) {
+      if (cause.status >= 500)
+        throw new Unreachable(`The server is not answering (HTTP ${cause.status}).`, { cause });
+      throw Error(`The request failed (HTTP ${cause.status}).`, { cause });
     }
-    let data;
-    try {
-      data = await res.json();
-    } catch (cause) {
-      if (late(cause))
-        throw new Unreachable('The server did not answer within 15 seconds.', { cause });
-      // A non-JSON 5xx is the proxy's page (for example 502 while the API restarts). Other
-      // non-JSON errors (such as a 401 page) did reach a server, so they are not Unreachable.
-      if (res.status >= 500)
-        throw new Unreachable(`The server is not answering (HTTP ${res.status}).`, { cause });
-      if (!res.ok) throw Error(`The request failed (HTTP ${res.status}).`, { cause });
-      throw cause;
-    }
-    if (!res.ok) throw Error(data.error ?? 'The request failed');
-    return data;
-  } finally {
-    clearTimeout(timer);
+    throw cause;
   }
 }
 // #62: every page has its own URL, so refresh, links and back navigation keep it.

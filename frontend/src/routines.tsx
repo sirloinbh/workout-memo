@@ -8,6 +8,7 @@ import { ConfirmDialog } from './components/ui/confirm-dialog';
 import { Notice } from './components/ui/notice';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
+import { requestJson } from './lib/api';
 import { cn } from './lib/utils';
 import {
   autoRule,
@@ -27,16 +28,8 @@ import { SplitEditor } from './routines/split-editor';
 import { BasicsStep, ScheduleStep, WeeklyGoals } from './routines/steps';
 import { hint } from './routines/styles';
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch('/api/routines' + path, {
-    method: body ? 'POST' : 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await response.json();
-  if (!response.ok) throw Error(data.error ?? 'The routine request failed');
-  return data;
-}
+const request = <T,>(path: string, body?: unknown) =>
+  requestJson<T>('/api/routines' + path, { method: body ? 'POST' : 'GET', body });
 
 // #124: exercise name candidates come from the page (GET /api/exercise-names plus local names).
 export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly string[] }) {
@@ -96,16 +89,14 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
   };
   useEffect(() => {
     let active = true;
-    void fetch('/api/exercise-weight-steps')
-      .then((r) => (r.ok ? r.json() : []))
+    void requestJson<{ exercise: string; weight_step: number }[]>('/api/exercise-weight-steps')
       .then((rows: { exercise: string; weight_step: number }[]) => {
         if (active && Array.isArray(rows))
           setSteps(Object.fromEntries(rows.map((r) => [r.exercise, r.weight_step])));
       })
       .catch(() => undefined);
     // #82: machines are optional; a failed load only leaves the select empty.
-    void fetch('/api/machines')
-      .then((r) => (r.ok ? (r.json() as Promise<Machine[]>) : []))
+    void requestJson<Machine[]>('/api/machines')
       .then((m) => {
         if (active && Array.isArray(m)) setMachines(m);
       })

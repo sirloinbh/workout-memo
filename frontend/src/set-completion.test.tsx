@@ -375,3 +375,31 @@ test('a running rest comes first on a page drawn by its own component', async ()
   );
   expect(page.firstElementChild).toHaveClass('sticky');
 });
+
+// #382: rows are keyed by a client id, so removing a middle set leaves the others' state with their own set.
+test('deleting the second of three sets keeps the third set completed and its undo guard', async () => {
+  const ui = mount();
+  await openNew(ui);
+  await ui.user.click(completion(2));
+  expect(pressed(2)).toBe('true');
+  await ui.user.click(screen.getAllByRole('button', { name: 'Delete set' })[1]);
+  expect(screen.getAllByRole('button', { name: /Set \d+ done/ })).toHaveLength(2);
+  expect(pressed(0)).toBe('false');
+  expect(pressed(1), 'the former third set is still completed').toBe('true');
+  // The quick second tap right after completing is a double tap: the guard follows the set, not the index.
+  await ui.user.click(completion(1));
+  expect(pressed(1), 'a repeat tap does not undo it').toBe('true');
+});
+
+test('the ticking readout is not a live region; a state change is announced separately', async () => {
+  const ui = mount();
+  await openNew(ui);
+  const readout = () => screen.getByRole('timer');
+  expect(readout()).not.toHaveAttribute('aria-live');
+  const announcement = () => document.querySelector('[data-slot=rest-announcement]') as HTMLElement;
+  expect(announcement()).toHaveAttribute('aria-live', 'polite');
+  expect(announcement()).toBeEmptyDOMElement();
+  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
+  expect(announcement()).toHaveTextContent('Rest running');
+  expect(readout()).not.toHaveAttribute('aria-live');
+});

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 
 import { feedbackLevels, fieldErrors, workoutSchema } from '../../../shared/contract';
 import { api, Unreachable } from './api';
-import { done, repeatTapWindow, type Workout } from './model';
+import { done, repeatTapWindow, withoutSetKeys, withSetKeys, type Workout } from './model';
 
 type Draft = {
   format: 1;
@@ -92,7 +92,8 @@ export function useWorkoutDraft({
   onSaved: () => Promise<unknown>;
   onSetCompleted: (set: NonNullable<Workout['sets']>[number]) => void;
 }) {
-  const [editor, updateEditor] = useState<Partial<Workout> | null>(null);
+  const [editor, updateEditorRaw] = useState<Partial<Workout> | null>(null);
+  const updateEditor = (value: Partial<Workout> | null) => updateEditorRaw(withSetKeys(value));
   const [initialDraft] = useState(readDraft);
   const [recovery, setRecovery] = useState(initialDraft.draft);
   const [storageWarning, setStorageWarning] = useState(initialDraft.warning);
@@ -118,9 +119,10 @@ export function useWorkoutDraft({
   }
   function setEditor(value: Partial<Workout> | null) {
     if (workoutSaving.current) return;
-    updateEditor(value);
-    if (value) {
-      persist({ format: 1, savedAt: Date.now(), editor: value, request: draft.current?.request });
+    const keyed = withSetKeys(value);
+    updateEditorRaw(keyed);
+    if (keyed) {
+      persist({ format: 1, savedAt: Date.now(), editor: keyed, request: draft.current?.request });
       setRecovery(null);
       setSaveState('Local draft · Before server save');
     } else setRecovery(draft.current);
@@ -131,16 +133,17 @@ export function useWorkoutDraft({
     setEditor({ ...editor, sets: editor.sets.map((s, j) => (j === i ? { ...s, exercise } : s)) });
   }
   // Taps on one set within this window after completing it are treated as a double tap.
-  const completedAt = useRef(new Map<number, number>());
+  const completedAt = useRef(new Map<string, number>());
   function markSet(i: number, completed: boolean) {
     // The synchronously stored draft is newer than this render: a repeated tap from the
     // same render must not toggle back or restart the rest timer.
     const latest = draft.current?.editor ?? editor;
     const current = latest?.sets?.[i];
     if (!latest || !current || done(current) === completed) return;
-    if (!completed && Date.now() - (completedAt.current.get(i) ?? -Infinity) < repeatTapWindow)
+    const key = current._key ?? String(i);
+    if (!completed && Date.now() - (completedAt.current.get(key) ?? -Infinity) < repeatTapWindow)
       return;
-    if (completed) completedAt.current.set(i, Date.now());
+    if (completed) completedAt.current.set(key, Date.now());
     const sets = [...latest.sets!];
     sets[i] = { ...current, completed };
     setEditor({ ...latest, sets });
@@ -150,9 +153,10 @@ export function useWorkoutDraft({
     if (!editor || workoutSaving.current) return;
     // #64: the server's schema checks the input first; nothing is sent while it is invalid.
     // An emptied weight or reps field is undefined; NaN makes the schema answer "Enter ... as a number" (#383).
+    const payload = withoutSetKeys(editor);
     const checked = workoutSchema.safeParse({
-      ...editor,
-      sets: editor.sets?.map((s) => ({
+      ...payload,
+      sets: payload.sets?.map((s) => ({
         ...s,
         weight: s.weight ?? Number.NaN,
         reps: s.reps ?? Number.NaN,
@@ -171,14 +175,14 @@ export function useWorkoutDraft({
     const method = editor.id ? 'PUT' : 'POST';
     let kept = false;
     try {
-      const body = JSON.stringify(editor);
+      const body = JSON.stringify(payload);
       const old = draft.current?.request;
       const request =
         old?.body === body && old.path === path && old.method === method
           ? old
           : { key: retryKey(), body, path, method };
       kept = persist({ format: 1, savedAt: draft.current?.savedAt ?? Date.now(), editor, request });
-      await api(path, method, editor, request.key);
+      await api(path, method, payload, request.key);
       persist(null);
       setRecovery(null);
       updateEditor(null);

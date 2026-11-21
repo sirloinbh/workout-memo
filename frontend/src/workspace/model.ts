@@ -18,7 +18,32 @@ export type SetRow = {
   // Missing on rows saved before completion tracking; those count as completed.
   completed?: boolean;
   rpe?: number | null;
+  // #382: a client-side id, so a row keeps its own state when another set is removed. It never leaves
+  // the browser: saving strips it.
+  _key?: string;
 };
+let keyCounter = 0;
+const newSetKey = () => `${Date.now().toString(36)}-${(keyCounter++).toString(36)}`;
+/** Gives every set a unique `_key`; a set copied from another one (add set) gets its own. */
+export function withSetKeys<T extends { sets?: SetRow[] }>(editor: T): T;
+export function withSetKeys<T extends { sets?: SetRow[] }>(editor: T | null): T | null;
+export function withSetKeys<T extends { sets?: SetRow[] }>(editor: T | null): T | null {
+  if (!editor?.sets) return editor;
+  const seen = new Set<string>();
+  return {
+    ...editor,
+    sets: editor.sets.map((s) => {
+      const key = s._key && !seen.has(s._key) ? s._key : newSetKey();
+      seen.add(key);
+      return s._key === key ? s : { ...s, _key: key };
+    }),
+  };
+}
+/** The editor as the server gets it, without the client ids. */
+export function withoutSetKeys<T extends { sets?: SetRow[] }>(editor: T): T {
+  if (!editor.sets) return editor;
+  return { ...editor, sets: editor.sets.map(({ _key: _ignored, ...s }) => s) };
+}
 // Only completed sets are actual performance for statistics and goals.
 export const done = (s: SetRow) => s.completed !== false;
 // #268: below 480px a set field's name sits beside it, not above, so a set card fits between

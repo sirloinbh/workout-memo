@@ -31,7 +31,7 @@ type MetricKey = 'body_weight_kg' | 'body_fat_percent' | 'skeletal_muscle_kg';
 type Draft = { id?: number; date: string } & Record<MetricKey, string>;
 type WorkoutLike = {
   date: string;
-  sets: { weight: number | string; reps: number; completed?: boolean }[];
+  sets: { weight: number | string | undefined; reps: number | undefined; completed?: boolean }[];
 };
 
 // Units match the API: kg and %, stored with at most two decimals.
@@ -141,7 +141,7 @@ export function BodyMeasurements({
     // Planned (not completed) sets are not performance (#31); missing means completed.
     const volume = w.sets
       .filter((s) => s.completed !== false)
-      .reduce((n, s) => n + Number(s.weight) * s.reps, 0);
+      .reduce((n, s) => n + Number(s.weight) * (s.reps ?? 0), 0);
     volumeByDate.set(date, (volumeByDate.get(date) ?? 0) + volume);
   }
   // #123: a metric without any value in the period gets one line instead of an empty chart.

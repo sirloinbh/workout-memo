@@ -33,6 +33,7 @@ import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { plural } from './labels';
+import { requestJson } from './lib/api';
 
 // #116: cardio goals on the My Goals page, next to the strength goals. The server judges them;
 // this screen only shows the judgment. Kind labels and time/distance formats come from the
@@ -83,6 +84,9 @@ const amount = (goal: GoalShape, value: number) =>
 // Swimming goals read in metres like the session screen; every kind together stays in km.
 const distanceOf = (goal: GoalShape, value: number) =>
   goal.kind ? formatDistance(goal.kind, value)! : `${km(value)} km`;
+// Progress as 0-100; a target of 0 (or less) gives 0 instead of NaN (#386).
+const percentOf = (value: number, target: number) =>
+  target > 0 ? Math.min(100, (value / target) * 100) : 0;
 const targetOf = (goal: GoalShape) =>
   goal.goal_type === 'count'
     ? goal.target_count!
@@ -100,23 +104,8 @@ function goalTitle(goal: GoalShape) {
   return `${goal.period === 'week' ? 'Weekly' : 'Monthly'} ${kind.toLowerCase()} ${amount(goal, targetOf(goal))}`;
 }
 
-async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  try {
-    const res = await fetch('/api/cardio-goals' + path, {
-      method,
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? 'The cardio goal request failed');
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const request = <T,>(path: string, method = 'GET', body?: unknown) =>
+  requestJson<T>('/api/cardio-goals' + path, { method, body, timeoutMs: 15000 });
 
 export function CardioGoals({ deadline }: { deadline: string }) {
   const [goals, setGoals] = useState<StoredGoal[]>([]);
@@ -306,13 +295,13 @@ function GoalCard({
                 aria-label={`${title} progress this ${unit}`}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={Math.min(100, Math.round((p.current.value / targetOf(goal)) * 100))}
+                aria-valuenow={Math.round(percentOf(p.current.value, targetOf(goal)))}
                 className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted"
               >
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{
-                    width: `${Math.min(100, (p.current.value / targetOf(goal)) * 100)}%`,
+                    width: `${percentOf(p.current.value, targetOf(goal))}%`,
                   }}
                 />
               </div>

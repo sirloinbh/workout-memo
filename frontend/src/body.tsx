@@ -17,6 +17,7 @@ import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { InbodyImport } from './inbody-import';
+import { requestJson } from './lib/api';
 import { cn } from './lib/utils';
 
 export type BodyRecord = {
@@ -49,23 +50,8 @@ const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigit
 const day = (value: string) => new Date(value.slice(0, 10) + 'T12:00:00Z');
 const days = (from: string, to: string) => Math.round((+day(to) - +day(from)) / 86400000);
 
-async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  try {
-    const res = await fetch('/api/body-measurements' + path, {
-      method,
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
-    if (!res.ok) throw Error(data.error ?? 'The body record request failed');
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const request = <T,>(path: string, method = 'GET', body?: unknown) =>
+  requestJson<T>('/api/body-measurements' + path, { method, body, timeoutMs: 15000 });
 
 export function BodyMeasurements({
   from,

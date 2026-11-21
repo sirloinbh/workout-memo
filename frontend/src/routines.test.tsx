@@ -9,6 +9,10 @@ import { deferred, json, mockApi } from './test/api';
 import { getLive, queryLive } from './test/live';
 import { openPage } from './test/nav';
 
+// The editor tests drive a long multi-step form; under CPU load a single one has taken over
+// the shared 15 s limit, so this file allows a minute per test (#380).
+vi.setConfig({ testTimeout: 60_000 });
+
 // Ported from backend/test/routines-ui.test.ts (vm hook harness) to a real DOM.
 // Like the legacy harness, forms are submitted with fireEvent.submit, which skips
 // native constraint validation (required fields) exactly as calling onSubmit did.

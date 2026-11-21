@@ -1824,20 +1824,14 @@ function Workspace() {
               <div className="mb-4 flex flex-col items-start gap-2 text-caption text-muted-foreground">
                 <span>Effort feedback (optional)</span>
                 <ToggleChips
+                  type="single"
                   label="Effort feedback"
-                  options={feedbackLevels.map((level) => feedbackLabels[level])}
-                  value={editor.feedback ? [feedbackLabels[editor.feedback]] : []}
-                  // At most one level: a new press replaces the old one, and pressing the
-                  // selected level again clears it back to not recorded.
+                  options={feedbackLevels}
+                  renderOption={(level) => feedbackLabels[level as Feedback]}
+                  value={editor.feedback ?? null}
+                  // A new press replaces the old level; pressing it again clears it to not recorded.
                   onValueChange={(next) =>
-                    setEditor({
-                      ...editor,
-                      feedback:
-                        feedbackLevels.find(
-                          (level) =>
-                            level !== editor.feedback && next.includes(feedbackLabels[level]),
-                        ) ?? null,
-                    })
+                    setEditor({ ...editor, feedback: next as Feedback | null })
                   }
                 />
               </div>

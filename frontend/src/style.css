@@ -114,7 +114,8 @@
   font-weight: 600;
   margin: -4px 0 6px;
 }
-[aria-invalid='true'] {
+/* #379: only inside .legacy; the common components style their own invalid state. */
+:where(.legacy) [aria-invalid='true'] {
   border-color: var(--destructive);
 }
 /* #159: --muted-foreground text on a --muted surface is 4.35:1 in light mode, below WCAG AA

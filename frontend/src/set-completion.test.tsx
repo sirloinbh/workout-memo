@@ -83,7 +83,7 @@ const pressed = (i = 0) => completion(i).getAttribute('aria-pressed');
 const autoStart = () => screen.getByRole('switch', { name: 'Auto-start when a set is done' });
 const duration = () => screen.getByRole('spinbutton', { name: 'Rest time (sec)' });
 // #83: workout feedback replaced the per-set RPE input.
-const feedback = (label: string) => screen.getByRole('button', { name: label });
+const feedback = (label: string) => screen.getByRole('radio', { name: label });
 const timer = () => document.querySelector('[data-slot=rest-timer]')?.textContent ?? '';
 const content = () => document.body.textContent ?? '';
 const stat = (label: string) => {
@@ -216,7 +216,7 @@ test('refresh restores timer from its end time and set state from the draft', as
   await second.user.click(screen.getByRole('button', { name: /Restore/ }));
   await loaded();
   expect(pressed()).toBe('true');
-  expect(feedback('Hard')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Hard')).toHaveAttribute('aria-checked', 'true');
   expect(autoStart(), 'auto-start preference persists').toBeChecked();
   await submit(second);
   expect(second.sentFeedback()).toBe('hard');
@@ -234,14 +234,14 @@ test('pressing the chosen feedback again sends null, and corrupt timer storage d
   expect(timer()).toMatch(/1:30/);
   expect(document.querySelector('input[step="0.5"]'), 'no RPE input').toBeNull();
   await ui.user.click(feedback('Medium'));
-  expect(feedback('Medium')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Medium')).toHaveAttribute('aria-checked', 'true');
   await ui.user.click(feedback('Medium'));
-  expect(feedback('Medium')).toHaveAttribute('aria-pressed', 'false');
+  expect(feedback('Medium')).toHaveAttribute('aria-checked', 'false');
   await ui.user.click(feedback('Easy'));
   await ui.user.click(feedback('Hard'));
-  expect(feedback('Hard')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Hard')).toHaveAttribute('aria-checked', 'true');
   expect(feedback('Easy'), 'only one level stays selected').toHaveAttribute(
-    'aria-pressed',
+    'aria-checked',
     'false',
   );
   await ui.user.click(feedback('Hard'));
@@ -313,7 +313,7 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
   await loaded();
   await waitFor(() => expect(content()).toMatch(/Effort Easy/));
   await ui.user.click(screen.getByRole('button', { name: 'Edit' }));
-  expect(feedback('Easy')).toHaveAttribute('aria-pressed', 'true');
+  expect(feedback('Easy')).toHaveAttribute('aria-checked', 'true');
   await ui.user.click(feedback('Hard'));
   await submit(ui);
   expect(ui.mutations().at(-1)!.method).toBe('PUT');

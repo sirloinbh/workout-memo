@@ -103,19 +103,24 @@ export function InbodyImport({
       }
       return;
     }
-    const cells = parseCsv(await file.text());
-    if (cells.length < 2) {
-      setError('Choose a CSV file with a header row and measurements.');
-      return;
+    try {
+      const cells = parseCsv(await file.text());
+      if (cells.length < 2) {
+        setError('Choose a CSV file with a header row and measurements.');
+        return;
+      }
+      const columns = detectColumns(cells[0]);
+      setCsv({ cells, columns });
+      preview(rowsFromCsv(cells, columns));
+      setStatus(
+        targets.every((t) => columns[t] !== null)
+          ? 'Columns were found automatically. Check the values, then save.'
+          : 'Some columns were not found. Choose them below.',
+      );
+    } catch (e) {
+      setStatus('');
+      setError(`Could not read the file: ${(e as Error).message}`);
     }
-    const columns = detectColumns(cells[0]);
-    setCsv({ cells, columns });
-    preview(rowsFromCsv(cells, columns));
-    setStatus(
-      targets.every((t) => columns[t] !== null)
-        ? 'Columns were found automatically. Check the values, then save.'
-        : 'Some columns were not found. Choose them below.',
-    );
   }
   function remap(target: Target, index: number | null) {
     if (!csv) return;

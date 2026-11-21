@@ -126,13 +126,16 @@ export function rowsFromCsv(cells: string[][], columns: Record<Target, number | 
 // follows its label on the same line; ambiguous or missing labels stay empty.
 export function rowFromText(text: string): PreviewRow {
   const lines = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim());
+  // A label counts only at the start of a line (optionally after "Body"), so "Target Weight" and
+  // "Lean Body Weight" lines are not read as the weight. A unit in parentheses must be kg or %;
+  // pounds are refused rather than saved as kg (#384).
   const valueAfter = (labels: RegExp) => {
     for (const line of lines) {
       const m = new RegExp(
-        `(?:${labels.source})\\s*(?:\\([^)]*\\))?\\s*[:：]?\\s*(\\d{1,3}(?:\\.\\d{1,2})?)`,
+        `^[\\s\\d.:|\\-•*]*(?:body\\s+)?(?:${labels.source})\\s*(?:\\(([^)]*)\\))?\\s*[:：]?\\s*(\\d{1,3}(?:\\.\\d{1,2})?)`,
         'i',
       ).exec(line);
-      if (m) return m[1];
+      if (m && !/lb|pound|파운드/i.test(m[1] ?? '')) return m[2];
     }
     return '';
   };

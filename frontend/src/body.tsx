@@ -99,7 +99,7 @@ export function BodyMeasurements({
       const raw = draft[m.key].trim();
       const value = raw === '' ? null : Number(raw);
       if (value !== null && !Number.isFinite(value)) {
-        setFormError(`Enter ${m.label} as a number`);
+        setFormError(`Enter ${m.label.toLowerCase()} as a number`);
         return;
       }
       body[m.key] = value;
@@ -414,10 +414,6 @@ function Trend({
     <figure
       data-slot="body-trend"
       className="m-0 rounded-xl border bg-card p-4 text-card-foreground"
-      role="img"
-      aria-label={`${metric.label} trend (${metric.unit}): ${points
-        .map((p) => `${p.date} ${fmt(p.value)}`)
-        .join(', ')}`}
     >
       <figcaption className="mb-2 flex justify-between gap-2 text-meta text-muted-foreground">
         <strong className="font-semibold text-foreground">
@@ -433,7 +429,11 @@ function Trend({
         className="block h-30 w-full border-y border-dashed"
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
-        aria-hidden="true"
+        // Only the drawing is an image: the caption and range around it stay readable text (#384).
+        role="img"
+        aria-label={`${metric.label} trend (${metric.unit}): ${points
+          .map((p) => `${p.date} ${fmt(p.value)}`)
+          .join(', ')}`}
       >
         {segments
           .filter((s) => s.length > 1)

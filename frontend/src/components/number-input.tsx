@@ -94,17 +94,22 @@ export function NumberInput({
 // "0x10" or "1e3" is refused rather than read as 16 or 1000. A lone "." reads as 0 until the
 // digits after it arrive, so ".5" can be typed.
 const typedNumber = /^\d*\.?\d*$/;
-const readNumber = (text: string) => (text === '.' ? 0 : Number(text));
+// An emptied field is undefined, never 0, so saving it shows the field's error (#383).
+const readNumber = (text: string) => (text === '' ? undefined : text === '.' ? 0 : Number(text));
 export function NumberValueInput({
   value,
   onValueChange,
   ...props
 }: Omit<ComponentProps<typeof NumberInput>, 'value' | 'onValueChange'> & {
-  value: number;
-  onValueChange: (value: number) => void;
+  value: number | undefined;
+  onValueChange: (value: number | undefined) => void;
 }) {
-  const [text, setText] = useState(String(value));
-  const shown = Object.is(readNumber(text), value) ? text : String(value);
+  const [text, setText] = useState(value === undefined ? '' : String(value));
+  const shown = Object.is(readNumber(text), value)
+    ? text
+    : value === undefined
+      ? ''
+      : String(value);
   return (
     <NumberInput
       {...props}

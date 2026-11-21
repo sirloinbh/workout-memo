@@ -23,18 +23,8 @@ export const effortLabels: Record<Feedback, string> = {
   easy: 'Easy',
 };
 
-// A plain decimal: digits with at most one decimal point, optionally negative so the schema's
-// range message answers "-1". A comma is never accepted: "1,000" uses it as a thousands
-// separator, and reading it as a decimal comma would save 1 m for a 1,000 m swim (#115 review).
-// Number() alone would also read "0x10", "1e3" or "Infinity" and send a value nobody typed.
-const plainNumber = /^-?(\d+(\.\d*)?|\.\d+)$/;
-// Empty stays null (not recorded, never 0); anything that is not a plain decimal becomes NaN
-// so the schema reports "Enter ... as a number" on that field.
-export const optionalNumber = (value: string) => {
-  const text = value.trim();
-  if (text === '') return null;
-  return plainNumber.test(text) ? Number(text) : Number.NaN;
-};
+// Typed number text: one reader shared with the stepper (components/number-step.ts, #383).
+export { optionalNumber } from '../components/number-step';
 
 type DurationParts = { hours: string; minutes: string; seconds: string };
 

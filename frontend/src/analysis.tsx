@@ -1,5 +1,6 @@
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { bodyParts, legacyBodyParts } from '../../shared/contract';
 import { AlertBanner } from './components/alert-banner';
@@ -92,10 +93,8 @@ const record = (r: PersonalRecord | null, value: (r: PersonalRecord) => string, 
 export function Analysis() {
   const [anchor, setAnchor] = useState(seoulDate());
   const [weeks, setWeeks] = useState(1);
-  const [data, setData] = useState<Result | null>(null);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient();
   const [saveError, setSaveError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<{ exercise: string; key: string; parts: string[] } | null>(
     null,
@@ -116,36 +115,37 @@ export function Analysis() {
     } else if (target) listButtons.current.get(target.key)?.focus();
   }, [selected]);
   const { from, to } = analysisRange(anchor, weeks);
-  const version = useRef(0);
-  const load = useCallback(async () => {
-    const current = ++version.current;
-    setLoading(true);
-    try {
-      const result = await request<Result>(`/analysis?from=${from}&to=${to}`);
-      // An older range's late response must not replace the latest one.
-      if (current !== version.current) return;
-      setData(result);
-      setError('');
-    } catch (e) {
-      if (current === version.current) setError((e as Error).message);
-    } finally {
-      if (current === version.current) setLoading(false);
-    }
-  }, [from, to]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // The range is part of the key, so an older range's late answer never replaces the latest one; the
+  // previous cards stay on screen while the next range loads.
+  const query = useQuery({
+    queryKey: ['analysis', from, to],
+    queryFn: () => request<Result>(`/analysis?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
+  });
+  const data = query.data ?? null;
+  const error = query.error?.message ?? '';
+  const loading = query.isFetching;
+  const load = () => query.refetch();
+  const saveBodyParts = useMutation({
+    mutationFn: (body: { exercise: string; body_parts: string[] }) =>
+      request('/exercise-body-parts', body),
+    // The mapping also picks the rest of a set in the journal.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['analysis'] }),
+        queryClient.invalidateQueries({ queryKey: ['exercise-body-parts'] }),
+      ]),
+  });
   async function saveParts() {
     if (!editing || saving) return;
     setSaving(true);
     setSaveError('');
     try {
-      await request('/exercise-body-parts', {
+      await saveBodyParts.mutateAsync({
         exercise: editing.exercise,
         body_parts: [...legacyParts, ...parts].filter((p) => editing.parts.includes(p)),
       });
       setEditing(null);
-      await load();
     } catch (e) {
       setSaveError((e as Error).message);
     } finally {

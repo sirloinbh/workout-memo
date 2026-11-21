@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
-import { api } from './api';
+import { api, changed, type WriteAction } from './api';
 import { cleanDate, type Goal, today } from './model';
 
 /** Strength goals as cards, then the cardio goals, which load and save on their own (#116). */
@@ -17,7 +17,7 @@ export function GoalsPage({
 }: {
   goals: Goal[];
   saving: boolean;
-  action: (fn: () => Promise<unknown>, done?: () => void) => Promise<void>;
+  action: WriteAction;
   to: string;
 }) {
   return (
@@ -65,7 +65,7 @@ export function GoalsPage({
                   disabled={saving}
                   onClick={() => {
                     if (confirm('Delete this goal?'))
-                      void action(() => api('/goals/' + g.id, 'DELETE'));
+                      void action(() => api('/goals/' + g.id, 'DELETE'), undefined, changed.goals);
                   }}
                 >
                   Delete goal

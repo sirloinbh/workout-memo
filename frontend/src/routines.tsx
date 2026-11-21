@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -33,15 +34,30 @@ const request = <T,>(path: string, body?: unknown) =>
 
 // #124: exercise name candidates come from the page (GET /api/exercise-names plus local names).
 export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly string[] }) {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const queryClient = useQueryClient();
+  const plansQuery = useQuery({ queryKey: ['routines'], queryFn: () => request<Plan[]>('') });
+  const plans = plansQuery.data ?? [];
+  const loading = plansQuery.isPending;
   const [selected, setSelected] = useState<Plan | null>(null);
   const [draft, setDraft] = useState<Plan | null>(null);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
-  const [steps, setSteps] = useState<Steps>({});
-  const [machines, setMachines] = useState<Machine[]>([]);
+  // Weight steps and machines are optional: a failed load leaves them empty. Machines share the journal's
+  // cached list (#376).
+  const stepsQuery = useQuery({
+    queryKey: ['exercise-weight-steps'],
+    queryFn: () =>
+      requestJson<{ exercise: string; weight_step: number }[]>('/api/exercise-weight-steps'),
+  });
+  const steps: Steps = Array.isArray(stepsQuery.data)
+    ? Object.fromEntries(stepsQuery.data.map((r) => [r.exercise, r.weight_step]))
+    : {};
+  const machinesQuery = useQuery({
+    queryKey: ['machines'],
+    queryFn: () => requestJson<Machine[]>('/api/machines'),
+  });
+  const machines = Array.isArray(machinesQuery.data) ? machinesQuery.data : [];
   // #105: the form is entered one step at a time; only earlier steps can be revisited.
   const [step, setStep] = useState(0);
   const stepHeading = useRef<HTMLHeadingElement>(null);
@@ -88,33 +104,8 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
       .finally(() => setOpening(null));
   };
   useEffect(() => {
-    let active = true;
-    void requestJson<{ exercise: string; weight_step: number }[]>('/api/exercise-weight-steps')
-      .then((rows: { exercise: string; weight_step: number }[]) => {
-        if (active && Array.isArray(rows))
-          setSteps(Object.fromEntries(rows.map((r) => [r.exercise, r.weight_step])));
-      })
-      .catch(() => undefined);
-    // #82: machines are optional; a failed load only leaves the select empty.
-    void requestJson<Machine[]>('/api/machines')
-      .then((m) => {
-        if (active && Array.isArray(m)) setMachines(m);
-      })
-      .catch(() => undefined);
-    request<Plan[]>('')
-      .then((p) => {
-        if (active) setPlans(p);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (plansQuery.error) setError(plansQuery.error.message);
+  }, [plansQuery.error]);
   const changeSplit = (index: number, value: Split) => {
     if (draft)
       setDraft({ ...draft, splits: draft.splits.map((s, i) => (i === index ? value : s)) });
@@ -215,9 +206,17 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
                   setSavedId(result.id);
                   setDraft(null);
                   setSelected(saved);
-                  setPlans((previous) => [saved, ...previous]);
+                  queryClient.setQueryData<Plan[]>(['routines'], (previous = []) => [
+                    saved,
+                    ...previous,
+                  ]);
                   const detail = await request<Plan>('/' + result.id);
-                  setPlans(await request<Plan[]>(''));
+                  // A failed re-read is shown, not hidden: fetchQuery rejects where an invalidation would not.
+                  await queryClient.fetchQuery({
+                    queryKey: ['routines'],
+                    queryFn: () => request<Plan[]>(''),
+                    staleTime: 0,
+                  });
                   setSelected(detail);
                 })
                 .catch((e) => setError(e.message))

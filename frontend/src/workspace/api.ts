@@ -34,3 +34,20 @@ export async function api<T>(
     throw cause;
   }
 }
+
+/**
+ * What a write changed, so only those lists refetch (#376). A workout also moves goal progress and the names offered for
+ * exercises; a goal or a machine changes only its own lists (a machine may add a brand).
+ */
+export const changed = {
+  workouts: [['workouts'], ['goals'], ['exercise-names']],
+  goals: [['goals']],
+  machines: [['machines'], ['brands']],
+} as const satisfies Record<string, readonly (readonly string[])[]>;
+export type Changed = readonly (readonly string[])[];
+/** Runs a write inside the shared mutation: `done` runs after it, then only the `changes` lists refetch. */
+export type WriteAction = (
+  fn: () => Promise<unknown>,
+  done?: () => void,
+  changes?: Changed,
+) => Promise<void>;

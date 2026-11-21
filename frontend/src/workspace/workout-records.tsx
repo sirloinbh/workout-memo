@@ -8,7 +8,7 @@ import { EmptyState } from '../components/ui/empty-state';
 import { SkeletonList } from '../components/ui/skeleton';
 import { monthNames } from '../date';
 import { plural } from '../labels';
-import { api } from './api';
+import { api, type WriteAction } from './api';
 import {
   cleanDate,
   dateLabel,
@@ -29,7 +29,7 @@ export type RecordsProps = {
   saving: boolean;
   newWorkout: () => void;
   setEditor: (value: Partial<Workout> | null) => void;
-  action: (fn: () => Promise<unknown>, done?: () => void) => Promise<void>;
+  action: WriteAction;
 };
 
 /** The "Workout records" card; the dashboard adds a link to the journal. */

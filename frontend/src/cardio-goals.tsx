@@ -1,5 +1,6 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Timer } from 'lucide-react';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 
 import {
   type CardioGoalInput,
@@ -108,35 +109,38 @@ const request = <T,>(path: string, method = 'GET', body?: unknown) =>
   requestJson<T>('/api/cardio-goals' + path, { method, body, timeoutMs: 15000 });
 
 export function CardioGoals({ deadline }: { deadline: string }) {
-  const [goals, setGoals] = useState<StoredGoal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['cardio-goals'],
+    queryFn: () => request<StoredGoal[]>(''),
+  });
+  const goals = query.data ?? [];
+  const loading = query.isFetching;
+  const [actionError, setError] = useState('');
+  // A reload that works clears an earlier failed delete, as a fresh load always did.
+  useEffect(() => setError(''), [query.dataUpdatedAt]);
+  const error =
+    actionError || (query.error ? `Could not load cardio goals: ${query.error.message}` : '');
   const [status, setStatus] = useState('');
   // The add form, empty or filled with a suggested next goal (#251).
   const [editor, setEditor] = useState<{ initial: GoalShape | null } | null>(null);
   const [saving, setSaving] = useState(false);
   const today = seoulDate();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      setGoals(await request<StoredGoal[]>(''));
-    } catch (e) {
-      setError(`Could not load cardio goals: ${(e as Error).message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useEffect(() => void load(), [load]);
+  const load = () => query.refetch();
+  // A saved goal stays saved even if the list refetch fails: the mutation only waits for the refetch.
+  const write = useMutation({
+    mutationFn: ({ path, method, body }: { path: string; method: string; body?: unknown }) =>
+      request(path, method, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cardio-goals'] }),
+  });
 
   async function save(goal: CardioGoalInput) {
     setSaving(true);
     try {
-      await request('', 'POST', goal);
+      await write.mutateAsync({ path: '', method: 'POST', body: goal });
       setEditor(null);
       setStatus('Cardio goal saved.');
-      await load();
     } finally {
       setSaving(false);
     }
@@ -146,9 +150,8 @@ export function CardioGoals({ deadline }: { deadline: string }) {
     setSaving(true);
     setError('');
     try {
-      await request('/' + goal.id, 'DELETE');
+      await write.mutateAsync({ path: '/' + goal.id, method: 'DELETE' });
       setStatus('Cardio goal deleted.');
-      await load();
     } catch (e) {
       setError(`Could not delete the cardio goal: ${(e as Error).message}`);
     } finally {

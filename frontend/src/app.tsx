@@ -1,10 +1,4 @@
-import {
-  QueryClient,
-  QueryClientProvider,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   DatabaseBackup,
   Dumbbell,
@@ -30,6 +24,7 @@ import { SkeletonCard } from './components/ui/skeleton';
 import { Toaster } from './components/ui/sonner';
 import { dateTitle } from './date';
 import { candidateNames, type ExerciseName } from './exercise-name-match';
+import { createQueryClient, useApiQuery } from './lib/query';
 import {
   Analysis,
   Backup,
@@ -83,13 +78,19 @@ export function App() {
     const idle = window.requestIdleCallback ?? ((run: () => void) => window.setTimeout(run, 1000));
     idle(() => void preloadPages());
   }, []);
-  const [client] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: { retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false },
+  // The shared client (lib/query), with this app's choices kept: a failure shows at once with its own
+  // reconnect button (no retry), and a window that gets focus again does not refetch.
+  const [client] = useState(() =>
+    createQueryClient({
+      defaultOptions: {
+        queries: {
+          staleTime: 0,
+          retry: false,
+          refetchOnWindowFocus: false,
+          refetchOnReconnect: false,
         },
-      }),
+      },
+    }),
   );
   return (
     <QueryClientProvider client={client}>
@@ -130,7 +131,7 @@ function Workspace() {
     queryKey: ['workouts', from, to],
     queryFn: () => api<Workout[]>(`/workouts?from=${from}&to=${to}`),
   });
-  const goalsQuery = useQuery({ queryKey: ['goals'], queryFn: () => api<Goal[]>('/goals') });
+  const goalsQuery = useApiQuery<Goal[]>(['goals'], '/api/goals');
   // #115: the dashboard's cardio summary. Only the dashboard asks (the journal tab loads its
   // own list), and a failure only hides the card.
   const cardioQuery = useQuery({
@@ -138,14 +139,9 @@ function Workspace() {
     queryFn: () => listCardioSessions(from, to).catch(() => []),
     enabled: page === 'overview',
   });
-  const machinesQuery = useQuery({
-    queryKey: ['machines'],
-    queryFn: () => api<Machine[]>('/machines'),
-  });
-  const brandsQuery = useQuery({
-    queryKey: ['brands'],
-    queryFn: () => api<{ id: number; name: string }[]>('/brands'),
-    // Brands change only through a machine save, which refetches them (#376).
+  const machinesQuery = useApiQuery<Machine[]>(['machines'], '/api/machines');
+  // Brands change only through a machine save, which refetches them (#376).
+  const brandsQuery = useApiQuery<{ id: number; name: string }[]>(['brands'], '/api/brands', {
     staleTime: Infinity,
   });
   const officialQuery = useQuery({

@@ -99,10 +99,18 @@ export async function disablePush(): Promise<void> {
 
 // A running rest tells the server its end; cancel, pause, idle and an ended rest clear it. Resume
 // sends the new end, because the server holds only the last time it was given.
-export async function syncRest(timer: RestTimer, now: number): Promise<void> {
-  if (timer.state === 'running' && timer.endsAt !== null && timer.endsAt > now)
-    await requestJson('/api/push/rest', { method: 'PUT', body: { ends_at: timer.endsAt } });
-  else await requestJson('/api/push/rest', { method: 'DELETE' });
+// The calls go out one at a time in the order they were made (#370): a slow PUT must not land after the
+// DELETE of a later pause or cancel, or the server would push for a rest that is no longer running.
+let restQueue: Promise<unknown> = Promise.resolve();
+export function syncRest(timer: RestTimer, now: number): Promise<void> {
+  const send = async () => {
+    if (timer.state === 'running' && timer.endsAt !== null && timer.endsAt > now)
+      await requestJson('/api/push/rest', { method: 'PUT', body: { ends_at: timer.endsAt } });
+    else await requestJson('/api/push/rest', { method: 'DELETE' });
+  };
+  const result = restQueue.then(send, send);
+  restQueue = result.catch(() => undefined);
+  return result;
 }
 
 export const permissionHelp =

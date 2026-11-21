@@ -13,6 +13,7 @@ import {
   routineSchema,
 } from './domain.js';
 import { cardioPaceSql, cardioSpeedSql } from './routes/cardio.js';
+import { auditContext, writeAudit } from './standard/audit.js';
 import { inTransaction } from './transaction.js';
 
 // Two deliberately separate artifacts (#33):
@@ -1080,14 +1081,30 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         // Preview runs the exact same steps and rolls back, so its summary matches a real run.
         const summary = await inTransaction(
           pool,
-          (client) => restore(client, backup, request.mode),
+          async (client) => {
+            const result = await restore(client, backup, request.mode);
+            // #360: a real restore leaves one audit row in the same transaction; a preview rolls back.
+            if (action === 'restore')
+              await writeAudit(client, {
+                ...auditContext(req, res),
+                action: request.mode === 'replace' ? 'delete' : 'create',
+                entity: 'backup',
+                after: { mode: request.mode, version: backup.version, tables: result.tables },
+              });
+            return result;
+          },
           { commit: () => action !== 'preview' },
         );
         if (action !== 'preview') summary.dry_run = false;
         res.json(summary);
       } catch (e) {
         console.error(
-          JSON.stringify({ event: 'backup_restore_error', action, message: (e as Error).message }),
+          JSON.stringify({
+            event: 'backup_restore_error',
+            action,
+            requestId: res.locals.requestId,
+            message: (e as Error).message,
+          }),
         );
         res.status(500).json({
           error:

@@ -60,12 +60,14 @@ test(
         completed,
       });
       for (const [date, sets] of [
-        ['2097-03-01', [set(120, 5)]],
-        ['2097-03-02', [set(100, 8), set(102.5, 6), set(150, 1, false)]],
+        ['2000-03-01', [set(120, 5)]],
+        // Bodyweight sets (0 kg) and future workouts are never the base (#365).
+        ['2000-03-02', [set(100, 8), set(102.5, 6), set(150, 1, false), set(0, 20)]],
+        ['2097-03-02', [set(200, 3)]],
       ] as const)
         assert.equal((await call('/workouts', 'POST', { date, title: prefix, sets })).status, 201);
       let s = await suggest();
-      assert.deepEqual(s.base, { source: 'record', weight: 102.5, reps: 6, date: '2097-03-02' });
+      assert.deepEqual(s.base, { source: 'record', weight: 102.5, reps: 6, date: '2000-03-02' });
       assert.equal(s.target_weight, 107.5);
 
       const saved = await call('/exercise-weight-steps', 'PUT', {

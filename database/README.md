@@ -248,3 +248,4 @@ There is no DB schema change (no additional migration). The SQL dump of `scripts
 - preview runs the same procedure in one transaction and does ROLLBACK, and returns the numbers added, skipped, in conflict, and deleted. restore COMMITs the same procedure. While it runs, a write lock (`LOCK ... IN EXCLUSIVE MODE`) makes concurrent saves wait, and an error in the middle returns 500 after a ROLLBACK of everything.
 - A restored log is a new record with `version=1` and `created_at` is preserved. The preview ROLLBACK can leave gaps in the id sequence (harmless).
 - Migration 019 (#360): `audit_log` rejects UPDATE and DELETE of rows younger than 365 days.
+- Migration 020 (#368): `sets_workout_idx` on `sets(workout_id, position)`.

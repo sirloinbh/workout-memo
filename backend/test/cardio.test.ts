@@ -512,7 +512,10 @@ test('an import saves every row in one transaction and answers them in order', a
   await withApi(
     (sql, params) =>
       sql.startsWith('INSERT')
-        ? { rows: [{ id: ++id, external_id: params![13] }], rowCount: 1 }
+        ? {
+            rows: (params![13] as string[]).map((external_id) => ({ id: ++id, external_id })),
+            rowCount: 2,
+          }
         : { rows: [], rowCount: 0 },
     async (base, calls, released) => {
       const answer = await call(`${base}/import`, 'POST', {
@@ -529,7 +532,7 @@ test('an import saves every row in one transaction and answers them in order', a
       } as never);
       assert.deepEqual(
         calls.map((c) => c.sql.trim().split(/\s/)[0]),
-        ['BEGIN', 'SELECT', 'INSERT', 'INSERT', 'COMMIT'],
+        ['BEGIN', 'SELECT', 'INSERT', 'COMMIT'],
       );
       assert.equal(released(), 1);
     },
@@ -539,8 +542,10 @@ test('an import saves every row in one transaction and answers them in order', a
 test('an import of 200 rows with full memos fits its own body limit, beyond the app-wide 256kb', async () => {
   let id = 0;
   await withApi(
-    (sql) =>
-      sql.startsWith('INSERT') ? { rows: [{ id: ++id }], rowCount: 1 } : { rows: [], rowCount: 0 },
+    (sql, params) =>
+      sql.startsWith('INSERT')
+        ? { rows: (params![0] as unknown[]).map(() => ({ id: ++id })), rowCount: 200 }
+        : { rows: [], rowCount: 0 },
     async (base) => {
       // Three UTF-8 bytes per character (U+AC00, a Hangul syllable), the worst case for the size.
       const memo = String.fromCodePoint(0xac00).repeat(2000);

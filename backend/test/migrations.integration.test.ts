@@ -62,6 +62,16 @@ test(
       );
       for (const table of ['workouts', 'sets', 'routines', 'body_measurements'])
         assert.ok((await client.query(`SELECT to_regclass('${schema}.${table}') t`)).rows[0].t);
+      // #368: sets are indexed by workout.
+      assert.deepEqual(
+        (
+          await client.query(
+            "SELECT indexdef FROM pg_indexes WHERE schemaname=$1 AND indexname='sets_workout_idx'",
+            [schema],
+          )
+        ).rows.map((r) => /workout_id, "?position"?\)/.test(r.indexdef)),
+        [true],
+      );
       // Korean seed values arrive intact without a console pipe.
       const brands = (await client.query('SELECT name FROM brands')).rows.map((r) => r.name);
       assert.ok(brands.includes('기타'));

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Timer } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 
@@ -36,6 +36,7 @@ import { useConfirmDelete } from './components/use-confirm-delete';
 import { seoulDate } from './date';
 import { plural } from './labels';
 import { requestJson } from './lib/api';
+import { useApiQuery } from './lib/query';
 
 // #116: cardio goals on the My Goals page, next to the strength goals. The server judges them;
 // this screen only shows the judgment. Kind labels and time/distance formats come from the
@@ -111,10 +112,7 @@ const request = <T,>(path: string, method = 'GET', body?: unknown) =>
 
 export function CardioGoals({ deadline }: { deadline: string }) {
   const queryClient = useQueryClient();
-  const query = useQuery({
-    queryKey: ['cardio-goals'],
-    queryFn: () => request<StoredGoal[]>(''),
-  });
+  const query = useApiQuery<StoredGoal[]>(['cardio-goals'], '/api/cardio-goals');
   const goals = query.data ?? [];
   const loading = query.isFetching;
   const [actionError, setError] = useState('');

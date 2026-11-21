@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -10,6 +10,7 @@ import { Notice } from './components/ui/notice';
 import { SkeletonList } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { requestJson } from './lib/api';
+import { useApiQuery } from './lib/query';
 import { cn } from './lib/utils';
 import {
   autoRule,
@@ -35,7 +36,7 @@ const request = <T,>(path: string, body?: unknown) =>
 // #124: exercise name candidates come from the page (GET /api/exercise-names plus local names).
 export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly string[] }) {
   const queryClient = useQueryClient();
-  const plansQuery = useQuery({ queryKey: ['routines'], queryFn: () => request<Plan[]>('') });
+  const plansQuery = useApiQuery<Plan[]>(['routines'], '/api/routines');
   const plans = plansQuery.data ?? [];
   const loading = plansQuery.isPending;
   const [selected, setSelected] = useState<Plan | null>(null);
@@ -45,18 +46,14 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
   const [savedId, setSavedId] = useState<number | null>(null);
   // Weight steps and machines are optional: a failed load leaves them empty. Machines share the journal's
   // cached list (#376).
-  const stepsQuery = useQuery({
-    queryKey: ['exercise-weight-steps'],
-    queryFn: () =>
-      requestJson<{ exercise: string; weight_step: number }[]>('/api/exercise-weight-steps'),
-  });
+  const stepsQuery = useApiQuery<{ exercise: string; weight_step: number }[]>(
+    ['exercise-weight-steps'],
+    '/api/exercise-weight-steps',
+  );
   const steps: Steps = Array.isArray(stepsQuery.data)
     ? Object.fromEntries(stepsQuery.data.map((r) => [r.exercise, r.weight_step]))
     : {};
-  const machinesQuery = useQuery({
-    queryKey: ['machines'],
-    queryFn: () => requestJson<Machine[]>('/api/machines'),
-  });
+  const machinesQuery = useApiQuery<Machine[]>(['machines'], '/api/machines');
   const machines = Array.isArray(machinesQuery.data) ? machinesQuery.data : [];
   // #105: the form is entered one step at a time; only earlier steps can be revisited.
   const [step, setStep] = useState(0);

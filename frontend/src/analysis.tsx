@@ -13,6 +13,7 @@ import { SkeletonCard } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { seoulDate } from './date';
 import { bodyPartLabel, plural } from './labels';
+import { requestJson } from './lib/api';
 import { cn } from './lib/utils';
 
 // #102: the whole analysis page is on the common components: period controls from #224
@@ -73,16 +74,8 @@ function analysisRange(anchor: string, weeks: number) {
   const monday = shift(anchor, -((day + 6) % 7));
   return { from: shift(monday, -7 * (weeks - 1)), to: shift(monday, 6) };
 }
-async function request<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch('/api' + path, {
-    method: body ? 'PUT' : 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await response.json();
-  if (!response.ok) throw Error(data.error ?? 'The analysis request failed');
-  return data;
-}
+const request = <T,>(path: string, body?: unknown) =>
+  requestJson<T>('/api' + path, { method: body ? 'PUT' : 'GET', body });
 // #125: one line per exercise in the list: best weight, estimated 1RM and the last date.
 const summary = (x: Exercise) =>
   [
@@ -100,6 +93,7 @@ export function Analysis() {
   const [weeks, setWeeks] = useState(1);
   const [data, setData] = useState<Result | null>(null);
   const [error, setError] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<{ exercise: string; key: string; parts: string[] } | null>(
@@ -143,6 +137,7 @@ export function Analysis() {
   async function saveParts() {
     if (!editing || saving) return;
     setSaving(true);
+    setSaveError('');
     try {
       await request('/exercise-body-parts', {
         exercise: editing.exercise,
@@ -151,7 +146,7 @@ export function Analysis() {
       setEditing(null);
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      setSaveError((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -225,6 +220,7 @@ export function Analysis() {
           {error}
         </AlertBanner>
       )}
+      {saveError && <AlertBanner>Could not save the body parts: {saveError}</AlertBanner>}
       {/* #173: placeholders in the shape of the two cards on the first load; a reload keeps the
           cards and shows a short status line instead. */}
       {loading && !data && (

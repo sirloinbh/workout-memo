@@ -155,7 +155,7 @@ test('creating sends the core fields as POST and reloads the list', async () => 
     'Enter swimming distance in m. It is converted to km when saved.',
   );
   expect(dialog()).not.toHaveTextContent('1,500 m is 1.5');
-  await user.click(within(dialog()).getByRole('button', { name: 'Hard' }));
+  await user.click(within(dialog()).getByRole('radio', { name: 'Hard' }));
   await user.type(within(dialog()).getByLabelText('Memo (optional)'), 'Freestyle');
   await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
 
@@ -402,14 +402,14 @@ test('editing an imported session PUTs the whole record with its source and exte
     'aria-expanded',
     'true',
   );
-  expect(within(dialog()).getByRole('button', { name: 'Medium' })).toHaveAttribute(
-    'aria-pressed',
+  expect(within(dialog()).getByRole('radio', { name: 'Medium' })).toHaveAttribute(
+    'aria-checked',
     'true',
   );
   await user.clear(field('Workout time seconds'));
   await user.type(field('Workout time seconds'), '0');
   // Pressing the chosen effort again clears it.
-  await user.click(within(dialog()).getByRole('button', { name: 'Medium' }));
+  await user.click(within(dialog()).getByRole('radio', { name: 'Medium' }));
   await user.click(within(dialog()).getByRole('button', { name: 'Save cardio record' }));
 
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());

@@ -351,19 +351,14 @@ export function CardioForm({
           <div className="mb-4 flex flex-col items-start gap-2 text-meta text-muted-foreground">
             <span>Perceived effort (optional)</span>
             <ToggleChips
+              type="single"
               label="Perceived effort"
-              options={feedbackLevels.map((level) => effortLabels[level])}
-              value={draft.effort ? [effortLabels[draft.effort]] : []}
-              // At most one level: a new press replaces the old one, and pressing the selected
-              // level again clears it back to not recorded (the #83 feedback pattern).
-              onValueChange={(next) =>
-                set(
-                  'effort',
-                  feedbackLevels.find(
-                    (level) => level !== draft.effort && next.includes(effortLabels[level]),
-                  ) ?? null,
-                )
-              }
+              options={feedbackLevels}
+              renderOption={(level) => effortLabels[level as Feedback]}
+              value={draft.effort}
+              // A new press replaces the old level; pressing it again clears it to not recorded
+              // (the #83 feedback pattern).
+              onValueChange={(next) => set('effort', next as Feedback | null)}
             />
             {issue('effort')}
           </div>

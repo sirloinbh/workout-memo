@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
-import { FieldError, Input } from './field';
+import { FieldError } from './field';
 import { invalidProps } from './field-props';
 import { keyboardInset } from './keyboard-inset';
 import { Modal, ModalFooter } from './modal';
@@ -12,7 +12,7 @@ test('a field message is linked to its control and absent without a message', ()
     <>
       <label>
         Total weight kg
-        <Input {...invalidProps('sets.0.weight', 'Enter a total weight from 0 to 99999 kg')} />
+        <input {...invalidProps('sets.0.weight', 'Enter a total weight from 0 to 99999 kg')} />
       </label>
       <FieldError name="sets.0.weight">Enter a total weight from 0 to 99999 kg</FieldError>
     </>,
@@ -25,7 +25,7 @@ test('a field message is linked to its control and absent without a message', ()
     <>
       <label>
         Total weight kg
-        <Input {...invalidProps('sets.0.weight', undefined)} />
+        <input {...invalidProps('sets.0.weight', undefined)} />
       </label>
       <FieldError name="sets.0.weight">{undefined}</FieldError>
     </>,

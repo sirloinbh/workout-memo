@@ -6,6 +6,7 @@ import type { Pool } from 'pg';
 import { createApp } from '../src/app.js';
 import { type RoutinePlan, routineSchedule, routineSchema } from '../src/domain.js';
 import {
+  arrangeStats,
   arrangeTargets,
   planEndDate,
   restPreview,
@@ -323,4 +324,18 @@ test('progress API guides the user when no routine has started', async () => {
   const result = await call(empty.pool, '2024-03-04', '/routine-progress', 'GET');
   assert.equal(result.status, 200);
   assert.deepEqual(result.data, { today: '2024-03-04', routine: null });
+});
+
+test('a routine progress request arranges the plan once, plus once for the rest preview (#369)', () => {
+  const today = slots[3]!;
+  arrangeStats.calls = 0;
+  const progress = routineProgress(plan, [], today);
+  // Before #369 this was 5: the arranged plan was rebuilt for restUnavailable and restPreview.
+  assert.equal(arrangeStats.calls, 2);
+  assert.equal(progress.can_rest, true);
+  assert.notEqual(progress.rest_preview, null);
+  // Without a rest preview (a rest day already chosen) the plan is arranged exactly once.
+  arrangeStats.calls = 0;
+  routineProgress(plan, [today], today);
+  assert.equal(arrangeStats.calls, 1);
 });

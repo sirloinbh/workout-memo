@@ -90,7 +90,11 @@ export function analyze(
   to: string,
 ) {
   const parts = new Map<string, string[]>();
-  for (const m of mappings) parts.set(m.exercise, [...(parts.get(m.exercise) ?? []), m.body_part]);
+  for (const m of mappings) {
+    const list = parts.get(m.exercise);
+    if (list) list.push(m.body_part);
+    else parts.set(m.exercise, [m.body_part]);
+  }
   for (const list of parts.values())
     list.sort((a, b) => allBodyParts.indexOf(a as never) - allBodyParts.indexOf(b as never));
   // #88: 팔 is listed only while some exercise is still mapped to it.
@@ -102,7 +106,11 @@ export function analyze(
     .map((r) => ({ ...r, date: r.date.slice(0, 10), weight: Number(r.weight) }))
     .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
   const groups = new Map<string, typeof sets>();
-  for (const s of sets) groups.set(s.exercise_key, [...(groups.get(s.exercise_key) ?? []), s]);
+  for (const s of sets) {
+    const group = groups.get(s.exercise_key);
+    if (group) group.push(s);
+    else groups.set(s.exercise_key, [s]);
+  }
   const weighted = (s: { weight: number }) => s.weight > 0;
   const exercises = [...groups.entries()].map(([key, list]) => {
     const latest = list[list.length - 1];

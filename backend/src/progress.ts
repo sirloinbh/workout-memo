@@ -256,6 +256,9 @@ function skeletons(plan: RoutinePlan): Skeleton[] {
   });
 }
 
+// Counts arrangeTargets calls so a test can check a request arranges the plan only as often as it must (#369).
+export const arrangeStats = { calls: 0 };
+
 // Targets keep plan order; rests only move which slot each target lands on.
 // `records` and `today` matter only for auto routines.
 export function arrangeTargets(
@@ -264,6 +267,7 @@ export function arrangeTargets(
   records: readonly WorkoutRecord[] = [],
   today = '',
 ) {
+  arrangeStats.calls++;
   const rested = new Set(rests);
   const targets = skeletons(plan);
   const slots = routineSchedule(plan);
@@ -306,10 +310,17 @@ export function arrangeTargets(
   return { days, excluded: excludedSkeletons.map((t) => full.get(t.order)!) };
 }
 
-// Returns the reason a rest cannot be chosen today, or null when it can.
-export function restUnavailable(plan: RoutinePlan, rests: readonly string[], today: string) {
+// Returns the reason a rest cannot be chosen today, or null when it can. `arranged` is the plan
+// already arranged with the same rests (records only change the exercises, never which days have a
+// target), so a caller that has it does not arrange again (#369).
+export function restUnavailable(
+  plan: RoutinePlan,
+  rests: readonly string[],
+  today: string,
+  arranged?: ReturnType<typeof arrangeTargets>,
+) {
   if (rests.includes(today)) return 'Today is already set as a rest day';
-  const day = arrangeTargets(plan, rests).days.find((d) => d.date === today);
+  const day = (arranged ?? arrangeTargets(plan, rests)).days.find((d) => d.date === today);
   if (today < plan.start_date || today > planEndDate(plan)) return 'Not within the routine period';
   if (!day) return 'Today is not a planned workout day';
   if (!day.target) return 'No planned goals left for today';
@@ -321,9 +332,10 @@ export function restPreview(
   rests: readonly string[],
   today: string,
   records: readonly WorkoutRecord[] = [],
+  arranged?: ReturnType<typeof arrangeTargets>,
 ) {
-  if (restUnavailable(plan, rests, today)) return null;
-  const before = arrangeTargets(plan, rests, records, today);
+  const before = arranged ?? arrangeTargets(plan, rests, records, today);
+  if (restUnavailable(plan, rests, today, before)) return null;
   const after = arrangeTargets(plan, [...rests, today], records, today);
   const dateOf = new Map(after.days.filter((d) => d.target).map((d) => [d.target!.order, d.date]));
   const moves = before.days
@@ -418,7 +430,7 @@ export function routineProgress(
   const end = planEndDate(plan);
   const inRange = today >= plan.start_date && today <= end;
   const currentWeek = inRange ? Math.floor(dayDiff(plan.start_date, today) / 7) + 1 : null;
-  const unavailable = restUnavailable(plan, rests, today);
+  const unavailable = restUnavailable(plan, rests, today, arranged);
   return {
     today,
     start_date: plan.start_date,
@@ -449,6 +461,6 @@ export function routineProgress(
     rested_today: rests.includes(today),
     can_rest: !unavailable,
     rest_unavailable: unavailable,
-    rest_preview: unavailable ? null : restPreview(plan, rests, today, records),
+    rest_preview: unavailable ? null : restPreview(plan, rests, today, records, arranged),
   };
 }

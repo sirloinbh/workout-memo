@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
-import { type AnalysisSet, analyze } from '../../backend/src/analysis';
+import { type AnalysisSet, analyze } from '../../shared/contract';
 import { App } from './app';
 import { bodyPartLabel } from './labels';
 import { fixClock, json, mockApi } from './test/api';

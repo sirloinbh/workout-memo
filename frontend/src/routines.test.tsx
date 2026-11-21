@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
-import { autoRoutineInput, routineInput } from '../../backend/test/routine-fixture';
+import { autoRoutineInput, routineInput } from '../../shared/contract';
 import { App } from './app';
 import { bodyPartLabel } from './labels';
 import { deferred, json, mockApi } from './test/api';

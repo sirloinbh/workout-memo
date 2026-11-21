@@ -1,6 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { bodyParts, legacyBodyParts } from '../../shared/contract';
 import { AlertBanner } from './components/alert-banner';
 import { DateStepper, RangeSummary } from './components/date-stepper';
 import { SegmentedControl } from './components/segmented-control';
@@ -27,8 +28,8 @@ const cell =
   '[&>td]:px-2 [&>td]:py-1 [&>td]:text-left [&>th]:px-2 [&>th]:py-1 [&>th]:text-left [&>th]:font-medium';
 
 // #88: 이두·삼두 replace 팔 for new choices; a saved 팔 is still listed so it can be cleared.
-const parts = ['가슴', '등', '어깨', '이두', '삼두', '하체-앞', '하체-뒤', '복근'];
-const legacyParts = ['팔'];
+const parts: string[] = [...bodyParts];
+const legacyParts: string[] = [...legacyBodyParts];
 type PersonalRecord = { value: number; weight: number; reps: number; date: string; ties: number };
 type Exercise = {
   key: string;

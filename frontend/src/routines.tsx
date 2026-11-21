@@ -112,16 +112,34 @@ const splitDefaults: Record<number, { train: number; rest: number; parts: string
   },
   5: { train: 5, rest: 2, parts: [['가슴'], ['등'], legs, ['어깨'], ['이두', '삼두', '복근']] },
 };
+const sameParts = (a: string[], b: string[]) => a.join('|') === b.join('|');
+// #385: a split count change fills only what the user has not changed. A split whose body parts
+// are empty or still the previous count's defaults gets the new defaults; a customised split
+// keeps its parts. The cycle is filled only in cycle mode, and only while it is unset or still
+// the previous count's default.
 function withSplitDefaults(plan: Plan, count: number): Plan {
   const d = splitDefaults[count];
+  const old = splitDefaults[plan.split_count];
+  const untouched = (s: Split | undefined, i: number) =>
+    !s || s.body_parts.length === 0 || (old && sameParts(s.body_parts, old.parts[i] ?? []));
+  const cycleUntouched =
+    !plan.cycle ||
+    (old &&
+      Number(plan.cycle.train_days) === old.train &&
+      Number(plan.cycle.rest_days) === old.rest);
   return {
     ...plan,
     split_count: count,
-    cycle: { train_days: d.train, rest_days: d.rest },
-    splits: Array.from({ length: count }, (_, i) => ({
-      ...(plan.splits[i] ?? split(i)),
-      body_parts: [...d.parts[i]],
-    })),
+    ...(plan.schedule_mode === 'cycle' && cycleUntouched
+      ? { cycle: { train_days: d.train, rest_days: d.rest } }
+      : {}),
+    splits: Array.from({ length: count }, (_, i) => {
+      const current = plan.splits[i];
+      return {
+        ...(current ?? split(i)),
+        body_parts: current && !untouched(current, i) ? current.body_parts : [...d.parts[i]],
+      };
+    }),
   };
 }
 const newPlan = (): Plan =>

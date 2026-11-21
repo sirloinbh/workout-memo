@@ -17,13 +17,16 @@ export const intensityLabels: Record<RoutineCardioIntensity, string> = {
   recovery: 'Recovery',
 };
 const seconds = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+// An item still being filled in shows a dash instead of an empty gap or "undefined" (#385).
+const filled = (v: number | '' | undefined) => (v === '' || v === undefined ? '–' : String(v));
+const clock = (v: number | '') => (v === '' ? '–' : seconds(Number(v)));
 export const cardioUnit = (c: CardioItem) => (c.minutes !== undefined ? 'min' : 'km');
 /** "Running · Zone 2 · 30 min" or "Rowing · Interval · 8 × 1:00 work / 1:30 recovery". */
 export function cardioLabel(c: CardioItem) {
   const head = `${cardioKindLabels[c.kind]} · ${intensityLabels[c.intensity]}`;
   if (c.interval)
-    return `${head} · ${c.interval.repeats} × ${seconds(Number(c.interval.work_sec))} work / ${seconds(Number(c.interval.recovery_sec))} recovery`;
-  return `${head} · ${c.minutes ?? c.distance_km} ${cardioUnit(c)}`;
+    return `${head} · ${filled(c.interval.repeats)} × ${clock(c.interval.work_sec)} work / ${clock(c.interval.recovery_sec)} recovery`;
+  return `${head} · ${filled(c.minutes ?? c.distance_km)} ${cardioUnit(c)}`;
 }
 
 // #117 part 3: the item with its result from saved cardio records.

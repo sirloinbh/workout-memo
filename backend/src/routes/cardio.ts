@@ -4,22 +4,17 @@ import { z } from 'zod/v4';
 
 import { cardioKinds, cardioSessionObject, cardioSessionSchemaFor, date } from '../domain.js';
 import { parseId, sendError } from '../standard/http.js';
+import {
+  type Cardio,
+  cardioColumnArrays,
+  cardioColumns,
+  cardioValues,
+  insertCardioRowsSql,
+  insertCardioSql,
+  updateCardioSql,
+} from '../store/cardio.js';
 import { inTransaction } from '../transaction.js';
 
-// #114: pace and speed are never stored. They are computed here from the stored duration (whole
-// seconds) and distance (km): pace in seconds per km (1 decimal), speed in km/h (2 decimals).
-// Both are null when the session has no distance. CSV export uses the same expressions.
-export const cardioPaceSql = (alias = '') =>
-  `CASE WHEN ${alias}distance_km IS NULL THEN NULL ELSE round(${alias}duration_sec / ${alias}distance_km, 1)::float8 END`;
-export const cardioSpeedSql = (alias = '') =>
-  `CASE WHEN ${alias}distance_km IS NULL THEN NULL ELSE round(${alias}distance_km * 3600 / ${alias}duration_sec, 2)::float8 END`;
-// TIME comes back as HH:MM (the API's format); NUMERIC(8,3) as a JSON number.
-const cardioColumns = `id, date, to_char(start_time, 'HH24:MI') AS start_time, kind, duration_sec,
-  distance_km::float8 AS distance_km, avg_heart_rate, max_heart_rate, calories_kcal, elevation_gain_m,
-  avg_cadence, effort, workout_id, source, external_id, memo, created_at, updated_at,
-  ${cardioPaceSql()} AS pace_sec_per_km, ${cardioSpeedSql()} AS speed_kmh`;
-const cardioFields =
-  'date, start_time, kind, duration_sec, distance_km, avg_heart_rate, max_heart_rate, calories_kcal, elevation_gain_m, avg_cadence, effort, workout_id, source, external_id, memo';
 const cardioMissing = 'Cardio record not found';
 const label = 'cardio record';
 
@@ -32,28 +27,6 @@ export const cardioQuery = z
       .optional(),
   })
   .refine((value) => value.from <= value.to, 'The end date must be after the start date');
-
-type Cardio = z.output<ReturnType<typeof cardioSessionSchemaFor>>;
-const values = (c: Cardio) => [
-  c.date,
-  c.start_time,
-  c.kind,
-  c.duration_sec,
-  c.distance_km,
-  c.avg_heart_rate,
-  c.max_heart_rate,
-  c.calories_kcal,
-  c.elevation_gain_m,
-  c.avg_cadence,
-  c.effort,
-  c.workout_id,
-  c.source,
-  c.external_id,
-  c.memo,
-];
-
-// The same values as `values`, one array per column (for a multi-row insert).
-const columns = (rows: Cardio[]) => values(rows[0]).map((_, i) => rows.map((r) => values(r)[i]));
 
 // #115: all-time personal records (not limited to a period). Best 5 km and 10 km times count
 // only running sessions whose distance is within ±2% of the target (4.9–5.1 km, 9.8–10.2 km); a
@@ -113,10 +86,7 @@ export function registerCardioRoutes(app: express.Express, pool: Pool, today: ()
   });
   app.post('/api/cardio-sessions', async (req, res) => {
     const c = cardioSessionSchemaFor(today()).parse(req.body);
-    const r = await pool.query(
-      `INSERT INTO cardio_sessions(${cardioFields}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING ${cardioColumns}`,
-      values(c),
-    );
+    const r = await pool.query(insertCardioSql, cardioValues(c));
     res.status(201).json(r.rows[0]);
   });
   app.put('/api/cardio-sessions/:id', async (req, res) => {
@@ -132,10 +102,7 @@ export function registerCardioRoutes(app: express.Express, pool: Pool, today: ()
         );
         if (!existing.rowCount) return null;
         // A full replacement: omitted optional fields become null (memo '', source 'manual').
-        const r = await client.query(
-          `UPDATE cardio_sessions SET (${cardioFields}, updated_at) = ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,CURRENT_TIMESTAMP) WHERE id=$16 RETURNING ${cardioColumns}`,
-          [...values(c), target],
-        );
+        const r = await client.query(updateCardioSql, [...cardioValues(c), target]);
         return r.rows[0];
       },
       { commit: (row) => row !== null },
@@ -251,16 +218,7 @@ export function registerCardioImportRoute(
         );
         if (repeated.length) return { repeated };
         // #368: one multi-row INSERT for the whole import; ids follow the file order.
-        const saved = (
-          await client.query(
-            `INSERT INTO cardio_sessions(${cardioFields})
-             SELECT ${cardioFields} FROM unnest($1::date[], $2::time[], $3::text[], $4::int[], $5::numeric[],
-               $6::int[], $7::int[], $8::int[], $9::int[], $10::int[], $11::text[], $12::int[], $13::text[],
-               $14::text[], $15::text[]) WITH ORDINALITY AS t(${cardioFields}, ord) ORDER BY ord
-             RETURNING ${cardioColumns}`,
-            columns(rows),
-          )
-        ).rows;
+        const saved = (await client.query(insertCardioRowsSql, cardioColumnArrays(rows))).rows;
         return { saved };
       },
       { commit: (outcome) => !outcome.repeated },

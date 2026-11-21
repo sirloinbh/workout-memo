@@ -5,9 +5,9 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod/v4';
 
 import { dateRange, workoutSchema } from './domain.js';
-import type { Db } from './routes/shared.js';
-import { findRetry, insertWorkout, listWorkouts, summary } from './routes/workouts.js';
 import { defineTool } from './standard/tools.js';
+import type { Db } from './store/db.js';
+import { findRetry, insertWorkout, listWorkouts, summary } from './store/workouts.js';
 
 // A tool reads at most a year of journals, so one call cannot return the whole history.
 const MAX_DAYS = 366;

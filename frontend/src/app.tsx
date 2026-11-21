@@ -9,12 +9,9 @@ import {
   Target,
   Trophy,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { BrowserRouter, useLocation, useNavigate } from 'react-router';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 
-import { Analysis } from './analysis';
-import { Backup } from './backup';
-import { BodyMeasurements } from './body';
 import { listCardioSessions } from './cardio/api';
 import { AlertBanner } from './components/alert-banner';
 import { AppShell, type NavItem } from './components/layout/app-shell';
@@ -23,21 +20,28 @@ import { PageHeader } from './components/page-header';
 import { Button } from './components/ui/button';
 import { Card } from './components/ui/card';
 import { Notice } from './components/ui/notice';
+import { SkeletonCard } from './components/ui/skeleton';
 import { Toaster } from './components/ui/sonner';
 import { dateTitle } from './date';
 import { candidateNames, type ExerciseName } from './exercise-name-match';
+import {
+  Analysis,
+  Backup,
+  BodyMeasurements,
+  DashboardPage,
+  GoalsPage,
+  JournalPage,
+  MachinesPage,
+  preloadPages,
+  Routines,
+} from './pages';
 import { routineDraft } from './progress-data';
 import { restKind, startTimer } from './rest-timer';
 import { type CardioPreset } from './routine-cardio';
-import { Routines } from './routines';
 import { AccountActions, SignInGate } from './sign-in';
 import { api } from './workspace/api';
-import { DashboardPage } from './workspace/dashboard-page';
 import { GoalForm } from './workspace/goal-form';
-import { GoalsPage } from './workspace/goals-page';
-import { JournalPage } from './workspace/journal-page';
 import { MachineEditor } from './workspace/machine-editor';
-import { MachinesPage } from './workspace/machines-page';
 import {
   type Goal,
   type Machine,
@@ -59,9 +63,20 @@ import { useWorkoutDraft } from './workspace/use-workout-draft';
 import { WorkoutEditor } from './workspace/workout-editor';
 import { type RecordsProps } from './workspace/workout-records';
 
+const pageFallback = (
+  <div role="status" aria-busy="true" aria-label="Loading page" className="mt-4">
+    <SkeletonCard />
+  </div>
+);
+
 export function App() {
   // One client per mounted app keeps browser tabs and tests independent. Retries and
   // focus refetches stay off: failures are shown with an explicit reconnect button.
+  // Other pages load in the background once the first one is up, so later visits do not wait.
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((run: () => void) => window.setTimeout(run, 1000));
+    idle(() => void preloadPages());
+  }, []);
   const [client] = useState(
     () =>
       new QueryClient({
@@ -86,10 +101,6 @@ function Workspace() {
   const navigate = useNavigate();
   const page: Page = pageOf(location.pathname) ?? 'overview';
   const setPage = (next: Page) => void navigate(pages[next]);
-  useEffect(() => {
-    // An unknown address falls back to the dashboard instead of an empty screen.
-    if (!pageOf(location.pathname)) void navigate(pages.overview, { replace: true });
-  }, [location.pathname, navigate]);
   const queryClient = useQueryClient();
   const range = usePeriodRange(page);
   const { customRange, journalTab, setJournalTab, from, to } = range;
@@ -303,12 +314,28 @@ function Workspace() {
         <div className="legacy">
           {/* Pages with their own component draw everything below, so the bar goes first. */}
           {ownPage && pageTimer}
-          {page === 'routines' && <Routines exerciseNames={exerciseNames} />}
-          {page === 'backup' && <Backup onRestored={() => void refreshAll()} />}
-          {page === 'body' && (
-            <BodyMeasurements from={from} to={to} workouts={workouts} controls={periodControls} />
-          )}
-          {page === 'analysis' && <Analysis />}
+          <Suspense fallback={ownPage ? pageFallback : null}>
+            <Routes>
+              <Route path={pages.routines} element={<Routines exerciseNames={exerciseNames} />} />
+              <Route
+                path={pages.backup}
+                element={<Backup onRestored={() => void refreshAll()} />}
+              />
+              <Route
+                path={pages.body}
+                element={
+                  <BodyMeasurements
+                    from={from}
+                    to={to}
+                    workouts={workouts}
+                    controls={periodControls}
+                  />
+                }
+              />
+              <Route path={pages.analysis} element={<Analysis />} />
+              <Route path="*" element={null} />
+            </Routes>
+          </Suspense>
           {!ownPage && (
             <PageHeader
               eyebrow="YOUR PROGRESS, IN FOCUS"
@@ -410,44 +437,66 @@ function Workspace() {
             </Card>
           )}
           {!ownPage && pageTimer}
-          {page === 'overview' && (
-            <DashboardPage
-              periodControls={periodControls}
-              goals={goals}
-              cardioSessions={cardioSessions}
-              recordsProps={recordsProps}
-              from={from}
-              to={to}
-              custom={!!customRange}
-              setPage={setPage}
-            />
-          )}
-          {page === 'journal' && (
-            <JournalPage
-              periodControls={periodControls}
-              journalTab={journalTab}
-              setJournalTab={setJournalTab}
-              from={from}
-              to={to}
-              goals={goals}
-              recordsProps={recordsProps}
-              routine={routine}
-              quickWorkout={quickWorkout}
-              cardioPreset={cardioPreset}
-              setCardioPreset={setCardioPreset}
-              clearCardioPreset={clearCardioPreset}
-            />
-          )}
-          {page === 'goals' && <GoalsPage goals={goals} saving={saving} action={action} to={to} />}
-          {page === 'machines' && (
-            <MachinesPage
-              machines={machines}
-              brands={brands}
-              brand={brand}
-              setBrand={setBrand}
-              setMachineEditor={setMachineEditor}
-            />
-          )}
+          <Suspense fallback={ownPage ? null : pageFallback}>
+            <Routes>
+              {/* An unknown address falls back to the dashboard instead of an empty screen. */}
+              <Route
+                path={pages.overview}
+                element={
+                  <DashboardPage
+                    periodControls={periodControls}
+                    goals={goals}
+                    cardioSessions={cardioSessions}
+                    recordsProps={recordsProps}
+                    from={from}
+                    to={to}
+                    custom={!!customRange}
+                    setPage={setPage}
+                  />
+                }
+              />
+              <Route
+                path={pages.journal}
+                element={
+                  <JournalPage
+                    periodControls={periodControls}
+                    journalTab={journalTab}
+                    setJournalTab={setJournalTab}
+                    from={from}
+                    to={to}
+                    goals={goals}
+                    recordsProps={recordsProps}
+                    routine={routine}
+                    quickWorkout={quickWorkout}
+                    cardioPreset={cardioPreset}
+                    setCardioPreset={setCardioPreset}
+                    clearCardioPreset={clearCardioPreset}
+                  />
+                }
+              />
+              <Route
+                path={pages.goals}
+                element={<GoalsPage goals={goals} saving={saving} action={action} to={to} />}
+              />
+              <Route
+                path={pages.machines}
+                element={
+                  <MachinesPage
+                    machines={machines}
+                    brands={brands}
+                    brand={brand}
+                    setBrand={setBrand}
+                    setMachineEditor={setMachineEditor}
+                  />
+                }
+              />
+              <Route path={pages.routines} element={null} />
+              <Route path={pages.backup} element={null} />
+              <Route path={pages.body} element={null} />
+              <Route path={pages.analysis} element={null} />
+              <Route path="*" element={<Navigate to={pages.overview} replace />} />
+            </Routes>
+          </Suspense>
         </div>
       </AppShell>
       {editor && (

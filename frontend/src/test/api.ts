@@ -1,6 +1,11 @@
 import { act } from '@testing-library/react';
 import { vi } from 'vitest';
 
+import { preloadPages } from '../pages';
+
+// The pages are lazy chunks (#375). Loading them up front lets tests render a page without a suspended first pass.
+await preloadPages();
+
 // 00:30 on 2026-10-15 in Seoul is still 2026-10-14 on a UTC device clock.
 export const deviceNow = '2026-10-14T15:30:00Z';
 

@@ -5,12 +5,16 @@ import { exerciseKeySql, goalSchema } from '../domain.js';
 import { parseId, sendError } from '../standard/http.js';
 import { seoulTodaySql } from './shared.js';
 
+// #364: numeric columns are cast to float8 so the JSON carries numbers, not strings.
+const goalColumns =
+  'id, exercise, target_weight::float8 AS target_weight, target_reps, start_date, deadline';
+
 export function registerGoalRoutes(app: express.Express, pool: Pool) {
   app.get('/api/goals', async (_req, res) =>
     res.json(
       (
         await pool.query(
-          `SELECT g.*, EXISTS(SELECT 1 FROM sets s JOIN workouts w ON w.id=s.workout_id WHERE s.completed AND ${exerciseKeySql('s.exercise')}=${exerciseKeySql('g.exercise')} AND s.weight>=g.target_weight AND s.reps>=g.target_reps AND w.date BETWEEN g.start_date AND LEAST(g.deadline,${seoulTodaySql})) achieved FROM goals g ORDER BY g.deadline,g.id DESC`,
+          `SELECT g.id, g.exercise, g.target_weight::float8 AS target_weight, g.target_reps, g.start_date, g.deadline, EXISTS(SELECT 1 FROM sets s JOIN workouts w ON w.id=s.workout_id WHERE s.completed AND ${exerciseKeySql('s.exercise')}=${exerciseKeySql('g.exercise')} AND s.weight>=g.target_weight AND s.reps>=g.target_reps AND w.date BETWEEN g.start_date AND LEAST(g.deadline,${seoulTodaySql})) achieved FROM goals g ORDER BY g.deadline,g.id DESC`,
         )
       ).rows,
     ),
@@ -22,7 +26,8 @@ export function registerGoalRoutes(app: express.Express, pool: Pool) {
       .json(
         (
           await pool.query(
-            'INSERT INTO goals(exercise,target_weight,target_reps,start_date,deadline) VALUES($1,$2,$3,$4,$5) RETURNING *',
+            'INSERT INTO goals(exercise,target_weight,target_reps,start_date,deadline) VALUES($1,$2,$3,$4,$5) RETURNING ' +
+              goalColumns,
             [g.exercise, g.target_weight, g.target_reps, g.start_date, g.deadline],
           )
         ).rows[0],

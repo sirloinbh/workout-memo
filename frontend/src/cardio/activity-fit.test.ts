@@ -1,3 +1,5 @@
+import './activity-deps-lazy';
+
 import { readFileSync } from 'node:fs';
 
 import {

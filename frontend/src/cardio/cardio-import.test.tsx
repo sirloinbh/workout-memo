@@ -7,7 +7,7 @@ import {
 } from '@garmin/fitsdk';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { zipSync } from 'fflate';
+import { strToU8, zipSync } from 'fflate';
 import { expect, test } from 'vitest';
 
 import { type ApiRequest, json, mockApi } from '../test/api';
@@ -416,4 +416,33 @@ test('a file that cannot be opened is named, and the other files are still read'
     within(card).getByText('gone.fit: Could not open the file. Choose it again.'),
   ).toBeInTheDocument();
   expect(within(card).getByLabelText('Activity file (TCX/GPX/FIT/ZIP)')).toBeEnabled();
+});
+
+// #387: a whole-account export can hold thousands of rows; the table shows a page at a time.
+test('a large import shows the table in pages of 100 rows', async () => {
+  const user = userEvent.setup();
+  setup([]);
+  const entries: Record<string, Uint8Array> = {};
+  for (let i = 0; i < 120; i++) {
+    const date = new Date(Date.parse('2025-01-01T00:00:00Z') + i * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    entries[`a/ride-${i}.gpx`] = strToU8(ride.replaceAll('2026-11-03', date));
+  }
+  await user.click(await screen.findByRole('button', { name: 'Import file' }));
+  const card = screen.getByRole('region', { name: 'Import activity file' });
+  await user.upload(
+    within(card).getByLabelText('Activity file (TCX/GPX/FIT/ZIP)'),
+    new File([zipSync(entries).slice()], 'account.zip', { type: 'application/zip' }),
+  );
+  await within(card).findByRole('region', { name: 'Import preview' });
+  expect(within(card).getByText('Rows 1–100 of 120')).toBeInTheDocument();
+  expect(within(card).getByRole('checkbox', { name: 'Save row 100' })).toBeInTheDocument();
+  expect(within(card).queryByRole('checkbox', { name: 'Save row 101' })).toBeNull();
+  // Rows on other pages are still counted in what is saved.
+  expect(within(card).getByRole('button', { name: 'Save 120 selected' })).toBeEnabled();
+  await user.click(within(card).getByRole('button', { name: 'Next rows' }));
+  expect(within(card).getByText('Rows 101–120 of 120')).toBeInTheDocument();
+  expect(within(card).getByRole('checkbox', { name: 'Save row 101' })).toBeInTheDocument();
+  expect(within(card).getByRole('button', { name: 'Next rows' })).toBeDisabled();
 });

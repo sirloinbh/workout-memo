@@ -1,4 +1,5 @@
 import type { CardioKind } from '../../../shared/contract';
+import { deps } from './activity-deps';
 
 // #119: activity files exported from a watch or an app (Garmin Connect, Strava, ...), read in
 // this browser. Only the summary values of cardio_sessions are kept (#114: no laps, no GPS
@@ -82,6 +83,10 @@ const within = (value: number | null, min: number, max: number) =>
 const kmOf = (metres: number) => (metres >= 1 ? Math.round(metres) / 1000 : null);
 
 function parseXml(file: string, text: string) {
+  // TCX and GPX never declare a DTD. Refusing one rules out entity expansion (a "billion laughs"
+  // file) before the parser sees it (#387, CodeQL).
+  if (/<!(DOCTYPE|ENTITY)/i.test(text))
+    throw new ActivityFileError(`${file}: Could not read the file. It is damaged or not XML.`);
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length)
     throw new ActivityFileError(`${file}: Could not read the file. It is damaged or not XML.`);
@@ -312,7 +317,7 @@ const damaged = (file: string) =>
 // as TCX. FIT has a reliable ascent total, so unlike TCX and GPX the elevation gain is kept.
 // Cadence is kept only for cycling: running cadence is stored per foot.
 export async function parseFit(file: string, bytes: Uint8Array): Promise<ImportedActivity[]> {
-  const { Decoder, Stream } = await import('@garmin/fitsdk');
+  const { Decoder, Stream } = await deps.fit();
   const stream = Stream.fromByteArray(bytes);
   if (!Decoder.isFIT(stream)) throw new ActivityFileError(`${file}: Not a FIT file.`);
   const decoder = new Decoder(stream);
@@ -369,7 +374,35 @@ export function parseActivityFile(file: string, text: string): ImportedActivity[
 // What one chosen file gave: its activities, and a message for each file (or file inside a
 // ZIP) that could not be read. One bad file never stops the rest.
 // `skipped` counts FIT files inside a ZIP that are not activities.
-export type ReadResult = { activities: ImportedActivity[]; problems: string[]; skipped: number };
+export type ReadResult = {
+  activities: ImportedActivity[];
+  problems: string[];
+  skipped: number;
+  // Only with xml: 'defer' (#387): TCX and GPX text left for the caller to parse.
+  deferred?: DeferredXml[];
+};
+// TCX and GPX are read with DOMParser, which a Web Worker does not have. The worker unzips and
+// reads FIT files and hands the XML text back to the page, which parses it (#387).
+export type DeferredXml = { file: string; text: string };
+export type ReadOptions = {
+  xml?: 'parse' | 'defer';
+  // Called after each entry of the chosen ZIP, so a large export shows progress.
+  onProgress?: (done: number, total: number) => void;
+};
+// The page's side of xml: 'defer': one deferred file → its activities, or the reason it failed.
+export function parseDeferred(item: DeferredXml): {
+  activities: ImportedActivity[];
+  problem?: string;
+} {
+  try {
+    return { activities: parseActivityFile(item.file, item.text) };
+  } catch (e) {
+    return {
+      activities: [],
+      problem: e instanceof ActivityFileError ? e.message : damaged(item.file).message,
+    };
+  }
+}
 
 const extensionOf = (name: string) => name.toLowerCase().split('.').pop() ?? '';
 const startsWith = (bytes: Uint8Array, text: string, at = 0) =>
@@ -394,6 +427,7 @@ export async function readActivityFile(
   file: string,
   bytes: Uint8Array,
   depth = 0,
+  options: ReadOptions = {},
 ): Promise<ReadResult> {
   const extension = extensionOf(file);
   const nameOf = (path: string) => `${file} › ${path.split('/').pop()}`;
@@ -404,7 +438,7 @@ export async function readActivityFile(
   });
   try {
     if (extension === 'zip' || startsWith(bytes, 'PK\x03\x04')) {
-      const { unzipSync } = await import('fflate');
+      const { unzipSync } = await deps.fflate();
       const out: ReadResult = { activities: [], problems: [], skipped: 0 };
       let entries: Record<string, Uint8Array>;
       try {
@@ -425,11 +459,16 @@ export async function readActivityFile(
       const paths = Object.keys(entries).sort();
       if (!paths.length && !out.problems.length)
         return failed(`${file}: No TCX, GPX or FIT files found in the ZIP file.`);
+      let done = 0;
       for (const path of paths) {
-        const inner = await readActivityFile(nameOf(path), entries[path], depth + 1);
+        const inner = await readActivityFile(nameOf(path), entries[path], depth + 1, {
+          xml: options.xml,
+        });
         out.activities.push(...inner.activities);
         out.problems.push(...inner.problems);
         out.skipped += inner.skipped;
+        if (inner.deferred) (out.deferred ??= []).push(...inner.deferred);
+        if (depth === 0) options.onProgress?.(++done, paths.length);
       }
       // Reported once, by the ZIP the user chose.
       if (depth === 0 && out.skipped) {
@@ -442,6 +481,13 @@ export async function readActivityFile(
     }
     if (extension === 'fit' || startsWith(bytes, '.FIT', 8))
       return { activities: await parseFit(file, bytes), problems: [], skipped: 0 };
+    if (options.xml === 'defer')
+      return {
+        activities: [],
+        problems: [],
+        skipped: 0,
+        deferred: [{ file, text: new TextDecoder().decode(bytes) }],
+      };
     return {
       activities: parseActivityFile(file, new TextDecoder().decode(bytes)),
       problems: [],

@@ -3597,7 +3597,7 @@
           "brand_id": {
             "type": "integer",
             "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
+            "maximum": 2147483647
           },
           "name": {
             "type": "string",
@@ -3987,7 +3987,7 @@
           "version": {
             "type": "integer",
             "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
+            "maximum": 2147483647
           },
           "date": {
             "type": "string",
@@ -4037,7 +4037,7 @@
                     {
                       "type": "integer",
                       "exclusiveMinimum": 0,
-                      "maximum": 9007199254740991
+                      "maximum": 2147483647
                     },
                     {
                       "type": "null"

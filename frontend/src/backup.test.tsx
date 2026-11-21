@@ -28,6 +28,10 @@ const summary = (mode: string, dry_run: boolean): Summary => ({
     routines: { added: 0, skipped: 1, conflicts: 0, deleted: 0 },
     cardio_sessions: { added: 2, skipped: 1, conflicts: 0, deleted: 0 },
     cardio_goals: { added: 1, skipped: 1, conflicts: 0, deleted: 0 },
+    body_measurements: { added: 3, skipped: 0, conflicts: 0, deleted: 0 },
+    routine_rests: { added: 2, skipped: 0, conflicts: 0, deleted: 0 },
+    // A table this screen has no label for is shown, not hidden (#359).
+    future_table: { added: 5, skipped: 0, conflicts: 0, deleted: 0 },
   },
   conflicts: mode === 'merge' ? ['Arsenal Strength / Leg Press: existing value kept'] : [],
   retry_keys_cleared: mode === 'replace' ? 3 : 0,
@@ -197,8 +201,11 @@ test('downloads are named links and the preview lists one row per table', async 
     'Routines · Added 0 · Skipped 1',
     'Cardio · Added 2 · Skipped 1',
     'Cardio goals · Added 1 · Skipped 1',
+    'Body records · Added 3 · Skipped 0',
+    'Routine rest days · Added 2 · Skipped 0',
     'Machines · Added 1 · Skipped 0 · Conflicts (kept existing) 1',
     'Brands · Added 0 · Skipped 4',
+    'Future table · Added 5 · Skipped 0',
   ]);
   expect(
     within(screen.getByRole('list', { name: 'Conflict' })).getByRole('listitem'),

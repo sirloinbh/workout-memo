@@ -38,8 +38,25 @@ const labels: [string, string][] = [
   ['cardio_sessions', 'Cardio'],
   // #253: backup v3. An older server sends no such table; the row is skipped.
   ['cardio_goals', 'Cardio goals'],
+  // #359: backup v4. An older server sends no such table; the row is skipped.
+  ['body_measurements', 'Body records'],
+  ['exercise_body_parts', 'Exercise body parts'],
+  ['exercise_weight_steps', 'Weight steps'],
+  ['routine_rests', 'Routine rest days'],
   ['machines', 'Machines'],
   ['brands', 'Brands'],
+];
+const knownTables = new Set(labels.map(([key]) => key));
+// #359: a table the server reports but this screen has no label for is still shown, never hidden.
+const humanize = (key: string) => {
+  const text = key.replaceAll('_', ' ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+const rowsFor = (tables: Record<string, Counts>): [string, string][] => [
+  ...labels,
+  ...Object.keys(tables)
+    .filter((key) => !knownTables.has(key))
+    .map((key): [string, string] => [key, humanize(key)]),
 ];
 const post = (path: string, body: unknown) =>
   requestJson<Summary>('/api/backup/' + path, { method: 'POST', body });
@@ -143,10 +160,11 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>
-            Stores workout journals, sets, goals, routines, cardio records, cardio goals, brands,
-            machines, and their links in a single versioned JSON file. Save retry keys are temporary
-            duplicate-prevention records, so they are not included. A backup file contains personal
-            records, so keep it somewhere safe.
+            Stores workout journals, sets (with completion and RPE), goals, routines and their rest
+            days, cardio records, cardio goals, body records, body-part and weight-step settings,
+            brands, machines, and their links in a single versioned JSON file. Save retry keys are
+            temporary duplicate-prevention records, so they are not included. A backup file contains
+            personal records, so keep it somewhere safe.
           </p>
         </CardContent>
         <CardFooter>
@@ -240,7 +258,7 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
                   : `Preview · ${mode === 'replace' ? 'Replace all' : 'Additions only'} (nothing changed yet)`}
               </h4>
               <ul aria-label="Change summary" className="flex flex-col gap-1.5 text-body-sm">
-                {labels.map(([key, label]) => {
+                {rowsFor(shown.tables).map(([key, label]) => {
                   const c = shown.tables[key];
                   if (!c) return null;
                   return (

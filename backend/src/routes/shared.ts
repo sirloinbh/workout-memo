@@ -32,8 +32,14 @@ export function appErrors(
     sendError(res, 409, 'A cardio record with the same source and external ID already exists');
     return;
   }
-  if (error.code === '23503') {
-    sendError(res, 400, 'The selected machine or brand does not exist');
+  // #363: other foreign keys name their own row; anything else falls through to the central
+  // neutral 23503 message ("A related item does not exist or is still in use").
+  if (error.code === '23503' && error.constraint === 'sets_machine_id_fkey') {
+    sendError(res, 400, 'The selected machine does not exist');
+    return;
+  }
+  if (error.code === '23503' && error.constraint === 'machines_brand_id_fkey') {
+    sendError(res, 400, 'The selected brand does not exist');
     return;
   }
   // Only the backup routes take a large body, so only they name the 10MB limit. Other routes

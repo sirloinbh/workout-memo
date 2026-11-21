@@ -274,7 +274,7 @@ test(
       );
       const backup = exported.data;
       assert.equal(backup.format, 'workout-memo-backup');
-      assert.equal(backup.version, 3);
+      assert.equal(backup.version, 4);
       assert.equal(backup.data.workouts.length, 4);
       assert.equal(backup.data.workouts[0].sets.length, 3, 'Sets nest inside their workout');
       assert.equal(backup.data.workouts[0].sets[0].weight, 100.25, 'Total kg is a JSON number');
@@ -674,11 +674,15 @@ test('idempotency keys are not part of the backup', { skip }, async () => {
     const exported = await db.api('/backup');
     assert.equal(exported.text.includes(key), false);
     assert.deepEqual(Object.keys(exported.data.data).sort(), [
+      'body_measurements',
       'brands',
       'cardio_goals',
       'cardio_sessions',
+      'exercise_body_parts',
+      'exercise_weight_steps',
       'goals',
       'machines',
+      'routine_rests',
       'routines',
       'workouts',
     ]);
@@ -927,7 +931,7 @@ test('cardio goals round-trip in a v3 backup and a v2 replace removes them', { s
   await isolated(async (source, target) => {
     await seed(source.api);
     const backup = (await source.api('/backup')).data;
-    assert.equal(backup.version, 3);
+    assert.equal(backup.version, 4);
     assert.equal(backup.data.cardio_goals.length, 2);
     assert.equal(backup.data.cardio_goals[0].target_distance_km, 15.5);
 
@@ -965,3 +969,164 @@ test('cardio goals round-trip in a v3 backup and a v2 replace removes them', { s
     assert.equal((await target.count()).cardio_goals, 0);
   }, 2);
 });
+
+// #359: planned sets, RPE, body records, body parts, weight steps, rest days and official-weight
+// links come back exactly after export → replace into an empty database → export again.
+test(
+  'a v4 backup round-trips set completion, RPE and every user table (#359)',
+  { skip },
+  async () => {
+    await isolated(async (source, target) => {
+      const machine = (await source.api('/brands')).data as unknown as { id: number }[];
+      const official = (
+        await source.pool.query('SELECT id FROM official_machine_weights ORDER BY id LIMIT 1')
+      ).rows[0].id as number;
+      const press = await source.api('/machines', 'POST', {
+        brand_id: machine[0].id,
+        name: 'Linked press',
+        base_weight: 10,
+        notes: '',
+        official_weight_id: official,
+      });
+      assert.equal(press.status, 201);
+      const saved = await source.api('/workouts', 'POST', {
+        date: '2024-03-05',
+        title: 'Plan and RPE',
+        notes: '',
+        sets: [
+          {
+            exercise: 'Press',
+            machine_id: press.data.id,
+            weight: 50,
+            reps: 8,
+            notes: '',
+            rpe: 8.5,
+          },
+          {
+            exercise: 'Press',
+            machine_id: press.data.id,
+            weight: 55,
+            reps: 8,
+            notes: '',
+            completed: false,
+          },
+        ],
+      });
+      assert.equal(saved.status, 201);
+      assert.equal(
+        (
+          await source.api('/body-measurements', 'POST', {
+            date: '2024-03-05',
+            body_weight_kg: 72.5,
+            skeletal_muscle_kg: 33.1,
+          })
+        ).status,
+        201,
+      );
+      assert.equal(
+        (await source.api('/exercise-weight-steps', 'PUT', { exercise: 'Press', weight_step: 2.5 }))
+          .status,
+        200,
+      );
+      const routine = await source.api('/routines', 'POST', routineInput(2));
+      assert.equal(routine.status, 201);
+      await source.pool.query(
+        "INSERT INTO exercise_body_parts(exercise, body_part) VALUES ('Press', '가슴'), ('Press', '삼두')",
+      );
+      await source.pool.query(
+        "INSERT INTO routine_rests(routine_id, rest_date) VALUES ($1, '2024-03-02'), ($1, '2024-03-04')",
+        [routine.data.id],
+      );
+
+      const first = (await source.api('/backup')).data;
+      const sets = first.data.workouts.find((w) => w.title === 'Plan and RPE')!.sets;
+      assert.deepEqual(
+        sets.map((x) => [x.completed, x.rpe]),
+        [
+          [true, 8.5],
+          [false, null],
+        ],
+      );
+      assert.equal(
+        first.data.machines.find((m) => m.name === 'Linked press')!.official_weight_id,
+        official,
+      );
+      assert.equal(first.data.body_measurements.length, 1);
+      assert.equal(first.data.exercise_body_parts.length, 2);
+      assert.equal(first.data.routine_rests.length, 2);
+
+      // The target starts with its own rows that a v4 replace must clear.
+      await target.pool.query("INSERT INTO exercise_weight_steps VALUES ('Old', 5)");
+      const replaced = await target.api('/backup/restore', 'POST', {
+        mode: 'replace',
+        confirm: 'Replace all',
+        backup: first,
+      });
+      assert.equal(replaced.status, 200);
+      assert.equal(replaced.data.tables.exercise_weight_steps.deleted, 1);
+      assert.equal(replaced.data.tables.routine_rests.added, 2);
+
+      const second = (await target.api('/backup')).data;
+      const strip = (b: Backup) => ({
+        ...b.data,
+        exported_at: undefined,
+        machines: b.data.machines.map((m) => ({ ...m, id: 0, brand_id: 0 })),
+        workouts: b.data.workouts.map((w) => ({
+          ...w,
+          id: 0,
+          sets: w.sets.map((x) => ({ ...x, machine_id: x.machine_id === null ? null : 0 })),
+        })),
+        brands: b.data.brands.map((x) => x.name).sort(),
+        goals: [],
+        routines: b.data.routines.map((r) => ({ ...r, id: 0 })),
+        cardio_sessions: [],
+        cardio_goals: [],
+        body_measurements: b.data.body_measurements.map((m) => ({ ...m, id: 0 })),
+        routine_rests: b.data.routine_rests.map((r) => r.rest_date),
+      });
+      assert.deepEqual(strip(second), strip(first));
+
+      // Merging the same file again adds nothing.
+      const again = await target.api('/backup/restore', 'POST', { mode: 'merge', backup: first });
+      for (const table of [
+        'body_measurements',
+        'exercise_body_parts',
+        'exercise_weight_steps',
+        'routine_rests',
+        'workouts',
+        'routines',
+      ] as const)
+        assert.equal(again.data.tables[table].added, 0, table);
+    }, 2);
+  },
+);
+
+test(
+  'a v3 replace leaves the tables a v3 file does not carry untouched (#359)',
+  { skip },
+  async () => {
+    await isolated(async (source, target) => {
+      await seed(source.api);
+      const v4 = (await source.api('/backup')).data;
+      const {
+        body_measurements: _b,
+        exercise_body_parts: _p,
+        exercise_weight_steps: _w,
+        routine_rests: _r,
+        ...data
+      } = v4.data;
+      await target.pool.query("INSERT INTO exercise_weight_steps VALUES ('Keep', 5)");
+      const replaced = await target.api('/backup/restore', 'POST', {
+        mode: 'replace',
+        confirm: 'Replace all',
+        backup: { ...v4, version: 3, data },
+      });
+      assert.equal(replaced.status, 200);
+      assert.equal(replaced.data.tables.exercise_weight_steps.deleted, 0);
+      assert.equal(
+        (await target.pool.query('SELECT count(*)::int n FROM exercise_weight_steps')).rows[0].n,
+        1,
+      );
+    }, 2);
+  },
+);

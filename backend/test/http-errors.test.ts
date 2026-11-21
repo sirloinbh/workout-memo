@@ -117,7 +117,24 @@ test('app messages for missing references and storage failures keep the { error 
       });
       assert.deepEqual(await call(base + '/goals'), {
         status: 400,
-        body: { error: 'The selected machine or brand does not exist' },
+        body: { error: 'The selected machine does not exist' },
+      });
+      failure = Object.assign(new Error('fk'), {
+        code: '23503',
+        constraint: 'machines_brand_id_fkey',
+      });
+      assert.deepEqual(await call(base + '/goals'), {
+        status: 400,
+        body: { error: 'The selected brand does not exist' },
+      });
+      // Any other foreign key gets the neutral central message, never one about machines or brands.
+      failure = Object.assign(new Error('fk'), {
+        code: '23503',
+        constraint: 'routine_progress_routine_id_fkey',
+      });
+      assert.deepEqual(await call(base + '/goals'), {
+        status: 400,
+        body: { error: 'A related item does not exist or is still in use' },
       });
       // The internal message stays in the log; the response is the central 500 text.
       failure = new Error('connect ECONNREFUSED 10.0.0.1:5432');

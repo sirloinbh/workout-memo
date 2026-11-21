@@ -52,6 +52,9 @@ const values = (c: Cardio) => [
   c.memo,
 ];
 
+// The same values as `values`, one array per column (for a multi-row insert).
+const columns = (rows: Cardio[]) => values(rows[0]).map((_, i) => rows.map((r) => values(r)[i]));
+
 // #115: all-time personal records (not limited to a period). Best 5 km and 10 km times count
 // only running sessions whose distance is within ±2% of the target (4.9–5.1 km, 9.8–10.2 km); a
 // longer run's time is never scaled down (2026-11-08 user decision 4). The window is computed in
@@ -247,16 +250,17 @@ export function registerCardioImportRoute(
             : [],
         );
         if (repeated.length) return { repeated };
-        const saved = [];
-        for (const row of rows)
-          saved.push(
-            (
-              await client.query(
-                `INSERT INTO cardio_sessions(${cardioFields}) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING ${cardioColumns}`,
-                values(row),
-              )
-            ).rows[0],
-          );
+        // #368: one multi-row INSERT for the whole import; ids follow the file order.
+        const saved = (
+          await client.query(
+            `INSERT INTO cardio_sessions(${cardioFields})
+             SELECT ${cardioFields} FROM unnest($1::date[], $2::time[], $3::text[], $4::int[], $5::numeric[],
+               $6::int[], $7::int[], $8::int[], $9::int[], $10::int[], $11::text[], $12::int[], $13::text[],
+               $14::text[], $15::text[]) WITH ORDINALITY AS t(${cardioFields}, ord) ORDER BY ord
+             RETURNING ${cardioColumns}`,
+            columns(rows),
+          )
+        ).rows;
         return { saved };
       },
       { commit: (outcome) => !outcome.repeated },

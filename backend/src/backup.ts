@@ -13,6 +13,8 @@ import {
   routineSchema,
 } from './domain.js';
 import { cardioPaceSql, cardioSpeedSql } from './routes/cardio.js';
+import { insertSets } from './routes/workouts.js';
+import { auditContext, writeAudit } from './standard/audit.js';
 import { inTransaction } from './transaction.js';
 
 // Two deliberately separate artifacts (#33):
@@ -606,11 +608,7 @@ async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'repl
       )
     ).rows[0].id;
     workoutMap.set(w.id, workoutId);
-    for (const [i, s] of sets.entries())
-      await client.query(
-        'INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes,completed,rpe) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-        [workoutId, s.exercise, s.machine_id, s.weight, s.reps, i, s.notes, s.completed, s.rpe],
-      );
+    await insertSets(client, workoutId, sets);
     t.workouts.added++;
     t.sets.added += sets.length;
   }
@@ -1080,14 +1078,30 @@ export function registerBackupRoutes(app: express.Express, pool: Pool) {
         // Preview runs the exact same steps and rolls back, so its summary matches a real run.
         const summary = await inTransaction(
           pool,
-          (client) => restore(client, backup, request.mode),
+          async (client) => {
+            const result = await restore(client, backup, request.mode);
+            // #360: a real restore leaves one audit row in the same transaction; a preview rolls back.
+            if (action === 'restore')
+              await writeAudit(client, {
+                ...auditContext(req, res),
+                action: request.mode === 'replace' ? 'delete' : 'create',
+                entity: 'backup',
+                after: { mode: request.mode, version: backup.version, tables: result.tables },
+              });
+            return result;
+          },
           { commit: () => action !== 'preview' },
         );
         if (action !== 'preview') summary.dry_run = false;
         res.json(summary);
       } catch (e) {
         console.error(
-          JSON.stringify({ event: 'backup_restore_error', action, message: (e as Error).message }),
+          JSON.stringify({
+            event: 'backup_restore_error',
+            action,
+            requestId: res.locals.requestId,
+            message: (e as Error).message,
+          }),
         );
         res.status(500).json({
           error:

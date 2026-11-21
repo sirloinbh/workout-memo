@@ -1,7 +1,7 @@
 import { Plus, X } from 'lucide-react';
 import React from 'react';
 
-import { feedbackLevels } from '../../../shared/contract';
+import { type Feedback, feedbackLevels } from '../../../shared/contract';
 import { AlertBanner } from '../components/alert-banner';
 import { FieldError } from '../components/field';
 import { invalidProps } from '../components/field-props';
@@ -133,20 +133,13 @@ export function WorkoutEditor({
           <div className="mb-4 flex flex-col items-start gap-2 text-caption text-muted-foreground">
             <span>Effort feedback (optional)</span>
             <ToggleChips
+              type="single"
               label="Effort feedback"
-              options={feedbackLevels.map((level) => feedbackLabels[level])}
-              value={editor.feedback ? [feedbackLabels[editor.feedback]] : []}
-              // At most one level: a new press replaces the old one, and pressing the
-              // selected level again clears it back to not recorded.
-              onValueChange={(next) =>
-                setEditor({
-                  ...editor,
-                  feedback:
-                    feedbackLevels.find(
-                      (level) => level !== editor.feedback && next.includes(feedbackLabels[level]),
-                    ) ?? null,
-                })
-              }
+              options={feedbackLevels}
+              renderOption={(level) => feedbackLabels[level as Feedback]}
+              value={editor.feedback ?? null}
+              // A new press replaces the old level; pressing it again clears it to not recorded.
+              onValueChange={(next) => setEditor({ ...editor, feedback: next as Feedback | null })}
             />
           </div>
           {issue('feedback')}

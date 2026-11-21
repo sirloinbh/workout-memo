@@ -50,3 +50,56 @@ test('several chips can be on, and all can be turned off', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(screen.getByRole('status')).toBeEmptyDOMElement();
 });
+
+// #379: renderOption shows a label and keeps the option as the stored value.
+test('renderOption shows its text while the option stays the value', () => {
+  render(
+    <>
+      <ToggleChips
+        label="Part"
+        options={['chest', 'back']}
+        renderOption={(option) => option.toUpperCase()}
+        value={['chest']}
+        onValueChange={() => undefined}
+      />
+    </>,
+  );
+  expect(screen.getByRole('button', { name: 'CHEST' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('button', { name: 'chest' })).toBeNull();
+});
+
+function Effort() {
+  const [value, setValue] = useState<string | null>(null);
+  return (
+    <>
+      <ToggleChips
+        type="single"
+        label="Effort"
+        options={['hard', 'medium', 'easy']}
+        renderOption={(option) => option[0].toUpperCase() + option.slice(1)}
+        value={value}
+        onValueChange={setValue}
+      />
+      <output>{value ?? 'none'}</output>
+    </>
+  );
+}
+
+test('single-select is announced as one choice and reports the value, not the label', () => {
+  render(<Effort />);
+  expect(screen.getByRole('radiogroup', { name: 'Effort' })).toBeInTheDocument();
+  expect(screen.getAllByRole('radio')).toHaveLength(3);
+  fireEvent.click(screen.getByRole('radio', { name: 'Hard' }));
+  expect(screen.getByRole('status')).toHaveTextContent('hard');
+  expect(screen.getByRole('radio', { name: 'Hard' })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('single-select: a new press replaces the choice and pressing it again clears it', () => {
+  render(<Effort />);
+  fireEvent.click(screen.getByRole('radio', { name: 'Hard' }));
+  fireEvent.click(screen.getByRole('radio', { name: 'Easy' }));
+  expect(screen.getByRole('status')).toHaveTextContent('easy');
+  expect(screen.getByRole('radio', { name: 'Hard' })).toHaveAttribute('aria-checked', 'false');
+  fireEvent.click(screen.getByRole('radio', { name: 'Easy' }));
+  expect(screen.getByRole('status')).toHaveTextContent('none');
+});

@@ -18,15 +18,15 @@ import {
   metresToKm,
   optionalNumber,
 } from './cardio/format';
-import { AlertBanner } from './components/alert-banner';
-import { FieldError } from './components/field';
-import { invalidProps } from './components/field-props';
 import { fieldLabel, formHint as hint, selectField, touchText } from './components/form-styles';
 import { Modal } from './components/modal';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardDescription, CardTitle } from './components/ui/card';
 import { EmptyState } from './components/ui/empty-state';
+import { FieldError } from './components/ui/field';
+import { invalidProps } from './components/ui/field-props';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
@@ -178,6 +178,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
       </div>
       {error && (
         <AlertBanner
+          className="mb-5"
           action={
             <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
               Reconnect
@@ -491,7 +492,7 @@ function CardioGoalForm({
 
   return (
     <form noValidate onSubmit={(event) => void submit(event)}>
-      {failure && <AlertBanner>{failure}</AlertBanner>}
+      {failure && <AlertBanner className="mb-5">{failure}</AlertBanner>}
       <div className="grid grid-cols-2 gap-x-3 md:gap-x-5 pointer-coarse:max-[480px]:grid-cols-1">
         <Label className={fieldLabel}>
           Goal type

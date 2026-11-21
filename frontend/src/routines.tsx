@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
-import { AlertBanner } from './components/alert-banner';
+import { AlertBanner } from './components/ui/alert-banner';
 import { Button } from './components/ui/button';
 import { Card } from './components/ui/card';
 import { ConfirmDialog } from './components/ui/confirm-dialog';
@@ -122,7 +122,7 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
         A plan is only a goal. Record what you actually did separately in the workout journal.
       </p>
       {/* An open form shows its error beside its buttons, on whichever step it is. */}
-      {error && !draft && <AlertBanner>{error}</AlertBanner>}
+      {error && !draft && <AlertBanner className="mb-5">{error}</AlertBanner>}
       <Notice
         className="mb-3"
         notice={

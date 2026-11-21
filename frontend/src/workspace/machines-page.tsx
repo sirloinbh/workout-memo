@@ -1,10 +1,10 @@
 import { Dumbbell } from 'lucide-react';
 
 import { List, ListItem } from '../components/list';
-import { SegmentedControl } from '../components/segmented-control';
 import { Button } from '../components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
+import { SegmentedControl } from '../components/ui/segmented-control';
 import { type Machine, officialLabel } from './model';
 
 /** The machine library, filtered by brand. */

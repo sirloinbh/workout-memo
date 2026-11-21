@@ -2,10 +2,10 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 
-import { FieldError } from './field';
-import { invalidProps } from './field-props';
 import { keyboardInset } from './keyboard-inset';
 import { Modal, ModalFooter } from './modal';
+import { FieldError } from './ui/field';
+import { invalidProps } from './ui/field-props';
 
 test('a field message is linked to its control and absent without a message', () => {
   const { rerender } = render(
@@ -20,7 +20,10 @@ test('a field message is linked to its control and absent without a message', ()
   const input = screen.getByLabelText('Total weight kg');
   expect(input).toHaveAttribute('aria-invalid', 'true');
   expect(input).toHaveAccessibleDescription('Enter a total weight from 0 to 99999 kg');
-  expect(document.getElementById('issue-sets-0-weight')).toHaveClass('field-error');
+  expect(document.getElementById('issue-sets-0-weight')).toHaveAttribute(
+    'data-slot',
+    'field-error',
+  );
   rerender(
     <>
       <label>

@@ -1,3 +1,5 @@
+import './activity-deps-lazy';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import {

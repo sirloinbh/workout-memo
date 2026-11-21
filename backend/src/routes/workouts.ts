@@ -63,6 +63,36 @@ export async function insertSets(db: Db, workoutId: number, sets: Workout['sets'
   );
 }
 
+/**
+ * The stored answer for a retry key (#362: shared by the REST route and the add_workout AI tool). The lock serializes
+ * identical keys across connections, including their first use. Null when the key is new; a 409 when the key expired
+ * or came with other content.
+ */
+export async function findRetry(
+  client: Db,
+  key: string,
+  fingerprint: string,
+): Promise<{ status: number; body: unknown } | null> {
+  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [key]);
+  const previous = await client.query(
+    'SELECT *, expires_at <= now() expired FROM workout_requests WHERE key=$1',
+    [key],
+  );
+  if (!previous.rowCount) return null;
+  const saved = previous.rows[0];
+  if (saved.expired)
+    return {
+      status: 409,
+      body: { error: 'The 7-day validity of the retry key has passed. Check the server record.' },
+    };
+  if (saved.fingerprint !== fingerprint)
+    return {
+      status: 409,
+      body: { error: 'The request content differs from the one with the same retry key.' },
+    };
+  return { status: saved.status, body: saved.response };
+}
+
 export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
   app.get('/api/workouts', async (req, res) => {
     res.json(await listWorkouts(pool, dateRange.parse(req.query)));
@@ -85,31 +115,8 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
         pool,
         async (client): Promise<{ status: number; body: unknown }> => {
           if (key) {
-            // Serialize identical keys across connections, including their first use.
-            await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [key]);
-            const previous = await client.query(
-              'SELECT *, expires_at <= now() expired FROM workout_requests WHERE key=$1',
-              [key],
-            );
-            if (previous.rowCount) {
-              const saved = previous.rows[0];
-              if (saved.expired)
-                return {
-                  status: 409,
-                  body: {
-                    error:
-                      'The 7-day validity of the retry key has passed. Check the server record.',
-                  },
-                };
-              if (saved.fingerprint !== fingerprint)
-                return {
-                  status: 409,
-                  body: {
-                    error: 'The request content differs from the one with the same retry key.',
-                  },
-                };
-              return { status: saved.status, body: saved.response };
-            }
+            const replay = await findRetry(client, key, fingerprint);
+            if (replay) return replay;
           }
           let workoutId: number;
           let version = 1;

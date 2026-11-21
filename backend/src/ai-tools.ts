@@ -1,8 +1,12 @@
 // The AI tools of Workout Memo (project-standards#559, ADR-0017). shared-ai lists and calls them over
 // /internal/tools; standard/tools.ts checks the signed call, the scope, and writes the audit row.
+import { createHash } from 'node:crypto';
+
+import { z } from 'zod/v4';
+
 import { dateRange, workoutSchema } from './domain.js';
 import type { Db } from './routes/shared.js';
-import { insertWorkout, listWorkouts, summary } from './routes/workouts.js';
+import { findRetry, insertWorkout, listWorkouts, summary } from './routes/workouts.js';
 import { defineTool } from './standard/tools.js';
 
 // A tool reads at most a year of journals, so one call cannot return the whole history.
@@ -26,14 +30,33 @@ export const tools = [
   defineTool({
     name: 'add_workout',
     description:
-      'Add a strength workout journal: date (YYYY-MM-DD), title, notes, and sets of exercise, weight in kg (total, including the machine base) and reps.',
-    // A new journal has no version yet.
-    input: workoutSchema.omit({ version: true }),
+      'Add a strength workout journal: date (YYYY-MM-DD), title, notes, and sets of exercise, weight in kg (total, including the machine base) and reps. Pass the same idempotency_key (a UUID) when you retry a call, so the journal is added only once.',
+    // A new journal has no version yet. The optional key makes a retried call (the AI client or shared-ai
+    // sends it again) answer with the journal the first call made instead of adding a second one (#362).
+    input: workoutSchema.omit({ version: true }).extend({ idempotency_key: z.guid().optional() }),
     access: 'write',
     action: 'create',
     entity: 'workout',
-    run: async (w, { db }: { db: Db }) => {
+    run: async ({ idempotency_key: key, ...w }, { db }: { db: Db }) => {
+      const fingerprint = createHash('sha256')
+        .update(JSON.stringify(['ai-add', w]))
+        .digest('hex');
+      if (key) {
+        const replay = await findRetry(db, key, fingerprint);
+        if (replay) {
+          const body = replay.body as { id?: number };
+          // A replay answers with the stored journal; a conflict says why nothing was added.
+          return replay.status < 400
+            ? { result: replay.body, entityId: body.id ?? null }
+            : { result: replay.body };
+        }
+      }
       const id = await insertWorkout(db, w);
+      if (key)
+        await db.query(
+          'INSERT INTO workout_requests(key,fingerprint,status,response) VALUES($1,$2,$3,$4)',
+          [key, fingerprint, 201, { id, version: 1 }],
+        );
       return {
         result: { id, version: 1 },
         entityId: id,

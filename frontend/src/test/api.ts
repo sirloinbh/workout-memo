@@ -79,5 +79,5 @@ export async function flushRenders(
   awaitRequests = false,
 ) {
   if (awaitRequests) await Promise.allSettled(api.fetch.mock.results.map((r) => r.value));
-  for (let i = 0; i < 5; i++) await act(async () => undefined);
+  for (let i = 0; i < 5; i++) await act(() => Promise.resolve());
 }

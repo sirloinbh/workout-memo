@@ -172,3 +172,14 @@ test('an unreadable file is reported as an alert inside the panel', async () => 
   expect(await findLive('alert', panel())).toBeVisible();
   expect(within(panel()).queryByRole('table')).toBeNull();
 });
+
+// #384: a file that cannot be read is reported, not dropped silently.
+test('a CSV that fails to read shows an alert', async () => {
+  const ui = mount();
+  await openImport(ui);
+  const broken = file('x', 'inbody.csv', 'text/csv');
+  broken.text = () => Promise.reject(new Error('The file is locked'));
+  await ui.user.upload(within(panel()).getByLabelText('InBody file or result sheet photo'), broken);
+  expect(await findLive('alert', panel())).toHaveTextContent('Could not read the file');
+  expect(within(panel()).queryByRole('table')).toBeNull();
+});

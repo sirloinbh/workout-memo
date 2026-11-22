@@ -52,3 +52,11 @@ Versions under the 14-day rule ([dependency policy](https://github.com/sirloinbh
 
 - Lockfile diff checked entry by entry (old vs new `packages`): production change is design-tokens only, as listed above.
 - CI on this PR runs `npm ci`, the full check and the dependency scan.
+
+## Visual baselines (e2e-visual)
+
+The new font files changed 30 of the 48 `e2e/ui-visual.spec.ts` baselines (screens at 360, 390, 768 and 1280px, including the editor modals). They were replaced with the `visual-baselines` artifact of CI run 45028235778, as `skills/workout-testing` says, after checking the `playwright-report` diff images:
+
+- Only some symbol glyphs differ (`×`, `&`, `·`, `%`), because the dynamic subset serves them from a different chunk than the text around them (project-standards #989 noted they sit 1px lower).
+- On lines with `%` (body fat values on the body screen), the text after the `%` moves a few pixels sideways because the glyph's width differs slightly. No line wraps or layout changes.
+- Latin, Korean and digits are otherwise unchanged; no screen changed for another reason.

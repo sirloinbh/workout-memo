@@ -1,0 +1,62 @@
+# Lockfile for design-tokens 1.1.0 and @lhci/cli 0.16.1 (central sync)
+
+- Sync PR: #467 (branch `chore/standards-sync-f7fa23f`)
+- Central work: sirloinbh/project-standards#989 (design-tokens 1.1.0, Pretendard dynamic subset), #993 (`@lhci/cli` 0.16.1 for the `proxy-agent` 8 / `basic-ftp` security fix)
+
+## Problem
+
+The sync commit raised `@sirloinbh/design-tokens` to 1.1.0 in `frontend/package.json` and `@lhci/cli` to 0.16.1 in `package.json`, but `package-lock.json` still pinned the old versions, so `npm ci` failed in CI.
+
+## Change
+
+The user ran `npm install --ignore-scripts --engine-strict=false --no-audit --no-fund` on this branch on 2026-11-22 (GitHub Packages needs the user's token, project-standards `docs/user-steps.md` section 12). Only `package-lock.json` changed.
+
+- The only production change is `@sirloinbh/design-tokens` 1.0.0 → 1.1.0 (0 dependencies). Same font family and weights; a page now downloads only the font chunks its text needs (health-log measured -96.9% font bytes on a cold first load).
+- Every other changed entry is dev-only and belongs to the `@lhci/cli` 0.16.1 tree. The root entry changes only the `@lhci/cli` pin, and the `frontend` workspace entry only the design-tokens pin.
+- New package names: `proxy-agent-negotiate`, `quickjs-wasi`; removed: `@tootallnate/quickjs-emscripten`.
+
+Versions under the 14-day rule ([dependency policy](https://github.com/sirloinbh/project-standards/blob/main/docs/dependency-policy.md)), **accepted by the user on 2026-11-22 for the #993 security fix** (the health-log#315 set plus `puppeteer-core`, `typed-query-selector`, `ws`, `glob` and `minimatch`, also dev-only in the Lighthouse and Sentry tree, accepted separately the same day):
+
+| Package                            | Version | Published (UTC) |
+| ---------------------------------- | ------- | --------------- |
+| `ansi-regex`                       | 6.6.0   | 2026-11-08      |
+| `@puppeteer/browsers`              | 3.2.7   | 2026-11-10      |
+| `@lhci/cli`                        | 0.16.1  | 2026-11-11      |
+| `@lhci/utils`                      | 0.16.1  | 2026-11-11      |
+| `glob`                             | 14.0.6  | 2026-11-12      |
+| `ws`                               | 8.23.0  | 2026-11-12      |
+| `quickjs-wasi`                     | 3.7.0   | 2026-11-13      |
+| `degenerator`                      | 7.0.2   | 2026-11-16      |
+| `get-uri`                          | 8.0.2   | 2026-11-16      |
+| `minimatch`                        | 11.0.9  | 2026-11-16      |
+| `pac-proxy-agent`                  | 9.1.1   | 2026-11-16      |
+| `pac-resolver`                     | 9.0.2   | 2026-11-16      |
+| `proxy-agent`                      | 8.0.3   | 2026-11-16      |
+| `typed-query-selector`             | 2.12.4  | 2026-11-16      |
+| `puppeteer-core`                   | 25.18.1 | 2026-11-17      |
+| `sentry`                           | 0.50.0  | 2026-11-18      |
+| `@sentry/conventions`              | 0.34.0  | 2026-11-19      |
+| `socks`                            | 2.8.11  | 2026-11-19      |
+| `tldts-core`                       | 7.5.5   | 2026-11-19      |
+| `tldts-icann`                      | 7.5.5   | 2026-11-19      |
+| `@sentry/bundler-plugins`          | 11.16.0 | 2026-11-20      |
+| `@sentry/core`                     | 11.16.0 | 2026-11-20      |
+| `@sentry/node`                     | 11.16.0 | 2026-11-20      |
+| `@sentry/opentelemetry`            | 11.16.0 | 2026-11-20      |
+| `@sentry/server-runtime-injection` | 11.16.0 | 2026-11-20      |
+| `@sentry/server-utils`             | 11.16.0 | 2026-11-20      |
+| `netmask`                          | 2.1.2   | 2026-11-20      |
+| `robots-parser`                    | 3.1.1   | 2026-11-21      |
+
+## Verification
+
+- Lockfile diff checked entry by entry (old vs new `packages`): production change is design-tokens only, as listed above.
+- CI on this PR runs `npm ci`, the full check and the dependency scan.
+
+## Visual baselines (e2e-visual)
+
+The new font files changed 30 of the 48 `e2e/ui-visual.spec.ts` baselines (screens at 360, 390, 768 and 1280px, including the editor modals). They were replaced with the `visual-baselines` artifact of CI run 45028235778, as `skills/workout-testing` says, after checking the `playwright-report` diff images:
+
+- Only some symbol glyphs differ (`×`, `&`, `·`, `%`), because the dynamic subset serves them from a different chunk than the text around them (project-standards #989 noted they sit 1px lower).
+- On lines with `%` (body fat values on the body screen), the text after the `%` moves a few pixels sideways because the glyph's width differs slightly. No line wraps or layout changes.
+- Latin, Korean and digits are otherwise unchanged; no screen changed for another reason.

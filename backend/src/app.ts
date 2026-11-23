@@ -18,10 +18,13 @@ import { registerRoutineRoutes } from './routes/routines.js';
 import { appErrors } from './routes/shared.js';
 import { registerWeightStepRoutes } from './routes/weight-steps.js';
 import { registerWorkoutRoutes } from './routes/workouts.js';
+import { setInt8Parser } from './standard/db.js';
 import { errorHandler, notFound, requestLog } from './standard/http.js';
 import { apiRateLimit } from './standard/rate-limit.js';
 import { registerToolRoutes } from './standard/tools.js';
 import { createPushService, type PushService } from './web-push.js';
+// BIGINT values (row_number(), audit_log ids) come back as numbers, and a value above 2^53 throws (ADR-0025).
+setInt8Parser(types);
 // DATE columns stay `YYYY-MM-DD` strings instead of being shifted through JS Date.
 types.setTypeParser(1082, (value) => value);
 

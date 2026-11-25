@@ -20,6 +20,7 @@ import {
   cardioResultText,
   cardioSummaryText,
 } from './routine-cardio';
+import { StallSuggestions } from './routine-stalls';
 
 // `.legacy p` sets 12px muted text, so paragraphs in this card name their own size.
 const text = 'text-sm text-muted-foreground';
@@ -127,6 +128,7 @@ export function RoutineProgress({
                 yet are projections.
               </p>
             )}
+            <StallSuggestions stalls={progress.stalls ?? []} />
             <h3 className={heading}>Today&apos;s goal · {progress.today}</h3>
             {!today ? (
               <p className={text}>Today is not a planned workout day.</p>

@@ -18,6 +18,7 @@ import {
   withWeightSteps,
   type WorkoutRecord,
 } from '../progress.js';
+import { findStalls } from '../stalls.js';
 import { parseId } from '../standard/http.js';
 import { inTransaction } from '../transaction.js';
 import { type Db } from './shared.js';
@@ -104,7 +105,8 @@ async function planCardio(db: Db, plan: RoutinePlan, today: string): Promise<Car
   ).map((r) => ({ ...r, distance_km: r.distance_km === null ? null : Number(r.distance_km) }));
 }
 async function progressResponse(db: Db, routine: ActiveRoutine, rests: string[], today: string) {
-  const plan = withWeightSteps(routine.plan, await weightSteps(db));
+  const steps = await weightSteps(db);
+  const plan = withWeightSteps(routine.plan, steps);
   const records = await planRecords(db, plan, today);
   const progress = routineProgress(plan, rests, today, records, await planCardio(db, plan, today));
   const names = [
@@ -140,6 +142,14 @@ async function progressResponse(db: Db, routine: ActiveRoutine, rests: string[],
     routine: { id: routine.id, name: routine.plan.name, splits: routine.plan.splits.length },
     ...progress,
     previous,
+    // #478: suggestion only; nothing in the routine changes unless the user edits it.
+    stalls:
+      progress.progression === 'auto'
+        ? findStalls(
+            progress.weeks.flatMap((w) => w.entries),
+            steps,
+          )
+        : [],
   };
 }
 

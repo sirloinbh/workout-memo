@@ -116,7 +116,7 @@ export const operations: Record<string, Operation> = {
   },
   'GET /api/routine-progress': {
     summary:
-      "Today's goal, weekly and 12-week progress, and previous records of the routine in progress. routine: null if none",
+      "Today's goal, weekly and 12-week progress, and previous records of the routine in progress, and stalls (3 misses in a row: deload and smaller-step suggestion). routine: null if none",
     status: [200],
   },
   'POST /api/routines/:id/rests': {

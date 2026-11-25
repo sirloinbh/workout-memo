@@ -26,3 +26,7 @@ The group lives per workout log (not in routines), with two or more exercises pe
 ## Production
 
 Merging deploys to production and the deploy applies migration 023 (additive column).
+
+## Visual baseline
+
+One file updated, `e2e/__screenshots__/ui-visual.spec.ts/workout-editor-768.png`: the set card header gains a "Superset" button. The toggles use tighter padding so the header stays inside 360px (the touch check found 23 px of overflow before that), and the 360, 390 and 1280 editor shots did not change.

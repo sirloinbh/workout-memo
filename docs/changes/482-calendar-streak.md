@@ -22,3 +22,7 @@ No API, schema or migration change.
 ## Checks
 
 See the PR for the `npm run check` result and the 390×844 / 1440×900 browser check.
+
+## Visual baselines
+
+4 files updated in `e2e/__screenshots__/ui-visual.spec.ts/` (`dashboard-360/390/768/1280.png`), taken from the CI `visual-baselines` artifact, because the dashboard has a new calendar card. No other screen changed.

@@ -202,9 +202,11 @@ export function WorkoutEditor({
                     className="text-muted-foreground"
                     disabled={editor.sets!.length === 1}
                     aria-label="Delete set"
-                    onClick={() =>
-                      setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) })
-                    }
+                    onClick={() => {
+                      // Set numbers shift after a delete, so close the plate panel instead of moving it.
+                      setPlatesOpen(null);
+                      setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) });
+                    }}
                   >
                     <X size={15} />
                   </Button>

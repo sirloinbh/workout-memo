@@ -5,6 +5,7 @@ import type {
   RoutineCardio,
 } from '../../shared/contract';
 import { plural } from './labels';
+import type { Stall } from './routine-stalls';
 // Routine goals (#28). Planned targets are shown per exercise exactly as planned;
 // weights of different exercises are never summed. Only saved journals are records.
 type TargetExercise = {
@@ -72,6 +73,8 @@ export type Progress = {
   rest_unavailable?: string | null;
   rest_preview?: { date: string; moves: Move[]; excluded: Target[] } | null;
   previous?: Record<string, Previous>;
+  // #478: exercises that missed their target several sessions in a row (suggestion only).
+  stalls?: Stall[];
 };
 type DraftSet = {
   exercise: string;

@@ -127,6 +127,7 @@ export function useWorkoutDraft({
     const keyed = withSetKeys(value);
     updateEditorRaw(keyed);
     if (keyed) {
+      setNewRecords([]);
       persist({ format: 1, savedAt: Date.now(), editor: keyed, request: draft.current?.request });
       setRecovery(null);
       setSaveState('Local draft · Before server save');

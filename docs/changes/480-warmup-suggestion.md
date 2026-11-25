@@ -19,3 +19,7 @@ Suggest only, nothing saved. There is no migration and no warm-up flag; the orig
 ## Checks and visual baseline
 
 See the PR. The header row of the set card gains a second button, so the workout-editor baselines are expected to change and are refreshed from the CI artifact.
+
+## Visual baseline
+
+One file updated, `e2e/__screenshots__/ui-visual.spec.ts/workout-editor-768.png`: the set card header now has a "Warm-up" button beside "Plates". The other editor shots (360, 390, 1280) did not change.

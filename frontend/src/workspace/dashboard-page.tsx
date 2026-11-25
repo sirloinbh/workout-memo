@@ -8,6 +8,7 @@ import { ActivityCalendar } from './activity-calendar';
 import type { Goal, Page } from './model';
 import { StatsGrid } from './stats-grid';
 import { VolumeChart } from './volume-chart';
+import { WeeklySummaryToggle } from './weekly-summary-toggle';
 import { type RecordsProps, WorkoutRecords } from './workout-records';
 
 /** The dashboard: period totals, the volume chart and the records of the period. */
@@ -83,6 +84,7 @@ export function DashboardPage({
         </Card>
       </div>
       <ActivityCalendar />
+      <WeeklySummaryToggle />
       <WorkoutRecords {...recordsProps} onAll={() => setPage('journal')} />
     </>
   );

@@ -40,7 +40,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       const visible = windows.find((client) => client.visibilityState === 'visible');
-      if (visible) {
+      // Only the rest push is silent while the app is visible; the weekly summary (#485) is always shown.
+      if (visible && payload.tag === FALLBACK.tag) {
         visible.postMessage({ type: 'rest-over' });
         return undefined;
       }

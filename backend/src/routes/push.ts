@@ -1,8 +1,14 @@
 import type express from 'express';
 
-import { pushSubscriptionSchema, pushUnsubscribeSchema, restPushSchema } from '../contract.js';
+import {
+  pushSubscriptionSchema,
+  pushUnsubscribeSchema,
+  restPushSchema,
+  weeklySummarySettingSchema,
+} from '../contract.js';
 import { sendError } from '../standard/http.js';
 import type { PushService } from '../web-push.js';
+import type { WeeklySummary } from '../weekly-summary.js';
 
 // The rest can be one hour at most (#84); a little more is allowed for a device clock that runs fast.
 const maxAheadMs = 3600 * 1000 + 60_000;
@@ -18,6 +24,7 @@ export function registerPushRoutes(
   app: express.Express,
   push: PushService,
   now: () => number = Date.now,
+  weekly?: WeeklySummary,
 ) {
   const unavailable = (res: express.Response) =>
     sendError(res, 503, 'Push notifications are not set up on the server');
@@ -49,4 +56,16 @@ export function registerPushRoutes(
     await push.cancelRest(pushUserId(req));
     res.json({ ok: true });
   });
+  // #485: the weekly summary switch. Off until turned on; turning it on needs push set up on the server.
+  if (weekly) {
+    app.get('/api/push/weekly-summary', async (req, res) => {
+      res.json({ enabled: await weekly.isEnabled(pushUserId(req)) });
+    });
+    app.put('/api/push/weekly-summary', async (req, res) => {
+      const { enabled } = weeklySummarySettingSchema.parse(req.body);
+      if (enabled && !push.enabled) return unavailable(res);
+      await weekly.setEnabled(pushUserId(req), enabled);
+      res.json({ enabled });
+    });
+  }
 }

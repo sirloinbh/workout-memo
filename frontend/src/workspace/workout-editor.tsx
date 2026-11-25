@@ -28,6 +28,7 @@ import {
 import { PlateCalculator } from './plate-calculator';
 import { usePlateSettings } from './use-plate-settings';
 import type { WorkoutDraftState } from './use-workout-draft';
+import { WarmupPanel } from './warmup-panel';
 
 /** The full-screen editor for one workout journal and its sets. */
 export function WorkoutEditor({
@@ -54,8 +55,10 @@ export function WorkoutEditor({
   const storageWarning = draft.storageWarning;
   const editor = draft.editor!;
   const plateSettings = usePlateSettings();
-  // The set card whose plate panel is open; a toggle in the card header keeps closed cards short.
-  const [platesOpen, setPlatesOpen] = React.useState<number | null>(null);
+  // The set card whose plate or warm-up panel is open; toggles in the card header keep closed cards short.
+  const [panel, setPanel] = React.useState<{ index: number; kind: 'plates' | 'warmup' } | null>(
+    null,
+  );
   const invalid = (key: string) => invalidProps(key, issues[key]);
   const issue = (key: string) => <FieldError name={key}>{issues[key]}</FieldError>;
   return (
@@ -188,10 +191,38 @@ export function WorkoutEditor({
                     variant="ghost"
                     size="sm"
                     className="text-muted-foreground"
-                    aria-expanded={platesOpen === i}
-                    aria-controls={platesOpen === i ? `set-${i}-plates` : undefined}
+                    aria-expanded={panel?.index === i && panel.kind === 'warmup'}
+                    aria-controls={
+                      panel?.index === i && panel.kind === 'warmup' ? `set-${i}-warmup` : undefined
+                    }
+                    aria-label={`Warm-up for set ${i + 1}`}
+                    onClick={() =>
+                      setPanel(
+                        panel?.index === i && panel.kind === 'warmup'
+                          ? null
+                          : { index: i, kind: 'warmup' },
+                      )
+                    }
+                  >
+                    Warm-up
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    aria-expanded={panel?.index === i && panel.kind === 'plates'}
+                    aria-controls={
+                      panel?.index === i && panel.kind === 'plates' ? `set-${i}-plates` : undefined
+                    }
                     aria-label={`Plates for set ${i + 1}`}
-                    onClick={() => setPlatesOpen(platesOpen === i ? null : i)}
+                    onClick={() =>
+                      setPanel(
+                        panel?.index === i && panel.kind === 'plates'
+                          ? null
+                          : { index: i, kind: 'plates' },
+                      )
+                    }
                   >
                     Plates
                   </Button>
@@ -203,8 +234,8 @@ export function WorkoutEditor({
                     disabled={editor.sets!.length === 1}
                     aria-label="Delete set"
                     onClick={() => {
-                      // Set numbers shift after a delete, so close the plate panel instead of moving it.
-                      setPlatesOpen(null);
+                      // Set numbers shift after a delete, so close the panel instead of moving it.
+                      setPanel(null);
                       setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) });
                     }}
                   >
@@ -317,7 +348,10 @@ export function WorkoutEditor({
                   />
                 </div>
               </div>
-              {platesOpen === i && (
+              {panel?.index === i && panel.kind === 'warmup' && (
+                <WarmupPanel id={`set-${i}-warmup`} working={Number(s.weight)} step={weightStep} />
+              )}
+              {panel?.index === i && panel.kind === 'plates' && (
                 <PlateCalculator
                   id={`set-${i}-plates`}
                   target={Number(s.weight)}

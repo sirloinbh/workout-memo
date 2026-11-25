@@ -5,6 +5,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
 import { dateRange, workoutSchema } from '../domain.js';
+import { newRecordsFor } from '../records.js';
 import { auditContext, writeAudit } from '../standard/audit.js';
 import { parseId } from '../standard/http.js';
 import { findRetry, insertSets, insertWorkout, listWorkouts, summary } from '../store/workouts.js';
@@ -70,7 +71,12 @@ export function registerWorkoutRoutes(app: express.Express, pool: Pool) {
             await insertSets(client, workoutId, w.sets);
           }
           const status = method === 'post' ? 201 : 200;
-          const response = { id: workoutId, version };
+          // #477: which saved sets beat the earlier best estimated 1RM; stored with the retry key so a replay repeats it.
+          const response = {
+            id: workoutId,
+            version,
+            records: await newRecordsFor(client, workoutId),
+          };
           await writeAudit(client, {
             ...auditContext(req, res),
             action: method === 'post' ? 'create' : 'update',

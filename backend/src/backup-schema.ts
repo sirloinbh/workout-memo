@@ -113,6 +113,8 @@ const backupSchema = z.object({
                   // #359: backups made before v4 lack these; a set was then always performed.
                   completed: z.boolean().default(true),
                   rpe: rpe.nullable().default(null),
+                  // #481: the superset group; older backups have none.
+                  superset: z.number().int().min(1).max(20).nullable().default(null),
                 }),
               )
               .max(200),

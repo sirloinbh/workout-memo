@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { feedbackLevels, fieldErrors, workoutSchema } from '../../../shared/contract';
+import { enqueueSave } from '../offline/queue';
 import { api, Unreachable } from './api';
 import { done, repeatTapWindow, withoutSetKeys, withSetKeys, type Workout } from './model';
 import type { NewRecord } from './new-records';
@@ -51,7 +52,8 @@ function readDraft(): { draft: Draft | null; warning: string } {
           (s.weight === undefined || Number.isFinite(s.weight)) &&
           (s.reps === undefined || Number.isFinite(s.reps)) &&
           (s.completed === undefined || typeof s.completed === 'boolean') &&
-          (s.rpe === undefined || s.rpe === null || Number.isFinite(s.rpe)),
+          (s.rpe === undefined || s.rpe === null || Number.isFinite(s.rpe)) &&
+          (s.superset === undefined || s.superset === null || Number.isInteger(s.superset)),
       ) ||
       (d.request &&
         (typeof d.request.key !== 'string' ||
@@ -88,10 +90,17 @@ export function useWorkoutDraft({
   setSaving,
   onSaved,
   onSetCompleted,
+  onQueued,
 }: {
+  /** Runs after an unreachable save was queued on the phone (#476). */
+  onQueued?: () => void;
   setSaving: (saving: boolean) => void;
   onSaved: () => Promise<unknown>;
-  onSetCompleted: (set: NonNullable<Workout['sets']>[number]) => void;
+  onSetCompleted: (
+    set: NonNullable<Workout['sets']>[number],
+    sets: NonNullable<Workout['sets']>,
+    index: number,
+  ) => void;
 }) {
   const [editor, updateEditorRaw] = useState<Partial<Workout> | null>(null);
   const updateEditor = (value: Partial<Workout> | null) => {
@@ -153,7 +162,7 @@ export function useWorkoutDraft({
     const sets = [...latest.sets!];
     sets[i] = { ...current, completed };
     setEditor({ ...latest, sets });
-    if (completed && !workoutSaving.current) onSetCompleted(current);
+    if (completed && !workoutSaving.current) onSetCompleted(current, sets, i);
   }
   async function saveWorkout() {
     if (!editor || workoutSaving.current) return;
@@ -196,6 +205,27 @@ export function useWorkoutDraft({
       setSaveState('Saved to server');
       await onSaved();
     } catch (e) {
+      // #476: an unreachable server leaves the save on the phone's queue; it is sent when back online.
+      // The retry key travels with it, so a save the server did receive is not created twice.
+      const queued =
+        e instanceof Unreachable &&
+        kept &&
+        draft.current?.request &&
+        (await enqueueSave({
+          key: draft.current.request.key,
+          path: draft.current.request.path,
+          method: draft.current.request.method,
+          body: draft.current.request.body,
+        }));
+      if (queued) {
+        persist(null);
+        setRecovery(null);
+        updateEditor(null);
+        setSaveError('');
+        setSaveState('Saved on this phone · Will be sent when you are back online');
+        onQueued?.();
+        return;
+      }
       setSaveState('Save failed · Unknown whether the server saved it');
       setSaveError(
         (e as Error).message +

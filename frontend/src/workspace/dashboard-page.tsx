@@ -4,9 +4,11 @@ import type React from 'react';
 import type { CardioSession } from '../cardio/api';
 import { Button } from '../components/ui/button';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { ActivityCalendar } from './activity-calendar';
 import type { Goal, Page } from './model';
 import { StatsGrid } from './stats-grid';
 import { VolumeChart } from './volume-chart';
+import { WeeklySummaryToggle } from './weekly-summary-toggle';
 import { type RecordsProps, WorkoutRecords } from './workout-records';
 
 /** The dashboard: period totals, the volume chart and the records of the period. */
@@ -81,6 +83,8 @@ export function DashboardPage({
           </div>
         </Card>
       </div>
+      <ActivityCalendar />
+      <WeeklySummaryToggle />
       <WorkoutRecords {...recordsProps} onAll={() => setPage('journal')} />
     </>
   );

@@ -23,6 +23,7 @@ import { errorHandler, notFound, requestLog } from './standard/http.js';
 import { apiRateLimit } from './standard/rate-limit.js';
 import { registerToolRoutes } from './standard/tools.js';
 import { createPushService, type PushService } from './web-push.js';
+import { createWeeklySummary, type WeeklySummary } from './weekly-summary.js';
 // BIGINT values (row_number(), audit_log ids) come back as numbers, and a value above 2^53 throws (ADR-0025).
 setInt8Parser(types);
 // DATE columns stay `YYYY-MM-DD` strings instead of being shifted through JS Date.
@@ -35,6 +36,7 @@ export function createApp(
     today?: () => string;
     auth?: express.RequestHandler;
     push?: PushService;
+    weeklySummary?: WeeklySummary;
     now?: () => number;
     /** shared-ai's public key (PEM); without it the AI tool routes are off (project-standards#559). */
     toolsPublicKey?: string;
@@ -70,7 +72,13 @@ export function createApp(
   registerCardioRoutes(app, pool, today);
   registerCardioGoalRoutes(app, pool, today);
   // #260: without VAPID keys the service is disabled and the routes say so.
-  registerPushRoutes(app, options.push ?? createPushService(pool, { config: null }), options.now);
+  const push = options.push ?? createPushService(pool, { config: null });
+  registerPushRoutes(
+    app,
+    push,
+    options.now,
+    options.weeklySummary ?? createWeeklySummary(pool, push),
+  );
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the
   // signed call token, not the session, is the check.
   // #822: shared-ai signs the tool and jti claims (project-standards#670), so the app requires them.

@@ -29,6 +29,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 
 ## Endpoints
 
+<<<<<<< HEAD
 | Method | Path                               | Description                                                                                                             |
 | ------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/api/health`                      | DB connection check. `{ "status": "ok" }`                                                                               |
@@ -84,6 +85,65 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 | GET    | `/api/backup`                      | JSON backup file for restore                                                                                            |
 | POST   | `/api/backup/preview`              | Restore preview (the same procedure, then ROLLBACK)                                                                     |
 | POST   | `/api/backup/restore`              | Run a restore. `mode: "replace"` requires `confirm: "전체 교체"` (Korean for "full replace")                            |
+=======
+| Method | Path                               | Description                                                                                                                        |
+| ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/health`                      | DB connection check. `{ "status": "ok" }`                                                                                          |
+| GET    | `/api/me`                          | The signed-in user. `{ "user": { id, email, name, image } }`                                                                       |
+| GET    | `/api/brands`                      | Brand list (by id)                                                                                                                 |
+| GET    | `/api/official-machine-weights`    | Manufacturer official starting resistance reference values. `?brand=` optional                                                     |
+| GET    | `/api/machines`                    | Machine list with the linked official reference values (newest first)                                                              |
+| POST   | `/api/machines`                    | Create a machine → 201                                                                                                             |
+| PUT    | `/api/machines/:id`                | Update a machine                                                                                                                   |
+| GET    | `/api/workouts`                    | Logs and sets in the `?from&to` period (latest date first)                                                                         |
+| POST   | `/api/workouts`                    | Save a log → 201 `{ id, version, records }`. `Idempotency-Key` optional                                                            |
+| PUT    | `/api/workouts/:id`                | Replace a whole log → `{ id, version, records }`. `version` required                                                               |
+| DELETE | `/api/workouts/:id`                | Delete a log and its sets → `{ ok: true }`                                                                                         |
+| GET    | `/api/goals`                       | Goal list with the server-evaluated `achieved`                                                                                     |
+| POST   | `/api/goals`                       | Create a goal → 201                                                                                                                |
+| DELETE | `/api/goals/:id`                   | Delete a goal → `{ ok }`                                                                                                           |
+| GET    | `/api/routines`                    | Saved routines with the 84-day schedule (`schedule`)                                                                               |
+| POST   | `/api/routines`                    | Save a routine → 201 `{ id }`                                                                                                      |
+| GET    | `/api/routines/:id`                | One routine with its schedule                                                                                                      |
+| GET    | `/api/routine-progress`            | Today's goal, weekly and 12-week progress, and previous records of the routine in progress. `routine: null` if none                |
+| POST   | `/api/routines/:id/rests`          | Choose to rest today `{ date }` → 201 (applied) or 200 (already applied)                                                           |
+| DELETE | `/api/routines/:id/rests/:date`    | Cancel the rest on the same day                                                                                                    |
+| GET    | `/api/body-measurements`           | Body records in the `?from&to` period (by date)                                                                                    |
+| POST   | `/api/body-measurements`           | Create a body record → 201. The same date is 409                                                                                   |
+| PUT    | `/api/body-measurements/:id`       | Replace a whole body record. Omitted values become `null`                                                                          |
+| DELETE | `/api/body-measurements/:id`       | Delete a body record → `{ ok: true }`                                                                                              |
+| GET    | `/api/records`                     | Record board `{ today, records }`: per exercise the best estimated 1RM and heaviest set with dates                                 |
+| GET    | `/api/analysis`                    | `?from&to` (up to 371 days) PR by exercise, estimated 1RM, and weekly volume by body part                                          |
+| GET    | `/api/exercise-body-parts`         | Body part mapping per exercise                                                                                                     |
+| PUT    | `/api/exercise-body-parts`         | Replace the body part mapping of one exercise. An empty array deletes the mapping                                                  |
+| GET    | `/api/exercise-names`              | Exercise name autocomplete candidates (#124). Recent, then most used, up to 50                                                     |
+| GET    | `/api/exercise-weight-steps`       | Weight step per exercise (#86). Only the exercises that were set                                                                   |
+| PUT    | `/api/exercise-weight-steps`       | Save the weight step of one exercise. `null` goes back to the default 5 kg                                                         |
+| GET    | `/api/goal-suggestion`             | Next goal suggestion for `?exercise=` (not saved)                                                                                  |
+| GET    | `/api/push/config`                 | Whether rest-end Web Push is set up on the server and its public VAPID key (#260)                                                  |
+| POST   | `/api/push/subscriptions`          | Save this browser's push subscription for the signed-in user → 201. 503 when push is not set up                                    |
+| DELETE | `/api/push/subscriptions`          | Remove a push subscription (`endpoint` in the body) → `{ ok: true }`                                                               |
+| PUT    | `/api/push/rest`                   | Tell the server when the running rest ends (`ends_at`, epoch ms); it sends one push then. 503 when push is not set up              |
+| DELETE | `/api/push/rest`                   | Cancel the pending rest-end push (cancel or pause) → `{ ok: true }`                                                                |
+| GET    | `/api/push/weekly-summary`         | Whether the weekly summary push is on for the signed-in user → `{ enabled }` (off by default) (#485)                               |
+| PUT    | `/api/push/weekly-summary`         | Turn the Sunday 21:00 weekly summary push on or off (`{ enabled }`) → `{ enabled }`. 503 when turning it on and push is not set up |
+| GET    | `/api/cardio-sessions`             | Cardio records in the `?from&to` period (newest first). `kind` optional                                                            |
+| GET    | `/api/cardio-sessions/records`     | Cardio personal records (all time): longest distance per kind, best running 5km and 10km times                                     |
+| GET    | `/api/cardio-sessions/:id`         | One cardio record                                                                                                                  |
+| POST   | `/api/cardio-sessions`             | Create a cardio record → 201. The same source and external ID is 409                                                               |
+| POST   | `/api/cardio-sessions/import`      | Save imported cardio records in bulk (all or nothing) → 201. Rejected rows are in `rows`                                           |
+| PUT    | `/api/cardio-sessions/:id`         | Replace a whole cardio record (transaction). Omitted optional values become `null`                                                 |
+| DELETE | `/api/cardio-sessions/:id`         | Delete a cardio record → `{ ok: true }`                                                                                            |
+| GET    | `/api/export/cardio.csv`           | CSV for cardio analysis (`?from&to` optional). Cannot be used for restore                                                          |
+| GET    | `/api/cardio-goals`                | Cardio goal list with the server-evaluated `achieved` and `progress`                                                               |
+| POST   | `/api/cardio-goals`                | Create a cardio goal → 201                                                                                                         |
+| DELETE | `/api/cardio-goals/:id`            | Delete a cardio goal → `{ ok: true }`                                                                                              |
+| GET    | `/api/cardio-goals/:id/suggestion` | Next goal suggestion for that goal (not saved). `suggestion: null` if out of range                                                 |
+| GET    | `/api/export/workouts.csv`         | CSV for analysis (`?from&to` optional). Cannot be used for restore                                                                 |
+| GET    | `/api/backup`                      | JSON backup file for restore                                                                                                       |
+| POST   | `/api/backup/preview`              | Restore preview (the same procedure, then ROLLBACK)                                                                                |
+| POST   | `/api/backup/restore`              | Run a restore. `mode: "replace"` requires `confirm: "전체 교체"` (Korean for "full replace")                                       |
+>>>>>>> origin/main
 
 ## Main request bodies
 
@@ -104,7 +164,8 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
       "reps": 5,
       "notes": "",
       "completed": true,
-      "rpe": 8.5
+      "rpe": 8.5,
+      "superset": null
     }
   ]
 }
@@ -114,6 +175,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 
 - `title` and `exercise` are 1 to 120 characters after trimming spaces, and `notes` is 4000 characters or less. A log has 1 to 200 sets, saved in array order.
 - If `completed` is omitted it is `true` (compatible with existing clients). `rpe` is `null` or 1 to 10 in 0.5 steps. The screen has not asked for RPE since #83, and a stored value is sent back as it is when you edit.
+- `superset` (#481) is `null` (not in a superset) or a group number from 1 to 20 within this log. Sets that share a number are one superset, and each group needs at least two different exercises (names compared without case or surrounding spaces); otherwise the request is 400 with the message on `sets.N.superset`. If omitted it is `null`. The group number has no meaning outside its log. Backups carry it too; a backup made before #481 restores with no groups.
 - `feedback` (#83) is the feeling of the whole log: `hard`, `medium`, `easy`, or `null` (not entered). If omitted it is saved as `null`. For an automatic double progression routine, even in a session where the goal was achieved, it keeps the goal of the next session if a log that contains that exercise within that session's period is `hard`.
 - `version` is required only in PUT. If it differs from the fetched value it is 409, and on success it increases by 1.
 - If you send an `Idempotency-Key` (UUID) header, the same response is resent for the same request for 7 days from the first successful commit. For the storage format, see [database/README.md](../database/README.md).
@@ -156,6 +218,15 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 - A subscription belongs to the signed-in user (`req.user.id` from the shared sign-in, #303); without sign-in (local development) there is one user. The same `endpoint` saved again is updated, and a different user cannot remove it.
 - There is one pending push per user. `PUT /api/push/rest` replaces it; the client sends it when a rest starts or resumes, and `DELETE /api/push/rest` when the rest is canceled or paused. `ends_at` more than 10 seconds in the past or more than an hour and a minute ahead is 400.
 - A timer set for the earliest pending rest wakes the server at that time (nothing runs while no rest is pending), and it sends the push to every subscription of the user once the time has come (the pending row is deleted first, so a push is sent at most once). A push more than 2 minutes late (for example the server was restarting) is dropped. Each send has a 10 second deadline, so a stalled push service does not delay other users. A subscription the push service answers 404 or 410 for is removed.
+
+### Weekly summary push `/api/push/weekly-summary` (#485)
+
+`PUT` takes `{ "enabled": true }`; `GET` answers `{ "enabled": false }` until it was turned on.
+
+- Sent on **Sunday 21:00 Asia/Seoul** (user decision, 2026-11-25) to every subscription of each user who turned it on. A week is Monday to Sunday.
+- Text: workout days and total volume, new records (the #477 rule), and goals achieved out of the goals whose period overlaps the week.
+- A week with no completed workout sends nothing. The week is still marked handled, so it is not retried.
+- At most once a week: `weekly_summary_settings.last_sent_week` is claimed with one `UPDATE` before sending, so a restart or two overlapping checks never send it twice. A server that starts between Sunday 21:00 and midnight sends a summary it has not sent yet; at any other time nothing is sent late.
 
 ### Body record `POST /api/body-measurements`, `PUT /api/body-measurements/:id`
 

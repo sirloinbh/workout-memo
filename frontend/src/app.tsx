@@ -25,6 +25,8 @@ import { Toaster } from './components/ui/sonner';
 import { dateTitle } from './date';
 import { candidateNames, type ExerciseName } from './exercise-name-match';
 import { createQueryClient, useApiQuery } from './lib/query';
+import { SyncBadge, SyncStatus } from './offline/sync-status';
+import { useOfflineSync } from './offline/use-offline-sync';
 import {
   Analysis,
   Backup,
@@ -40,6 +42,7 @@ import { routineDraft } from './progress-data';
 import { restKind, startTimer } from './rest-timer';
 import { type CardioPreset } from './routine-cardio';
 import { AccountActions, SignInGate } from './sign-in';
+import { startsRest } from './superset';
 import { api, type Changed, changed, type WriteAction } from './workspace/api';
 import { GoalForm } from './workspace/goal-form';
 import { MachineEditor } from './workspace/machine-editor';
@@ -197,14 +200,23 @@ function Workspace() {
     setError('');
     void Promise.all(journalQueries.map((q) => q.refetch()));
   };
+  const offline = useOfflineSync({
+    onSynced: async () => {
+      void loadProgress();
+      await refetchChanged(changed.workouts);
+    },
+  });
   const draft = useWorkoutDraft({
     setSaving,
+    onQueued: () => void offline.flush(),
     onSaved: async () => {
       void loadProgress();
       await refetchChanged(changed.workouts);
     },
-    onSetCompleted: (set) => {
-      if (timer.autoStart) updateTimer(startTimer(timer, Date.now(), restSeconds(set)));
+    onSetCompleted: (set, sets, index) => {
+      // #481: in a superset only the last exercise of a round starts the rest.
+      if (timer.autoStart && startsRest(sets, index))
+        updateTimer(startTimer(timer, Date.now(), restSeconds(set)));
     },
   });
   const {
@@ -319,7 +331,12 @@ function Workspace() {
       <AppShell
         appName="FORM · My Workout Log"
         nav={navItems}
-        actions={<AccountActions />}
+        actions={
+          <>
+            <SyncBadge sync={offline} />
+            <AccountActions />
+          </>
+        }
         footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">
@@ -417,6 +434,7 @@ function Workspace() {
             <AlertBanner className="mb-5">{storageWarning}</AlertBanner>
           )}
           {!editor && <Notice className="mb-5" notice={statusNotice(saveState)} />}
+          <SyncStatus sync={offline} />
           {!editor && <NewRecords records={draft.newRecords} />}
           {recovery && !editor && (
             <Card

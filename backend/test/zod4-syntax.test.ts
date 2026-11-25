@@ -101,6 +101,7 @@ test('defaults fill only missing values and optional fields stay absent', () => 
     notes: '',
     completed: true,
     rpe: null,
+    superset: null,
   });
   assert.ok(!('version' in parsed));
   const machine = machineSchema.parse({ brand_id: 1, name: 'M', base_weight: null });

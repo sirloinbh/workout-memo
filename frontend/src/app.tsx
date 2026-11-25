@@ -42,6 +42,7 @@ import { routineDraft } from './progress-data';
 import { restKind, startTimer } from './rest-timer';
 import { type CardioPreset } from './routine-cardio';
 import { AccountActions, SignInGate } from './sign-in';
+import { startsRest } from './superset';
 import { api, type Changed, changed, type WriteAction } from './workspace/api';
 import { GoalForm } from './workspace/goal-form';
 import { MachineEditor } from './workspace/machine-editor';
@@ -212,8 +213,10 @@ function Workspace() {
       void loadProgress();
       await refetchChanged(changed.workouts);
     },
-    onSetCompleted: (set) => {
-      if (timer.autoStart) updateTimer(startTimer(timer, Date.now(), restSeconds(set)));
+    onSetCompleted: (set, sets, index) => {
+      // #481: in a superset only the last exercise of a round starts the rest.
+      if (timer.autoStart && startsRest(sets, index))
+        updateTimer(startTimer(timer, Date.now(), restSeconds(set)));
     },
   });
   const {

@@ -38,10 +38,10 @@ export async function insertWorkout(db: Db, w: Workout): Promise<number> {
 export async function insertSets(db: Db, workoutId: number, sets: Workout['sets']) {
   if (!sets.length) return;
   await db.query(
-    `INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes,completed,rpe)
-     SELECT $1, exercise, machine_id, weight, reps, position - 1, notes, completed, rpe
-     FROM unnest($2::text[], $3::int[], $4::numeric[], $5::int[], $6::text[], $7::boolean[], $8::numeric[])
-       WITH ORDINALITY AS t(exercise, machine_id, weight, reps, notes, completed, rpe, position)
+    `INSERT INTO sets(workout_id,exercise,machine_id,weight,reps,position,notes,completed,rpe,superset)
+     SELECT $1, exercise, machine_id, weight, reps, position - 1, notes, completed, rpe, superset
+     FROM unnest($2::text[], $3::int[], $4::numeric[], $5::int[], $6::text[], $7::boolean[], $8::numeric[], $9::int[])
+       WITH ORDINALITY AS t(exercise, machine_id, weight, reps, notes, completed, rpe, superset, position)
      ORDER BY position`,
     [
       workoutId,
@@ -52,6 +52,7 @@ export async function insertSets(db: Db, workoutId: number, sets: Workout['sets'
       sets.map((s) => s.notes),
       sets.map((s) => s.completed),
       sets.map((s) => s.rpe),
+      sets.map((s) => s.superset),
     ],
   );
 }

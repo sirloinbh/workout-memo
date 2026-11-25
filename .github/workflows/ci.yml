@@ -67,6 +67,12 @@ jobs:
         run: node .standards/check.mjs
       - name: Supply chain check (after install, including node_modules)
         run: node .standards/ioc-scan.mjs
+      - name: Dependency licenses (warning only, allow list in docs/dependency-policy.md)
+        run: node .standards/license-check.mjs
+      - name: SBOM (CycloneDX, from the lockfile)
+        run: npm sbom --package-lock-only --sbom-format cyclonedx > sbom.cdx.json || echo "::warning title=SBOM::npm sbom failed. Check this step's log."
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with: { name: sbom, path: sbom.cdx.json, retention-days: 30, if-no-files-found: warn }
       - name: DB migration
         # Rule: docs/conventions/database.md (#27). The e2e job runs the same vendored script (#697).
         # .standards/ci-migrate.sh applies all files once with psql (Docker init order), then runs db:migrate to record them.

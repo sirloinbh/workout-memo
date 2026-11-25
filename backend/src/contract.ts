@@ -637,6 +637,11 @@ export const restPushSchema = z.strictObject({
     .int('Enter when the rest ends as epoch milliseconds'),
 });
 export type RestPushInput = z.infer<typeof restPushSchema>;
+// #485: turns the Sunday-night weekly summary push on or off for the signed-in user.
+export const weeklySummarySettingSchema = z.strictObject({
+  enabled: z.boolean(whenMissing('Choose whether to turn the weekly summary on')),
+});
+export type WeeklySummarySettingInput = z.infer<typeof weeklySummarySettingSchema>;
 
 // ---------------------------------------------------------------------------------------------
 // #452: the routine schema, the routine progress engine, the exercise analysis and the cardio goal

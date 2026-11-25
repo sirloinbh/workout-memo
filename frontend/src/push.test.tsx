@@ -95,6 +95,24 @@ test('with the app open and visible the page is told instead of a second alert',
   expect(worker.showNotification).not.toHaveBeenCalled();
 });
 
+test('the weekly summary is shown even while the app is visible (#485)', async () => {
+  const postMessage = vi.fn();
+  const worker = loadWorker([
+    { url: 'https://form.example/', visibilityState: 'visible', focus: vi.fn(), postMessage },
+  ]);
+  await worker.push({
+    title: 'Your week in review',
+    body: '3 workout days · 1,000 kg · 1 new record',
+    url: '/',
+    tag: 'weekly-summary',
+  });
+  expect(postMessage).not.toHaveBeenCalled();
+  expect(worker.showNotification).toHaveBeenCalledWith(
+    'Your week in review',
+    expect.objectContaining({ tag: 'weekly-summary', data: { url: '/' } }),
+  );
+});
+
 test('a hidden app window still gets the notification', async () => {
   const worker = loadWorker([
     {
@@ -262,7 +280,12 @@ function mount(
   const user = userEvent.setup();
   render(<App />);
   const calls = () =>
-    api.requests.filter((r) => r.path.startsWith('/api/push/') && r.path !== '/api/push/config');
+    api.requests.filter(
+      (r) =>
+        r.path.startsWith('/api/push/') &&
+        r.path !== '/api/push/config' &&
+        r.path !== '/api/push/weekly-summary',
+    );
   return { user, calls, api };
 }
 async function openSettings(ui: ReturnType<typeof mount>) {

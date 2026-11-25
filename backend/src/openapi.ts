@@ -5,7 +5,12 @@ import { z } from 'zod/v4';
 
 import { bodyPartMappingSchema } from './analysis.js';
 import { exportQuery, restoreRequest } from './backup.js';
-import { pushSubscriptionSchema, pushUnsubscribeSchema, restPushSchema } from './contract.js';
+import {
+  pushSubscriptionSchema,
+  pushUnsubscribeSchema,
+  restPushSchema,
+  weeklySummarySettingSchema,
+} from './contract.js';
 import {
   bodyMeasurementSchema,
   cardioGoalSchema,
@@ -214,6 +219,18 @@ export const operations: Record<string, Operation> = {
   'DELETE /api/push/rest': {
     summary: 'Cancel the pending rest-end push (cancel or pause) → { ok: true }',
     status: [200],
+  },
+  // #485: the Sunday-night weekly summary push.
+  'GET /api/push/weekly-summary': {
+    summary:
+      'Whether the weekly summary push is on for the signed-in user → { enabled } (off by default)',
+    status: [200],
+  },
+  'PUT /api/push/weekly-summary': {
+    summary:
+      'Turn the Sunday 21:00 (Asia/Seoul) weekly summary push on or off → { enabled }. 503 when turning it on and push is not set up',
+    body: ['WeeklySummarySetting', weeklySummarySettingSchema],
+    status: [200, 400, 503],
   },
   'GET /api/goal-suggestion': {
     summary: 'Next goal suggestion for ?exercise= (not saved)',

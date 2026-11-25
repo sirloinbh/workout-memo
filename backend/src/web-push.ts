@@ -113,35 +113,32 @@ export function createPushService(pool: Pick<Pool, 'query'>, options: Options) {
       await pool.query('DELETE FROM rest_pushes WHERE ends_at <= now() RETURNING user_id')
     ).rows as { user_id: string }[];
     await Promise.all(
-      due.map(async ({ user_id }) => {
-        const subscriptions = (
-          await pool.query(
-            'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id=$1',
-            [user_id],
-          )
-        ).rows as { endpoint: string; p256dh: string; auth: string }[];
-        await Promise.all(
-          subscriptions.map(async (row) => {
-            try {
-              await withDeadline(
-                send(
-                  { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-                  restOverPayload,
-                ),
-                deadline,
-              );
-            } catch (error) {
-              if (gone(error))
-                await pool.query('DELETE FROM push_subscriptions WHERE endpoint=$1', [
-                  row.endpoint,
-                ]);
-              else log(`Rest push failed: ${(error as Error).message}`);
-            }
-          }),
-        );
-      }),
+      due.map(({ user_id }) => pushToUser(send, user_id, restOverPayload, 'Rest push')),
     );
     return due.length;
+  }
+  // Pushes one payload to every subscription of the user, each send under a deadline (#371). A subscription
+  // the push service no longer knows is removed. Failures are logged, never thrown.
+  async function pushToUser(send: PushSender, userId: string, payload: PushPayload, what: string) {
+    const subscriptions = (
+      await pool.query('SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id=$1', [
+        userId,
+      ])
+    ).rows as { endpoint: string; p256dh: string; auth: string }[];
+    await Promise.all(
+      subscriptions.map(async (row) => {
+        try {
+          await withDeadline(
+            send({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, payload),
+            deadline,
+          );
+        } catch (error) {
+          if (gone(error))
+            await pool.query('DELETE FROM push_subscriptions WHERE endpoint=$1', [row.endpoint]);
+          else log(`${what} failed: ${(error as Error).message}`);
+        }
+      }),
+    );
   }
 
   // One timer for the earliest pending rest (#371): nothing runs, and no query is issued, while no rest is pending.
@@ -211,6 +208,10 @@ export function createPushService(pool: Pick<Pool, 'query'>, options: Options) {
       await pool.query('DELETE FROM rest_pushes WHERE user_id=$1', [userId]);
     },
     sendDue,
+    /** #485: a one-off push (the weekly summary) to every subscription of the user. Does nothing when push is off. */
+    sendToUser(userId: string, payload: PushPayload): Promise<void> {
+      return send ? track(pushToUser(send, userId, payload, 'Push')) : Promise.resolve();
+    },
     // Starts the timer for the earliest pending rest (rests that ended while the server was down are sent if they
     // are still fresh). The returned function stops it and resolves once checks in progress have finished, so the
     // pool can end after them (server shutdown).

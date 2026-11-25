@@ -18,6 +18,8 @@ export type SetRow = {
   // Missing on rows saved before completion tracking; those count as completed.
   completed?: boolean;
   rpe?: number | null;
+  // #481: the superset group within this log; null or missing means none.
+  superset?: number | null;
   // #382: a client-side id, so a row keeps its own state when another set is removed. It never leaves
   // the browser: saving strips it.
   _key?: string;

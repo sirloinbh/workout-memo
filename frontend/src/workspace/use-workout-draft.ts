@@ -52,7 +52,8 @@ function readDraft(): { draft: Draft | null; warning: string } {
           (s.weight === undefined || Number.isFinite(s.weight)) &&
           (s.reps === undefined || Number.isFinite(s.reps)) &&
           (s.completed === undefined || typeof s.completed === 'boolean') &&
-          (s.rpe === undefined || s.rpe === null || Number.isFinite(s.rpe)),
+          (s.rpe === undefined || s.rpe === null || Number.isFinite(s.rpe)) &&
+          (s.superset === undefined || s.superset === null || Number.isInteger(s.superset)),
       ) ||
       (d.request &&
         (typeof d.request.key !== 'string' ||
@@ -95,7 +96,11 @@ export function useWorkoutDraft({
   onQueued?: () => void;
   setSaving: (saving: boolean) => void;
   onSaved: () => Promise<unknown>;
-  onSetCompleted: (set: NonNullable<Workout['sets']>[number]) => void;
+  onSetCompleted: (
+    set: NonNullable<Workout['sets']>[number],
+    sets: NonNullable<Workout['sets']>,
+    index: number,
+  ) => void;
 }) {
   const [editor, updateEditorRaw] = useState<Partial<Workout> | null>(null);
   const updateEditor = (value: Partial<Workout> | null) => {
@@ -157,7 +162,7 @@ export function useWorkoutDraft({
     const sets = [...latest.sets!];
     sets[i] = { ...current, completed };
     setEditor({ ...latest, sets });
-    if (completed && !workoutSaving.current) onSetCompleted(current);
+    if (completed && !workoutSaving.current) onSetCompleted(current, sets, i);
   }
   async function saveWorkout() {
     if (!editor || workoutSaving.current) return;

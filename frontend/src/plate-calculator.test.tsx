@@ -72,3 +72,17 @@ test('invalid plate settings cannot be saved', async () => {
   });
   expect(box.getByRole('button', { name: 'Use these plates' })).toBeDisabled();
 });
+
+test('the warm-up panel suggests sets from the weight and saves nothing', async () => {
+  const user = await openEditor();
+  setWeight('100');
+  await user.click(within(dialog()).getByRole('button', { name: 'Warm-up for set 1' }));
+  const panel = dialog().querySelector<HTMLElement>('[data-slot=warmup-panel]')!;
+  expect(panel).toHaveTextContent('40 kg × 8 reps (40%)');
+  expect(panel).toHaveTextContent('60 kg × 5 reps (60%)');
+  expect(panel).toHaveTextContent('80 kg × 3 reps (80%)');
+  expect(panel).toHaveTextContent('not saved');
+  // Only one panel per card: opening plates closes the warm-up list.
+  await user.click(within(dialog()).getByRole('button', { name: 'Plates for set 1' }));
+  expect(dialog().querySelector('[data-slot=warmup-panel]')).toBeNull();
+});

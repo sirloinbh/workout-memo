@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { feedbackLevels, fieldErrors, workoutSchema } from '../../../shared/contract';
+import { enqueueSave } from '../offline/queue';
 import { api, Unreachable } from './api';
 import { done, repeatTapWindow, withoutSetKeys, withSetKeys, type Workout } from './model';
 
@@ -87,7 +88,10 @@ export function useWorkoutDraft({
   setSaving,
   onSaved,
   onSetCompleted,
+  onQueued,
 }: {
+  /** Runs after an unreachable save was queued on the phone (#476). */
+  onQueued?: () => void;
   setSaving: (saving: boolean) => void;
   onSaved: () => Promise<unknown>;
   onSetCompleted: (set: NonNullable<Workout['sets']>[number]) => void;
@@ -189,6 +193,27 @@ export function useWorkoutDraft({
       setSaveState('Saved to server');
       await onSaved();
     } catch (e) {
+      // #476: an unreachable server leaves the save on the phone's queue; it is sent when back online.
+      // The retry key travels with it, so a save the server did receive is not created twice.
+      const queued =
+        e instanceof Unreachable &&
+        kept &&
+        draft.current?.request &&
+        (await enqueueSave({
+          key: draft.current.request.key,
+          path: draft.current.request.path,
+          method: draft.current.request.method,
+          body: draft.current.request.body,
+        }));
+      if (queued) {
+        persist(null);
+        setRecovery(null);
+        updateEditor(null);
+        setSaveError('');
+        setSaveState('Saved on this phone · Will be sent when you are back online');
+        onQueued?.();
+        return;
+      }
       setSaveState('Save failed · Unknown whether the server saved it');
       setSaveError(
         (e as Error).message +

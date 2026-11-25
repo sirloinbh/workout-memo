@@ -25,6 +25,8 @@ import { Toaster } from './components/ui/sonner';
 import { dateTitle } from './date';
 import { candidateNames, type ExerciseName } from './exercise-name-match';
 import { createQueryClient, useApiQuery } from './lib/query';
+import { SyncStatus } from './offline/sync-status';
+import { useOfflineSync } from './offline/use-offline-sync';
 import {
   Analysis,
   Backup,
@@ -196,8 +198,15 @@ function Workspace() {
     setError('');
     void Promise.all(journalQueries.map((q) => q.refetch()));
   };
+  const offline = useOfflineSync({
+    onSynced: async () => {
+      void loadProgress();
+      await refetchChanged(changed.workouts);
+    },
+  });
   const draft = useWorkoutDraft({
     setSaving,
+    onQueued: () => void offline.flush(),
     onSaved: async () => {
       void loadProgress();
       await refetchChanged(changed.workouts);
@@ -416,6 +425,8 @@ function Workspace() {
             <AlertBanner className="mb-5">{storageWarning}</AlertBanner>
           )}
           {!editor && <Notice className="mb-5" notice={statusNotice(saveState)} />}
+          <SyncStatus sync={offline} />
+
           {recovery && !editor && (
             <Card
               role="region"

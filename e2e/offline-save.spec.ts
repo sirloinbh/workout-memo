@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 
 // #476: a log saved with the network off waits on the phone and appears in the list once back online.
@@ -36,12 +37,29 @@ test('a log saved offline is queued and sent once, then shows in the list', asyn
   await context.setOffline(true);
   await editor.getByRole('button', { name: 'Save record' }).click();
   await expect(editor).toBeHidden();
-  await expect(page.getByText(/waiting on this phone/)).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Logs waiting to sync' })).toBeVisible();
+  await expect(page.locator('[data-slot=sync-badge]')).toHaveText('1 waiting to sync');
+  // #483: the waiting mark and the shell count pass axe and fit at phone and desktop widths.
+  for (const size of [
+    { width: 390, height: 844 },
+    { width: 1280, height: 800 },
+  ]) {
+    await page.setViewportSize(size);
+    const result = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .include('[data-slot=sync-badge]')
+      .include('[aria-label="Logs waiting to sync"]')
+      .analyze();
+    expect(result.violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      size.width,
+    );
+  }
 
   await context.setOffline(false);
   const row = page.locator('[data-slot=workout-row]', { hasText: title });
   await expect(row).toBeVisible();
-  await expect(page.getByText(/waiting on this phone/)).toBeHidden();
+  await expect(page.locator('[data-slot=sync-badge]')).toBeHidden();
 
   const all = await page.request.get(`/api/workouts?from=${day}&to=${day}`);
   const mine = ((await all.json()) as { title: string }[]).filter((w) => w.title === title);

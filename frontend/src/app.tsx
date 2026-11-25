@@ -25,7 +25,7 @@ import { Toaster } from './components/ui/sonner';
 import { dateTitle } from './date';
 import { candidateNames, type ExerciseName } from './exercise-name-match';
 import { createQueryClient, useApiQuery } from './lib/query';
-import { SyncStatus } from './offline/sync-status';
+import { SyncBadge, SyncStatus } from './offline/sync-status';
 import { useOfflineSync } from './offline/use-offline-sync';
 import {
   Analysis,
@@ -328,7 +328,12 @@ function Workspace() {
       <AppShell
         appName="FORM · My Workout Log"
         nav={navItems}
-        actions={<AccountActions />}
+        actions={
+          <>
+            <SyncBadge sync={offline} />
+            <AccountActions />
+          </>
+        }
         footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">

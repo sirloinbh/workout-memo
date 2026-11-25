@@ -34,7 +34,9 @@ function mount(url = '/') {
   const user = userEvent.setup();
   render(<App />);
   const workoutQueries = () =>
-    api.requests.filter((r) => r.path.startsWith('/api/workouts?')).map((r) => r.path);
+    api.requests
+      .filter((r) => r.path.startsWith('/api/workouts?') && !r.url.searchParams.has('view'))
+      .map((r) => r.path);
   return { user, workoutQueries };
 }
 const form = () => screen.getByRole('form', { name: 'Custom range' });

@@ -54,7 +54,12 @@ function mount(initial: Workout[] = []) {
   render(<App />);
   const workoutQueries = () =>
     api.requests
-      .filter((r) => r.method === 'GET' && r.path.startsWith('/api/workouts?'))
+      .filter(
+        (r) =>
+          r.method === 'GET' &&
+          r.path.startsWith('/api/workouts?') &&
+          !r.url.searchParams.has('view'),
+      )
       .map((r) => r.path);
   return {
     user,

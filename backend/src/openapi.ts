@@ -71,14 +71,14 @@ export const operations: Record<string, Operation> = {
     status: [200, 400],
   },
   'POST /api/workouts': {
-    summary: 'Save a log → 201 { id, version }. Idempotency-Key optional',
+    summary: 'Save a log → 201 { id, version, records }. Idempotency-Key optional',
 
     body: ['Workout', workoutSchema],
     status: [201, 400, 409],
     headers: idempotencyKeyHeader,
   },
   'PUT /api/workouts/:id': {
-    summary: 'Replace a whole log → { id, version }. version required',
+    summary: 'Replace a whole log → { id, version, records }. version required',
 
     body: ['Workout', workoutSchema],
     status: [200, 400, 404, 409],
@@ -156,6 +156,11 @@ export const operations: Record<string, Operation> = {
       '?from&to (up to 371 days) PR by exercise, estimated 1RM, and weekly volume by body part',
     query: analysisQuery,
     status: [200, 400],
+  },
+  'GET /api/records': {
+    summary:
+      'Record board: per exercise the best estimated 1RM and the heaviest set over all saved history, with dates',
+    status: [200],
   },
   'GET /api/exercise-body-parts': {
     summary: 'Body part mapping per exercise',

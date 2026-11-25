@@ -4,6 +4,7 @@ import { z } from 'zod/v4';
 
 import { type AnalysisSet, analyze, bodyPartMappingSchema } from '../analysis.js';
 import { allBodyParts, date, exerciseKeySql } from '../domain.js';
+import { recordBoard } from '../records.js';
 import { inTransaction } from '../transaction.js';
 import { seoulTodaySql } from './shared.js';
 
@@ -31,6 +32,16 @@ export function registerAnalysisRoutes(app: express.Express, pool: Pool) {
     );
     const mappings = await pool.query('SELECT exercise, body_part FROM exercise_body_parts');
     res.json({ ...analyze(sets.rows as AnalysisSet[], mappings.rows, q.from, q.to), today });
+  });
+  // #484: the record board: per exercise the best estimated 1RM and the heaviest set over all saved history,
+  // with the date each was first reached. Same rules as the PRs of /api/analysis (completed sets, up to today).
+  app.get('/api/records', async (_req, res) => {
+    const today: string = (await pool.query(`SELECT ${seoulTodaySql} AS today`)).rows[0].today;
+    const sets = await pool.query(
+      `SELECT s.id, w.date, s.exercise, ${exerciseKeySql('s.exercise')} exercise_key, s.weight, s.reps, (s.machine_id IS NOT NULL AND m.base_weight IS NULL) unknown_base FROM sets s JOIN workouts w ON w.id=s.workout_id LEFT JOIN machines m ON m.id=s.machine_id WHERE w.date <= $1 AND s.completed ORDER BY w.date, s.id`,
+      [today],
+    );
+    res.json({ today, records: recordBoard(sets.rows as AnalysisSet[]) });
   });
   app.get('/api/exercise-body-parts', async (_req, res) => {
     const result = await pool.query(

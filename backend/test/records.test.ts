@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { findNewRecords, type RecordRow } from '../src/records.js';
+import { findNewRecords, recordBoard, type RecordRow } from '../src/records.js';
 
 let position = 0;
 const set = (
@@ -63,4 +63,53 @@ test('exercises are compared separately and only the saved workout is reported',
 
 test('high-rep and bodyweight sets have no estimate', () => {
   assert.deepEqual(findNewRecords([set(1, 100, 5), set(2, 0, 20), set(2, 100, 30)], 2), []);
+});
+
+// #484: the record board.
+
+const board = (
+  id: number,
+  date: string,
+  exercise: string,
+  weight: number,
+  reps: number,
+  extra = {},
+) => ({
+  id,
+  date,
+  exercise,
+  exercise_key: exercise.toLowerCase(),
+  weight,
+  reps,
+  unknown_base: false,
+  ...extra,
+});
+
+test('the board lists best estimated 1RM and heaviest set per exercise with dates, strongest first', () => {
+  const rows = [
+    board(1, '2040-01-01', 'Bench', 100, 5),
+    board(2, '2040-01-08', 'Bench', 110, 3),
+    board(3, '2040-01-02', 'Squat', 140, 5),
+  ];
+  const result = recordBoard(rows.sort((a, b) => a.date.localeCompare(b.date)));
+  assert.deepEqual(
+    result.map((r) => r.exercise),
+    ['Squat', 'Bench'],
+  );
+  const bench = result[1];
+  assert.equal(bench.max_weight?.value, 110);
+  assert.equal(bench.max_weight?.date, '2040-01-08');
+  assert.equal(bench.estimated_1rm?.value, 121);
+});
+
+test('the board keeps an exercise whose sets have no 1RM estimate and skips an empty history', () => {
+  assert.deepEqual(recordBoard([]), []);
+  const result = recordBoard([
+    board(1, '2040-01-01', 'Curl', 30, 12),
+    board(2, '2040-01-02', 'Pushup', 0, 20),
+  ]);
+  assert.deepEqual(
+    result.map((r) => [r.exercise, r.estimated_1rm, r.max_weight?.value ?? null]),
+    [['Curl', null, 30]],
+  );
 });

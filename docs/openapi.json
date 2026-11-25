@@ -864,7 +864,7 @@
         }
       },
       "put": {
-        "summary": "Replace a whole log → { id, version }. version required",
+        "summary": "Replace a whole log → { id, version, records }. version required",
         "parameters": [
           {
             "name": "id",
@@ -2517,7 +2517,7 @@
         }
       },
       "post": {
-        "summary": "Save a log → 201 { id, version }. Idempotency-Key optional",
+        "summary": "Save a log → 201 { id, version, records }. Idempotency-Key optional",
         "parameters": [
           {
             "name": "Idempotency-Key",

@@ -39,8 +39,8 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 | POST   | `/api/machines`                    | Create a machine → 201                                                                                                |
 | PUT    | `/api/machines/:id`                | Update a machine                                                                                                      |
 | GET    | `/api/workouts`                    | Logs and sets in the `?from&to` period (latest date first)                                                            |
-| POST   | `/api/workouts`                    | Save a log → 201 `{ id, version }`. `Idempotency-Key` optional                                                        |
-| PUT    | `/api/workouts/:id`                | Replace a whole log → `{ id, version }`. `version` required                                                           |
+| POST   | `/api/workouts`                    | Save a log → 201 `{ id, version, records }`. `Idempotency-Key` optional                                               |
+| PUT    | `/api/workouts/:id`                | Replace a whole log → `{ id, version, records }`. `version` required                                                  |
 | DELETE | `/api/workouts/:id`                | Delete a log and its sets → `{ ok: true }`                                                                            |
 | GET    | `/api/goals`                       | Goal list with the server-evaluated `achieved`                                                                        |
 | POST   | `/api/goals`                       | Create a goal → 201                                                                                                   |

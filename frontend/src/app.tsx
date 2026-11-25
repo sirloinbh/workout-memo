@@ -56,6 +56,7 @@ import {
   today,
   type Workout,
 } from './workspace/model';
+import { NewRecords } from './workspace/new-records';
 import { PeriodControls } from './workspace/period-controls';
 import { TimerAlert, TimerBar, TimerSettings } from './workspace/rest-timer-panels';
 import { usePeriodRange } from './workspace/use-period-range';
@@ -426,7 +427,7 @@ function Workspace() {
           )}
           {!editor && <Notice className="mb-5" notice={statusNotice(saveState)} />}
           <SyncStatus sync={offline} />
-
+          {!editor && <NewRecords records={draft.newRecords} />}
           {recovery && !editor && (
             <Card
               role="region"

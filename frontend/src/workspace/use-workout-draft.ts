@@ -4,6 +4,7 @@ import { feedbackLevels, fieldErrors, workoutSchema } from '../../../shared/cont
 import { enqueueSave } from '../offline/queue';
 import { api, Unreachable } from './api';
 import { done, repeatTapWindow, withoutSetKeys, withSetKeys, type Workout } from './model';
+import type { NewRecord } from './new-records';
 
 type Draft = {
   format: 1;
@@ -97,12 +98,16 @@ export function useWorkoutDraft({
   onSetCompleted: (set: NonNullable<Workout['sets']>[number]) => void;
 }) {
   const [editor, updateEditorRaw] = useState<Partial<Workout> | null>(null);
-  const updateEditor = (value: Partial<Workout> | null) => updateEditorRaw(withSetKeys(value));
+  const updateEditor = (value: Partial<Workout> | null) => {
+    if (value) setNewRecords([]);
+    updateEditorRaw(withSetKeys(value));
+  };
   const [initialDraft] = useState(readDraft);
   const [recovery, setRecovery] = useState(initialDraft.draft);
   const [storageWarning, setStorageWarning] = useState(initialDraft.warning);
   const [saveState, setSaveState] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [newRecords, setNewRecords] = useState<NewRecord[]>([]);
   // Per-field messages from the shared contract, keyed like "sets.0.weight" (#64).
   const [issues, setIssues] = useState<Record<string, string>>({});
   const draft = useRef<Draft | null>(initialDraft.draft);
@@ -126,6 +131,7 @@ export function useWorkoutDraft({
     const keyed = withSetKeys(value);
     updateEditorRaw(keyed);
     if (keyed) {
+      setNewRecords([]);
       persist({ format: 1, savedAt: Date.now(), editor: keyed, request: draft.current?.request });
       setRecovery(null);
       setSaveState('Local draft · Before server save');
@@ -186,7 +192,8 @@ export function useWorkoutDraft({
           ? old
           : { key: retryKey(), body, path, method };
       kept = persist({ format: 1, savedAt: draft.current?.savedAt ?? Date.now(), editor, request });
-      await api(path, method, payload, request.key);
+      const saved = await api<{ records?: NewRecord[] }>(path, method, payload, request.key);
+      setNewRecords(saved?.records ?? []);
       persist(null);
       setRecovery(null);
       updateEditor(null);
@@ -237,6 +244,7 @@ export function useWorkoutDraft({
     saveState,
     setSaveState,
     saveError,
+    newRecords,
     issues,
     setIssues,
     persist,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { listQueue, type QueuedSave, removeQueued } from './queue';
+import { listQueue, type QueuedSave, removeQueued, updateQueued } from './queue';
 import { flushQueue } from './sync';
 
 /**
@@ -77,6 +77,23 @@ export function useOfflineSync({ onSynced }: { onSynced: () => void | Promise<un
     [refresh],
   );
 
+  // #483: a rejected save goes back to waiting (its error cleared) and is sent again at once.
+  const retry = useCallback(
+    async (key: string) => {
+      try {
+        const entry = (await listQueue()).find((q) => q.key === key);
+        if (entry) {
+          const { error: _error, ...waiting } = entry;
+          await updateQueued(waiting);
+        }
+      } catch {
+        // The entry stays rejected; the user can try again.
+      }
+      await flush();
+    },
+    [flush],
+  );
+
   return {
     queue,
     waiting: queue.filter((q) => !q.error),
@@ -84,6 +101,7 @@ export function useOfflineSync({ onSynced }: { onSynced: () => void | Promise<un
     notice,
     dismissNotice: () => setNotice(''),
     flush,
+    retry,
     discard,
   };
 }

@@ -25,6 +25,8 @@ import {
   statusNotice,
   weightStep,
 } from './model';
+import { PlateCalculator } from './plate-calculator';
+import { usePlateSettings } from './use-plate-settings';
 import type { WorkoutDraftState } from './use-workout-draft';
 
 /** The full-screen editor for one workout journal and its sets. */
@@ -51,6 +53,7 @@ export function WorkoutEditor({
     draft;
   const storageWarning = draft.storageWarning;
   const editor = draft.editor!;
+  const plateSettings = usePlateSettings();
   const invalid = (key: string) => invalidProps(key, issues[key]);
   const issue = (key: string) => <FieldError name={key}>{issues[key]}</FieldError>;
   return (
@@ -296,6 +299,12 @@ export function WorkoutEditor({
                   />
                 </div>
               </div>
+              <PlateCalculator
+                id={`set-${i}-plates`}
+                target={Number(s.weight)}
+                settings={plateSettings.settings}
+                onSettings={plateSettings.update}
+              />
               {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
                 <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
               ))}

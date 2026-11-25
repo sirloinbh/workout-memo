@@ -12,9 +12,9 @@ import { fmt, today, type Workout } from './model';
 const historyDays = 400;
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const shades = [
-  'bg-muted/50 text-muted-foreground',
-  'bg-primary/20',
-  'bg-primary/40',
+  'bg-muted text-foreground',
+  'bg-primary/20 text-foreground',
+  'bg-primary/40 text-foreground',
   'bg-primary/65 text-primary-foreground',
   'bg-primary text-primary-foreground',
 ] as const;

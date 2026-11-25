@@ -178,7 +178,7 @@ export function WorkoutEditor({
               )}
               key={s._key ?? i}
             >
-              <div className="flex items-center justify-between gap-2 md:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 md:col-span-2">
                 <span
                   className={cn(
                     'text-meta text-muted-foreground',
@@ -187,12 +187,15 @@ export function WorkoutEditor({
                 >
                   Set {i + 1}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-0.5">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={cn('text-muted-foreground', s.superset != null && 'text-foreground')}
+                    className={cn(
+                      'px-1.5 text-muted-foreground',
+                      s.superset != null && 'text-foreground',
+                    )}
                     aria-expanded={panel?.index === i && panel.kind === 'superset'}
                     aria-controls={
                       panel?.index === i && panel.kind === 'superset'
@@ -214,7 +217,7 @@ export function WorkoutEditor({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground"
+                    className="px-1.5 text-muted-foreground"
                     aria-expanded={panel?.index === i && panel.kind === 'warmup'}
                     aria-controls={
                       panel?.index === i && panel.kind === 'warmup' ? `set-${i}-warmup` : undefined
@@ -234,7 +237,7 @@ export function WorkoutEditor({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground"
+                    className="px-1.5 text-muted-foreground"
                     aria-expanded={panel?.index === i && panel.kind === 'plates'}
                     aria-controls={
                       panel?.index === i && panel.kind === 'plates' ? `set-${i}-plates` : undefined

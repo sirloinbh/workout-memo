@@ -1,6 +1,6 @@
 # Plate calculator for barbell targets (#479)
 
-Each set card in the workout editor has a collapsible "Plates" section. It shows which plates to load on each side of the bar for the total weight entered, since weight is stored as the total including the bar.
+Each set card in the workout editor has a "Plates" toggle in the header row (so a closed card keeps its height). It shows which plates to load on each side of the bar for the total weight entered, since weight is stored as the total including the bar.
 
 ## Rules (user decision, 2026-11-25)
 

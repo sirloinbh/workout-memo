@@ -54,6 +54,8 @@ export function WorkoutEditor({
   const storageWarning = draft.storageWarning;
   const editor = draft.editor!;
   const plateSettings = usePlateSettings();
+  // The set card whose plate panel is open; a toggle in the card header keeps closed cards short.
+  const [platesOpen, setPlatesOpen] = React.useState<number | null>(null);
   const invalid = (key: string) => invalidProps(key, issues[key]);
   const issue = (key: string) => <FieldError name={key}>{issues[key]}</FieldError>;
   return (
@@ -180,19 +182,33 @@ export function WorkoutEditor({
                 >
                   Set {i + 1}
                 </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground"
-                  disabled={editor.sets!.length === 1}
-                  aria-label="Delete set"
-                  onClick={() =>
-                    setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) })
-                  }
-                >
-                  <X size={15} />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    aria-expanded={platesOpen === i}
+                    aria-controls={platesOpen === i ? `set-${i}-plates` : undefined}
+                    aria-label={`Plates for set ${i + 1}`}
+                    onClick={() => setPlatesOpen(platesOpen === i ? null : i)}
+                  >
+                    Plates
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground"
+                    disabled={editor.sets!.length === 1}
+                    aria-label="Delete set"
+                    onClick={() =>
+                      setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) })
+                    }
+                  >
+                    <X size={15} />
+                  </Button>
+                </div>
               </div>
               {/* The hint stays in the name's grid cell so Machine keeps its place beside it. */}
               <div>
@@ -299,12 +315,14 @@ export function WorkoutEditor({
                   />
                 </div>
               </div>
-              <PlateCalculator
-                id={`set-${i}-plates`}
-                target={Number(s.weight)}
-                settings={plateSettings.settings}
-                onSettings={plateSettings.update}
-              />
+              {platesOpen === i && (
+                <PlateCalculator
+                  id={`set-${i}-plates`}
+                  target={Number(s.weight)}
+                  settings={plateSettings.settings}
+                  onSettings={plateSettings.update}
+                />
+              )}
               {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
                 <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
               ))}

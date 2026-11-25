@@ -24,11 +24,15 @@ const setWeight = (kg: string) =>
     target: { value: kg },
   });
 const firstPlates = () => dialog().querySelector<HTMLElement>('[data-slot=plate-calculator]')!;
+const togglePlates = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(within(dialog()).getByRole('button', { name: 'Plates for set 1' }));
 
 beforeEach(() => localStorage.removeItem(plateSettingsKey));
 
 test('the plate split follows the weight entered', async () => {
-  await openEditor();
+  const user = await openEditor();
+  expect(firstPlates()).toBeNull();
+  await togglePlates(user);
   setWeight('100');
   expect(firstPlates()).toHaveTextContent('Each side: 1 × 25 kg + 1 × 15 kg');
   setWeight('20');
@@ -42,6 +46,7 @@ test('the plate split follows the weight entered', async () => {
 test('bar weight and plates are editable and kept on the phone', async () => {
   const user = await openEditor();
   setWeight('39');
+  await togglePlates(user);
   const box = within(firstPlates());
   fireEvent.change(box.getByLabelText('Bar weight (kg)'), { target: { value: '15' } });
   fireEvent.change(box.getByLabelText('Plates (kg, comma separated)'), {
@@ -59,7 +64,8 @@ test('bar weight and plates are editable and kept on the phone', async () => {
 });
 
 test('invalid plate settings cannot be saved', async () => {
-  await openEditor();
+  const user = await openEditor();
+  await togglePlates(user);
   const box = within(firstPlates());
   fireEvent.change(box.getByLabelText('Plates (kg, comma separated)'), {
     target: { value: 'abc' },

@@ -71,14 +71,14 @@ export const operations: Record<string, Operation> = {
     status: [200, 400],
   },
   'POST /api/workouts': {
-    summary: 'Save a log → 201 { id, version }. Idempotency-Key optional',
+    summary: 'Save a log → 201 { id, version, records }. Idempotency-Key optional',
 
     body: ['Workout', workoutSchema],
     status: [201, 400, 409],
     headers: idempotencyKeyHeader,
   },
   'PUT /api/workouts/:id': {
-    summary: 'Replace a whole log → { id, version }. version required',
+    summary: 'Replace a whole log → { id, version, records }. version required',
 
     body: ['Workout', workoutSchema],
     status: [200, 400, 404, 409],

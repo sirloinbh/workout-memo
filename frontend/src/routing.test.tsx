@@ -25,7 +25,12 @@ function mount(path = '/', failWorkouts = false) {
     api,
     recover: () => (fail = false),
     workoutLoads: () =>
-      api.requests.filter((r) => r.method === 'GET' && r.url.pathname === '/api/workouts').length,
+      api.requests.filter(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.pathname === '/api/workouts' &&
+          !r.url.searchParams.has('view'),
+      ).length,
   };
 }
 const menu = () => screen.getByRole('navigation', { name: 'Main menu' });

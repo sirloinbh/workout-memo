@@ -17,6 +17,7 @@ import { seoulDate } from './date';
 import { bodyPartLabel, plural } from './labels';
 import { requestJson } from './lib/api';
 import { cn } from './lib/utils';
+import { RecordBoard } from './record-board';
 
 // #102: the whole analysis page is on the common components: period controls from #224
 // (DateStepper, RangeSummary), the load error from #223 (AlertBanner), cards and PR rows.
@@ -225,6 +226,7 @@ export function Analysis() {
       {saveError && (
         <AlertBanner className="mb-5">Could not save the body parts: {saveError}</AlertBanner>
       )}
+      <RecordBoard />
       {/* #173: placeholders in the shape of the two cards on the first load; a reload keeps the
           cards and shows a short status line instead. */}
       {loading && !data && (

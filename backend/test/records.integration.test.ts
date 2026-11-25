@@ -49,3 +49,46 @@ test(
     }
   },
 );
+
+// #484: the record board answers from saved sets.
+test(
+  'GET /api/records lists the best estimated 1RM and heaviest set',
+  { skip: !process.env.TEST_DATABASE_URL },
+  async () => {
+    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    const server = await listenApp(createApp(pool));
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const base = 'http://127.0.0.1:' + address.port + '/api';
+    const exercise = 'Board-' + randomUUID();
+    const ids: number[] = [];
+    try {
+      for (const [date, weight] of [
+        ['2020-02-01', 80],
+        ['2020-02-08', 90],
+      ] as const) {
+        const res = await fetch(base + '/workouts', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            date,
+            title: 'Board check',
+            notes: '',
+            sets: [{ exercise, machine_id: null, weight, reps: 5, notes: '' }],
+          }),
+        });
+        ids.push(((await res.json()) as { id: number }).id);
+      }
+      const board = (await (await fetch(base + '/records')).json()) as {
+        records: { exercise: string; max_weight: { value: number; date: string } }[];
+      };
+      const mine = board.records.find((r) => r.exercise === exercise);
+      assert.equal(mine?.max_weight.value, 90);
+      assert.equal(mine?.max_weight.date, '2020-02-08');
+    } finally {
+      for (const id of ids) await pool.query('DELETE FROM workouts WHERE id=$1', [id]);
+      server.close();
+      await pool.end();
+    }
+  },
+);

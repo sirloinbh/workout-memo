@@ -2278,6 +2278,36 @@
         }
       }
     },
+    "/api/records": {
+      "get": {
+        "summary": "Record board: per exercise the best estimated 1RM and the heaviest set over all saved history, with dates",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required (no session from the shared sign-in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/routine-progress": {
       "get": {
         "summary": "Today's goal, weekly and 12-week progress, and previous records of the routine in progress. routine: null if none",

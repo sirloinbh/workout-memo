@@ -1,4 +1,4 @@
-import { estimatedOneRepMax } from './contract.js';
+import { type AnalysisSet, analyze, estimatedOneRepMax, type PersonalRecord } from './contract.js';
 import { exerciseKeySql } from './domain.js';
 import type { Db } from './store/db.js';
 
@@ -62,4 +62,31 @@ export async function newRecordsFor(db: Db, workoutId: number): Promise<NewRecor
     [workoutId],
   );
   return findNewRecords(rows.rows as RecordRow[], workoutId);
+}
+
+export type BoardEntry = {
+  exercise: string;
+  estimated_1rm: PersonalRecord | null;
+  max_weight: PersonalRecord | null;
+};
+
+/**
+ * #484: the record board. rows: completed sets up to today in chronological order. Every exercise with a best
+ * estimated 1RM or a heaviest set is listed, strongest estimated 1RM first, then by name. Bests and dates come
+ * from the same rules as the PRs of the analysis (unconfirmed machine base weights have no 1RM estimate).
+ */
+export function recordBoard(rows: AnalysisSet[]): BoardEntry[] {
+  const day = rows.length ? String(rows[rows.length - 1].date).slice(0, 10) : '1970-01-01';
+  return analyze(rows, [], day, day)
+    .exercises.map((x) => ({
+      exercise: x.exercise,
+      estimated_1rm: x.prs.estimated_1rm,
+      max_weight: x.prs.max_weight,
+    }))
+    .filter((x) => x.estimated_1rm || x.max_weight)
+    .sort(
+      (a, b) =>
+        (b.estimated_1rm?.value ?? -1) - (a.estimated_1rm?.value ?? -1) ||
+        a.exercise.localeCompare(b.exercise),
+    );
 }

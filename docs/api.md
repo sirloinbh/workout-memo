@@ -55,6 +55,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 | POST   | `/api/body-measurements`           | Create a body record → 201. The same date is 409                                                                      |
 | PUT    | `/api/body-measurements/:id`       | Replace a whole body record. Omitted values become `null`                                                             |
 | DELETE | `/api/body-measurements/:id`       | Delete a body record → `{ ok: true }`                                                                                 |
+| GET    | `/api/records`                     | Record board `{ today, records }`: per exercise the best estimated 1RM and heaviest set with dates                    |
 | GET    | `/api/analysis`                    | `?from&to` (up to 371 days) PR by exercise, estimated 1RM, and weekly volume by body part                             |
 | GET    | `/api/exercise-body-parts`         | Body part mapping per exercise                                                                                        |
 | PUT    | `/api/exercise-body-parts`         | Replace the body part mapping of one exercise. An empty array deletes the mapping                                     |

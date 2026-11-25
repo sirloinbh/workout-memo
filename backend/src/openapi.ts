@@ -157,6 +157,11 @@ export const operations: Record<string, Operation> = {
     query: analysisQuery,
     status: [200, 400],
   },
+  'GET /api/records': {
+    summary:
+      'Record board: per exercise the best estimated 1RM and the heaviest set over all saved history, with dates',
+    status: [200],
+  },
   'GET /api/exercise-body-parts': {
     summary: 'Body part mapping per exercise',
     status: [200],

@@ -177,7 +177,8 @@ test(
           assert.ok(refs.data.length > 0);
           for (const ref of refs.data) {
             assert.equal(ref.status, 'unverified');
-            assert.equal(ref.lineup, '온힘');
+            // #505: 024 renamed the lineup; re-running 009 and 013 above puts the original Korean row back.
+            assert.match(ref.lineup, /^(On Him|온힘)$/);
             assert.equal(ref.weight_kg, null);
           }
         },

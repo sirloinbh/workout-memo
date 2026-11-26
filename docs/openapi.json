@@ -2798,7 +2798,7 @@
     },
     "/api/backup/restore": {
       "post": {
-        "summary": "Run a restore. mode: \"replace\" requires confirm: \"전체 교체\" (Korean for \"full replace\")",
+        "summary": "Run a restore. mode: \"replace\" requires confirm: \"Replace all\"",
         "requestBody": {
           "required": true,
           "content": {

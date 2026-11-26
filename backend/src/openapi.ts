@@ -317,8 +317,7 @@ export const operations: Record<string, Operation> = {
     status: [200, 400, 413, 500],
   },
   'POST /api/backup/restore': {
-    summary:
-      'Run a restore. mode: "replace" requires confirm: "전체 교체" (Korean for "full replace")',
+    summary: 'Run a restore. mode: "replace" requires confirm: "Replace all"',
 
     body: ['RestoreRequest', restoreRequest],
     status: [200, 400, 413, 500],

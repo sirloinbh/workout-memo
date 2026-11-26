@@ -25,4 +25,4 @@
 
 ## Screenshot baselines
 
-The menu changes on every screen, so baselines are refreshed from the CI `visual-baselines` artifact (see the PR for the file count).
+The menu changes on every screen, so baselines are refreshed from the CI `visual-baselines` artifact (26 files updated, 4 new `settings-*.png`): the menu changed on the 768 and 1280 screens, and the workout editor shows the "Rest settings" link instead of the settings block.

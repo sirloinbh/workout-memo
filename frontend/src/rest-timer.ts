@@ -113,8 +113,10 @@ export function parseRestDurations(raw: string | null): RestDurations {
     return defaults;
   }
 }
+// korean-ok: stored body-part values are Korean keys
 const lowerParts = ['하체-앞', '하체-뒤'];
 // 이두·삼두 (#88) and the legacy 팔 are upper body.
+// korean-ok: stored body-part values are Korean keys
 const upperParts = ['가슴', '등', '어깨', '팔', '이두', '삼두'];
 // A single-joint machine wins, then lower body, then upper body. Kinds come only from
 // what the user set (machine flag, #32 body parts); exercise names are never guessed.

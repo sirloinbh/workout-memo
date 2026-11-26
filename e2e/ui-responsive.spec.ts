@@ -81,6 +81,8 @@ test.describe('390px mobile modal', () => {
     page,
   }) => {
     const dialog = await openModal(page, modals[0]);
+    // Measure after the opening animation has finished (#510).
+    await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     const box = (await dialog.boundingBox())!;
     expect(box.x).toBeCloseTo(0, 0);
     expect(box.y).toBeCloseTo(0, 0);

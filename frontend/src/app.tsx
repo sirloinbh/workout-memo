@@ -382,7 +382,13 @@ function Workspace() {
               <Route path={pages.analysis} element={<Analysis />} />
               <Route
                 path={pages.settings}
-                element={<Settings rest={rest} pushState={pushState} alert={timerAlert} />}
+                element={
+                  <Settings
+                    rest={rest}
+                    pushState={pushState}
+                    alert={timer.state === 'idle' ? timerAlert : null}
+                  />
+                }
               />
               <Route path="*" element={null} />
             </Routes>

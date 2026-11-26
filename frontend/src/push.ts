@@ -2,8 +2,10 @@ import { requestJson } from './lib/api';
 import type { RestTimer } from './rest-timer';
 
 // #260: rest-end Web Push. The app tells the server when a rest ends and the server pushes then, so
-// the alert arrives with the screen off. The worker is public/push/sw.js, at its own scope because
-// public/sw.js is centrally managed and has no push handling.
+// the alert arrives with the screen off. The worker is public/push/sw.js, at its own scope. The
+// centrally managed public/sw.js also handles `push` and `notificationclick` since the standards
+// sync (#486), but it only shows what an app subscribed to it; this app keeps subscribing through
+// /push/sw.js, so a push is shown once and the two workers do not interfere (#499).
 const pushWorkerUrl = '/push/sw.js';
 const pushWorkerScope = '/push/';
 

@@ -1,3 +1,4 @@
+// korean-ok-file: recognizes Korean InBody column names and labels in imported files
 // #89: InBody results brought in from an exported file or a photo of the result sheet.
 // Nothing is saved here: values become an editable preview and only the rows the user
 // confirms are saved through the normal body measurement API. Values are never guessed;

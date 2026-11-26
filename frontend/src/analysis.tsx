@@ -320,9 +320,11 @@ export function Analysis() {
                       </h3>
                       <p className="mt-1 flex flex-wrap items-center gap-x-2 text-body-sm text-muted-foreground">
                         Body parts:{' '}
-                        {shown.body_parts.length
-                          ? shown.body_parts.map(bodyPartLabel).join(', ')
-                          : bodyPartLabel('미분류')}{' '}
+                        {
+                          shown.body_parts.length
+                            ? shown.body_parts.map(bodyPartLabel).join(', ')
+                            : bodyPartLabel('미분류') /* korean-ok: stored key, shown as English */
+                        }{' '}
                         · {plural(shown.set_count, 'set')} total
                         <Button
                           variant="link"

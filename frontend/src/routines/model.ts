@@ -1,3 +1,4 @@
+// korean-ok-file: the stored body-part values are Korean keys; the screen shows the English labels
 import { bodyParts, defaultWeightStep } from '../../../shared/contract';
 import { type CardioItem } from '../routine-cardio';
 

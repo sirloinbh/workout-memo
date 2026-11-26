@@ -13,7 +13,7 @@ async function openEditor() {
   mockApi(() => []);
   const user = userEvent.setup();
   render(<App />);
-  await openPage('Workout journal', user);
+  await openPage('Day log', user);
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
   await user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
   return user;

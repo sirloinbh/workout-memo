@@ -162,8 +162,12 @@ export const statusNotice = (text: string): NoticeValue | undefined =>
   text ? { kind: 'status', text } : undefined;
 // #62: every page has its own URL, so refresh, links and back navigation keep it.
 export const pages = {
-  overview: '/',
-  journal: '/journal',
+  // #504: the day log is the start page; Week and 12 weeks are the same records over a longer
+  // period, each with its own address so the menu can mark the one that is open.
+  journal: '/',
+  week: '/week',
+  weeks12: '/12-weeks',
+  overview: '/dashboard',
   goals: '/goals',
   analysis: '/analysis',
   routines: '/routines',
@@ -186,6 +190,16 @@ export const periodOptions = [
   { value: '12weeks', label: '12 weeks' },
   { value: 'custom', label: 'Custom' },
 ];
+
+/** The day log and its Week and 12-week views show the same journal page (#504). */
+export const isLogPage = (page: Page) =>
+  page === 'journal' || page === 'week' || page === 'weeks12';
+/** The period a log page opens with until a preset is chosen on it. */
+export const logPeriod: Partial<Record<Page, string>> = {
+  journal: 'day',
+  week: 'week',
+  weeks12: '12weeks',
+};
 
 export const pageOf = (path: string) =>
   (Object.keys(pages) as Page[]).find((key) => pages[key] === path.replace(/(.)\/$/, '$1'));

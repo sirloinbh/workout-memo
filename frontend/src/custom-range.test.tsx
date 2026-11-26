@@ -22,7 +22,7 @@ const records = [
   workout(4, '2026-10-11', 1000), // the day after
 ];
 
-function mount(url = '/') {
+function mount(url = '/dashboard') {
   fixClock();
   window.history.replaceState(null, '', url);
   const api = mockApi(({ url }) => {
@@ -70,7 +70,7 @@ test('a chosen range includes both ends and is kept in the address', async () =>
   expect(chart()).toMatch(/^Volume by period: 10\/1 1,000kg, 10\/2 0kg/);
   expect(chart()).toMatch(/10\/10 2,000kg$/);
   // Moving to the journal keeps the range; a preset clears it.
-  await openPage('Workout journal', ui.user);
+  await openPage('Day log', ui.user);
   expect(window.location.search).toBe('?from=2026-10-01&to=2026-10-10');
   await ui.user.click(screen.getByRole('radio', { name: '1 week' }));
   await waitFor(() => expect(window.location.search).toBe(''));
@@ -88,7 +88,7 @@ test('opening an address with a range shows that range after a reload', async ()
 });
 
 test('pressing the current preset clears an invalid range from the address', async () => {
-  const ui = mount('/?from=bad&to=bad');
+  const ui = mount('/dashboard?from=bad&to=bad');
   await waitFor(() => expect(ui.workoutQueries().length).toBeGreaterThan(0));
   expect(window.location.search).toBe('?from=bad&to=bad');
   const current = screen.getByRole('radio', { name: '1 week' });
@@ -116,7 +116,7 @@ test('invalid ranges are explained per field and not requested', async () => {
 });
 
 test('a broken range in the address falls back to the default period with a notice', async () => {
-  const ui = mount('/?from=2026-10-10&to=2026-10-01');
+  const ui = mount('/dashboard?from=2026-10-10&to=2026-10-01');
   await waitFor(() => expect(ui.workoutQueries().length).toBeGreaterThan(0));
   expect(getLive('alert').textContent).toMatch(/period in the address is not valid/);
   expect(ui.workoutQueries()[0]).toBe('/api/workouts?from=2026-10-12&to=2026-10-18');

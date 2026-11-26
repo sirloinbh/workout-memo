@@ -214,8 +214,8 @@ test.describe('Touch navigation', () => {
       'aria-current',
       'page',
     );
-    await menu.getByRole('link', { name: 'Workout journal' }).click();
-    await expect(page).toHaveURL(/\/journal$/);
+    await menu.getByRole('link', { name: 'Day log' }).click();
+    await expect(page).toHaveURL(/^[^?]*\/$/);
   });
 });
 

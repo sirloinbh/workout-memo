@@ -31,5 +31,5 @@ afterEach(() => {
   localStorage.clear();
   document.documentElement.className = '';
   // Pages are URLs (#62); each test starts on the dashboard.
-  window.history.replaceState(null, '', '/');
+  window.history.replaceState(null, '', '/dashboard'); // #504: the tests were written for the dashboard start page
 });

@@ -76,7 +76,7 @@ for (const viewport of [
     );
 
     await card.getByRole('button', { name: 'Log cardio: Running · Zone 2 · 30 min' }).click();
-    await expect(page).toHaveURL(/\/journal\?tab=cardio$/);
+    await expect(page).toHaveURL(/\/\?tab=cardio$/);
     const dialog = page.getByRole('dialog', { name: 'New cardio record' });
     await expect(dialog.getByLabel('Type')).toHaveValue('running');
     await expect(dialog.getByRole('textbox', { name: 'Workout time minutes' })).toHaveValue('30');

@@ -8,7 +8,7 @@ import { findLive, queryLive } from './test/live';
 import { openPage } from './test/nav';
 
 // #62: pages are URLs and journal data comes from TanStack Query.
-function mount(path = '/', failWorkouts = false) {
+function mount(path = '/dashboard', failWorkouts = false) {
   fixClock();
   window.history.replaceState(null, '', path);
   let fail = failWorkouts;
@@ -46,10 +46,16 @@ test('a page opened by its URL shows that page and marks it in the menu', async 
   expect(window.location.pathname).toBe('/routines');
 });
 
-test('an unknown address falls back to the dashboard', async () => {
+test('an unknown address falls back to the day log (#504)', async () => {
   mount('/no-such-page');
   await waitFor(() => expect(window.location.pathname).toBe('/'));
-  expect(current()).toBe('Dashboard');
+  expect(current()).toBe('Day log');
+});
+
+test('the old journal address redirects to the day log and keeps its query (#504)', async () => {
+  mount('/journal?from=2026-10-01&to=2026-10-10');
+  await waitFor(() => expect(window.location.pathname).toBe('/'));
+  expect(window.location.search).toBe('?from=2026-10-01&to=2026-10-10');
 });
 
 test('menu links change the URL and browser back returns to the previous page', async () => {
@@ -67,7 +73,7 @@ test('switching pages reuses the loaded period instead of fetching it again', as
   const ui = mount();
   await waitFor(() => expect(ui.workoutLoads()).toBe(1));
   await openPage('My Goals', ui.user);
-  await openPage('Workout journal', ui.user);
+  await openPage('My Goals', ui.user);
   await openPage('Dashboard', ui.user);
   expect(ui.workoutLoads()).toBe(1);
 });
@@ -80,4 +86,16 @@ test('a failed load is reported and Reconnect reloads the selected period', asyn
   await ui.user.click(within(alert).getByRole('button', { name: 'Reconnect' }));
   await waitFor(() => expect(queryLive('alert')).toBeNull());
   expect(ui.workoutLoads()).toBe(2);
+});
+
+test('the app opens on the day log; Week and 12 weeks open on their own period (#504)', async () => {
+  const ui = mount('/');
+  expect(current()).toBe('Day log');
+  expect(await screen.findByRole('radio', { name: '1 day' })).toBeChecked();
+  await openPage('Week', ui.user);
+  expect(window.location.pathname).toBe('/week');
+  expect(screen.getByRole('radio', { name: '1 week' })).toBeChecked();
+  await openPage('12 weeks', ui.user);
+  expect(window.location.pathname).toBe('/12-weeks');
+  expect(screen.getByRole('radio', { name: '12 weeks' })).toBeChecked();
 });

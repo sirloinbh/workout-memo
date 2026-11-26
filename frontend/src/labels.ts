@@ -1,3 +1,4 @@
+// korean-ok-file: the stored body-part values are Korean keys; the screen shows the English labels
 // Shared English labels for values the app stores in another form.
 
 // "1 set", "2 sets": the count with its noun in the right number.

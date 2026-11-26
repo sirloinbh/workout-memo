@@ -3779,6 +3779,12 @@
             "minLength": 1,
             "maxLength": 2048
           },
+          "expirationTime": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "keys": {
             "type": "object",
             "properties": {

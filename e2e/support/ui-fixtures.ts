@@ -25,11 +25,11 @@ const today = '2026-10-15'; // Thursday
 const now = new Date('2026-10-15T10:00:00+09:00');
 
 export const pages = [
-  { path: '/', name: 'day-log' },
+  // #504: the day log is the start page and keeps the journal's screenshot name.
+  { path: '/', name: 'journal' },
   { path: '/dashboard', name: 'dashboard' },
-  { path: '/journal', name: 'journal' },
   // #115: the journal's Cardio tab (list, statistics and personal records).
-  { path: '/journal?tab=cardio', name: 'journal-cardio' },
+  { path: '/?tab=cardio', name: 'journal-cardio' },
   { path: '/goals', name: 'goals' },
   { path: '/analysis', name: 'analysis' },
   { path: '/routines', name: 'routines' },

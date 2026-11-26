@@ -652,8 +652,11 @@ const pushEndpoint = limitLength(z.string(whenMissing('Enter the push endpoint')
   max: 2048,
   tooShort: 'Enter the push endpoint',
 }).refine(knownPushService, 'The push endpoint must be an https address of a known push service');
+// #501: browsers include `expirationTime` (epoch milliseconds, usually null) in toJSON(). It is
+// accepted and not stored; any other unknown key is still refused.
 export const pushSubscriptionSchema = z.strictObject({
   endpoint: pushEndpoint,
+  expirationTime: z.number().nullable().optional(),
   keys: z.strictObject({
     p256dh: text('the p256dh key', 200),
     auth: text('the auth secret', 100),

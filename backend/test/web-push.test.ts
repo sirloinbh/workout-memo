@@ -157,7 +157,19 @@ test('a subscription is saved for the signed-in user and validated', async () =>
         201,
       );
     }
-    assert.equal(queries.filter((q) => /INSERT INTO push_subscriptions/.test(q.sql)).length, 4);
+    // #501: what PushSubscription.toJSON() really returns has expirationTime (null or a number).
+    for (const expirationTime of [null, startedAt + 86_400_000]) {
+      assert.equal(
+        (await call('/push/subscriptions', 'POST', { ...subscription, expirationTime })).status,
+        201,
+      );
+    }
+    assert.equal(
+      (await call('/push/subscriptions', 'POST', { ...subscription, expirationTime: 'soon' }))
+        .status,
+      400,
+    );
+    assert.equal(queries.filter((q) => /INSERT INTO push_subscriptions/.test(q.sql)).length, 6);
   });
 });
 

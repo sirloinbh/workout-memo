@@ -154,7 +154,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 
 ### Rest-end Web Push `/api/push/*` (#260)
 
-`POST /api/push/subscriptions` takes `{ "endpoint": "https://…", "keys": { "p256dh": "…", "auth": "…" } }` (what `PushSubscription.toJSON()` returns). `PUT /api/push/rest` takes `{ "ends_at": 1790000000000 }`.
+`POST /api/push/subscriptions` takes `{ "endpoint": "https://…", "expirationTime": null, "keys": { "p256dh": "…", "auth": "…" } }` (what `PushSubscription.toJSON()` returns; `expirationTime` is optional, a number or `null`, and not stored, #501). `PUT /api/push/rest` takes `{ "ends_at": 1790000000000 }`.
 
 - Push is on only when the server has the `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` environment variables ([deployment](deployment.md)). `GET /api/push/config` → `{ enabled, public_key }` (`public_key` is `null` when off). When off, saving a subscription and scheduling a rest answer 503, and the in-screen timer works as before.
 - A subscription belongs to the signed-in user (`req.user.id` from the shared sign-in, #303); without sign-in (local development) there is one user. The same `endpoint` saved again is updated, and a different user cannot remove it.

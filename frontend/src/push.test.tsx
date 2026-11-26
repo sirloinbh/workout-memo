@@ -227,8 +227,10 @@ test('syncRest keeps sending after a failed call', async () => {
 
 // ---- the settings toggle and the schedule calls in the app ----
 const publicKey = 'AQID';
+// The shape PushSubscription.toJSON() returns in browsers, expirationTime included (#501).
 const subscriptionJson = {
   endpoint: 'https://push.example/send/abc',
+  expirationTime: null,
   keys: { p256dh: 'p256dh-key', auth: 'auth-secret' },
 };
 

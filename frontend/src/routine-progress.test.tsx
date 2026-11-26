@@ -130,7 +130,7 @@ const card = () => document.querySelector('[aria-label="Routine goals"]');
 const progressLoads = (ui: UI) =>
   ui.requests.filter((r) => r.path === '/api/routine-progress').length;
 async function openJournal() {
-  await openPage('Workout journal');
+  await openPage('Day log');
   // Wait until the routine goals are loaded (no loading status inside the card).
   await waitFor(() => expect(card()?.textContent).not.toMatch(/Loading routine goals/));
 }
@@ -168,7 +168,7 @@ test('returning to the journal reloads routine goals so a routine saved elsewher
   await openJournal();
   const before = progressLoads(ui);
   await openPage('Dashboard');
-  await openPage('Workout journal');
+  await openPage('Day log');
   await waitFor(() =>
     expect(progressLoads(ui), 'switching pages fetches the active routine again').toBeGreaterThan(
       before,
@@ -343,7 +343,7 @@ test('auto routine targets show firm values today and label future sessions as p
 test('a failed load shows the error with a reload button that recovers the card', async () => {
   // The server fails until it recovers, however many times the app asks.
   const ui = mount({ failProgress: true });
-  await openPage('Workout journal');
+  await openPage('Day log');
   const alert = await findLive('alert');
   expect(card()!.contains(alert), 'error is inside the routine card').toBe(true);
   expect(ui.text(alert)).toMatch(/Could not load routine goals/);

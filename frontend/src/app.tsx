@@ -1,5 +1,8 @@
 import { QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  CalendarDays,
+  CalendarRange,
+  ClipboardList,
   DatabaseBackup,
   Dumbbell,
   LayoutDashboard,
@@ -48,6 +51,7 @@ import { GoalForm } from './workspace/goal-form';
 import { MachineEditor } from './workspace/machine-editor';
 import {
   type Goal,
+  isLogPage,
   type Machine,
   type OfficialWeight,
   type Page,
@@ -110,12 +114,13 @@ export function App() {
 function Workspace() {
   const location = useLocation();
   const navigate = useNavigate();
-  const page: Page = pageOf(location.pathname) ?? 'overview';
+  const page: Page = pageOf(location.pathname) ?? 'journal';
+  const logPage = isLogPage(page);
   const setPage = (next: Page) => void navigate(pages[next]);
   const queryClient = useQueryClient();
   const range = usePeriodRange(page);
   const { customRange, journalTab, setJournalTab, from, to } = range;
-  const cardioTab = page === 'journal' && journalTab === 'cardio';
+  const cardioTab = logPage && journalTab === 'cardio';
   const [brand, setBrand] = useState(0),
     [actionError, setError] = useState(''),
     [saving, setSaving] = useState(false),
@@ -278,13 +283,16 @@ function Workspace() {
     setEditor(value);
   };
   const nav = [
-    ['overview', 'Dashboard', LayoutDashboard],
-    ['journal', 'Workout journal', NotebookPen],
+    ['journal', 'Day log', NotebookPen],
+    ['week', 'Week', CalendarDays],
+    ['weeks12', '12 weeks', CalendarRange],
     ['goals', 'My Goals', Target],
     ['analysis', 'Exercise Analysis', Trophy],
-    ['routines', 'Routine Builder', NotebookPen],
+    ['routines', 'Routine Builder', ClipboardList],
     ['body', 'Body records', Scale],
     ['machines', 'Machine Library', Dumbbell],
+    ['overview', 'Dashboard', LayoutDashboard],
+    // The settings-type page goes last (#504); this app has no separate Settings page.
     ['backup', 'Backup & Export', DatabaseBackup],
   ] as const;
   // #85: pages sharing the period keep a directly chosen range in the address. The journal's
@@ -298,7 +306,11 @@ function Workspace() {
   const navItems: NavItem[] = nav.map(([key, label, icon]) => ({
     to:
       pages[key] +
-      (key === 'journal' ? location.search : ['overview', 'body'].includes(key) ? rangeSearch : ''),
+      (['journal', 'week', 'weeks12'].includes(key)
+        ? location.search
+        : ['overview', 'body'].includes(key)
+          ? rangeSearch
+          : ''),
     label,
     icon,
     end: true,
@@ -371,7 +383,7 @@ function Workspace() {
               title={
                 page === 'overview'
                   ? 'A place to record consistency'
-                  : page === 'journal'
+                  : logPage
                     ? 'One more step today'
                     : page === 'goals'
                       ? 'Toward the next you'
@@ -380,7 +392,7 @@ function Workspace() {
               description={
                 page === 'overview'
                   ? 'See how your training flows and prepare for your next step.'
-                  : page === 'journal'
+                  : logPage
                     ? 'Every set holds a better you than yesterday.'
                     : page === 'goals'
                       ? 'Set concrete growth goals with weight, reps, and cardio distance and time.'
@@ -391,7 +403,7 @@ function Workspace() {
                 !cardioTab && (
                   <Button
                     // A recoverable local draft must be restored or discarded first (#101).
-                    disabled={!!recovery && (page === 'overview' || page === 'journal')}
+                    disabled={!!recovery && (page === 'overview' || logPage)}
                     onClick={
                       page === 'goals'
                         ? () => setGoalEditor(true)
@@ -489,23 +501,33 @@ function Workspace() {
                   />
                 }
               />
+              {[pages.journal, pages.week, pages.weeks12].map((path) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <JournalPage
+                      periodControls={periodControls}
+                      journalTab={journalTab}
+                      setJournalTab={setJournalTab}
+                      from={from}
+                      to={to}
+                      goals={goals}
+                      recordsProps={recordsProps}
+                      routine={routine}
+                      quickWorkout={quickWorkout}
+                      cardioPreset={cardioPreset}
+                      setCardioPreset={setCardioPreset}
+                      clearCardioPreset={clearCardioPreset}
+                    />
+                  }
+                />
+              ))}
+              {/* The old journal address keeps working (#504). */}
               <Route
-                path={pages.journal}
+                path="/journal"
                 element={
-                  <JournalPage
-                    periodControls={periodControls}
-                    journalTab={journalTab}
-                    setJournalTab={setJournalTab}
-                    from={from}
-                    to={to}
-                    goals={goals}
-                    recordsProps={recordsProps}
-                    routine={routine}
-                    quickWorkout={quickWorkout}
-                    cardioPreset={cardioPreset}
-                    setCardioPreset={setCardioPreset}
-                    clearCardioPreset={clearCardioPreset}
-                  />
+                  <Navigate to={{ pathname: pages.journal, search: location.search }} replace />
                 }
               />
               <Route
@@ -528,7 +550,7 @@ function Workspace() {
               <Route path={pages.backup} element={null} />
               <Route path={pages.body} element={null} />
               <Route path={pages.analysis} element={null} />
-              <Route path="*" element={<Navigate to={pages.overview} replace />} />
+              <Route path="*" element={<Navigate to={pages.journal} replace />} />
             </Routes>
           </Suspense>
         </div>

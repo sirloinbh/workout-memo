@@ -84,7 +84,7 @@ const statCard = (label: string) =>
     .at(0);
 
 test('the journal opens on Strength and Cardio is kept in the address with back and forward', async () => {
-  const ui = mount('/journal');
+  const ui = mount('/week');
   expect(kind('Strength')).toHaveAttribute('aria-checked', 'true');
   expect(window.location.search).toBe('');
   expect(screen.getByRole('button', { name: 'Log workout' })).toBeInTheDocument();
@@ -166,7 +166,10 @@ test('saving a cardio record refreshes the statistics and the personal records',
 });
 
 test('the dashboard shows one cardio card only when the period has a session', async () => {
-  const ui = mount('/', [running(1, '2026-10-13', 1800, 5), running(2, '2026-10-14', 3725, 3.2)]);
+  const ui = mount('/dashboard', [
+    running(1, '2026-10-13', 1800, 5),
+    running(2, '2026-10-14', 3725, 3.2),
+  ]);
   await waitFor(() => expect(statCard('Cardio')).toBeDefined());
   const card = statCard('Cardio')!;
   expect(card.querySelector('[data-slot=stat-value]')).toHaveTextContent('8.2km');
@@ -179,7 +182,7 @@ test('the dashboard shows one cardio card only when the period has a session', a
   await waitFor(() => expect(statCard('Cardio')).toBeUndefined());
   // The journal does not ask for the dashboard summary.
   const before = ui.gets('/api/cardio-sessions').length;
-  await openPage('Workout journal', ui.user);
+  await openPage('Day log', ui.user);
   expect(ui.gets('/api/cardio-sessions')).toHaveLength(before);
 });
 
@@ -202,7 +205,7 @@ test('a failed first load shows the panel alert, not a "no sessions" statistics 
 });
 
 test('the dashboard card leads with the count when no session has a distance', async () => {
-  mount('/', [
+  mount('/dashboard', [
     {
       ...base,
       id: 1,

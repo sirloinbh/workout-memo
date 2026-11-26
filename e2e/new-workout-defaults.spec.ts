@@ -55,7 +55,7 @@ test("A new journal starts with today's date and title and the sets and machines
   await page.goto('/');
   await page
     .getByRole('navigation', { name: 'Main menu' })
-    .getByRole('link', { name: 'Workout journal' })
+    .getByRole('link', { name: 'Day log' })
     .click();
   // Browsing another day does not change the new journal's date.
   await page.getByLabel('Reference date').fill('2001-03-15');

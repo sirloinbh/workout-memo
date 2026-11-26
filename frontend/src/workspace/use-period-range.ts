@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { parseRange } from '../date-range';
-import { calendarDate, iso, type JournalTab, type Page, today } from './model';
+import {
+  calendarDate,
+  isLogPage,
+  iso,
+  type JournalTab,
+  logPeriod,
+  type Page,
+  today,
+} from './model';
 
 /**
  * The selected period: a preset around a reference date, or a directly chosen range kept in the
@@ -37,8 +45,16 @@ export function usePeriodRange(page: Page) {
   const [customErrors, setCustomErrors] = useState<{ from?: string; to?: string }>({});
   // #123: until a preset is chosen, body measurements default to 12 weeks because they
   // are recorded about weekly; the dashboard and journal default to one week.
-  const [chosenPeriod, setPeriod] = useState<string | null>(null);
-  const period = chosenPeriod ?? (page === 'body' ? '12weeks' : 'week');
+  // #504: a chosen preset belongs to the page it was chosen on; the day log opens on one day and
+  // the Week and 12-week views on their own period.
+  const [chosen, setChosen] = useState<{ page: Page | 'shared'; value: string } | null>(null);
+  // The log pages each keep their own preset; every other page shares one.
+  const scope = isLogPage(page) ? page : 'shared';
+  const setPeriod = (value: string) => setChosen({ page: scope, value });
+  const period =
+    (chosen?.page === scope ? chosen.value : undefined) ??
+    logPeriod[page] ??
+    (page === 'body' ? '12weeks' : 'week');
   const [anchor, setAnchor] = useState(today());
   const range = () => {
     if (customRange) return customRange;

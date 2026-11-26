@@ -187,7 +187,7 @@ test('PRs show ties, exclusions and trends; mapping and journal changes recomput
   ui.server.rows = ui.server.rows
     .filter((r) => r.date !== '2026-10-12')
     .map((r) => (r.exercise === 'Row' ? { ...r, weight: 90 } : r));
-  await openPage('Workout journal', ui.user);
+  await openPage('Day log', ui.user);
   await openPage('Exercise Analysis', ui.user);
   await loaded();
   const updated = exercise('Bench Press').textContent;

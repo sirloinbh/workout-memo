@@ -25,7 +25,8 @@ const today = '2026-10-15'; // Thursday
 const now = new Date('2026-10-15T10:00:00+09:00');
 
 export const pages = [
-  { path: '/', name: 'dashboard' },
+  { path: '/', name: 'day-log' },
+  { path: '/dashboard', name: 'dashboard' },
   { path: '/journal', name: 'journal' },
   // #115: the journal's Cardio tab (list, statistics and personal records).
   { path: '/journal?tab=cardio', name: 'journal-cardio' },

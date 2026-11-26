@@ -37,13 +37,13 @@ const cases = [
     text: 'Loading routines…',
   },
   {
-    page: 'Workout journal',
+    page: 'Day log',
     api: '/api/workouts',
     slot: 'skeleton-list',
     text: 'Loading records…',
   },
   {
-    page: 'Workout journal',
+    page: 'Day log',
     api: '/api/routine-progress',
     slot: 'skeleton-text',
     text: 'Loading routine goals…',

@@ -361,7 +361,7 @@ test('workout list card names its count, links to the journal and starts a recor
   await loaded();
   expect(screen.getByRole('heading', { level: 2, name: 'Workout records 2' })).toBeInTheDocument();
   await ui.user.click(screen.getByRole('button', { name: 'All records' }));
-  await waitFor(() => expect(window.location.pathname).toBe('/journal'));
+  await waitFor(() => expect(window.location.pathname).toBe('/'));
   expect(screen.queryByRole('button', { name: 'All records' })).toBeNull();
   await ui.select('1 day', '2026-10-14');
   await loaded();

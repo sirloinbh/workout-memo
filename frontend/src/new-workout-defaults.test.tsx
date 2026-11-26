@@ -68,7 +68,7 @@ const inputs = (label: string) =>
   within(dialog()).getAllByLabelText<HTMLInputElement | HTMLSelectElement>(label);
 const values = (label: string) => inputs(label).map((e) => e.value);
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
-  await openPage('Workout journal', user);
+  await openPage('Day log', user);
   await waitFor(() =>
     expect(document.querySelector('[aria-label="Routine goals"]')?.textContent ?? '').not.toMatch(
       /Loading/,
@@ -80,7 +80,7 @@ async function openEditor(user: ReturnType<typeof userEvent.setup>) {
 
 test('a new journal is dated today with a date title even when another day is browsed', async () => {
   const ui = mount({ today, routine: null });
-  await openPage('Workout journal', ui.user);
+  await openPage('Day log', ui.user);
   fireEvent.change(screen.getByLabelText('Reference date'), { target: { value: '2026-09-01' } });
   expect(screen.getByLabelText('Reference date')).toHaveValue('2026-09-01');
   await openEditor(ui.user);

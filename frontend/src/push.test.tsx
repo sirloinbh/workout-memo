@@ -7,6 +7,7 @@ import { App } from './app';
 import { keyToBytes, syncRest } from './push';
 import { defaultTimer, pauseTimer, resumeTimer, startTimer } from './rest-timer';
 import { deferred, deviceNow, fixClock, flushRenders, json, mockApi } from './test/api';
+import { openPage } from './test/nav';
 
 // #260: rest-end Web Push. The worker is public/push/sw.js (its own scope, because public/sw.js
 // is centrally managed); the toggle and the schedule calls are in the app.
@@ -290,8 +291,14 @@ function mount(
     );
   return { user, calls, api };
 }
+// #508: the switch is on the Settings page; the rest buttons stay in the workout editor.
 async function openSettings(ui: ReturnType<typeof mount>) {
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
+  await openPage('Settings', ui.user);
+  return within(screen.getByRole('main'));
+}
+async function openEditor(ui: ReturnType<typeof mount>) {
+  await openPage('Day log', ui.user);
   await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
   return within(screen.getByRole('dialog'));
 }
@@ -302,7 +309,8 @@ test('without server keys, or in a browser without Web Push, there is no toggle 
   const off = mount({ enabled: false, public_key: null });
   const dialog = await openSettings(off);
   expect(dialog.queryByLabelText(toggleName)).toBeNull();
-  await off.user.click(dialog.getByRole('button', { name: 'Start rest' }));
+  const editor = await openEditor(off);
+  await off.user.click(editor.getByRole('button', { name: 'Start rest' }));
   expect(off.calls()).toEqual([]);
 });
 
@@ -340,13 +348,14 @@ test('while on, start, pause, resume and cancel tell the server', async () => {
   // Opening the app with an idle rest must not cancel a rest running on another device.
   expect(sent()).toEqual([]);
   const start = Date.parse(deviceNow);
-  await ui.user.click(dialog.getByRole('button', { name: 'Start rest' }));
+  const editor = await openEditor(ui);
+  await ui.user.click(editor.getByRole('button', { name: 'Start rest' }));
   await waitFor(() => expect(sent().at(-1)).toBe(`PUT ${start + 90_000}`));
-  await ui.user.click(dialog.getByRole('button', { name: 'Pause' }));
+  await ui.user.click(editor.getByRole('button', { name: 'Pause' }));
   await waitFor(() => expect(sent().at(-1)).toBe('DELETE'));
-  await ui.user.click(dialog.getByRole('button', { name: 'Resume' }));
+  await ui.user.click(editor.getByRole('button', { name: 'Resume' }));
   await waitFor(() => expect(sent().at(-1)).toBe(`PUT ${start + 90_000}`));
-  await ui.user.click(dialog.getByRole('button', { name: 'Cancel rest' }));
+  await ui.user.click(editor.getByRole('button', { name: 'Cancel rest' }));
   await waitFor(() => expect(sent().at(-1)).toBe('DELETE'));
   expect(sent()).toEqual([`PUT ${start + 90_000}`, 'DELETE', `PUT ${start + 90_000}`, 'DELETE']);
 });
@@ -371,7 +380,7 @@ test('blocked notifications disable the toggle and explain how to allow them', a
   const dialog = await openSettings(ui);
   const toggle = await dialog.findByLabelText(toggleName);
   expect(toggle).toBeDisabled();
-  expect(dialog.getByText(/Notifications are blocked for this site/)).toBeInTheDocument();
+  expect(dialog.getAllByText(/Notifications are blocked for this site/).length).toBeGreaterThan(0);
   expect(b.requestPermission).not.toHaveBeenCalled();
 });
 
@@ -383,7 +392,7 @@ test('a refused permission prompt leaves it off and shows the blocked guidance a
   await ui.user.click(toggle);
   await waitFor(() => expect(toggle).toBeDisabled());
   expect(toggle).toHaveAttribute('aria-checked', 'false');
-  expect(dialog.getByText(/Notifications are blocked for this site/)).toBeInTheDocument();
+  expect(dialog.getAllByText(/Notifications are blocked for this site/).length).toBeGreaterThan(0);
   expect(b.pushManager.subscribe).not.toHaveBeenCalled();
   expect(ui.calls()).toEqual([]);
 });
@@ -400,8 +409,8 @@ test('if the server cannot save the subscription, nothing is left half-enabled',
   const user = userEvent.setup();
   render(<App />);
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
-  await user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
-  const dialog = within(screen.getByRole('dialog'));
+  await openPage('Settings', user);
+  const dialog = within(screen.getByRole('main'));
   const toggle = await dialog.findByLabelText(toggleName);
   await user.click(toggle);
   expect(

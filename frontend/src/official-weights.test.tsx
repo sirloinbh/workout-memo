@@ -5,7 +5,7 @@ import { expect, test } from 'vitest';
 import { App } from './app';
 import { flushRenders, json, mockApi } from './test/api';
 import { queryLive } from './test/live';
-import { openPage } from './test/nav';
+import { openFromSettings } from './test/nav';
 
 // Ported from backend/test/official-weights-ui.test.ts (vm hook harness) to a real DOM.
 // It checks rendered text and handlers; browser layout and link opening still need
@@ -124,7 +124,7 @@ const texts = (value: string) =>
 test('machine library shows the linked official reference with basis and source, not as base weight', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('Machine Library', ui.user);
+  await openFromSettings('Machine Library', ui.user);
   const row = document.querySelector<HTMLElement>('[data-slot="machine-row"]')!;
   expect(row).not.toBeNull();
   const rowText = row.textContent;
@@ -152,7 +152,7 @@ test('journal machine select shows the official reference next to the user base 
 test('registering a machine links a reference without filling or changing base weight', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('Machine Library', ui.user);
+  await openFromSettings('Machine Library', ui.user);
   await ui.user.click(ui.button('Add machine'));
   await ui.user.selectOptions(ui.labelled('Brand', 'select'), '2');
   const select = ui.labelled('Official reference', 'select');
@@ -184,7 +184,7 @@ test('registering a machine links a reference without filling or changing base w
 test('unverified references read Official value unconfirmed and changing brand clears a mismatched link', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('Machine Library', ui.user);
+  await openFromSettings('Machine Library', ui.user);
   await ui.user.click(ui.button('Add machine'));
   await ui.user.selectOptions(ui.labelled('Brand', 'select'), '1');
   await ui.user.selectOptions(ui.labelled('Official reference', 'select'), '12');
@@ -206,7 +206,7 @@ test('a reference load failure does not block machines and is reported in the fo
   const ui = mount(true);
   await ui.settle();
   expect(queryLive('alert')).toBeNull();
-  await openPage('Machine Library', ui.user);
+  await openFromSettings('Machine Library', ui.user);
   expect(
     within(screen.getByRole('list', { name: 'Machine' })).getAllByRole('listitem'),
   ).toHaveLength(1);
@@ -217,7 +217,7 @@ test('a reference load failure does not block machines and is reported in the fo
 test('Newtech is selectable on register and its references read Official value unconfirmed', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('Machine Library', ui.user);
+  await openFromSettings('Machine Library', ui.user);
   expect(screen.getByRole('radio', { name: 'Newtech' })).toBeInTheDocument();
   await ui.user.click(ui.button('Add machine'));
   const brandSelect = ui.labelled('Brand', 'select');
@@ -232,7 +232,7 @@ test('Newtech is selectable on register and its references read Official value u
 test('brand tabs pick one brand at a time and an empty brand shows the empty state', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('Machine Library', ui.user);
+  await openFromSettings('Machine Library', ui.user);
   const tabs = screen.getByRole('radiogroup', { name: 'Brand' });
   expect(within(tabs).getByRole('radio', { name: 'All brands' })).toBeChecked();
   expect(
@@ -263,7 +263,7 @@ test('brand tabs pick one brand at a time and an empty brand shows the empty sta
 test('the machine form names every field and saves notes and the single-joint checkbox', async () => {
   const ui = mount();
   await ui.settle();
-  await openPage('Machine Library', ui.user);
+  await openFromSettings('Machine Library', ui.user);
   await ui.user.click(ui.button('Add machine'));
   const dialog = screen.getByRole('dialog', { name: 'Add machine' });
   const form = within(dialog);

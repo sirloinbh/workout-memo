@@ -62,8 +62,8 @@ test('menu links change the URL and browser back returns to the previous page', 
   const ui = mount();
   await openPage('My Goals', ui.user);
   expect(window.location.pathname).toBe('/goals');
-  await openPage('Machine Library', ui.user);
-  expect(window.location.pathname).toBe('/machines');
+  await openPage('Dashboard', ui.user);
+  expect(window.location.pathname).toBe('/dashboard');
   act(() => window.history.back());
   await waitFor(() => expect(window.location.pathname).toBe('/goals'));
   await waitFor(() => expect(current()).toBe('My Goals'));
@@ -98,4 +98,24 @@ test('the app opens on the day log; Week and 12 weeks open on their own period (
   await openPage('12 weeks', ui.user);
   expect(window.location.pathname).toBe('/12-weeks');
   expect(screen.getByRole('radio', { name: '12 weeks' })).toBeChecked();
+});
+
+test('Settings is the last menu item; Backup & Export and Machine Library are reached from it (#508)', async () => {
+  const ui = mount();
+  const labels = within(menu())
+    .getAllByRole('link')
+    .map((link) => link.textContent);
+  expect(labels.at(-1)).toBe('Settings');
+  expect(labels).not.toContain('Backup & Export');
+  expect(labels).not.toContain('Machine Library');
+  await openPage('Settings', ui.user);
+  expect(window.location.pathname).toBe('/settings');
+  await ui.user.click(screen.getByRole('link', { name: 'Machine Library' }));
+  await waitFor(() => expect(window.location.pathname).toBe('/machines'));
+});
+
+test('the old Backup and Machine Library addresses still open their pages (#508)', async () => {
+  mount('/backup');
+  expect(await screen.findByRole('heading', { name: 'Backup & Export' })).toBeInTheDocument();
+  expect(window.location.pathname).toBe('/backup');
 });

@@ -5,7 +5,7 @@ import { expect, test } from 'vitest';
 import { App } from './app';
 import { importCardioSessions } from './cardio/api';
 import { fixClock, json, mockApi } from './test/api';
-import { openPage } from './test/nav';
+import { openFromSettings, openPage } from './test/nav';
 
 // #373: a proxy answers 502 with an HTML page while the API restarts. Every screen reads that through
 // the one API client, so the user sees a readable message and never "Unexpected token '<'".
@@ -37,7 +37,7 @@ test.each([
 test('the backup preview shows a readable message for an HTML 502', async () => {
   mountWithProxyDown((pathname) => pathname.startsWith('/api/backup'));
   const user = userEvent.setup();
-  await openPage('Backup & Export', user);
+  await openFromSettings('Backup & Export', user);
   const file = new File(['{"version":1}'], 'workout-memo-backup-2026-10-19.json');
   await user.upload(screen.getByLabelText('Choose backup file'), file);
   await waitFor(() => expect(page()).toMatch(/Could not process the request/));

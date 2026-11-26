@@ -4,6 +4,7 @@ import { lazyPage } from './lazy-page';
 export const Analysis = lazyPage(() => import('./analysis').then((m) => m.Analysis));
 export const Backup = lazyPage(() => import('./backup').then((m) => m.Backup));
 export const BodyMeasurements = lazyPage(() => import('./body').then((m) => m.BodyMeasurements));
+export const Settings = lazyPage(() => import('./settings').then((m) => m.Settings));
 export const Routines = lazyPage(() => import('./routines').then((m) => m.Routines));
 export const DashboardPage = lazyPage(() =>
   import('./workspace/dashboard-page').then((m) => m.DashboardPage),

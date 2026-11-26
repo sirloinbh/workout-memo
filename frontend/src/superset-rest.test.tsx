@@ -4,7 +4,7 @@ import { beforeEach, expect, test } from 'vitest';
 
 import { App } from './app';
 import { fixClock, mockApi } from './test/api';
-import { openPage } from './test/nav';
+import { enableAutoStart, openPage } from './test/nav';
 
 // #481: in a superset the rest timer starts only after the last exercise of a round.
 async function openEditor() {
@@ -14,6 +14,7 @@ async function openEditor() {
   render(<App />);
   await openPage('Day log', user);
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
+  await enableAutoStart(user); // #508: the setting lives on the Settings page
   await user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
   return user;
 }
@@ -34,7 +35,6 @@ async function prepare() {
   document
     .querySelectorAll('input[role="combobox"][id$="-exercise"]')
     .forEach((el, i) => fireEvent.change(el, { target: { value: names[i] } }));
-  await user.click(screen.getByRole('switch', { name: 'Auto-start when a set is done' }));
   return user;
 }
 

@@ -5,6 +5,7 @@ import { expect, test, vi } from 'vitest';
 import { App } from './app';
 import { deviceNow, json, mockApi } from './test/api';
 import { fakeClock, installFakeTimerHarness, waitForFake as waitFor } from './test/fake-timers';
+import { enableAutoStart, openPage } from './test/nav';
 
 installFakeTimerHarness();
 
@@ -84,7 +85,6 @@ async function openNew(ui: UI) {
 }
 const completion = (i = 0) => screen.getAllByRole('button', { name: /Set \d+ done/ })[i];
 const pressed = (i = 0) => completion(i).getAttribute('aria-pressed');
-const autoStart = () => screen.getByRole('switch', { name: 'Auto-start when a set is done' });
 const duration = () => screen.getByRole('spinbutton', { name: 'Rest time (sec)' });
 // #83: workout feedback replaced the per-set RPE input.
 const feedback = (label: string) => screen.getByRole('radio', { name: label });
@@ -132,16 +132,25 @@ test('new sets start not completed; completion and undo are sent explicitly', as
   ]);
 });
 
-test('auto-start is opt-in and a duplicate completion click starts one rest', async () => {
+test('auto-start is off by default and the editor links to the rest settings (#508)', async () => {
   const ui = mount();
   await openNew(ui);
   await ui.user.click(completion());
   expect(timer()).toMatch(/1:30/);
   expect(timer(), 'auto-start is off by default').not.toMatch(/left/);
+  expect(screen.getByRole('link', { name: 'Rest settings' })).toHaveAttribute('href', '/settings');
+  expect(screen.queryByRole('switch', { name: 'Auto-start when a set is done' })).toBeNull();
+});
+
+test('a duplicate completion click starts one rest', async () => {
+  const ui = mount();
+  await loaded();
+  await enableAutoStart(ui.user);
+  await openNew(ui);
+  await ui.user.click(completion());
+  expect(timer()).toMatch(/1:30 left/);
   advance(1000);
   await ui.user.click(completion());
-  await ui.user.click(autoStart());
-  expect(autoStart()).toBeChecked();
   // The same render's handler fires again, as a double tap can before React commits:
   // both clicks are dispatched inside one act(), so React re-renders only afterwards.
   const stale = completion();
@@ -162,10 +171,12 @@ test('auto-start is opt-in and a duplicate completion click starts one rest', as
 
 test('rest timer can be set, started, paused, resumed and cancelled', async () => {
   const ui = mount();
-  await openNew(ui);
+  await loaded();
+  await openPage('Settings', ui.user);
   fireEvent.change(duration(), { target: { value: '60' } });
-  expect(timer()).toMatch(/1:00/);
   fireEvent.change(duration(), { target: { value: '3' } });
+  await openPage('Day log', ui.user);
+  await openNew(ui);
   expect(timer(), 'durations under 5 seconds are ignored').toMatch(/1:00/);
   await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
   // A foreground tick: the clock moves and the due redraw timeout fires once.
@@ -204,8 +215,9 @@ test('returning from the background shows time left from the end timestamp', asy
 
 test('refresh restores timer from its end time and set state from the draft', async () => {
   const first = mount();
+  await loaded();
+  await enableAutoStart(first.user);
   await openNew(first);
-  await first.user.click(autoStart());
   await first.user.click(completion());
   await first.user.click(feedback('Hard'));
   // Reload: the same localStorage survives, the page is mounted again 45 s later.
@@ -217,7 +229,6 @@ test('refresh restores timer from its end time and set state from the draft', as
   await loaded();
   expect(pressed()).toBe('true');
   expect(feedback('Hard')).toHaveAttribute('aria-checked', 'true');
-  expect(autoStart(), 'auto-start preference persists').toBeChecked();
   await submit(second);
   expect(second.sentFeedback()).toBe('hard');
   expect(second.sentSets().map((s) => [s.completed, s.rpe])).toEqual([
@@ -280,8 +291,9 @@ test('not-completed sets are excluded from volume, set count and workout days', 
 
 test('a rapid second tap in a later render does not undo completion or touch the rest', async () => {
   const ui = mount();
+  await loaded();
+  await enableAutoStart(ui.user);
   await openNew(ui);
-  await ui.user.click(autoStart());
   await ui.user.click(completion());
   advance(100);
   // Double click: the second click arrives after React re-rendered.
@@ -348,15 +360,16 @@ test('a rest that ends while the app is open vibrates once, a long-past end stay
 });
 
 // #105: the countdown bar is pinned at the top of the editor; its settings scroll away.
-test('the rest countdown is a pinned bar apart from the rest settings', async () => {
+test('the rest countdown is a pinned bar and the settings are on the Settings page', async () => {
   const ui = mount();
   await openNew(ui);
   const bar = document.querySelector<HTMLElement>('[data-slot=rest-timer]')!;
   expect(bar.parentElement).toHaveClass('sticky', 'top-0');
   expect(bar).toContainElement(screen.getByRole('timer'));
   expect(bar).toContainElement(screen.getByRole('button', { name: 'Start rest' }));
-  expect(bar).not.toContainElement(duration());
-  expect(document.querySelector('[data-slot=rest-settings]')).toContainElement(duration());
+  // #508: the settings are no longer in the editor; it only links to them.
+  expect(document.querySelector('[data-slot=rest-settings]')).toBeNull();
+  expect(screen.getByRole('link', { name: 'Rest settings' })).toHaveAttribute('href', '/settings');
 });
 
 // #105: pages with their own component (Routine Builder etc.) show the running rest first, so it

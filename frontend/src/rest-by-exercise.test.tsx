@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import { fixClock, json, mockApi } from './test/api';
+import { enableAutoStart, openFromSettings, openPage } from './test/nav';
 
 // #84: a completed set starts the rest of its exercise kind. Single-joint comes from the
 // machine library, lower/upper body from the user's body part mapping (#32).
@@ -49,14 +50,18 @@ function mount() {
 }
 const timer = () => document.querySelector('[data-slot=rest-timer]')?.textContent ?? '';
 const dialog = () => screen.getByRole('dialog');
-async function openWith(ui: ReturnType<typeof mount>, exercise: string, machine = '') {
+async function openWith(
+  ui: ReturnType<typeof mount>,
+  exercise: string,
+  machine = '',
+  onSettings?: () => void,
+) {
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
   await waitFor(() =>
     expect(ui.requests.some((r) => r.path === '/api/exercise-body-parts')).toBe(true),
   );
+  await enableAutoStart(ui.user, onSettings);
   await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
-  const auto = within(dialog()).getByLabelText('Auto-start when a set is done');
-  if (auto.getAttribute('aria-checked') !== 'true') await ui.user.click(auto);
   fireEvent.change(within(dialog()).getAllByLabelText('Exercise name')[0], {
     target: { value: exercise },
   });
@@ -83,9 +88,10 @@ test.each([
 
 test('exercises without a kind keep the configured rest', async () => {
   const ui = mount();
-  await openWith(ui, 'Crunch');
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'Rest time (sec)' }), {
-    target: { value: '45' },
+  await openWith(ui, 'Crunch', '', () => {
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Rest time (sec)' }), {
+      target: { value: '45' },
+    });
   });
   await completeFirst(ui);
   expect(timer()).toMatch(/0:45 left/);
@@ -93,16 +99,17 @@ test('exercises without a kind keep the configured rest', async () => {
 
 test('per-kind rests can be changed and are kept in this browser', async () => {
   const first = mount();
-  await openWith(first, 'Squat');
-  expect(screen.getByRole('spinbutton', { name: 'Lower body rest (sec)' })).toHaveValue(150);
-  expect(screen.getByRole('spinbutton', { name: 'Upper body rest (sec)' })).toHaveValue(120);
-  expect(screen.getByRole('spinbutton', { name: 'Single-joint rest (sec)' })).toHaveValue(90);
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'Lower body rest (sec)' }), {
-    target: { value: '180' },
-  });
-  // Invalid values are ignored instead of replacing the stored rest.
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'Upper body rest (sec)' }), {
-    target: { value: '3' },
+  await openWith(first, 'Squat', '', () => {
+    expect(screen.getByRole('spinbutton', { name: 'Lower body rest (sec)' })).toHaveValue(150);
+    expect(screen.getByRole('spinbutton', { name: 'Upper body rest (sec)' })).toHaveValue(120);
+    expect(screen.getByRole('spinbutton', { name: 'Single-joint rest (sec)' })).toHaveValue(90);
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Lower body rest (sec)' }), {
+      target: { value: '180' },
+    });
+    // Invalid values are ignored instead of replacing the stored rest.
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Upper body rest (sec)' }), {
+      target: { value: '3' },
+    });
   });
   first.view.unmount();
   // Reload: the journal draft is restored and the per-kind rests come from storage.
@@ -110,10 +117,12 @@ test('per-kind rests can be changed and are kept in this browser', async () => {
   await waitFor(() =>
     expect(second.requests.some((r) => r.path === '/api/exercise-body-parts')).toBe(true),
   );
-  await second.user.click(await screen.findByRole('button', { name: /Restore/ }));
+  await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
+  await openPage('Settings', second.user);
   expect(screen.getByRole('spinbutton', { name: 'Lower body rest (sec)' })).toHaveValue(180);
   expect(screen.getByRole('spinbutton', { name: 'Upper body rest (sec)' })).toHaveValue(120);
-  await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
+  await openPage('Day log', second.user);
+  await second.user.click(await screen.findByRole('button', { name: /Restore/ }));
   await completeFirst(second);
   expect(timer()).toMatch(/3:00 left/);
 });
@@ -121,7 +130,7 @@ test('per-kind rests can be changed and are kept in this browser', async () => {
 test('the machine form saves the single-joint flag', async () => {
   const ui = mount();
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
-  await ui.user.click(screen.getByRole('link', { name: 'Machine Library' }));
+  await openFromSettings('Machine Library', ui.user);
   await waitFor(() => expect(document.body.textContent).toMatch(/Hammer · Single-joint/));
   await ui.user.click(screen.getAllByRole('button', { name: 'Edit' })[1]);
   const box = within(dialog()).getByLabelText(/Single-joint exercise machine/);

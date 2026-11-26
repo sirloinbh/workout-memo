@@ -5,7 +5,7 @@ import { expect, test } from 'vitest';
 import { App } from './app';
 import { deferred, json, mockApi } from './test/api';
 import { getLive } from './test/live';
-import { openPage } from './test/nav';
+import { openFromSettings } from './test/nav';
 
 // Ported from backend/test/backup-ui.test.ts (vm hook harness) to a real DOM. Real file
 // pickers, downloads, layout and focus still need separate browser verification.
@@ -74,7 +74,7 @@ function mount(previewError?: string) {
 const page = () => document.body.textContent ?? '';
 
 async function openBackup(ui: ReturnType<typeof mount>) {
-  await openPage('Backup & Export', ui.user);
+  await openFromSettings('Backup & Export', ui.user);
 }
 
 test('backup page separates the analysis CSV from the restore backup and states the policy', async () => {
@@ -226,7 +226,7 @@ test('while a restore runs the status says it is restoring, not checking', async
   });
   const user = userEvent.setup();
   render(<App />);
-  await openPage('Backup & Export', user);
+  await openFromSettings('Backup & Export', user);
   await user.upload(
     screen.getByLabelText('Choose backup file'),
     new File([JSON.stringify(backup)], 'backup.json'),

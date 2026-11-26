@@ -170,3 +170,39 @@ test('saving a goal refetches the goals and not the workouts', async () => {
   await waitFor(() => expect(gets('/api/goals')).toBe(goalsBefore + 1));
   expect(gets('/api/workouts')).toBe(workoutsBefore);
 });
+
+// #506: a journal title is picked from the titles already used, and a new one can still be typed.
+test('the journal title offers earlier titles and still accepts a new one', async () => {
+  fixClock();
+  mockApi(({ url }) => {
+    if (url.pathname === '/api/workouts')
+      return [
+        {
+          id: 1,
+          date: '2026-10-14',
+          title: 'Legs · quad focus',
+          notes: '',
+          sets: [{ exercise: 'Squat', machine_id: null, weight: 100, reps: 5 }],
+        },
+      ];
+    if (url.pathname === '/api/routine-progress') return { today: '2026-10-15', routine: null };
+    return [];
+  });
+  const user = userEvent.setup();
+  render(<App />);
+  await loaded();
+  await user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
+  const dialog = screen.getByRole('dialog', { name: 'New workout record' });
+  const title = within(dialog).getByRole('combobox', { name: 'Journal title' });
+  await user.clear(title);
+  await user.type(title, 'Legs');
+  const list = screen.getByRole('listbox', { name: 'Previously used titles' });
+  expect(
+    within(list)
+      .getAllByRole('option')
+      .map((o) => o.textContent),
+  ).toEqual(['Legs · quad focus']);
+  await user.clear(title);
+  await user.type(title, 'Brand new title');
+  expect(title).toHaveValue('Brand new title');
+});

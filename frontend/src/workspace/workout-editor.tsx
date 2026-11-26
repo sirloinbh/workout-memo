@@ -135,6 +135,7 @@ export function WorkoutEditor({
               {/* #506: earlier titles are offered; a new title can still be typed. */}
               <Combobox
                 id="journal-title"
+                className="md:pointer-coarse:text-base"
                 required
                 maxLength={120}
                 placeholder="e.g. Legs · quad focus"

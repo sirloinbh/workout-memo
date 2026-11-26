@@ -88,7 +88,7 @@
 .form-hint {
   font-size: 12px;
   background: var(--muted);
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: calc(var(--radius) - 4px);
 }
 .modal .subtle-button {

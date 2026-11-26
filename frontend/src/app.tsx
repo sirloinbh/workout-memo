@@ -561,6 +561,7 @@ function Workspace() {
           saving={saving}
           machines={machines}
           exerciseNames={exerciseNames}
+          titles={[...new Set(workouts.map((w) => w.title).filter(Boolean))]}
           progress={progress}
           timerBar={timerBar}
           timerAlert={timerAlert}

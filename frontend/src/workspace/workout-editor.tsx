@@ -37,6 +37,7 @@ export function WorkoutEditor({
   saving,
   machines,
   exerciseNames,
+  titles,
   progress,
   timerBar,
   timerAlert,
@@ -46,6 +47,8 @@ export function WorkoutEditor({
   saving: boolean;
   machines: Machine[];
   exerciseNames: readonly string[];
+  /** Journal titles already used in the loaded period, offered as suggestions (#506). */
+  titles: readonly string[];
   progress: Progress | null;
   timerBar: React.ReactNode;
   timerAlert: React.ReactNode;
@@ -127,14 +130,19 @@ export function WorkoutEditor({
               />
             </label>
             {issue('date')}
-            <label>
+            <label htmlFor="journal-title">
               Journal title
-              <input
+              {/* #506: earlier titles are offered; a new title can still be typed. */}
+              <Combobox
+                id="journal-title"
+                className="md:pointer-coarse:text-base"
                 required
                 maxLength={120}
                 placeholder="e.g. Legs · quad focus"
-                value={editor.title}
-                onChange={(e) => setEditor({ ...editor, title: e.target.value })}
+                value={editor.title ?? ''}
+                options={titles}
+                listLabel="Previously used titles"
+                onValueChange={(title) => setEditor({ ...editor, title })}
                 {...invalid('title')}
               />
             </label>

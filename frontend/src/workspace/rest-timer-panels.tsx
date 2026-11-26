@@ -97,15 +97,14 @@ export function TimerBar({ rest }: { rest: RestTimerState }) {
   );
 }
 
-export function TimerSettings({ rest, pushState }: { rest: RestTimerState; pushState: PushState }) {
+export function TimerSettings({ rest }: { rest: RestTimerState }) {
   const { timer, updateTimer, durationInput, setDurationInput, restInputs, updateRestDuration } =
     rest;
-  const { push, pushBusy, togglePush } = pushState;
   return (
     <section
       data-slot="rest-settings"
       aria-label="Rest settings"
-      className="mb-4 grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 md:grid-cols-[1fr_auto]"
+      className="grid items-center gap-x-4 gap-y-2 rounded-lg border border-input bg-muted p-3.5 md:grid-cols-[1fr_auto]"
     >
       <label
         htmlFor="rest-duration"
@@ -159,8 +158,27 @@ export function TimerSettings({ rest, pushState }: { rest: RestTimerState; pushS
           </label>
         ))}
       </fieldset>
+      <p className="col-span-full text-meta text-muted-foreground">
+        Kept only in this browser, by end time; reopening the tab corrects the time left. No alert
+        while the browser is closed. If rest ends while this screen is open (after one tap),
+        supported devices such as Android vibrate; iPhone does not.
+      </p>
+      <p className="col-span-full text-meta text-muted-foreground">
+        On set completion, rest uses the default for single-joint machines, then lower body, then
+        upper body. Single-joint is set in the Machine Library; body parts come from Exercise
+        Analysis, not from the exercise name. If unset, the rest time above applies.
+      </p>
+    </section>
+  );
+}
+
+/** #508: the rest-end push switch, now in Settings next to the weekly summary. */
+export function RestPushToggle({ pushState }: { pushState: PushState }) {
+  const { push, pushBusy, togglePush } = pushState;
+  return (
+    <>
       {(push.status === 'off' || push.status === 'on' || push.status === 'denied') && (
-        <div className="col-span-full flex flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <Switch
               id="rest-push"
@@ -179,17 +197,7 @@ export function TimerSettings({ rest, pushState }: { rest: RestTimerState; pushS
           </p>
         </div>
       )}
-      <p className="col-span-full text-meta text-muted-foreground">
-        Kept only in this browser, by end time; reopening the tab corrects the time left. No alert
-        while the browser is closed. If rest ends while this screen is open (after one tap),
-        supported devices such as Android vibrate; iPhone does not.
-      </p>
-      <p className="col-span-full text-meta text-muted-foreground">
-        On set completion, rest uses the default for single-joint machines, then lower body, then
-        upper body. Single-joint is set in the Machine Library; body parts come from Exercise
-        Analysis, not from the exercise name. If unset, the rest time above applies.
-      </p>
-    </section>
+    </>
   );
 }
 

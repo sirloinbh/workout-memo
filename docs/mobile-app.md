@@ -42,7 +42,7 @@ Lighthouse 12 no longer has PWA audits, so #109 checked these once in Chrome on 
 
 ## Rest-timer Web Push (#260, built 2026-11-17)
 
-The app turns on screen-off rest notifications in the rest settings (per device). When a rest starts or resumes, the browser tells the API the end time (`PUT /api/push/rest`); pause and cancel clear it. The API sends one Web Push at that time to every saved subscription of the signed-in user. Details are in [api.md](api.md), keys and turning it on in [deployment.md](deployment.md) (2-2), and the change record in [changes/260-web-push.md](changes/260-web-push.md).
+The app turns on screen-off rest notifications on the Settings page (per device). When a rest starts or resumes, the browser tells the API the end time (`PUT /api/push/rest`); pause and cancel clear it. The API sends one Web Push at that time to every saved subscription of the signed-in user. Details are in [api.md](api.md), keys and turning it on in [deployment.md](deployment.md) (2-2), and the change record in [changes/260-web-push.md](changes/260-web-push.md).
 
 - The push worker is `frontend/public/push/sw.js` at scope `/push/`, not part of `/sw.js`, because `sw.js` is centrally managed.
 - **Not checked yet (the user's real-device check, together with #110):** an installed app on a real Android phone receiving the notification with the screen off, the vibration, and a tap opening the app. The automated tests cover the API, the schedule and the worker's handlers, not a real push service. Push is off until the VAPID keys are in the production `.env`.

@@ -3,17 +3,24 @@ import {
   CalendarDays,
   CalendarRange,
   ClipboardList,
-  DatabaseBackup,
-  Dumbbell,
   LayoutDashboard,
   NotebookPen,
   Plus,
   Scale,
+  Settings as SettingsIcon,
   Target,
   Trophy,
 } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import {
+  BrowserRouter,
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router';
 
 import { listCardioSessions } from './cardio/api';
 import { AppShell, type NavItem } from './components/layout/app-shell';
@@ -40,6 +47,7 @@ import {
   MachinesPage,
   preloadPages,
   Routines,
+  Settings,
 } from './pages';
 import { routineDraft } from './progress-data';
 import { restKind, startTimer } from './rest-timer';
@@ -63,7 +71,7 @@ import {
 } from './workspace/model';
 import { NewRecords } from './workspace/new-records';
 import { PeriodControls } from './workspace/period-controls';
-import { TimerAlert, TimerBar, TimerSettings } from './workspace/rest-timer-panels';
+import { TimerAlert, TimerBar } from './workspace/rest-timer-panels';
 import { usePeriodRange } from './workspace/use-period-range';
 import { usePush } from './workspace/use-push';
 import { useRestTimer } from './workspace/use-rest-timer';
@@ -290,10 +298,9 @@ function Workspace() {
     ['analysis', 'Exercise Analysis', Trophy],
     ['routines', 'Routine Builder', ClipboardList],
     ['body', 'Body records', Scale],
-    ['machines', 'Machine Library', Dumbbell],
     ['overview', 'Dashboard', LayoutDashboard],
-    // The settings-type page goes last (#504); this app has no separate Settings page.
-    ['backup', 'Backup & Export', DatabaseBackup],
+    // #504: the settings page goes last. Backup & Export and the Machine Library are reached from it (#508).
+    ['settings', 'Settings', SettingsIcon],
   ] as const;
   // #85: pages sharing the period keep a directly chosen range in the address. The journal's
   // tab (#115) belongs to the journal only.
@@ -327,7 +334,7 @@ function Workspace() {
       {timerAlert}
     </>
   );
-  const ownPage = ['routines', 'backup', 'body', 'analysis'].includes(page);
+  const ownPage = ['routines', 'backup', 'body', 'analysis', 'settings'].includes(page);
   const recordsProps: RecordsProps = {
     workouts,
     loading,
@@ -373,6 +380,16 @@ function Workspace() {
                 }
               />
               <Route path={pages.analysis} element={<Analysis />} />
+              <Route
+                path={pages.settings}
+                element={
+                  <Settings
+                    rest={rest}
+                    pushState={pushState}
+                    alert={timer.state === 'idle' ? timerAlert : null}
+                  />
+                }
+              />
               <Route path="*" element={null} />
             </Routes>
           </Suspense>
@@ -550,6 +567,7 @@ function Workspace() {
               <Route path={pages.backup} element={null} />
               <Route path={pages.body} element={null} />
               <Route path={pages.analysis} element={null} />
+              <Route path={pages.settings} element={null} />
               <Route path="*" element={<Navigate to={pages.journal} replace />} />
             </Routes>
           </Suspense>
@@ -565,7 +583,15 @@ function Workspace() {
           progress={progress}
           timerBar={timerBar}
           timerAlert={timerAlert}
-          timerSettings={<TimerSettings rest={rest} pushState={pushState} />}
+          timerSettings={
+            <Link
+              to={pages.settings}
+              className="mb-4 inline-flex min-h-9 items-center text-body-sm underline underline-offset-4 pointer-coarse:min-h-11"
+              onClick={() => draft.setEditor(null)}
+            >
+              Rest settings
+            </Link>
+          }
         />
       )}
       {goalEditor && (

@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { fixClock, json, mockApi } from './test/api';
-import { openPage } from './test/nav';
+import { openFromSettings, openPage } from './test/nav';
 
 // #64: forms validate with the shared contract before anything is sent.
 function mount() {
@@ -114,7 +114,7 @@ test('the journal form marks the invalid set fields and keeps the input unsent',
 test('the machine form requires a brand before registering', async () => {
   const ui = mount();
   await loaded();
-  await openPage('Machine Library', ui.user);
+  await openFromSettings('Machine Library', ui.user);
   await ui.user.click(screen.getByRole('button', { name: 'Add machine' }));
   const dialog = screen.getByRole('dialog', { name: 'Add machine' });
   fireEvent.submit(dialog.querySelector('form')!);

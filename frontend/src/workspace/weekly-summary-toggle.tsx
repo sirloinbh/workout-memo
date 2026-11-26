@@ -61,7 +61,7 @@ export function WeeklySummaryToggle() {
     }
   }
   return (
-    <div className="mb-6 flex flex-col gap-1">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
         <Switch
           id="weekly-summary"

@@ -174,6 +174,7 @@ export const pages = {
   body: '/body',
   machines: '/machines',
   backup: '/backup',
+  settings: '/settings',
 } as const;
 export type Page = keyof typeof pages;
 // #115: the journal's record kinds; Strength is the default and has no address parameter.

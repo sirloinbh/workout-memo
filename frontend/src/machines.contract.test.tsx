@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 
 import { App } from './app';
 import { contractHandlers, setupContractApi } from './test/contract-api';
-import { openPage } from './test/nav';
+import { openFromSettings } from './test/nav';
 
 // The machine library through the OpenAPI contract mock (project-standards#281): no backend and
 // no fetch stub. Every request must be an operation in docs/openapi.json, or the test fails.
@@ -40,7 +40,7 @@ test('the machine library lists machines answered by the contract mock', async (
   );
   const user = userEvent.setup();
   render(<App />);
-  await openPage('Machine Library', user);
+  await openFromSettings('Machine Library', user);
   expect(await screen.findByText(/My Chest Press/)).toBeInTheDocument();
   expect(document.querySelector('[data-slot="machine-row"]')?.textContent).toMatch(
     /Hammer Strength/,

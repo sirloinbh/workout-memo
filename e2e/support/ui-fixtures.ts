@@ -36,6 +36,8 @@ export const pages = [
   { path: '/body', name: 'body' },
   { path: '/machines', name: 'machines' },
   { path: '/backup', name: 'backup' },
+  // #508: every preference in one place; Backup & Export and the Machine Library link from it.
+  { path: '/settings', name: 'settings' },
 ] as const;
 
 // Each modal opens from the page header's primary button.

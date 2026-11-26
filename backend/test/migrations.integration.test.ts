@@ -86,10 +86,11 @@ test(
       await client.query(
         "DELETE FROM official_machine_weights WHERE model_name='Plate Loaded Reverse V-Squat'",
       );
-      await assert.rejects(client.query(check.sql), /27 of 28 rows corrected by 013/);
-      // Korean seed values arrive intact without a console pipe.
+      await assert.rejects(client.query(check.sql), /26 of 28 rows corrected by 013/);
+      // #505: 024 renamed the Korean brand, so 021 re-run now also misses the Newtech row (27 to 26).
+      // The brand is English after the migrations.
       const brands = (await client.query('SELECT name FROM brands')).rows.map((r) => r.name);
-      assert.ok(brands.includes('기타'));
+      assert.ok(brands.includes('Other'));
       assert.deepEqual(await migrate(client, files), []);
       const status = await migrationStatus(client, files);
       assert.deepEqual(status.pending, []);

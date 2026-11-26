@@ -50,7 +50,7 @@ export function registerAnalysisRoutes(app: express.Express, pool: Pool) {
     res.json(result.rows);
   });
   // Explicit user mapping only; body parts are never inferred from exercise names.
-  // An empty list removes the mapping so the exercise is counted as 미분류.
+  // An empty list removes the mapping so the exercise is counted as Unclassified (stored as 미분류).
   app.put('/api/exercise-body-parts', async (req, res) => {
     const m = bodyPartMappingSchema.parse(req.body);
     const saved = await inTransaction(pool, async (client) => {

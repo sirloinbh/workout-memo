@@ -215,7 +215,7 @@ test.describe('Touch navigation', () => {
       'page',
     );
     await menu.getByRole('link', { name: 'Day log' }).click();
-    await expect(page).toHaveURL(/\/journal$/);
+    await expect(page).toHaveURL(/^[^?]*\/$/);
   });
 });
 

@@ -35,7 +35,7 @@ test("Create, view, edit, and delete running records on the journal's cardio tab
     .getByRole('radiogroup', { name: 'Record type' })
     .getByRole('radio', { name: 'Cardio' })
     .click();
-  await expect(page).toHaveURL(/\/journal\?tab=cardio$/);
+  await expect(page).toHaveURL(/\/\?tab=cardio$/);
   // On the cardio tab the panel's own button is the main action.
   await expect(page.getByRole('button', { name: 'Log workout' })).toHaveCount(0);
   await showDay(page);

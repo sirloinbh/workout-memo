@@ -6,7 +6,7 @@ const day = '2001-04-16';
 const title = `E2E Offline ${Date.now()}`;
 
 async function showDay(page: Page) {
-  await page.getByLabel('Reference date').fill(day);
+  await page.getByLabel('Reference date', { exact: true }).fill(day);
   await page.getByRole('radio', { name: '1 day', exact: true }).click();
   await expect(page.getByText(`${day} — ${day}`)).toBeVisible();
 }

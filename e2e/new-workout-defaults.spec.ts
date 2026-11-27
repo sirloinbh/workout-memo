@@ -58,7 +58,7 @@ test("A new journal starts with today's date and title and the sets and machines
     .getByRole('link', { name: 'Day log' })
     .click();
   // Browsing another day does not change the new journal's date.
-  await page.getByLabel('Reference date').fill('2001-03-15');
+  await page.getByLabel('Reference date', { exact: true }).fill('2001-03-15');
   await expect(page.getByRole('button', { name: "Log with today's routine" })).toBeVisible();
   await page.getByRole('button', { name: 'Log workout' }).first().click();
   const editor = page.getByRole('dialog', { name: 'New workout record' });

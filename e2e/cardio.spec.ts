@@ -8,7 +8,7 @@ const memo = `E2E Cardio ${Date.now()}`;
 test.use({ viewport: { width: 390, height: 844 } });
 
 async function showDay(page: Page) {
-  await page.getByLabel('Reference date').fill(day);
+  await page.getByLabel('Reference date', { exact: true }).fill(day);
   await page.getByRole('radio', { name: '1 day', exact: true }).click();
   await expect(page.getByText(`${day} — ${day}`)).toBeVisible();
 }

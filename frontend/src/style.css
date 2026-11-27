@@ -144,10 +144,6 @@
     min-height: 44px;
     padding-block: 12px;
   }
-  /* The shared DateField input is text-body-sm from md up; its utility layer beats this file (layer components). */
-  .legacy [data-slot='date-field'] input {
-    font-size: 16px !important;
-  }
 }
 /* Two 16px date fields do not fit side by side on a phone. */
 @media (pointer: coarse) and (max-width: 480px) {

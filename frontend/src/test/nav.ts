@@ -21,15 +21,3 @@ export async function openFromSettings(label: string, user: User = userEvent.set
     expect(window.location.pathname).toBe(label === 'Backup & Export' ? '/backup' : '/machines'),
   );
 }
-
-// #508: the rest settings live on the Settings page; set auto-start there and come back to the day log.
-export async function enableAutoStart(
-  user: User = userEvent.setup(),
-  whileThere?: () => void | Promise<void>,
-) {
-  await openPage('Settings', user);
-  const auto = screen.getByRole('switch', { name: 'Auto-start when a set is done' });
-  if (auto.getAttribute('aria-checked') !== 'true') await user.click(auto);
-  await whileThere?.();
-  await openPage('Day log', user);
-}

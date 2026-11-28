@@ -10,15 +10,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import {
-  BrowserRouter,
-  Link,
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-} from 'react-router';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 
 import { listCardioSessions } from './cardio/api';
 import { AppShell, type NavItem } from './components/layout/app-shell';
@@ -48,10 +40,8 @@ import {
   Settings,
 } from './pages';
 import { routineDraft } from './progress-data';
-import { restKind, startTimer } from './rest-timer';
 import { type CardioPreset } from './routine-cardio';
 import { AccountActions, SignInGate } from './sign-in';
-import { startsRest } from './superset';
 import { api, type Changed, changed, type WriteAction } from './workspace/api';
 import { GoalForm } from './workspace/goal-form';
 import { MachineEditor } from './workspace/machine-editor';
@@ -70,10 +60,8 @@ import {
 } from './workspace/model';
 import { NewRecords } from './workspace/new-records';
 import { PeriodControls } from './workspace/period-controls';
-import { TimerAlert, TimerBar } from './workspace/rest-timer-panels';
 import { usePeriodRange } from './workspace/use-period-range';
 import { usePush } from './workspace/use-push';
-import { useRestTimer } from './workspace/use-rest-timer';
 import { useRoutineProgress } from './workspace/use-routine-progress';
 import { useWorkoutDraft } from './workspace/use-workout-draft';
 import { WorkoutEditor } from './workspace/workout-editor';
@@ -138,9 +126,7 @@ function Workspace() {
   const clearCardioPreset = useCallback(() => setCardioPreset(null), []);
   const routine = useRoutineProgress(page);
   const { progress, loadProgress } = routine;
-  const rest = useRestTimer();
-  const { timer, updateTimer, restDurations } = rest;
-  const pushState = usePush(timer);
+  const pushState = usePush();
   // #62: the period is part of the query key, so a late response for an earlier
   // period can never replace the selected one's data, error or loading state.
   const workoutsQuery = useQuery({
@@ -166,26 +152,12 @@ function Workspace() {
     queryFn: () => api<OfficialWeight[]>('/official-machine-weights').catch(() => null),
     staleTime: Infinity,
   });
-  // #84: the user's exercise → body part mapping (#32) picks the rest of a completed set.
-  // It is optional: a failed load only falls back to the configured rest.
-  const bodyPartsQuery = useQuery({
-    queryKey: ['exercise-body-parts'],
-    queryFn: () =>
-      api<{ exercise: string; body_parts: string[] }[]>('/exercise-body-parts').catch(() => []),
-  });
   // #124: exercise name candidates for the journal and goal fields. Optional: a failed load
   // keeps the names this screen already has.
   const exerciseNamesQuery = useQuery({
     queryKey: ['exercise-names'],
     queryFn: () => api<ExerciseName[]>('/exercise-names').catch(() => []),
   });
-  const restSeconds = (s: Workout['sets'][number]) => {
-    const machine = machines.find((m) => m.id === s.machine_id);
-    const key = s.exercise.trim().toLowerCase();
-    const parts = bodyPartsQuery.data?.find((m) => m.exercise === key)?.body_parts ?? [];
-    const kind = restKind(machine?.single_joint === true, parts);
-    return kind ? restDurations[kind] : timer.duration;
-  };
   // The summary belongs to the dashboard only; the journal shows its own tab.
   const cardioSessions = (page === 'overview' && cardioQuery.data) || [];
   const workouts = workoutsQuery.data ?? [],
@@ -224,11 +196,6 @@ function Workspace() {
     onSaved: async () => {
       void loadProgress();
       await refetchChanged(changed.workouts);
-    },
-    onSetCompleted: (set, sets, index) => {
-      // #481: in a superset only the last exercise of a round starts the rest.
-      if (timer.autoStart && startsRest(sets, index))
-        updateTimer(startTimer(timer, Date.now(), restSeconds(set)));
     },
   });
   const {
@@ -321,17 +288,6 @@ function Workspace() {
     end: true,
   }));
   const periodControls = <PeriodControls range={range} />;
-  const timerBar = <TimerBar rest={rest} />;
-  const timerAlert = <TimerAlert message={rest.timerWarning || pushState.pushWarning} />;
-  // Outside the editor a running or paused rest is pinned under the app header (h-14).
-  const pageTimer = !editor && timer.state !== 'idle' && (
-    <>
-      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-[var(--z-sticky)] mb-4 bg-background py-2">
-        {timerBar}
-      </div>
-      {timerAlert}
-    </>
-  );
   const ownPage = ['routines', 'backup', 'body', 'analysis', 'settings'].includes(page);
   const recordsProps: RecordsProps = {
     workouts,
@@ -357,8 +313,6 @@ function Workspace() {
         footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">
-          {/* Pages with their own component draw everything below, so the bar goes first. */}
-          {ownPage && pageTimer}
           <Suspense fallback={ownPage ? pageFallback : null}>
             <Routes>
               <Route path={pages.routines} element={<Routines exerciseNames={exerciseNames} />} />
@@ -378,16 +332,7 @@ function Workspace() {
                 }
               />
               <Route path={pages.analysis} element={<Analysis />} />
-              <Route
-                path={pages.settings}
-                element={
-                  <Settings
-                    rest={rest}
-                    pushState={pushState}
-                    alert={timer.state === 'idle' ? timerAlert : null}
-                  />
-                }
-              />
+              <Route path={pages.settings} element={<Settings pushState={pushState} />} />
               <Route path="*" element={null} />
             </Routes>
           </Suspense>
@@ -497,7 +442,6 @@ function Workspace() {
               </div>
             </Card>
           )}
-          {!ownPage && pageTimer}
           <Suspense fallback={ownPage ? null : pageFallback}>
             <Routes>
               {/* An unknown address falls back to the dashboard instead of an empty screen. */}
@@ -598,17 +542,6 @@ function Workspace() {
           exerciseNames={exerciseNames}
           titles={[...new Set(workouts.map((w) => w.title).filter(Boolean))]}
           progress={progress}
-          timerBar={timerBar}
-          timerAlert={timerAlert}
-          timerSettings={
-            <Link
-              to={pages.settings}
-              className="mb-4 inline-flex min-h-9 items-center text-body-sm underline underline-offset-4 pointer-coarse:min-h-11"
-              onClick={() => draft.setEditor(null)}
-            >
-              Rest settings
-            </Link>
-          }
         />
       )}
       {goalEditor && (

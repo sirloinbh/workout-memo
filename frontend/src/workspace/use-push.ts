@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { disablePush, enablePush, loadPushStatus, type PushStatus, syncRest } from '../push';
-import type { RestTimer } from '../rest-timer';
+import { disablePush, enablePush, loadPushStatus, type PushStatus } from '../push';
 
 /**
  * #260: rest-end Web Push. The settings toggle appears only when the server has keys and this
- * browser supports push. While it is on, every start, resume, pause and cancel of the rest is
- * sent to the server, which pushes at the end time even with the screen off.
+ * browser supports push. The rest-end sync is gone with the timer (#527); #528 removes the toggle.
  */
-export function usePush(timer: RestTimer) {
+export function usePush() {
   const [push, setPush] = useState<{ status: PushStatus; publicKey: string | null }>({
     status: 'checking',
     publicKey: null,
@@ -26,29 +24,6 @@ export function usePush(timer: RestTimer) {
       current = false;
     };
   }, []);
-  // The first run (page load, or the toggle just turned on) with no running rest sends nothing:
-  // another device of the same user may have a rest running, and clearing it would cancel its push.
-  const pushSynced = useRef(false);
-  useEffect(() => {
-    if (push.status !== 'on') {
-      pushSynced.current = false;
-      return;
-    }
-    if (!pushSynced.current && timer.state !== 'running') {
-      pushSynced.current = true;
-      return;
-    }
-    pushSynced.current = true;
-    syncRest(timer, Date.now()).then(
-      () => setPushWarning(''),
-      () =>
-        setPushWarning(
-          'Could not tell the server when the rest ends, so the notification may not arrive. The timer on screen still works.',
-        ),
-    );
-    // Only a change of state or end time is sent, not every tick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [push.status, timer.state, timer.endsAt]);
   async function togglePush(on: boolean) {
     if (pushBusy || !push.publicKey) return;
     setPushBusy(true);

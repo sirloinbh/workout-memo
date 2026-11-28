@@ -9,8 +9,6 @@ async function showDay(page: Page) {
   await page.getByRole('radio', { name: '1 day', exact: true }).click();
   await expect(page.getByText(`${day} — ${day}`)).toBeVisible();
 }
-const stat = (page: Page, label: string) =>
-  page.locator('[data-slot=stat]', { hasText: label }).locator('[data-slot=stat-value]');
 const row = (page: Page) => page.locator('[data-slot=workout-row]', { hasText: title });
 
 test.afterAll(async ({ request }) => {
@@ -43,13 +41,13 @@ test('Create, view, edit, and delete workout journals in the browser and store t
   await editor.getByRole('button', { name: 'Save record' }).click();
   await expect(editor).toBeHidden();
   await expect(row(page)).toBeVisible();
-  await expect(stat(page, 'Total volume')).toHaveText('501.25kg');
+  await expect(row(page)).toContainText('501.25 kg');
 
   // Read back after a reload: the record comes from the server, not a draft.
   await page.reload();
   await showDay(page);
   await expect(row(page)).toBeVisible();
-  await expect(stat(page, 'Completed sets')).toHaveText('1 set');
+  await expect(row(page)).toContainText('1 set');
 
   // Update
   await row(page).getByRole('button', { name: 'Edit' }).click();
@@ -57,10 +55,10 @@ test('Create, view, edit, and delete workout journals in the browser and store t
   await edit.getByLabel('Total weight kg', { exact: true }).fill('120');
   await edit.getByRole('button', { name: 'Save record' }).click();
   await expect(edit).toBeHidden();
-  await expect(stat(page, 'Total volume')).toHaveText('600kg');
+  await expect(row(page)).toContainText('600 kg');
   await page.reload();
   await showDay(page);
-  await expect(stat(page, 'Total volume')).toHaveText('600kg');
+  await expect(row(page)).toContainText('600 kg');
 
   // Delete
   await page.getByRole('button', { name: `Delete ${title}` }).click();
@@ -69,7 +67,6 @@ test('Create, view, edit, and delete workout journals in the browser and store t
   await page.reload();
   await showDay(page);
   await expect(row(page)).toHaveCount(0);
-  await expect(stat(page, 'Total volume')).toHaveText('0kg');
 });
 
 test('The page address is kept across reloads and back navigation', async ({ page }) => {

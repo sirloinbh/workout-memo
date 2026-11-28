@@ -16,3 +16,7 @@ See the PR for `npm run check` results. Log-page screenshot baselines are update
 ## Visual baselines
 
 6 files in `e2e/__screenshots__/ui-visual.spec.ts/` were updated from the `visual-baselines` artifact of the CI run: `journal` at 360/390/768/1280 and `workout-editor` at 768/1280 (the log page shows behind the editor dialog). The Cardio tab screens did not change. No other screen differs.
+
+## e2e
+
+`e2e/workout-crud.spec.ts` read Total volume and Completed sets from the log page KPI cards. It now checks the same values on the workout row (`501.25 kg`, `1 set`, `600 kg`); the final "0 kg" card check after deleting is dropped because the row count of 0 is already asserted.

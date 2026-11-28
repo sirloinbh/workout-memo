@@ -327,7 +327,6 @@ test('auto routine targets show firm values today and label future sessions as p
   const ui = mount({ plan: routineSchema.parse(autoRoutineInput()) });
   await openJournal();
   const content = ui.text(card()!);
-  expect(content).toMatch(/Auto goals/);
   expect(content, "today's session label").toMatch(/Week 1 session 1 · Full body/);
   expect(content).toMatch(/Benchpress 3 sets · total weight 100 kg · 10 reps/);
   const todayList = document.querySelector<HTMLElement>('ul[data-slot=target-list]')!;

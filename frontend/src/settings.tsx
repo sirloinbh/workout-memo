@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { PageHeader } from './components/ui/page-header';
 import { pages } from './workspace/model';
 import { WeeklySummaryToggle } from './workspace/weekly-summary-toggle';
@@ -13,16 +13,10 @@ import { WeeklySummaryToggle } from './workspace/weekly-summary-toggle';
 export function Settings() {
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Settings"
-        description="Change how the app behaves. Everything here applies to this browser or account right away."
-      />
+      <PageHeader title="Settings" />
       <Card>
         <CardHeader>
           <CardTitle className="text-body font-semibold">Notifications</CardTitle>
-          <CardDescription>
-            Push messages from the server. Each device is set up on its own.
-          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <WeeklySummaryToggle />
@@ -31,7 +25,6 @@ export function Settings() {
       <Card>
         <CardHeader>
           <CardTitle className="text-body font-semibold">Data</CardTitle>
-          <CardDescription>Your records and the machines they use.</CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="flex flex-col gap-2 text-body-sm">

@@ -48,11 +48,9 @@ test('each goal card shows its state, target and period', async () => {
   expect(within(challenge).getByText('In progress')).toHaveAttribute('data-slot', 'badge');
   expect(challenge.textContent).toMatch(/100 kg × 10 reps/);
   expect(challenge.textContent).toMatch(/2026-10-01 — 2026-12-31/);
-  expect(challenge.textContent).toMatch(/Log it under the same exercise name/);
   expect(within(card('Leg Press')).getByText('Period ended')).toBeInTheDocument();
   const done = card('Lat Pulldown');
   expect(within(done).getByText('Achieved')).toBeInTheDocument();
-  expect(done.textContent).toMatch(/You hit both the weight and reps/);
 });
 
 test('deleting a goal asks first and removes only that card', async () => {
@@ -83,13 +81,12 @@ test('a cancelled delete sends nothing', async () => {
   expect(screen.getByRole('heading', { level: 2, name: 'Benchpress' })).toBeInTheDocument();
 });
 
-test('without goals the empty state explains what to add', async () => {
+test('without goals the empty state shows the title', async () => {
   const ui = mount([]);
   render(<App />);
   await openPage('My Goals', ui.user);
-  const empty = await screen.findByRole('heading', {
+  await screen.findByRole('heading', {
     level: 2,
     name: 'Set a goal for your next workout',
   });
-  expect(empty.closest('[data-slot="empty-state"]')!.textContent).toMatch(/10 reps achieved/);
 });

@@ -2,7 +2,7 @@ import { Dumbbell } from 'lucide-react';
 
 import { List, ListItem } from '../components/list';
 import { Button } from '../components/ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { type Machine, officialLabel } from './model';
@@ -38,10 +38,6 @@ export function MachinesPage({
           <CardTitle asHeading="h2" className="text-body font-semibold">
             Machine Library
           </CardTitle>
-          <CardDescription className="text-caption">
-            The base weight differs by model and setting. Check the machine label and manufacturer
-            data, then enter it.
-          </CardDescription>
         </CardHeader>
         {machines.filter((m) => !brand || m.brand_id === brand).length === 0 ? (
           <EmptyState
@@ -49,7 +45,6 @@ export function MachinesPage({
             headingLevel="h3"
             icon={<Dumbbell />}
             title="Register your own machine"
-            description="An unconfirmed base weight can be stored as not entered."
           />
         ) : (
           <List aria-label="Machine" className="px-4 py-1 md:px-6 md:py-2.5">

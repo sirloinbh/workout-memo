@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 
 import { bodyMeasurementSchema, fieldErrors } from '../../shared/contract';
-import {
-  fieldLabel as stackedLabel,
-  formHint as hint,
-  selectField,
-  touchText,
-} from './components/form-styles';
+import { fieldLabel as stackedLabel, selectField, touchText } from './components/form-styles';
 import { AlertBanner } from './components/ui/alert-banner';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
@@ -167,11 +162,6 @@ export function InbodyImport({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <p className={hint}>
-          Choose a CSV file exported from InBody or a photo of the result sheet. Photos are read
-          only in this browser and are not sent to the server, and the original file is not kept.
-          Values that could not be read are left blank, so check them before saving.
-        </p>
         <Label className={fieldLabel}>
           InBody file or result sheet photo
           <Input
@@ -269,7 +259,6 @@ export function InbodyImport({
                               type={t === 'date' ? 'date' : 'number'}
                               step={t === 'date' ? undefined : '0.01'}
                               inputMode={t === 'date' ? undefined : 'decimal'}
-                              placeholder="Not entered"
                               disabled={busy}
                               value={row[t]}
                               onChange={(e) =>

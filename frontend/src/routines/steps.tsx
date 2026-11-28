@@ -2,7 +2,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { cn } from '../lib/utils';
-import { autoRule, days, type Plan, withSplitDefaults } from './model';
+import { days, type Plan, withSplitDefaults } from './model';
 import { box, fieldLabel, hint, legend, nativeSelect, touchText } from './styles';
 
 export function BasicsStep({ draft, setDraft }: { draft: Plan; setDraft: (plan: Plan) => void }) {
@@ -19,7 +19,6 @@ export function BasicsStep({ draft, setDraft }: { draft: Plan; setDraft: (plan: 
           <option value="manual">Manual · Enter by week</option>
         </select>
       </Label>
-      {draft.progression === 'auto' && <p className={cn(hint, 'mb-3')}>{autoRule}</p>}
       <Label className={cn(fieldLabel, 'mb-3')}>
         Routine name
         <Input

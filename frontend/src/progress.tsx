@@ -1,5 +1,5 @@
 import { Button } from './components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { SkeletonText } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { plural } from './labels';
@@ -66,9 +66,6 @@ export function RoutineProgress({
         <CardTitle asHeading="h2" className="text-body font-semibold">
           Routine goals
         </CardTitle>
-        <CardDescription className="text-caption">
-          A planned goal. Only saved workout journals count as actual records.
-        </CardDescription>
       </CardHeader>
       <CardContent className="px-4 pt-2 pb-5 text-sm md:px-6 md:pb-6">
         {error && (
@@ -117,15 +114,6 @@ export function RoutineProgress({
             {progress.cardio_summary && (
               <p data-slot="cardio-summary" className={`mt-1 ${text}`}>
                 {cardioSummaryText(progress.cardio_summary)}
-              </p>
-            )}
-            {progress.progression === 'auto' && (
-              <p className="mt-2 rounded-md bg-muted p-3 text-meta">
-                Auto goals (double progressive overload): advance on each session (workout day) of a
-                split. If you perform every planned set at or above the target in the journal saved
-                between the session&apos;s date and the next session of the same split, the next
-                session advances; otherwise it keeps the same goal. Upcoming goals with no record
-                yet are projections.
               </p>
             )}
             <StallSuggestions stalls={progress.stalls ?? []} />

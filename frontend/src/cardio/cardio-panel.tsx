@@ -242,7 +242,6 @@ export function CardioPanel({
             headingLevel="h3"
             icon={<Activity />}
             title="No cardio records in the selected period"
-            description="Log a cardio session by time and distance, like a run, walk, or bike ride."
           />
         ) : (
           <CardioList

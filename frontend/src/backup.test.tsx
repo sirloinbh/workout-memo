@@ -89,13 +89,8 @@ test('backup page separates the analysis CSV from the restore backup and states 
   expect(backupLink).toHaveAttribute('download');
   expect(page()).toMatch(/CSV for analysis/);
   expect(page()).toMatch(/Backup for restore/);
-  expect(page()).toMatch(/CSV cannot be used for restore/);
-  expect(page()).toMatch(/total weight/);
-  expect(page()).toMatch(/=, \+, -, @/);
   expect(page()).toMatch(/Additions only/);
-  expect(page()).toMatch(/Identical records are skipped/);
   expect(page()).toMatch(/Replace all/);
-  expect(page()).toMatch(/retry key/i);
   expect(ui.requests.filter((r) => r.method !== 'GET')).toHaveLength(0);
 });
 

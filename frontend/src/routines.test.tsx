@@ -339,7 +339,6 @@ test('new routines default to automatic double progression with a 12-week previe
   const mode = ui.labels('Weekly goal mode')[0];
   expect(mode, 'the form offers a target mode').toBeTruthy();
   expect(mode.querySelector('select')!.value).toBe('auto');
-  expect(ui.text(), 'the rule is explained on screen').toMatch(/Reps go up by 1 each session/);
   await ui.change('Routine name', expected.name);
   await ui.change('Start date', expected.start_date);
   ui.next();
@@ -386,7 +385,6 @@ test('new routines default to automatic double progression with a 12-week previe
     /Week 1: Session 1 40 kg × 12 reps \(Start\), Session 2 45 kg × 8 reps \(Increase \+5 kg\)/,
   );
   expect(preview).toMatch(/Week 12 deload: Session 1 0 kg × 12 reps \(Deload\)/);
-  expect(preview, 'the per-session rule is explained').toMatch(/each session \(workout day\)/);
   expect(ui.nonGet(), 'preview sends nothing').toHaveLength(0);
   await ui.save();
   await saveSettled();
@@ -394,9 +392,8 @@ test('new routines default to automatic double progression with a 12-week previe
   expect(post).toBeTruthy();
   expect(post!.body).toEqual(expected);
   await waitFor(() =>
-    expect(ui.shows(/Auto · double progressive overload/).length).toBeGreaterThan(0),
+    expect(ui.shows(/Week 5: Session 1 110 kg × 9 reps \(Reps \+1\)/).length).toBeGreaterThan(0),
   );
-  expect(ui.shows(/Week 5: Session 1 110 kg × 9 reps \(Reps \+1\)/).length).toBeGreaterThan(0);
 });
 
 test('a new routine defaults to a cycle and fills each split count with its cycle and parts (#88)', async () => {

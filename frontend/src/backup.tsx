@@ -133,18 +133,6 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
         <CardHeader>
           <CardTitle className="text-body font-semibold">CSV for analysis</CardTitle>
         </CardHeader>
-        <CardContent className={copy}>
-          <p className={text}>
-            Downloads the sets of your workout journals as a UTF-8 CSV, one row per set. Dates are
-            YYYY-MM-DD and weight is the total weight (kg) including the machine&apos;s base weight.
-            It is blank if there is no machine or the base weight is unknown.
-          </p>
-          <p className={text}>
-            So that spreadsheets do not run them as formulas, a single quote (&apos;) is added
-            before text values that start with =, +, -, @, tab, or CR. CSV cannot be used for
-            restore.
-          </p>
-        </CardContent>
         <CardFooter>
           <Button asChild>
             <a href="/api/export/workouts.csv" download>
@@ -158,15 +146,6 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
         <CardHeader>
           <CardTitle className="text-body font-semibold">Backup for restore (JSON)</CardTitle>
         </CardHeader>
-        <CardContent className={copy}>
-          <p className={text}>
-            Stores workout journals, sets (with completion and RPE), goals, routines and their rest
-            days, cardio records, cardio goals, body records, body-part and weight-step settings,
-            brands, machines, and their links in a single versioned JSON file. Save retry keys are
-            temporary duplicate-prevention records, so they are not included. A backup file contains
-            personal records, so keep it somewhere safe.
-          </p>
-        </CardContent>
         <CardFooter>
           <Button asChild>
             <a href="/api/backup" download>
@@ -182,19 +161,8 @@ export function Backup({ onRestored }: { onRestored: () => void }) {
         </CardHeader>
         <CardContent className={copy}>
           <p className={text}>
-            Additions only (default): adds only new records without editing or deleting existing
-            ones. Identical records are skipped. If a machine with the same brand and name differs,
-            the existing value is kept and shown as a conflict.
-          </p>
-          <p className={text}>
-            Replace all: deletes every current record and replaces it with the backup content. Save
-            retry records are also reset, so a save whose response was lost becomes a new record if
-            you save it again. Type the confirmation phrase “{confirmation}” to run it.
-          </p>
-          <p className={text}>
-            Before restoring, the format, version, references, and size (up to 10 MB) are checked
-            and a summary of changes is previewed. A restore either fully succeeds or is fully
-            canceled.
+            Replace all deletes every current record. Type the confirmation phrase “{confirmation}”
+            to run it.
           </p>
         </CardContent>
         <CardContent className="flex flex-col gap-4">

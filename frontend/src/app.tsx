@@ -313,7 +313,6 @@ function Workspace() {
             <AccountActions />
           </>
         }
-        footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">
           {/* #530: the workout editor opens on the page. The page below stays mounted but hidden, so its state
@@ -355,25 +354,16 @@ function Workspace() {
             {!ownPage && (
               <PageHeader
                 className="mb-6 md:mb-9"
-                eyebrow={logPage ? undefined : 'YOUR PROGRESS, IN FOCUS'}
                 title={
                   page === 'overview'
-                    ? 'A place to record consistency'
+                    ? 'Dashboard'
                     : logPage
                       ? dateTitle(progress?.today ?? today())
                       : page === 'goals'
-                        ? 'Toward the next you'
-                        : 'Knowing your machine makes your records accurate'
+                        ? 'My Goals'
+                        : 'Machine Library'
                 }
-                description={
-                  page === 'overview'
-                    ? 'See how your training flows and prepare for your next step.'
-                    : logPage
-                      ? (progress?.routine?.name ?? 'No routine')
-                      : page === 'goals'
-                        ? 'Set concrete growth goals with weight, reps, and cardio distance and time.'
-                        : 'Save machines and base weights by brand to your own library.'
-                }
+                description={logPage ? (progress?.routine?.name ?? 'No routine') : undefined}
                 actions={
                   // #115: on the Cardio tab the panel's own "Add cardio record" is the main action.
                   !cardioTab && (

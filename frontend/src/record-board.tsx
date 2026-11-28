@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { Badge } from './components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { EmptyState } from './components/ui/empty-state';
 import { requestJson } from './lib/api';
 
@@ -43,10 +43,6 @@ export function RecordBoard() {
             {records.length}
           </Badge>
         </CardTitle>
-        <CardDescription className="text-caption">
-          Your best estimated 1RM and heaviest set for each exercise, with the date you first
-          reached them.
-        </CardDescription>
       </CardHeader>
       <CardContent className="px-4 pt-2 pb-3 md:px-6 md:pb-4">
         {!records.length ? (

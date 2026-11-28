@@ -314,7 +314,6 @@ export function CardioForm({
                     className="flex-1 md:pointer-coarse:[&_input]:text-base"
                     min={0}
                     max={f.max}
-                    placeholder={f.key === 'hours' ? '0' : undefined}
                     value={draft[f.key]}
                     onValueChange={(value) => set(f.key, value)}
                     {...invalid('duration_sec')}
@@ -336,7 +335,6 @@ export function CardioForm({
               min={0}
               max={unit === 'm' ? 1_000_000 : 1000}
               inputMode={unit === 'm' ? 'numeric' : 'decimal'}
-              placeholder="Not entered"
               value={draft.distance}
               onValueChange={(value) => set('distance', value)}
               {...invalid('distance_km')}
@@ -393,7 +391,6 @@ export function CardioForm({
                     <Input
                       className={touchText}
                       inputMode="numeric"
-                      placeholder="Not entered"
                       value={draft[e.key]}
                       onChange={(event) => set(e.key, event.target.value)}
                       {...invalid(e.key)}

@@ -8,7 +8,7 @@ import { List, ListItem } from './components/list';
 import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { EmptyState } from './components/ui/empty-state';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -177,9 +177,7 @@ export function BodyMeasurements({
     <section>
       <PageHeader
         className="mb-6 md:mb-9"
-        eyebrow="BODY CHANGES, SIDE BY SIDE"
-        title="Track your body changes too"
-        description="Record weight, body fat, and skeletal muscle mass by date. Values you did not measure can be left blank and are stored as not entered; nothing is estimated."
+        title="Body records"
         actions={
           <>
             <Button
@@ -252,17 +250,12 @@ export function BodyMeasurements({
                       min={m.min}
                       max={m.max}
                       step="0.01"
-                      placeholder="Not entered"
                       value={draft[m.key]}
                       onChange={(e) => setDraft({ ...draft, [m.key]: e.target.value })}
                     />
                   </Label>
                 ))}
               </fieldset>
-              <p className={hint}>
-                Only one record is saved per date. Edit an already recorded date from the list.
-                Values are saved to 2 decimal places, and at least one is required.
-              </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button type="submit" disabled={saving}>
                   {saving && <Spinner size="sm" aria-hidden />}
@@ -294,10 +287,6 @@ export function BodyMeasurements({
           Metrics with no values in this period: {missing.map((m) => m.label).join(' · ')}
         </p>
       )}
-      <p className={cn(hint, 'mt-2 mb-4')}>
-        This only shows same-day workout volume side by side and does not imply a causal link
-        between training and body changes. No medical judgment or recommended range is provided.
-      </p>
       <Card className="gap-0 py-0 shadow-none">
         <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
           <CardTitle asHeading="h2" className="flex items-center gap-2 text-body font-semibold">
@@ -306,9 +295,6 @@ export function BodyMeasurements({
               {rows.length}
             </Badge>
           </CardTitle>
-          <CardDescription className="text-caption">
-            Measurements for the selected period and same-day workout volume
-          </CardDescription>
         </CardHeader>
         {/* #173: a reload keeps the list on screen; the status line is for screen readers. */}
         {loading && rows.length > 0 && (
@@ -330,7 +316,6 @@ export function BodyMeasurements({
             headingLevel="h3"
             icon={<Scale />}
             title="No body records in the selected period"
-            description="Enter values only for the days you measured. The chart shows only the values you recorded."
           />
         ) : (
           <List aria-label="Body records" className="px-4 py-1 md:px-6 md:py-2.5">

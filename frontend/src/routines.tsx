@@ -13,7 +13,6 @@ import { requestJson } from './lib/api';
 import { useApiQuery } from './lib/query';
 import { cn } from './lib/utils';
 import {
-  autoRule,
   type Machine,
   newPlan,
   payload,
@@ -28,7 +27,6 @@ import { PlanView } from './routines/plan-view';
 import { CardioPreview, Preview } from './routines/previews';
 import { SplitEditor } from './routines/split-editor';
 import { BasicsStep, ScheduleStep, WeeklyGoals } from './routines/steps';
-import { hint } from './routines/styles';
 
 const request = <T,>(path: string, body?: unknown) =>
   requestJson<T>('/api/routines' + path, { method: body ? 'POST' : 'GET', body });
@@ -110,14 +108,6 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
   return (
     <section data-slot="routine-page">
       <h2 className="mb-2 text-body font-semibold">Routine Builder · 12-week plan</h2>
-      <p className="text-body-sm text-muted-foreground">
-        Splits rotate on each workout day, and weeks 4, 8, and 12 are deload weeks. Auto goals
-        calculate the 12-week goals from your current performance, and for manual goals you enter
-        the weekly changes yourself.
-      </p>
-      <p className="mb-4 text-body-sm text-muted-foreground">
-        A plan is only a goal. Record what you actually did separately in the workout journal.
-      </p>
       {/* An open form shows its error beside its buttons, on whichever step it is. */}
       {error && !draft && <AlertBanner className="mb-5">{error}</AlertBanner>}
       <Notice
@@ -269,8 +259,6 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
               ))}
             {step === 3 && draft.progression === 'auto' && (
               <>
-                {/* The rule from step 1 again, beside the targets it produces. */}
-                <p className={hint}>{autoRule}</p>
                 <Preview plan={draft} steps={steps} />
               </>
             )}

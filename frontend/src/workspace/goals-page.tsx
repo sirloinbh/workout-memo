@@ -29,11 +29,7 @@ export function GoalsPage({
   return (
     <>
       {goals.length === 0 ? (
-        <EmptyState
-          icon={<Target />}
-          title="Set a goal for your next workout"
-          description="e.g. Leg Press total weight 100 kg, 10 reps achieved"
-        />
+        <EmptyState icon={<Target />} title="Set a goal for your next workout" />
       ) : (
         <div data-slot="goal-grid" className="grid gap-5 md:grid-cols-2">
           {goals.map((g) => {
@@ -57,11 +53,6 @@ export function GoalsPage({
                 </div>
                 <p className="mt-3 text-body-sm text-muted-foreground">
                   {cleanDate(g.start_date)} — {cleanDate(g.deadline)}
-                </p>
-                <p className="mt-1 text-body-sm text-muted-foreground">
-                  {g.achieved
-                    ? 'You hit both the weight and reps within the goal period.'
-                    : 'Log it under the same exercise name to check whether you achieved it.'}
                 </p>
                 <Button
                   variant="link"

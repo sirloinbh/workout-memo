@@ -19,3 +19,4 @@
 ## Verification
 
 - `npm run check` without `TEST_DATABASE_URL`; e2e and visual run in CI. Real-browser check at 390x844 and 1440x900 (frontend rule) is covered by CI e2e/visual, as in #531; the baselines are looked at in the PR.
+- Visual baselines: 4 files updated (workout-editor at 360/390/768/1280) because the hint now says "workout memo"; taken from the CI artifact. Looked at the 390 image: the layout is unchanged.

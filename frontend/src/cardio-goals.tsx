@@ -170,10 +170,6 @@ export function CardioGoals({ deadline }: { deadline: string }) {
           <h2 id="cardio-goals-title" className="text-body font-semibold">
             Cardio goals
           </h2>
-          <p className="text-caption text-muted-foreground">
-            Weekly and monthly distance, time, count, and record goals are judged from cardio
-            records.
-          </p>
         </div>
         <Button variant="outline" onClick={() => setEditor({ initial: null })}>
           <Plus aria-hidden />
@@ -201,13 +197,7 @@ export function CardioGoals({ deadline }: { deadline: string }) {
           <SkeletonCard />
         </div>
       ) : goals.length === 0 ? (
-        !error && (
-          <EmptyState
-            icon={<Timer />}
-            title="No cardio goals"
-            description="e.g. 3 runs a week, 15 km a week, 5 km within 30 min"
-          />
-        )
+        !error && <EmptyState icon={<Timer />} title="No cardio goals" />
       ) : (
         <div data-slot="cardio-goal-grid" className="grid gap-5 md:grid-cols-2">
           {goals.map((g) => (

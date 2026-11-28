@@ -269,7 +269,6 @@ export function InbodyImport({
                               type={t === 'date' ? 'date' : 'number'}
                               step={t === 'date' ? undefined : '0.01'}
                               inputMode={t === 'date' ? undefined : 'decimal'}
-                              placeholder="Not entered"
                               disabled={busy}
                               value={row[t]}
                               onChange={(e) =>

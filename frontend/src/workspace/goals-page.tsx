@@ -29,11 +29,7 @@ export function GoalsPage({
   return (
     <>
       {goals.length === 0 ? (
-        <EmptyState
-          icon={<Target />}
-          title="Set a goal for your next workout"
-          description="e.g. Leg Press total weight 100 kg, 10 reps achieved"
-        />
+        <EmptyState icon={<Target />} title="Set a goal for your next workout" />
       ) : (
         <div data-slot="goal-grid" className="grid gap-5 md:grid-cols-2">
           {goals.map((g) => {

@@ -13,10 +13,6 @@ export function CardioPreview({ splits }: { splits: Split[] }) {
   return (
     <section data-slot="routine-cardio-preview" className="my-5 rounded-xl border p-4">
       <h4 className="mb-2 text-body-sm font-semibold">Cardio · 12 weeks</h4>
-      <p className="mb-2 text-meta text-muted-foreground">
-        Done after the split&apos;s strength work. Time or distance goes up 10% a week; weeks 4, 8
-        and 12 are deloads at 80% of the week before. Intervals keep their repeats.
-      </p>
       <ul className={list}>
         {items.map(({ split, item }, i) => {
           const weeks =

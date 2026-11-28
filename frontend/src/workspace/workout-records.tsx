@@ -85,7 +85,6 @@ export function WorkoutRecords({
           headingLevel="h3"
           icon={<NotebookPen />}
           title="Log your first record"
-          description="Your growth story starts with today's sets."
           action={
             <Button
               variant="secondary"

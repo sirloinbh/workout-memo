@@ -61,7 +61,6 @@ export function GoalForm({
         <Combobox
           className={touchText}
           maxLength={120}
-          placeholder="Enter the same exercise name as in the journal"
           {...register('exercise')}
           {...field('exercise')}
           value={exercise}

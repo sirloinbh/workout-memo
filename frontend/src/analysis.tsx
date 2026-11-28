@@ -413,9 +413,6 @@ export function Analysis() {
                           )}
                         </dd>
                       </dl>
-                      <p className="mt-2 text-meta text-muted-foreground">
-                        Equal values are shown as ties.
-                      </p>
                       {shown.unknown_base_sets > 0 && (
                         <p className={cn(hint, 'mt-2')}>
                           {plural(shown.unknown_base_sets, 'set')} on machines with unconfirmed base

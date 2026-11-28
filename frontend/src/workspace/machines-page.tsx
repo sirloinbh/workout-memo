@@ -49,7 +49,6 @@ export function MachinesPage({
             headingLevel="h3"
             icon={<Dumbbell />}
             title="Register your own machine"
-            description="An unconfirmed base weight can be stored as not entered."
           />
         ) : (
           <List aria-label="Machine" className="px-4 py-1 md:px-6 md:py-2.5">

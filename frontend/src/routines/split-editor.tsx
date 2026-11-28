@@ -44,10 +44,6 @@ export function SplitEditor({
           onChange={(e) => onChange({ ...split, name: e.target.value })}
         />
       </Label>
-      <p className="mt-3 mb-2 text-meta text-muted-foreground">
-        Each time you tap a body part button it is added in order. You can add the same part more
-        than once.
-      </p>
       <div className="flex flex-wrap gap-2">
         {parts.map((p) => (
           <Button

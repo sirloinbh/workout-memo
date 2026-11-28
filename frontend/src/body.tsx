@@ -177,9 +177,7 @@ export function BodyMeasurements({
     <section>
       <PageHeader
         className="mb-6 md:mb-9"
-        eyebrow="BODY CHANGES, SIDE BY SIDE"
-        title="Track your body changes too"
-        description="Record weight, body fat, and skeletal muscle mass by date. Values you did not measure can be left blank and are stored as not entered; nothing is estimated."
+        title="Body records"
         actions={
           <>
             <Button
@@ -252,7 +250,6 @@ export function BodyMeasurements({
                       min={m.min}
                       max={m.max}
                       step="0.01"
-                      placeholder="Not entered"
                       value={draft[m.key]}
                       onChange={(e) => setDraft({ ...draft, [m.key]: e.target.value })}
                     />
@@ -330,7 +327,6 @@ export function BodyMeasurements({
             headingLevel="h3"
             icon={<Scale />}
             title="No body records in the selected period"
-            description="Enter values only for the days you measured. The chart shows only the values you recorded."
           />
         ) : (
           <List aria-label="Body records" className="px-4 py-1 md:px-6 md:py-2.5">

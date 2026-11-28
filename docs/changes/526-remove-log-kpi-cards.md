@@ -12,3 +12,7 @@ Part of epic #524.
 ## Checks
 
 See the PR for `npm run check` results. Log-page screenshot baselines are updated from the CI `visual-baselines` artifact; the count is in the PR.
+
+## Visual baselines
+
+6 files in `e2e/__screenshots__/ui-visual.spec.ts/` were updated from the `visual-baselines` artifact of the CI run: `journal` at 360/390/768/1280 and `workout-editor` at 768/1280 (the log page shows behind the editor dialog). The Cardio tab screens did not change. No other screen differs.

@@ -1,7 +1,5 @@
 import { QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  CalendarDays,
-  CalendarRange,
   ClipboardList,
   LayoutDashboard,
   NotebookPen,
@@ -67,6 +65,7 @@ import {
   pages,
   statusNotice,
   today,
+  withPeriod,
   type Workout,
 } from './workspace/model';
 import { NewRecords } from './workspace/new-records';
@@ -292,8 +291,6 @@ function Workspace() {
   };
   const nav = [
     ['journal', 'Day log', NotebookPen],
-    ['week', 'Week', CalendarDays],
-    ['weeks12', '12 weeks', CalendarRange],
     ['goals', 'My Goals', Target],
     ['analysis', 'Exercise Analysis', Trophy],
     ['routines', 'Routine Builder', ClipboardList],
@@ -307,13 +304,14 @@ function Workspace() {
   const rangeSearch = (() => {
     const params = new URLSearchParams(location.search);
     params.delete('tab');
+    params.delete('period');
     const text = params.toString();
     return text ? '?' + text : '';
   })();
   const navItems: NavItem[] = nav.map(([key, label, icon]) => ({
     to:
       pages[key] +
-      (['journal', 'week', 'weeks12'].includes(key)
+      (['journal'].includes(key)
         ? location.search
         : ['overview', 'body'].includes(key)
           ? rangeSearch
@@ -518,7 +516,7 @@ function Workspace() {
                   />
                 }
               />
-              {[pages.journal, pages.week, pages.weeks12].map((path) => (
+              {[pages.journal].map((path) => (
                 <Route
                   key={path}
                   path={path}
@@ -540,6 +538,25 @@ function Workspace() {
                   }
                 />
               ))}
+              {/* The old Week and 12-week addresses open the dashboard (#535). */}
+              <Route
+                path="/week"
+                element={
+                  <Navigate to={{ pathname: pages.overview, search: location.search }} replace />
+                }
+              />
+              <Route
+                path="/12-weeks"
+                element={
+                  <Navigate
+                    to={{
+                      pathname: pages.overview,
+                      search: withPeriod(location.search, '12weeks'),
+                    }}
+                    replace
+                  />
+                }
+              />
               {/* The old journal address keeps working (#504). */}
               <Route
                 path="/journal"

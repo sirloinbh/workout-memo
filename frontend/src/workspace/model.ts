@@ -162,11 +162,9 @@ export const statusNotice = (text: string): NoticeValue | undefined =>
   text ? { kind: 'status', text } : undefined;
 // #62: every page has its own URL, so refresh, links and back navigation keep it.
 export const pages = {
-  // #504: the day log is the start page; Week and 12 weeks are the same records over a longer
-  // period, each with its own address so the menu can mark the one that is open.
+  // #504: the day log is the start page. The Week and 12-week views are periods of the
+  // dashboard (#535); their old addresses redirect there.
   journal: '/',
-  week: '/week',
-  weeks12: '/12-weeks',
   overview: '/dashboard',
   goals: '/goals',
   analysis: '/analysis',
@@ -192,14 +190,23 @@ export const periodOptions = [
   { value: 'custom', label: 'Custom' },
 ];
 
-/** The day log and its Week and 12-week views show the same journal page (#504). */
-export const isLogPage = (page: Page) =>
-  page === 'journal' || page === 'week' || page === 'weeks12';
+export const isLogPage = (page: Page) => page === 'journal';
 /** The period a log page opens with until a preset is chosen on it. */
 export const logPeriod: Partial<Record<Page, string>> = {
   journal: 'day',
-  week: 'week',
-  weeks12: '12weeks',
+};
+
+const startPeriods = ['day', 'week', 'month', '4weeks', '12weeks'];
+/** A period named in the address (?period=12weeks, #535), or undefined. */
+export const periodFromSearch = (search: string) => {
+  const value = new URLSearchParams(search).get('period');
+  return value && startPeriods.includes(value) ? value : undefined;
+};
+/** The address query with the period set, keeping the other parameters. */
+export const withPeriod = (search: string, period: string) => {
+  const params = new URLSearchParams(search);
+  params.set('period', period);
+  return '?' + params.toString();
 };
 
 export const pageOf = (path: string) =>

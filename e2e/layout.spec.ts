@@ -4,8 +4,6 @@ import { expect, test } from '@playwright/test';
 const pages = [
   '/',
   '/journal',
-  '/week',
-  '/12-weeks',
   '/dashboard',
   '/goals',
   '/analysis',

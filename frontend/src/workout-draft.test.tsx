@@ -153,7 +153,8 @@ type UI = ReturnType<typeof mount>;
 // Text is looked up the way a user reads the screen: by the element that shows it.
 const shows = (text: RegExp) => screen.queryAllByText(text);
 const loaded = () => waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
-const dialog = () => screen.getByRole('dialog');
+const dialog = () =>
+  screen.getByRole('region', { name: /New workout record|Edit workout journal/ });
 const titleInput = () => dialog().querySelector<HTMLInputElement>('input[maxlength="120"]')!;
 const exerciseInputs = () => [
   ...dialog().querySelectorAll<HTMLInputElement>('input[role="combobox"][id$="-exercise"]'),

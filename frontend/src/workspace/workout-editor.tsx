@@ -1,8 +1,7 @@
 import { Plus, X } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 import { type Feedback, feedbackLevels } from '../../../shared/contract';
-import { Modal, ModalFooter } from '../components/modal';
 import { ToggleChips } from '../components/toggle-chips';
 import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
@@ -27,7 +26,10 @@ import {
 } from './model';
 import type { WorkoutDraftState } from './use-workout-draft';
 
-/** The full-screen editor for one workout journal and its sets. */
+/**
+ * The editor for one workout journal and its sets. #530: it opens on the page itself, not in a modal. Focus moves to
+ * its heading when it opens and returns to the control that opened it when it closes.
+ */
 export function WorkoutEditor({
   draft,
   saving,
@@ -50,15 +52,58 @@ export function WorkoutEditor({
   const editor = draft.editor!;
   const invalid = (key: string) => invalidProps(key, issues[key]);
   const issue = (key: string) => <FieldError name={key}>{issues[key]}</FieldError>;
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement;
+    heading.current?.focus();
+    return () => {
+      // A new record leaves a local draft, which disables "Log workout"; focus then goes to the page content.
+      const usable =
+        opener instanceof HTMLElement && opener.isConnected && !opener.matches(':disabled');
+      if (usable) opener.focus();
+      else {
+        const main = document.querySelector<HTMLElement>('main');
+        main?.setAttribute('tabindex', '-1');
+        main?.focus();
+      }
+    };
+  }, []);
+  const title = editor.id ? 'Edit workout journal' : 'New workout record';
+  const close = () => {
+    setIssues({});
+    setEditor(null);
+  };
+  // Escape closes the editor, except while a save runs. A field that uses Escape itself (an open name list)
+  // stops the event first.
+  const escape = useRef<(e: KeyboardEvent) => void>(() => {});
+  escape.current = (e) => {
+    if (e.key === 'Escape' && !e.defaultPrevented && !saving) close();
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => escape.current(e);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
   return (
-    <Modal
-      title={editor.id ? 'Edit workout journal' : 'New workout record'}
-      layout="full"
-      close={() => {
-        setIssues({});
-        setEditor(null);
-      }}
+    // The "modal" class only carries the form field styles in style.css; this is a page section, not a dialog.
+    <section
+      aria-labelledby="workout-editor-title"
+      data-slot="workout-editor"
+      className="modal mb-6"
     >
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2
+          id="workout-editor-title"
+          ref={heading}
+          tabIndex={-1}
+          className="text-lg font-semibold outline-none"
+        >
+          {title}
+        </h2>
+        <Button type="button" variant="ghost" size="icon" aria-label="Close" onClick={close}>
+          <X size={16} />
+        </Button>
+      </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -380,14 +425,17 @@ export function WorkoutEditor({
               onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
             />
           </label>
-          <ModalFooter>
+          <div
+            data-slot="editor-footer"
+            className="sticky bottom-0 z-10 border-t bg-background pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          >
             <Button type="submit" className="w-full" disabled={saving}>
               {saving && <Spinner size="sm" aria-hidden />}
               {saving ? 'Saving…' : 'Save record'}
             </Button>
-          </ModalFooter>
+          </div>
         </fieldset>
       </form>
-    </Modal>
+    </section>
   );
 }

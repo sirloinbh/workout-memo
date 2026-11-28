@@ -80,5 +80,10 @@ for (const { path, name } of pages)
   });
 for (const modal of modals)
   test(`${modal.name} modal accessibility`, async ({ browser }) => {
-    await checkScreen(browser, modal.name, (page) => openModal(page, modal), '[role="dialog"]');
+    await checkScreen(
+      browser,
+      modal.name,
+      (page) => openModal(page, modal),
+      modal.role === 'dialog' ? '[role="dialog"]' : '[data-slot="workout-editor"]',
+    );
   });

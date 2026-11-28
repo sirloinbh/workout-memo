@@ -61,7 +61,7 @@ test("A new journal starts with today's date and title and the sets and machines
   await page.getByLabel('Reference date', { exact: true }).fill('2001-03-15');
   await expect(page.getByRole('button', { name: "Log with today's routine" })).toBeVisible();
   await page.getByRole('button', { name: 'Log workout' }).first().click();
-  const editor = page.getByRole('dialog', { name: 'New workout record' });
+  const editor = page.getByRole('region', { name: 'New workout record' });
   await expect(editor.getByLabel('Workout date')).toHaveValue(seoul);
   await expect(editor.getByLabel('Journal title')).toHaveValue(title);
   const sets = editor.locator('[data-slot=set-row]');

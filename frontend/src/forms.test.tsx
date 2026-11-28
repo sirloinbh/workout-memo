@@ -75,7 +75,7 @@ test('the journal form marks the invalid set fields and keeps the input unsent',
   const ui = mount();
   await loaded();
   await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
-  const dialog = screen.getByRole('dialog', { name: 'New workout record' });
+  const dialog = screen.getByRole('region', { name: 'New workout record' });
   await ui.user.type(within(dialog).getByLabelText('Journal title'), 'Lower body');
   const names = within(dialog).getAllByLabelText('Exercise name');
   const weights = within(dialog).getAllByLabelText('Total weight kg');
@@ -128,7 +128,7 @@ test('clearing the weight shows a field error and sends nothing', async () => {
   const ui = mount();
   await loaded();
   await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
-  const dialog = screen.getByRole('dialog', { name: 'New workout record' });
+  const dialog = screen.getByRole('region', { name: 'New workout record' });
   await ui.user.type(within(dialog).getByLabelText('Journal title'), 'Lower body');
   fireEvent.change(within(dialog).getAllByLabelText('Exercise name')[0], {
     target: { value: 'Squat' },
@@ -192,7 +192,7 @@ test('the journal title offers earlier titles and still accepts a new one', asyn
   render(<App />);
   await loaded();
   await user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
-  const dialog = screen.getByRole('dialog', { name: 'New workout record' });
+  const dialog = screen.getByRole('region', { name: 'New workout record' });
   const title = within(dialog).getByRole('combobox', { name: 'Journal title' });
   await user.clear(title);
   await user.type(title, 'Legs');

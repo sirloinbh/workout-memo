@@ -44,6 +44,7 @@ import { type CardioPreset } from './routine-cardio';
 import { AccountActions, SignInGate } from './sign-in';
 import { api, type Changed, changed, type WriteAction } from './workspace/api';
 import { GoalForm } from './workspace/goal-form';
+import { clearLegacyStorage } from './workspace/legacy-storage';
 import { MachineEditor } from './workspace/machine-editor';
 import {
   type Goal,
@@ -61,7 +62,6 @@ import {
 import { NewRecords } from './workspace/new-records';
 import { PeriodControls } from './workspace/period-controls';
 import { usePeriodRange } from './workspace/use-period-range';
-import { usePush } from './workspace/use-push';
 import { useRoutineProgress } from './workspace/use-routine-progress';
 import { useWorkoutDraft } from './workspace/use-workout-draft';
 import { WorkoutEditor } from './workspace/workout-editor';
@@ -114,6 +114,8 @@ function Workspace() {
   const headerActionLabel =
     page === 'goals' ? 'Add goal' : page === 'machines' ? 'Add machine' : 'Log workout';
   const setPage = (next: Page) => void navigate(pages[next]);
+  // #528: drop the browser keys of a removed feature once.
+  useEffect(clearLegacyStorage, []);
   const queryClient = useQueryClient();
   const range = usePeriodRange(page);
   const { customRange, journalTab, setJournalTab, from, to } = range;
@@ -128,7 +130,6 @@ function Workspace() {
   const clearCardioPreset = useCallback(() => setCardioPreset(null), []);
   const routine = useRoutineProgress(page);
   const { progress, loadProgress } = routine;
-  const pushState = usePush();
   // #62: the period is part of the query key, so a late response for an earlier
   // period can never replace the selected one's data, error or loading state.
   const workoutsQuery = useQuery({
@@ -346,7 +347,7 @@ function Workspace() {
                   }
                 />
                 <Route path={pages.analysis} element={<Analysis />} />
-                <Route path={pages.settings} element={<Settings pushState={pushState} />} />
+                <Route path={pages.settings} element={<Settings />} />
                 <Route path="*" element={null} />
               </Routes>
             </Suspense>

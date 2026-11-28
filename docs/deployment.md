@@ -77,9 +77,9 @@ The number of deploys by itself adds no charge. The reasons are as follows.
 
 [Lightsail pricing](https://aws.amazon.com/lightsail/pricing/), [Lightsail data transfer](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-faq-data-transfer-allowance.html). An unexpected cost shows up in the $10 monthly budget alert (50%, 80%, forecast 100%).
 
-## 2-2. Rest-timer Web Push keys (#260)
+## 2-2. Web Push keys (#260, #485)
 
-The API sends the rest-end Web Push with the `web-push` package. Without keys, push is off: `GET /api/push/config` says `enabled: false`, the Settings toggle is hidden, and the in-screen timer works as before. Merging without keys is safe.
+The API sends the weekly summary Web Push with the `web-push` package. The rest-end push was removed with the in-app timer (#528); the keys stay for the weekly summary. Without keys, push is off: `GET /api/push/config` says `enabled: false` and the Settings weekly summary switch is hidden. Merging without keys is safe.
 
 | Variable            | Meaning                                                                                    |
 | ------------------- | ------------------------------------------------------------------------------------------ |
@@ -91,7 +91,7 @@ Turn it on in production (a production change that needs the owner's go-ahead):
 
 1. Generate one key pair, once, on a trusted PC from `backend/`: `node -e "console.log(require('web-push').generateVAPIDKeys())"`. Keep the pair: a new pair makes every saved subscription stop working.
 2. Put the three variables in the server `.env` (`compose.yaml` passes them to the API) and restart the API (`docker compose up -d api`).
-3. Open Settings in the app and turn on rest notifications on each device. Real-device checks are in #110.
+3. Open Settings in the app and turn on the weekly summary notification on each device. Real-device checks are in #110.
 
 ## 3. Access
 

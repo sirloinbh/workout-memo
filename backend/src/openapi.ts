@@ -8,7 +8,6 @@ import { exportQuery, restoreRequest } from './backup.js';
 import {
   pushSubscriptionSchema,
   pushUnsubscribeSchema,
-  restPushSchema,
   weeklySummarySettingSchema,
 } from './contract.js';
 import {
@@ -192,9 +191,9 @@ export const operations: Record<string, Operation> = {
     body: ['WeightStep', weightStepSchema],
     status: [200, 400],
   },
-  // #260: Web Push for the rest timer; see docs/api.md.
+  // #260: Web Push subscriptions; see docs/api.md.
   'GET /api/push/config': {
-    summary: 'Whether rest-end Web Push is set up on the server and its public VAPID key (#260)',
+    summary: 'Whether Web Push is set up on the server and its public VAPID key (#260)',
     status: [200],
   },
   'POST /api/push/subscriptions': {
@@ -209,16 +208,6 @@ export const operations: Record<string, Operation> = {
 
     body: ['PushUnsubscribe', pushUnsubscribeSchema],
     status: [200, 400],
-  },
-  'PUT /api/push/rest': {
-    summary:
-      'Tell the server when the running rest ends (ends_at, epoch ms); it sends one push then. 503 when push is not set up',
-    body: ['RestPush', restPushSchema],
-    status: [200, 400, 503],
-  },
-  'DELETE /api/push/rest': {
-    summary: 'Cancel the pending rest-end push (cancel or pause) → { ok: true }',
-    status: [200],
   },
   // #485: the Sunday-night weekly summary push.
   'GET /api/push/weekly-summary': {

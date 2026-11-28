@@ -71,7 +71,7 @@ export function setGroups(sets: readonly SetRow[]) {
 // Only completed sets are actual performance for statistics and goals.
 export const done = (s: SetRow) => s.completed !== false;
 // #268: below 480px a set field's name sits beside it, not above, so a set card fits between
-// the pinned rest timer and save bar; a fixed width lines the fields up.
+// the pinned save bar; a fixed width lines the fields up.
 export const setFieldName = 'w-20 shrink-0 min-[480px]:w-auto';
 export const setField =
   'mb-0 text-meta max-[480px]:flex-row max-[480px]:items-center max-[480px]:[&>:last-child]:min-w-0 max-[480px]:[&>:last-child]:flex-1';

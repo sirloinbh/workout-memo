@@ -1,15 +1,14 @@
-// Rest-timer Web Push worker (#260). Registered by the app at scope /push/ when the user turns on
-// rest notifications (frontend/src/push.ts). It is separate from /sw.js, which is centrally managed
-// and has no push handling; this worker never touches fetch, so pages and /api/ are not affected.
-// - push: shows "Rest over" with vibration. If the app is open and visible, it only tells the page,
-//   because the page already shows the end and vibrates itself.
+// Web Push worker (#260). Registered by the app at scope /push/ when the user turns on the weekly summary
+// notification (frontend/src/push.ts). It is separate from /sw.js, which is centrally managed and has no
+// push handling; this worker never touches fetch, so pages and /api/ are not affected.
+// - push: shows the notification the server sent (the weekly summary, #485) with vibration.
 // - notificationclick: opens the app, or focuses an open window.
 /* global self, clients */ // Service worker globals for ESLint.
 const FALLBACK = {
-  title: 'Rest over',
-  body: 'Time for your next set.',
-  url: '/journal',
-  tag: 'rest-timer',
+  title: 'Your week in review',
+  body: '',
+  url: '/',
+  tag: 'weekly-summary',
 };
 
 function readPayload(event) {
@@ -38,21 +37,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   const payload = readPayload(event);
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-      const visible = windows.find((client) => client.visibilityState === 'visible');
-      // Only the rest push is silent while the app is visible; the weekly summary (#485) is always shown.
-      if (visible && payload.tag === FALLBACK.tag) {
-        visible.postMessage({ type: 'rest-over' });
-        return undefined;
-      }
-      return self.registration.showNotification(payload.title, {
-        body: payload.body,
-        tag: payload.tag,
-        renotify: true,
-        vibrate: [200, 100, 200],
-        icon: '/icons/icon-192.png',
-        data: { url: payload.url },
-      });
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      tag: payload.tag,
+      renotify: true,
+      vibrate: [200, 100, 200],
+      icon: '/icons/icon-192.png',
+      data: { url: payload.url },
     }),
   );
 });

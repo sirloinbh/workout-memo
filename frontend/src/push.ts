@@ -1,7 +1,7 @@
 import { requestJson } from './lib/api';
 
-// #260: rest-end Web Push. The app tells the server when a rest ends and the server pushes then, so
-// the alert arrives with the screen off. The worker is public/push/sw.js, at its own scope. The
+// #260: Web Push (the weekly summary, #485). The server pushes, so the alert arrives with the screen
+// off. The worker is public/push/sw.js, at its own scope. The
 // centrally managed public/sw.js also handles `push` and `notificationclick` since the standards
 // sync (#486), but it only shows what an app subscribed to it; this app keeps subscribing through
 // /push/sw.js, so a push is shown once and the two workers do not interfere (#499).
@@ -86,16 +86,6 @@ export async function enablePush(publicKey: string): Promise<PushStatus> {
     throw error;
   }
   return 'on';
-}
-
-export async function disablePush(): Promise<void> {
-  const subscription = await currentSubscription();
-  if (!subscription) return;
-  await requestJson('/api/push/subscriptions', {
-    method: 'DELETE',
-    body: { endpoint: subscription.endpoint },
-  });
-  await subscription.unsubscribe();
 }
 
 export const permissionHelp =

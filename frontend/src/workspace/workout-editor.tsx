@@ -193,7 +193,7 @@ export function WorkoutEditor({
             Record each set. For weight, enter the total weight (kg) including the machine&apos;s
             base weight. For equipment that moves both sides together, enter the sum of both sides;
             for one-sided exercises, enter the total weight actually moved on one side. If you do
-            not know the base weight, do not guess; leave a note in the set memo. Selecting a
+            not know the base weight, do not guess; leave a note in the workout memo. Selecting a
             machine does not add its base weight automatically.
           </p>
           <p className="form-hint">
@@ -381,22 +381,13 @@ export function WorkoutEditor({
                       {(['weight', 'reps', 'rpe'] as const).map((field) => (
                         <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
                       ))}
-                      <label className={cn(setField, 'md:col-span-2')}>
-                        <span className={setFieldName}>Set memo</span>
-                        {/* #268: one line on phones, still a 44px target, growing with a longer memo. */}
-                        <textarea
-                          className="max-md:field-sizing-content max-md:min-h-11"
-                          rows={1}
-                          maxLength={4000}
-                          value={s.notes}
-                          placeholder="Form, machine settings, etc."
-                          onChange={(e) => {
-                            const sets = [...editor.sets!];
-                            sets[i] = { ...s, notes: e.target.value };
-                            setEditor({ ...editor, sets });
-                          }}
-                        />
-                      </label>
+                      {/* #532: new sets have no memo of their own; a memo saved on an older set stays visible
+                          and is kept when the workout is saved. */}
+                      {s.notes && (
+                        <p className="m-0 text-meta text-muted-foreground md:col-span-2">
+                          Earlier set memo: {s.notes}
+                        </p>
+                      )}
                       <Button
                         type="button"
                         size="lg"
@@ -422,6 +413,8 @@ export function WorkoutEditor({
                       ...editor.sets![lastIndex],
                       completed: false,
                       rpe: null,
+                      // The memo belongs to the whole workout, so a new set does not copy an older set's memo.
+                      notes: '',
                     });
                     setEditor({ ...editor, sets });
                   }}
@@ -458,12 +451,13 @@ export function WorkoutEditor({
             <Plus size={16} />
             Add another exercise
           </button>
+          {/* #532: the one memo for the day, next to the save action. */}
           <label>
             Workout memo
             <textarea
               maxLength={4000}
               value={editor.notes}
-              placeholder="Condition, form, things to remember for the next workout…"
+              placeholder="Form, machine settings, condition, things to remember for the next workout…"
               onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
             />
           </label>

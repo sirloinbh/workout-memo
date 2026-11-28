@@ -120,7 +120,7 @@ Before you run the API that uses the weight step per exercise (#86), apply `012_
 
 Before you run the API that uses the biceps and triceps body parts (#88), apply `014_biceps_triceps.sql`. It replaces the body part CHECK of `exercise_body_parts` so that it includes biceps and triceps, and still allows the previously saved `팔` (arms). It does not change data and is safe to re-run.
 
-The rest timer is not stored on the server. Only the time setting, whether it starts automatically, and the end time are kept in this browser's localStorage (`workout-memo:rest-timer:v1`), and the remaining time is calculated again from the end time. The default rest by exercise type (lower body, upper body, single-joint, #84) is kept separately in `workout-memo:rest-durations:v1`.
+The in-app timer was removed (#527, #528). `025_drop_rest_pushes.sql` drops the table of pending rest-end pushes (it only held short-lived rows). `push_subscriptions` stays because the weekly summary push (#485) still needs it. The browser keys the old timer used are cleared once by the app on load. It is safe to re-run.
 
 Weight is the total weight in kg (including the machine base weight), and reps is a positive integer. An unconfirmed base weight is kept as NULL. When a log is deleted, its sets are deleted with CASCADE. A goal is met when one completed set of the same exercise name meets both the weight and the reps within the configured period.
 

@@ -20,7 +20,7 @@
 | Authentication              | The shared sign-in (`https://auth.daysofme.com`), merged 2026-11-16 (#303, which replaced #107); its production behavior has not been checked yet                                                                                                       |
 | PWA files                   | `manifest.webmanifest` (standalone, 192, 512 and maskable icons), `sw.js` (pages go to the network, offline shows a notice, caches only `/assets/`, does not touch `/api/`), `offline.html`, Apple icon                                                 |
 | Service worker registration | `service-worker.ts` registers `/sw.js` in a production build and shows a "new version" notice with a Reload button (#109). With HTTPS (#106) the production address is a secure context, so it should register there too; not checked in production yet |
-| Important features          | Rest timer end notification and vibration (including when the screen is off), offline use in the gym, and later Garmin and Nike data (Health Connect, #118)                                                                                             |
+| Important features          | The weekly summary notification, offline use in the gym, and later Garmin and Nike data (Health Connect, #118)                                                                                                                                          |
 
 About offline: the current service worker does not cache pages, so when offline you only see `offline.html`. "Recording offline in the gym" is web-side work that is separate from the choice of approach: an app shell cache and a save queue (draft preservation, #34). All three approaches use the same web code, so this work is reused in any of them.
 
@@ -40,12 +40,12 @@ Lighthouse 12 no longer has PWA audits, so #109 checked these once in Chrome on 
 - Notes for the next check: a Playwright `newContext` reports only `in-incognito`, so use a persistent profile. Chrome did not keep the service worker registration for a profile under a long path (the session scratchpad); a short path such as `%TEMP%\pwa109` worked.
 - Not checked yet: installing on a real phone and the production address. They can be checked now that the app is on HTTPS (#106, 2026-11-15); the shared sign-in (#303) merged on 2026-11-16 and is not checked in production yet either.
 
-## Rest-timer Web Push (#260, built 2026-11-17)
+## Web Push (#260, built 2026-11-17; rest-end push removed in #528)
 
-The app turns on screen-off rest notifications on the Settings page (per device). When a rest starts or resumes, the browser tells the API the end time (`PUT /api/push/rest`); pause and cancel clear it. The API sends one Web Push at that time to every saved subscription of the signed-in user. Details are in [api.md](api.md), keys and turning it on in [deployment.md](deployment.md) (2-2), and the change record in [changes/260-web-push.md](changes/260-web-push.md).
+The app turns on the weekly summary notification on the Settings page (per device, #485). The in-app timer and its rest-end push were removed (#527, #528), so the weekly summary is now the only push the server sends. Details are in [api.md](api.md), keys and turning it on in [deployment.md](deployment.md) (2-2), and the change record in [changes/260-web-push.md](changes/260-web-push.md).
 
 - The push worker is `frontend/public/push/sw.js` at scope `/push/`, not part of `/sw.js`, because `sw.js` is centrally managed.
-- **Not checked yet (the user's real-device check, together with #110):** an installed app on a real Android phone receiving the notification with the screen off, the vibration, and a tap opening the app. The automated tests cover the API, the schedule and the worker's handlers, not a real push service. Push is off until the VAPID keys are in the production `.env`.
+- **Not checked yet (the user's real-device check, together with #110):** an installed app on a real Android phone receiving the weekly summary with the screen off, the vibration, and a tap opening the app. The automated tests cover the API and the worker's handlers, not a real push service. Push is off until the VAPID keys are in the production `.env`.
 
 ## Comparison of candidates
 
@@ -197,10 +197,10 @@ Digital Asset Links is checked by Google, not only by your phone, and the produc
 
 - The app opens with no address bar (if there is one, the fingerprint or public access is wrong).
 - You stay signed in after closing and reopening the app.
-- Saving a workout log works, and the rest timer runs.
+- Saving a workout log works.
 - The Android back button goes back inside the app and leaves at the start screen.
 - After a web deploy, the app shows the new version (the "new version" notice, then Reload) without reinstalling.
-- Rest-end push (#260), with the VAPID keys in the production `.env` first: turn on screen-off rest notifications, start a rest, lock the screen, and confirm the notification and vibration arrive near the end time and that tapping it opens the app. Record the delay. If nothing arrives inside the TWA, Android 13 or later may need the notification permission for the app; note what you see.
+- Weekly summary push (#260, #485), with the VAPID keys in the production `.env` first: turn on the weekly summary in Settings, lock the screen, and confirm the notification and vibration arrive (Sunday 21:00, or ask for a test send) and that tapping it opens the app. Record the delay. If nothing arrives inside the TWA, Android 13 or later may need the notification permission for the app; note what you see.
 - Record the results in #110.
 
 ## Recommendation and reasons
@@ -210,7 +210,7 @@ Digital Asset Links is checked by Google, not only by your phone, and the produc
 1. This is a one-person app and has automatic deploy (#75), so an approach where a web deploy alone updates the app has the least operating burden (PWA and TWA).
 2. The store listing request is met with the TWA. Internal testing has no 12-tester 14-day requirement and is exempt from the data safety form (confirmed). The official wording of the health apps declaration lists closed test, open test and production as target tracks and not internal testing, but there is no explicit statement that it is exempt (see "What we could not confirm" below).
 3. You do not have to bring npm tools onto the local machine (PWABuilder). Even if you do, `@bubblewrap/cli` 1.27.0 meets the 14-day rule.
-4. Rest timer: while the screen is on, handle it on the web as now, and for screen-off choose between (a) a notification at the end time through server Web Push or (b) a Capacitor local notification. (a) works for the PWA, the TWA and an iOS home screen app with the same web code.
+4. Screen-off notifications (this was the timer decision; the timer was removed in #528): server Web Push (a) works for the PWA, the TWA and an iOS home screen app with the same web code, and the weekly summary uses it.
 
 Reasons for rejecting or deferring
 
@@ -259,7 +259,7 @@ These are the options presented before the decision. The decision is in the sect
 ## Proposed scope of follow-up issues
 
 - **#109 PWA install support**: the issue body's "no manifest, icons or service worker" is already resolved (central template sync). The remaining scope is: Chrome's installability judgment over HTTPS and a Lighthouse record, install and full screen on a real Android device, checking that a new version is picked up, deciding whether to do the offline app shell cache and the save-failure display (linked to #34), and deciding whether to do the server Web Push rest notification here or split it into a separate issue. Do not use `vite-plugin-pwa`; keep the current hand-written `sw.js` (no new npm).
-- **#110 Android package**: confirmed as a TWA (PWABuilder). Package name, upload key creation and storage, deploying `/.well-known/assetlinks.json` (a login exception, with both the upload key and app signing key fingerprints), confirming target API 36 or higher, and real-device scenarios (staying logged in, saving a log, the rest timer, the back button, and a web deploy being reflected). Install through the Play internal test instead of a direct APK install.
+- **#110 Android package**: confirmed as a TWA (PWABuilder). Package name, upload key creation and storage, deploying `/.well-known/assetlinks.json` (a login exception, with both the upload key and app signing key fingerprints), confirming target API 36 or higher, and real-device scenarios (staying logged in, saving a log, the back button, and a web deploy being reflected). Install through the Play internal test instead of a direct APK install.
 - **#111 Play listing**: we propose limiting the scope to the internal testing track. Account registration (US$25, device verification), a public privacy policy page, a minimal store listing, and the health apps declaration (submit together if it is also required for internal testing). If general release is chosen, add the closed test (12 testers, 14 days), the data safety form, the health apps declaration ("Activity and Fitness") and the content rating.
 - **New issues (deferred)**: screen-off rest notification (server Web Push), and the Capacitor switch and Health Connect integration (depending on the result of #118).
 

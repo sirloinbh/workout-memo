@@ -5,8 +5,7 @@ import { CardioTab } from '../cardio/cardio-tab';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { RoutineProgress } from '../progress';
 import type { CardioPreset } from '../routine-cardio';
-import { cleanDate, type Goal, type JournalTab, journalTabs, today } from './model';
-import { StatsGrid } from './stats-grid';
+import { cleanDate, type JournalTab, journalTabs, today } from './model';
 import type { useRoutineProgress } from './use-routine-progress';
 import { type RecordsProps, WorkoutRecords } from './workout-records';
 
@@ -17,7 +16,6 @@ export function JournalPage({
   setJournalTab,
   from,
   to,
-  goals,
   recordsProps,
   routine,
   quickWorkout,
@@ -30,7 +28,6 @@ export function JournalPage({
   setJournalTab: (tab: JournalTab) => void;
   from: string;
   to: string;
-  goals: Goal[];
   recordsProps: RecordsProps;
   routine: ReturnType<typeof useRoutineProgress>;
   quickWorkout: () => void;
@@ -78,7 +75,6 @@ export function JournalPage({
       ) : (
         <>
           {periodControls}
-          <StatsGrid workouts={workouts} goals={goals} cardioSessions={[]} />
           <RoutineProgress
             progress={progress}
             error={progressError}

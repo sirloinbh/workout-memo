@@ -484,7 +484,6 @@ function Workspace() {
                         setJournalTab={setJournalTab}
                         from={from}
                         to={to}
-                        goals={goals}
                         recordsProps={recordsProps}
                         routine={routine}
                         quickWorkout={quickWorkout}

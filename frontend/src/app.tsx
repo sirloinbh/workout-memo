@@ -111,6 +111,8 @@ function Workspace() {
   const navigate = useNavigate();
   const page: Page = pageOf(location.pathname) ?? 'journal';
   const logPage = isLogPage(page);
+  const headerActionLabel =
+    page === 'goals' ? 'Add goal' : page === 'machines' ? 'Add machine' : 'Log workout';
   const setPage = (next: Page) => void navigate(pages[next]);
   const queryClient = useQueryClient();
   const range = usePeriodRange(page);
@@ -375,6 +377,10 @@ function Workspace() {
                   // #115: on the Cardio tab the panel's own "Add cardio record" is the main action.
                   !cardioTab && (
                     <Button
+                      // #533: icon only; the accessible name and tooltip carry the action's text.
+                      size="icon"
+                      aria-label={headerActionLabel}
+                      title={headerActionLabel}
                       // A recoverable local draft must be restored or discarded first (#101).
                       disabled={!!recovery && (page === 'overview' || logPage)}
                       onClick={
@@ -393,11 +399,6 @@ function Workspace() {
                       }
                     >
                       <Plus aria-hidden />
-                      {page === 'goals'
-                        ? 'Add goal'
-                        : page === 'machines'
-                          ? 'Add machine'
-                          : 'Log workout'}
                     </Button>
                   )
                 }

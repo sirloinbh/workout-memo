@@ -87,9 +87,14 @@ export function WorkoutRecords({
           title="Log your first record"
           description="Your growth story starts with today's sets."
           action={
-            <Button variant="secondary" onClick={newWorkout}>
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Log workout"
+              title="Log workout"
+              onClick={newWorkout}
+            >
               <Plus aria-hidden />
-              Log workout
             </Button>
           }
         />

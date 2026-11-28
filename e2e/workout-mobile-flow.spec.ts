@@ -75,10 +75,11 @@ test('enters, completes, and saves three sets in a new journal on a 390px touch 
   const editor = page.getByRole('region', { name: 'New workout record' });
   const sets = editor.locator('[data-slot=set-row]');
   await expect(sets).toHaveCount(3);
+  // #531: the three starting sets are one exercise; its name is entered once.
+  await user.tap('exercise', editor.getByLabel('Exercise name'));
+  await user.type(exercise);
   for (let i = 0; i < 3; i++) {
     const set = sets.nth(i);
-    await user.tap(`set ${i + 1} exercise`, set.getByLabel('Exercise name'));
-    await user.type(exercise);
     // The weight starts at 0. Tapping the field's right end puts the caret after it in both
     // versions (left-aligned before #105, centred after), so one backspace clears it.
     const field = set.getByLabel('Total weight kg', { exact: true });
@@ -123,8 +124,9 @@ test('enters, completes, and saves three sets in a new journal on a 390px touch 
   console.log(`[105-flow] ${JSON.stringify(result)}`);
   test.info().annotations.push({ type: '105-flow', description: JSON.stringify(result) });
   // #268: the set cards fit between the pinned bars again, so the flow takes no more swipes
-  // than before #105 (3), with the same taps and keys.
+  // than before #105 (3). #531: the name is typed once for the three sets, so two taps and ten keys fewer (11 and 24
+  // before).
   // An extra swipe names its control (for example a suggestion list over the weight field).
-  expect(user.count).toMatchObject({ taps: 11, keys: 24 });
+  expect(user.count).toMatchObject({ taps: 9, keys: 14 });
   expect(user.count.scrolls, `scrolled at ${user.scrolledAt.join(', ')}`).toBeLessThanOrEqual(3);
 });

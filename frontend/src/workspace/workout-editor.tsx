@@ -18,9 +18,12 @@ import {
   done,
   feedbackLabels,
   type Machine,
+  newGroupKey,
   officialLabel,
   setField,
   setFieldName,
+  setGroups,
+  type SetRow,
   statusNotice,
   weightStep,
 } from './model';
@@ -199,198 +202,236 @@ export function WorkoutEditor({
             effort feedback (hard, medium, easy); if you do not choose, it stays not entered.
             Completed {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0} sets
           </p>
-          {editor.sets?.map((s, i) => (
-            // #105: one card per set; weight and reps take − / + presses and a number
-            // keypad, and the completion button spans the card for a one-handed tap.
-            <div
-              data-slot="set-row"
-              className={cn(
-                'mb-3 grid gap-x-3 gap-y-2.5 rounded-lg border border-border bg-card p-3 md:grid-cols-2',
-                done(s) && 'border-primary/60',
-              )}
-              key={s._key ?? i}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-x-2 md:col-span-2">
-                <span
-                  className={cn(
-                    'text-meta text-muted-foreground',
-                    done(s) && 'font-bold text-foreground',
-                  )}
-                >
-                  Set {i + 1}
-                </span>
-                <div className="flex flex-wrap items-center gap-0.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground"
-                    disabled={editor.sets!.length === 1}
-                    aria-label="Delete set"
-                    onClick={() => {
-                      setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) });
-                    }}
-                  >
-                    <X size={15} />
-                  </Button>
-                </div>
-              </div>
-              {/* The hint stays in the name's grid cell so Machine keeps its place beside it. */}
-              <div>
-                <label htmlFor={`set-${i}-exercise`} className={setField}>
-                  <span className={setFieldName}>Exercise name</span>
-                  {/* #124: suggestions from earlier journals, goals, routines and machines. */}
-                  <Combobox
-                    id={`set-${i}-exercise`}
-                    className="md:pointer-coarse:text-base"
-                    required
-                    value={s.exercise}
-                    options={exerciseNames}
-                    listLabel="Previously used names"
-                    onValueChange={(exercise) => renameSet(i, exercise)}
-                    {...invalid(`sets.${i}.exercise`)}
-                  />
-                </label>
-                <SimilarNameHint
-                  value={s.exercise}
-                  names={exerciseNames}
-                  onReplace={(exercise) => renameSet(i, exercise)}
-                />
-              </div>
-              <label className={setField}>
-                <span className={setFieldName}>Machine</span>
-                <select
-                  className="h-9 px-2 py-0 text-body-sm pointer-coarse:text-base"
-                  value={s.machine_id ?? ''}
-                  onChange={(e) => {
-                    const m = machines.find((m) => m.id === Number(e.target.value));
-                    const sets = [...editor.sets!];
-                    sets[i] = {
-                      ...s,
-                      machine_id: m?.id ?? null,
-                      exercise: s.exercise || m?.name || '',
-                    };
-                    setEditor({ ...editor, sets });
-                  }}
-                >
-                  <option value="">Free workout</option>
-                  {machines.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.brand} · {m.name} (base weight{' '}
-                      {m.base_weight === null ? 'unconfirmed' : `${m.base_weight} kg`})
-                      {m.official_status
-                        ? ` · Official reference ${officialLabel({
-                            status: m.official_status,
-                            raw_value: m.official_raw_value,
-                            raw_unit: m.official_raw_unit,
-                            weight_kg: m.official_weight_kg,
-                            basis: m.official_basis,
-                          })}`
-                        : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {/* Stacked on phones: two − / + fields side by side leave no room for the digits.
-                      #268: there each label sits beside its field rather than above it. */}
-              <div className="grid gap-3 min-[480px]:grid-cols-2 md:col-span-2">
-                <div className="flex min-w-0 items-center gap-2 min-[480px]:flex-col min-[480px]:items-stretch">
-                  <label htmlFor={`set-${i}-weight`} className={cn('mb-0 text-meta', setFieldName)}>
-                    Total weight kg
-                  </label>
-                  <NumberValueInput
-                    id={`set-${i}-weight`}
-                    label="Total weight kg"
-                    className="min-w-0 max-[480px]:flex-1 md:pointer-coarse:[&_input]:text-base"
-                    step={weightStep}
-                    // A whole-number step would pick the digits-only keypad; 0.25 kg still needs a point.
-                    inputMode="decimal"
-                    min={0}
-                    max={99999}
-                    required
-                    allowEmpty
-                    value={s.weight}
-                    onValueChange={(weight) => {
-                      const sets = [...editor.sets!];
-                      sets[i] = { ...s, weight };
-                      setEditor({ ...editor, sets });
-                    }}
-                    {...invalid(`sets.${i}.weight`)}
-                  />
-                </div>
-                <div className="flex min-w-0 items-center gap-2 min-[480px]:flex-col min-[480px]:items-stretch">
-                  <label htmlFor={`set-${i}-reps`} className={cn('mb-0 text-meta', setFieldName)}>
-                    Reps
-                  </label>
-                  <NumberValueInput
-                    id={`set-${i}-reps`}
-                    label="Reps"
-                    className="min-w-0 max-[480px]:flex-1 md:pointer-coarse:[&_input]:text-base"
-                    min={1}
-                    max={1000}
-                    required
-                    allowEmpty
-                    value={s.reps}
-                    onValueChange={(reps) => {
-                      const sets = [...editor.sets!];
-                      sets[i] = { ...s, reps };
-                      setEditor({ ...editor, sets });
-                    }}
-                    {...invalid(`sets.${i}.reps`)}
-                  />
-                </div>
-              </div>
-              {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
-                <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
-              ))}
-              <label className={cn(setField, 'md:col-span-2')}>
-                <span className={setFieldName}>Set memo</span>
-                {/* #268: one line on phones, still a 44px target, growing with a longer memo. */}
-                <textarea
-                  className="max-md:field-sizing-content max-md:min-h-11"
-                  rows={1}
-                  maxLength={4000}
-                  value={s.notes}
-                  placeholder="Form, machine settings, etc."
-                  onChange={(e) => {
-                    const sets = [...editor.sets!];
-                    sets[i] = { ...s, notes: e.target.value };
-                    setEditor({ ...editor, sets });
-                  }}
-                />
-              </label>
-              {setReference(progress, s.exercise) && (
-                <p className="m-0 text-meta text-muted-foreground md:col-span-2">
-                  {setReference(progress, s.exercise)}
-                </p>
-              )}
-              <Button
-                type="button"
-                size="lg"
-                variant={done(s) ? 'default' : 'outline'}
-                className="h-auto min-h-12 w-full py-2 text-base whitespace-normal md:col-span-2"
-                aria-pressed={done(s)}
-                aria-label={`Set ${i + 1} done`}
-                onClick={() => markSet(i, !done(s))}
-              >
-                {done(s) ? 'Done · tap again to cancel' : 'Done'}
-              </Button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="subtle-button"
-            onClick={() =>
+          {setGroups(editor.sets ?? []).map((group) => {
+            const first = group.indexes[0];
+            const head = editor.sets![first];
+            const lastIndex = group.indexes.at(-1)!;
+            // The group's machine and name apply to every set in it.
+            const patchGroup = (patch: Partial<SetRow>) =>
               setEditor({
                 ...editor,
-                // The next set is planned until it is marked completed.
-                sets: [...editor.sets!, { ...editor.sets!.at(-1)!, completed: false, rpe: null }],
-              })
-            }
-          >
-            <Plus size={16} />
-            Add set
-          </button>
+                sets: editor.sets!.map((x, j) =>
+                  group.indexes.includes(j) ? { ...x, ...patch } : x,
+                ),
+              });
+            return (
+              <div
+                data-slot="exercise-group"
+                className="mb-4 rounded-lg border border-border bg-muted/30 p-3"
+                key={group.key}
+              >
+                {/* #531: the exercise name and machine are entered once; its sets share them. */}
+                <div className="mb-3 grid gap-x-3 gap-y-2.5 md:grid-cols-2">
+                  {/* The hint stays in the name's grid cell so Machine keeps its place beside it. */}
+                  <div>
+                    <label htmlFor={`set-${first}-exercise`} className={setField}>
+                      <span className={setFieldName}>Exercise name</span>
+                      {/* #124: suggestions from earlier journals, goals, routines and machines. */}
+                      <Combobox
+                        id={`set-${first}-exercise`}
+                        className="md:pointer-coarse:text-base"
+                        required
+                        value={head.exercise}
+                        options={exerciseNames}
+                        listLabel="Previously used names"
+                        onValueChange={(exercise) => renameSet(first, exercise)}
+                        {...invalid(`sets.${first}.exercise`)}
+                      />
+                    </label>
+                    {issue(`sets.${first}.exercise`)}
+                    <SimilarNameHint
+                      value={head.exercise}
+                      names={exerciseNames}
+                      onReplace={(exercise) => renameSet(first, exercise)}
+                    />
+                  </div>
+                  <label className={setField}>
+                    <span className={setFieldName}>Machine</span>
+                    <select
+                      className="h-9 px-2 py-0 text-body-sm pointer-coarse:text-base"
+                      value={head.machine_id ?? ''}
+                      onChange={(e) => {
+                        const m = machines.find((m) => m.id === Number(e.target.value));
+                        patchGroup({
+                          machine_id: m?.id ?? null,
+                          exercise: head.exercise || m?.name || '',
+                        });
+                      }}
+                    >
+                      <option value="">Free workout</option>
+                      {machines.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.brand} · {m.name} (base weight{' '}
+                          {m.base_weight === null ? 'unconfirmed' : `${m.base_weight} kg`})
+                          {m.official_status
+                            ? ` · Official reference ${officialLabel({
+                                status: m.official_status,
+                                raw_value: m.official_raw_value,
+                                raw_unit: m.official_raw_unit,
+                                weight_kg: m.official_weight_kg,
+                                basis: m.official_basis,
+                              })}`
+                            : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {setReference(progress, head.exercise) && (
+                    <p className="m-0 text-meta text-muted-foreground md:col-span-2">
+                      {setReference(progress, head.exercise)}
+                    </p>
+                  )}
+                </div>
+                {group.indexes.map((i) => {
+                  const s = editor.sets![i];
+                  return (
+                    // #105: one card per set; weight and reps take − / + presses and a number
+                    // keypad, and the completion button spans the card for a one-handed tap.
+                    <div
+                      data-slot="set-row"
+                      className={cn(
+                        'mb-3 grid gap-x-3 gap-y-2.5 rounded-lg border border-border bg-card p-3 md:grid-cols-2',
+                        done(s) && 'border-primary/60',
+                      )}
+                      key={s._key ?? i}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-x-2 md:col-span-2">
+                        <span
+                          className={cn(
+                            'text-meta text-muted-foreground',
+                            done(s) && 'font-bold text-foreground',
+                          )}
+                        >
+                          Set {i + 1}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-0.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground"
+                            disabled={editor.sets!.length === 1}
+                            aria-label="Delete set"
+                            onClick={() => {
+                              setEditor({
+                                ...editor,
+                                sets: editor.sets!.filter((_, j) => j !== i),
+                              });
+                            }}
+                          >
+                            <X size={15} />
+                          </Button>
+                        </div>
+                      </div>
+                      {/* Stacked on phones: two − / + fields side by side leave no room for the digits.
+                      #268: there each label sits beside its field rather than above it. */}
+                      <div className="grid gap-3 min-[480px]:grid-cols-2 md:col-span-2">
+                        <div className="flex min-w-0 items-center gap-2 min-[480px]:flex-col min-[480px]:items-stretch">
+                          <label
+                            htmlFor={`set-${i}-weight`}
+                            className={cn('mb-0 text-meta', setFieldName)}
+                          >
+                            Total weight kg
+                          </label>
+                          <NumberValueInput
+                            id={`set-${i}-weight`}
+                            label="Total weight kg"
+                            className="min-w-0 max-[480px]:flex-1 md:pointer-coarse:[&_input]:text-base"
+                            step={weightStep}
+                            // A whole-number step would pick the digits-only keypad; 0.25 kg still needs a point.
+                            inputMode="decimal"
+                            min={0}
+                            max={99999}
+                            required
+                            allowEmpty
+                            value={s.weight}
+                            onValueChange={(weight) => {
+                              const sets = [...editor.sets!];
+                              sets[i] = { ...s, weight };
+                              setEditor({ ...editor, sets });
+                            }}
+                            {...invalid(`sets.${i}.weight`)}
+                          />
+                        </div>
+                        <div className="flex min-w-0 items-center gap-2 min-[480px]:flex-col min-[480px]:items-stretch">
+                          <label
+                            htmlFor={`set-${i}-reps`}
+                            className={cn('mb-0 text-meta', setFieldName)}
+                          >
+                            Reps
+                          </label>
+                          <NumberValueInput
+                            id={`set-${i}-reps`}
+                            label="Reps"
+                            className="min-w-0 max-[480px]:flex-1 md:pointer-coarse:[&_input]:text-base"
+                            min={1}
+                            max={1000}
+                            required
+                            allowEmpty
+                            value={s.reps}
+                            onValueChange={(reps) => {
+                              const sets = [...editor.sets!];
+                              sets[i] = { ...s, reps };
+                              setEditor({ ...editor, sets });
+                            }}
+                            {...invalid(`sets.${i}.reps`)}
+                          />
+                        </div>
+                      </div>
+                      {(['weight', 'reps', 'rpe'] as const).map((field) => (
+                        <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
+                      ))}
+                      <label className={cn(setField, 'md:col-span-2')}>
+                        <span className={setFieldName}>Set memo</span>
+                        {/* #268: one line on phones, still a 44px target, growing with a longer memo. */}
+                        <textarea
+                          className="max-md:field-sizing-content max-md:min-h-11"
+                          rows={1}
+                          maxLength={4000}
+                          value={s.notes}
+                          placeholder="Form, machine settings, etc."
+                          onChange={(e) => {
+                            const sets = [...editor.sets!];
+                            sets[i] = { ...s, notes: e.target.value };
+                            setEditor({ ...editor, sets });
+                          }}
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant={done(s) ? 'default' : 'outline'}
+                        className="h-auto min-h-12 w-full py-2 text-base whitespace-normal md:col-span-2"
+                        aria-pressed={done(s)}
+                        aria-label={`Set ${i + 1} done`}
+                        onClick={() => markSet(i, !done(s))}
+                      >
+                        {done(s) ? 'Done · tap again to cancel' : 'Done'}
+                      </Button>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="subtle-button"
+                  disabled={editor.sets!.length >= 200}
+                  onClick={() => {
+                    // The next set of this exercise is planned until it is marked completed; it follows the group.
+                    const sets = [...editor.sets!];
+                    sets.splice(lastIndex + 1, 0, {
+                      ...editor.sets![lastIndex],
+                      completed: false,
+                      rpe: null,
+                    });
+                    setEditor({ ...editor, sets });
+                  }}
+                >
+                  <Plus size={16} />
+                  Add set
+                </button>
+              </div>
+            );
+          })}
           <button
             type="button"
             className="subtle-button"
@@ -408,6 +449,7 @@ export function WorkoutEditor({
                     notes: '',
                     completed: false,
                     rpe: null,
+                    _group: newGroupKey(),
                   },
                 ],
               })

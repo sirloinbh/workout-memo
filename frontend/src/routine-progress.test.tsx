@@ -89,8 +89,11 @@ function mount(
     await user.click(found);
   }
   const setRows = () => [...document.querySelectorAll('[data-slot=set-row]')];
+  // #531: the exercise name, machine and routine reference belong to the exercise group around the set rows.
+  const group = (row: Element) => row.closest('[data-slot=exercise-group]')!;
   function field(row: Element, label: string) {
-    const item = [...row.querySelectorAll('label')].filter((e) =>
+    const scope = ['Exercise name', 'Machine'].includes(label) ? group(row) : row;
+    const item = [...scope.querySelectorAll('label')].filter((e) =>
       text(e).trim().startsWith(label),
     )[0];
     expect(item, `set field ${label}`).toBeTruthy();
@@ -108,6 +111,7 @@ function mount(
   }
   return {
     requests: api.requests,
+    group,
     text,
     button,
     click,
@@ -196,7 +200,9 @@ test('prefilled routine draft saves unchanged values with one confirm', async ()
   expect(Number(ui.field(rows[0], 'Reps').value)).toBe(10);
   expect(ui.field(rows[0], 'Machine').value, 'machine stays unselected').toBe('');
   expect(ui.field(rows[4], 'Exercise name')).toHaveValue('Bodyweight Lunge');
-  expect(ui.text(rows[0])).toMatch(/Today's goal 102\.75 kg × 10 reps · Previous 2024-03-01/);
+  expect(ui.text(ui.group(rows[0]))).toMatch(
+    /Today's goal 102\.75 kg × 10 reps · Previous 2024-03-01/,
+  );
   expect(posts(ui, '/api/workouts'), 'the draft is not a record before saving').toHaveLength(0);
   expect(localStorage.length, 'the draft is kept locally like any other draft').toBeGreaterThan(0);
   ui.submit();
@@ -250,7 +256,9 @@ test('prefilled draft lets the user edit reps and add a non-routine exercise', a
   ui.change(added, 'Exercise name', 'Cable Crunch');
   ui.change(ui.setRows()[5], 'Total weight', '35');
   ui.change(ui.setRows()[5], 'Reps', '15');
-  expect(ui.text(ui.setRows()[5]), 'no routine reference for others').not.toMatch(/Today's goal/);
+  expect(ui.text(ui.group(ui.setRows()[5])), 'no routine reference for others').not.toMatch(
+    /Today's goal/,
+  );
   ui.submit();
   await waitFor(() => expect(posts(ui, '/api/workouts')).toHaveLength(1));
   const body = posts(ui, '/api/workouts')[0].body as {

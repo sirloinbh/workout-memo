@@ -66,9 +66,10 @@ test("A new journal starts with today's date and title and the sets and machines
   await expect(editor.getByLabel('Journal title')).toHaveValue(title);
   const sets = editor.locator('[data-slot=set-row]');
   await expect(sets).toHaveCount(2);
+  // #531: the two sets are one exercise, so the name and machine appear once.
+  await expect(editor.getByLabel('Exercise name')).toHaveValue(`E2E Leg Press ${suffix}`);
+  await expect(editor.getByLabel('Machine')).toHaveValue(String(machineId));
   for (let i = 0; i < 2; i++) {
-    await expect(sets.nth(i).getByLabel('Exercise name')).toHaveValue(`E2E Leg Press ${suffix}`);
-    await expect(sets.nth(i).getByLabel('Machine')).toHaveValue(String(machineId));
     await expect(sets.nth(i).getByLabel('Total weight kg', { exact: true })).toHaveValue('150');
     await expect(sets.nth(i).getByLabel('Reps', { exact: true })).toHaveValue('10');
   }

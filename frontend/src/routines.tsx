@@ -13,7 +13,6 @@ import { requestJson } from './lib/api';
 import { useApiQuery } from './lib/query';
 import { cn } from './lib/utils';
 import {
-  autoRule,
   type Machine,
   newPlan,
   payload,
@@ -28,7 +27,6 @@ import { PlanView } from './routines/plan-view';
 import { CardioPreview, Preview } from './routines/previews';
 import { SplitEditor } from './routines/split-editor';
 import { BasicsStep, ScheduleStep, WeeklyGoals } from './routines/steps';
-import { hint } from './routines/styles';
 
 const request = <T,>(path: string, body?: unknown) =>
   requestJson<T>('/api/routines' + path, { method: body ? 'POST' : 'GET', body });
@@ -261,8 +259,6 @@ export function Routines({ exerciseNames = [] }: { exerciseNames?: readonly stri
               ))}
             {step === 3 && draft.progression === 'auto' && (
               <>
-                {/* The rule from step 1 again, beside the targets it produces. */}
-                <p className={hint}>{autoRule}</p>
                 <Preview plan={draft} steps={steps} />
               </>
             )}

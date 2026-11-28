@@ -18,7 +18,7 @@ import {
   metresToKm,
   optionalNumber,
 } from './cardio/format';
-import { fieldLabel, formHint as hint, selectField, touchText } from './components/form-styles';
+import { fieldLabel, selectField, touchText } from './components/form-styles';
 import { Modal } from './components/modal';
 import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
@@ -618,13 +618,6 @@ function CardioGoalForm({
       {message('target_count')}
       {message('start_date')}
       {message('deadline')}
-      <p className={hint}>
-        {record
-          ? draft.goal_type === 'record_time'
-            ? 'It counts as achieved when a single record meets the goal distance and its total time is within the goal time. Pace is not used to estimate.'
-            : 'It counts as achieved when a single record meets the goal distance.'
-          : 'Judged per week (Mon–Sun) or month. Cycles that span the start or end date keep the same goal value, and only records within the period are counted.'}
-      </p>
       <Button type="submit" className="mt-4 w-full" disabled={saving}>
         {saving && <Spinner size="sm" aria-hidden />}
         Save cardio goal

@@ -256,10 +256,6 @@ export function BodyMeasurements({
                   </Label>
                 ))}
               </fieldset>
-              <p className={hint}>
-                Only one record is saved per date. Edit an already recorded date from the list.
-                Values are saved to 2 decimal places, and at least one is required.
-              </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button type="submit" disabled={saving}>
                   {saving && <Spinner size="sm" aria-hidden />}
@@ -291,10 +287,6 @@ export function BodyMeasurements({
           Metrics with no values in this period: {missing.map((m) => m.label).join(' · ')}
         </p>
       )}
-      <p className={cn(hint, 'mt-2 mb-4')}>
-        This only shows same-day workout volume side by side and does not imply a causal link
-        between training and body changes. No medical judgment or recommended range is provided.
-      </p>
       <Card className="gap-0 py-0 shadow-none">
         <CardHeader className="px-4 pt-5 md:px-6 md:pt-6">
           <CardTitle asHeading="h2" className="flex items-center gap-2 text-body font-semibold">

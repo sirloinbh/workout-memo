@@ -14,6 +14,7 @@ Removed:
 - Intro paragraphs: cardio goals intro, routine builder intro and "A plan is only a goal ...", cardio preview note, split editor note, "Equal values are shown as ties.".
 - Dashboard: the chart caption "Growth that gets clearer as your records build up", the whole "THE NEXT CHAPTER / A little heavier. Do it once more." promo card, the record list caption "So today's effort becomes tomorrow's baseline" and the page footer "Today's record creates tomorrow's change.".
 - Card captions that explained a screen: analysis (records and body part totals), body records, cardio records, goal progress, record board, machines.
+- Rule explanations: the auto goal rule text ("Auto goals (double progressive overload) ..." in the journal, the routine builder and the plan view; the `autoRule` constant is gone), the body record save note and the "does not imply a causal link" disclaimer, the cardio goal judging note, the InBody import note.
 - Placeholders: "Not entered" (body, cardio, InBody import), "0", and the goal exercise name prompt. The backup confirmation placeholder stays: it shows the text to type.
 
 Also removed once epic #524 closed (workout-editor.tsx and settings.tsx were free): the Settings description and card captions, the workout editor's draft storage note, the set entry and completion explanations (the "Completed N / M sets" count stays) and the title and memo placeholders.

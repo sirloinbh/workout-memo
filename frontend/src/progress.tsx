@@ -116,15 +116,6 @@ export function RoutineProgress({
                 {cardioSummaryText(progress.cardio_summary)}
               </p>
             )}
-            {progress.progression === 'auto' && (
-              <p className="mt-2 rounded-md bg-muted p-3 text-meta">
-                Auto goals (double progressive overload): advance on each session (workout day) of a
-                split. If you perform every planned set at or above the target in the journal saved
-                between the session&apos;s date and the next session of the same split, the next
-                session advances; otherwise it keeps the same goal. Upcoming goals with no record
-                yet are projections.
-              </p>
-            )}
             <StallSuggestions stalls={progress.stalls ?? []} />
             <h3 className={heading}>Today&apos;s goal · {progress.today}</h3>
             {!today ? (

@@ -135,8 +135,6 @@ export const newPlan = (): Plan =>
     },
     1,
   );
-export const autoRule =
-  "Enter your current performance (total weight and reps) and the 12-week goals are created automatically. Reps go up by 1 each session (workout day) of a split that includes the exercise; once the upper limit is exceeded, the total weight goes up by the exercise's increase step (default 5 kg, changeable per exercise in My Goals) and reps return to the lower limit. A split done 2-3 times a week advances 2-3 steps per week. Exercises at 0 kg (bodyweight) only increase reps. In weeks 4, 8, and 12, every session is a deload at 90% of the previous target weight (in 2.5 kg steps) with the same reps and does not advance, and the next session continues from the target before the deload. If you do not hit the goal in the journal saved between a session's date and the next session of the same split, the next session keeps the same goal.";
 // The server receives only the fields of the chosen mode.
 export function payload(plan: Plan) {
   const auto = plan.progression === 'auto';

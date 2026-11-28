@@ -2,18 +2,9 @@ import { Card, CardTitle } from '../components/ui/card';
 import { bodyPartLabel, plural } from '../labels';
 import { cn } from '../lib/utils';
 import { cardioLabel } from '../routine-cardio';
-import {
-  autoRule,
-  days,
-  goalLabel,
-  type Machine,
-  machineName,
-  type Plan,
-  stepOf,
-  type Steps,
-} from './model';
+import { days, goalLabel, type Machine, machineName, type Plan, stepOf, type Steps } from './model';
 import { CardioPreview, Preview } from './previews';
-import { hint, list } from './styles';
+import { list } from './styles';
 
 export function PlanView({
   selected,
@@ -76,7 +67,6 @@ export function PlanView({
         <CardioPreview splits={selected.splits} />
         {selected.progression === 'auto' ? (
           <>
-            <p className={cn(hint, 'mt-4')}>Auto · double progressive overload. {autoRule}</p>
             <Preview plan={selected} steps={steps} />
           </>
         ) : (

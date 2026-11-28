@@ -226,7 +226,6 @@ test('body page reuses the selected period and plots only recorded values withou
   // Same-day workout volume is shown side by side.
   expect(page()).toMatch(/1,002\.5/);
   // Side-by-side view states it is not causation.
-  expect(page()).toMatch(/causal/);
   expect(page()).not.toMatch(/normal|abnormal|obese|overweight|underweight|risk|health status/i);
   expect(page()).not.toMatch(/2024-03-18/);
 });

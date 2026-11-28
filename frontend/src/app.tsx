@@ -396,12 +396,12 @@ function Workspace() {
           {!ownPage && (
             <PageHeader
               className="mb-6 md:mb-9"
-              eyebrow="YOUR PROGRESS, IN FOCUS"
+              eyebrow={logPage ? undefined : 'YOUR PROGRESS, IN FOCUS'}
               title={
                 page === 'overview'
                   ? 'A place to record consistency'
                   : logPage
-                    ? 'One more step today'
+                    ? dateTitle(progress?.today ?? today())
                     : page === 'goals'
                       ? 'Toward the next you'
                       : 'Knowing your machine makes your records accurate'
@@ -410,7 +410,7 @@ function Workspace() {
                 page === 'overview'
                   ? 'See how your training flows and prepare for your next step.'
                   : logPage
-                    ? 'Every set holds a better you than yesterday.'
+                    ? (progress?.routine?.name ?? 'No routine')
                     : page === 'goals'
                       ? 'Set concrete growth goals with weight, reps, and cardio distance and time.'
                       : 'Save machines and base weights by brand to your own library.'

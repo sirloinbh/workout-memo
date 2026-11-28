@@ -149,3 +149,18 @@ test('log page shows no KPI cards', async () => {
     expect(screen.queryByText(label)).toBeNull();
   expect(document.querySelector('[data-slot="stat"]')).toBeNull();
 });
+
+// #533: the log page actions are icon buttons that keep their accessible name and tooltip.
+test('log page actions are icon-only with an accessible name', async () => {
+  const { user } = mount(withRoutine(null));
+  await openPage('Day log', user);
+  await screen.findByRole('heading', { level: 1 });
+  await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
+  const buttons = screen.getAllByRole('button', { name: 'Log workout' });
+  expect(buttons.length).toBeGreaterThan(0);
+  for (const button of buttons) {
+    expect(button).toHaveAttribute('title', 'Log workout');
+    expect(button.textContent).toBe('');
+  }
+  expect(screen.queryByText('Log workout')).toBeNull();
+});

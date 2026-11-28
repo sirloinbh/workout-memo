@@ -28,7 +28,7 @@ test('Create, view, edit, and delete workout journals in the browser and store t
 
   // Create
   await page.getByRole('button', { name: 'Log workout' }).first().click();
-  const editor = page.getByRole('dialog', { name: 'New workout record' });
+  const editor = page.getByRole('region', { name: 'New workout record' });
   await editor.getByLabel('Workout date').fill(day);
   await editor.getByLabel('Journal title').fill(title);
   // The new-record form opens with several planned sets; keep one for exact totals.
@@ -53,7 +53,7 @@ test('Create, view, edit, and delete workout journals in the browser and store t
 
   // Update
   await row(page).getByRole('button', { name: 'Edit' }).click();
-  const edit = page.getByRole('dialog', { name: 'Edit workout journal' });
+  const edit = page.getByRole('region', { name: 'Edit workout journal' });
   await edit.getByLabel('Total weight kg', { exact: true }).fill('120');
   await edit.getByRole('button', { name: 'Save record' }).click();
   await expect(edit).toBeHidden();

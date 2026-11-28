@@ -24,7 +24,7 @@ test('a log saved offline is queued and sent once, then shows in the list', asyn
   await page.goto('/');
   await showDay(page);
   await page.getByRole('button', { name: 'Log workout' }).first().click();
-  const editor = page.getByRole('dialog', { name: 'New workout record' });
+  const editor = page.getByRole('region', { name: 'New workout record' });
   await editor.getByLabel('Workout date').fill(day);
   await editor.getByLabel('Journal title').fill(title);
   const sets = editor.locator('[data-slot=set-row]');

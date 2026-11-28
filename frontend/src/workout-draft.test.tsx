@@ -161,7 +161,8 @@ const stat = (label: string) => {
     .at(0)!;
   return card.querySelector('[data-slot=stat-value]')!.textContent;
 };
-const dialog = () => screen.getByRole('dialog');
+const dialog = () =>
+  screen.getByRole('region', { name: /New workout record|Edit workout journal/ });
 const titleInput = () => dialog().querySelector<HTMLInputElement>('input[maxlength="120"]')!;
 const exerciseInputs = () => [
   ...dialog().querySelectorAll<HTMLInputElement>('input[role="combobox"][id$="-exercise"]'),

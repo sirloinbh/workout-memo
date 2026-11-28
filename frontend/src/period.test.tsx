@@ -246,7 +246,7 @@ test('period statistics and graph combine same-day sessions and refresh after ed
   expect(rows()).toHaveLength(3);
   expect(rows()[0]).toHaveTextContent('Record 3');
   await ui.user.click(within(rows()[0] as HTMLElement).getByRole('button', { name: 'Edit' }));
-  const dialog = screen.getByRole('dialog', { name: 'Edit workout journal' });
+  const dialog = screen.getByRole('region', { name: 'Edit workout journal' });
   const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', {
     name: 'Total weight kg',
   })[0];
@@ -284,7 +284,7 @@ test('a delayed edit keeps the page blocked until it finishes, then the new peri
   await waitFor(() => expect(rows()).toHaveLength(1));
   const pending = ui.holdNextMutation();
   await ui.user.click(screen.getByRole('button', { name: 'Edit' }));
-  const dialog = screen.getByRole('dialog');
+  const dialog = screen.getByRole('region', { name: /Edit workout journal/ });
   const weight = within(dialog).getAllByRole<HTMLInputElement>('textbox', {
     name: 'Total weight kg',
   })[0];
@@ -293,9 +293,11 @@ test('a delayed edit keeps the page blocked until it finishes, then the new peri
   await ui.user.click(within(dialog).getByRole('button', { name: /Save/ }));
   expect(screen.queryByRole('radio', { name: '1 month' })).toBeNull();
   await ui.user.keyboard('{Escape}');
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByRole('region', { name: /Edit workout journal/ })).toBeInTheDocument();
   pending.resolve();
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await waitFor(() =>
+    expect(screen.queryByRole('region', { name: /Edit workout journal/ })).toBeNull(),
+  );
   await ui.select('1 month', '2024-03-01');
   await waitFor(() => expect(stat('Total volume')).toBe('5,000kg'));
   expect(rows()).toHaveLength(2);
@@ -372,7 +374,7 @@ test('workout list card names its count, links to the journal and starts a recor
       name: 'Log workout',
     }),
   );
-  expect(screen.getByRole('dialog', { name: 'New workout record' })).toBeInTheDocument();
+  expect(screen.getByRole('region', { name: 'New workout record' })).toBeInTheDocument();
 });
 
 // #381: a double click on Delete sends one DELETE, not a second one that would answer 404.

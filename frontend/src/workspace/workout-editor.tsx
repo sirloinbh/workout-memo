@@ -121,11 +121,6 @@ export function WorkoutEditor({
           <Notice notice={statusNotice(saveState)} />
         </div>
         {storageWarning && <AlertBanner className="mb-3">{storageWarning}</AlertBanner>}
-        <p className="form-hint">
-          Drafts stay in this browser&apos;s localStorage for 7 days after the last input. They do
-          not sync to other devices and may vanish if you clear browser data or use private mode.
-          Only records saved to the server count toward stats and goals.
-        </p>
         {saveError && (
           <AlertBanner
             className="mb-3"
@@ -165,7 +160,6 @@ export function WorkoutEditor({
                 className="md:pointer-coarse:text-base"
                 required
                 maxLength={120}
-                placeholder="e.g. Legs · quad focus"
                 value={editor.title ?? ''}
                 options={titles}
                 listLabel="Previously used titles"
@@ -190,16 +184,6 @@ export function WorkoutEditor({
           {issue('feedback')}
           {issue('sets')}
           <p className="form-hint">
-            Record each set. For weight, enter the total weight (kg) including the machine&apos;s
-            base weight. For equipment that moves both sides together, enter the sum of both sides;
-            for one-sided exercises, enter the total weight actually moved on one side. If you do
-            not know the base weight, do not guess; leave a note in the workout memo. Selecting a
-            machine does not add its base weight automatically.
-          </p>
-          <p className="form-hint">
-            Mark sets you performed as done. Only completed sets count toward stats and goal
-            achievement, and incomplete sets are kept as plans. Leave how the whole workout felt as
-            effort feedback (hard, medium, easy); if you do not choose, it stays not entered.
             Completed {editor.sets?.filter(done).length ?? 0} / {editor.sets?.length ?? 0} sets
           </p>
           {setGroups(editor.sets ?? []).map((group) => {
@@ -457,7 +441,6 @@ export function WorkoutEditor({
             <textarea
               maxLength={4000}
               value={editor.notes}
-              placeholder="Form, machine settings, condition, things to remember for the next workout…"
               onChange={(e) => setEditor({ ...editor, notes: e.target.value })}
             />
           </label>

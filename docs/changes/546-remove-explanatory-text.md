@@ -16,6 +16,8 @@ Removed:
 - Card captions that explained a screen: analysis (records and body part totals), body records, cardio records, goal progress, record board, machines.
 - Placeholders: "Not entered" (body, cardio, InBody import), "0", and the goal exercise name prompt. The backup confirmation placeholder stays: it shows the text to type.
 
-Not touched: `workout-editor.tsx` and `settings.tsx` (workout-memo-36 lanes still change them, #532 and #528); come back to them after epic #524 closes. The "About the analysis basis" details block stays because it states how the numbers are calculated.
+Also removed once epic #524 closed (workout-editor.tsx and settings.tsx were free): the Settings description and card captions, the workout editor's draft storage note, the set entry and completion explanations (the "Completed N / M sets" count stays) and the title and memo placeholders.
+
+The "About the analysis basis" details block stays because it states how the numbers are calculated.
 
 Tests: one empty-state assertion on removed text is gone. Visual baselines are taken from the CI artifact.

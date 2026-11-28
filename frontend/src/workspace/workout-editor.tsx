@@ -25,11 +25,7 @@ import {
   statusNotice,
   weightStep,
 } from './model';
-import { PlateCalculator } from './plate-calculator';
-import { SupersetPanel } from './superset-panel';
-import { usePlateSettings } from './use-plate-settings';
 import type { WorkoutDraftState } from './use-workout-draft';
-import { WarmupPanel } from './warmup-panel';
 
 /** The full-screen editor for one workout journal and its sets. */
 export function WorkoutEditor({
@@ -52,12 +48,6 @@ export function WorkoutEditor({
     draft;
   const storageWarning = draft.storageWarning;
   const editor = draft.editor!;
-  const plateSettings = usePlateSettings();
-  // The set card whose plate or warm-up panel is open; toggles in the card header keep closed cards short.
-  const [panel, setPanel] = React.useState<{
-    index: number;
-    kind: 'plates' | 'warmup' | 'superset';
-  } | null>(null);
   const invalid = (key: string) => invalidProps(key, issues[key]);
   const issue = (key: string) => <FieldError name={key}>{issues[key]}</FieldError>;
   return (
@@ -188,78 +178,11 @@ export function WorkoutEditor({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    className={cn(
-                      'px-1.5 text-muted-foreground',
-                      s.superset != null && 'text-foreground',
-                    )}
-                    aria-expanded={panel?.index === i && panel.kind === 'superset'}
-                    aria-controls={
-                      panel?.index === i && panel.kind === 'superset'
-                        ? `set-${i}-superset`
-                        : undefined
-                    }
-                    aria-label={`Superset for set ${i + 1}`}
-                    onClick={() =>
-                      setPanel(
-                        panel?.index === i && panel.kind === 'superset'
-                          ? null
-                          : { index: i, kind: 'superset' },
-                      )
-                    }
-                  >
-                    {s.superset != null ? `Superset ${s.superset}` : 'Superset'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="px-1.5 text-muted-foreground"
-                    aria-expanded={panel?.index === i && panel.kind === 'warmup'}
-                    aria-controls={
-                      panel?.index === i && panel.kind === 'warmup' ? `set-${i}-warmup` : undefined
-                    }
-                    aria-label={`Warm-up for set ${i + 1}`}
-                    onClick={() =>
-                      setPanel(
-                        panel?.index === i && panel.kind === 'warmup'
-                          ? null
-                          : { index: i, kind: 'warmup' },
-                      )
-                    }
-                  >
-                    Warm-up
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="px-1.5 text-muted-foreground"
-                    aria-expanded={panel?.index === i && panel.kind === 'plates'}
-                    aria-controls={
-                      panel?.index === i && panel.kind === 'plates' ? `set-${i}-plates` : undefined
-                    }
-                    aria-label={`Plates for set ${i + 1}`}
-                    onClick={() =>
-                      setPanel(
-                        panel?.index === i && panel.kind === 'plates'
-                          ? null
-                          : { index: i, kind: 'plates' },
-                      )
-                    }
-                  >
-                    Plates
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
                     size="icon"
                     className="text-muted-foreground"
                     disabled={editor.sets!.length === 1}
                     aria-label="Delete set"
                     onClick={() => {
-                      // Set numbers shift after a delete, so close the panel instead of moving it.
-                      setPanel(null);
                       setEditor({ ...editor, sets: editor.sets!.filter((_, j) => j !== i) });
                     }}
                   >
@@ -372,30 +295,7 @@ export function WorkoutEditor({
                   />
                 </div>
               </div>
-              {panel?.index === i && panel.kind === 'superset' && (
-                <SupersetPanel
-                  id={`set-${i}-superset`}
-                  index={i}
-                  sets={editor.sets!}
-                  onChange={(superset) => {
-                    const sets = [...editor.sets!];
-                    sets[i] = { ...s, superset };
-                    setEditor({ ...editor, sets });
-                  }}
-                />
-              )}
-              {panel?.index === i && panel.kind === 'warmup' && (
-                <WarmupPanel id={`set-${i}-warmup`} working={Number(s.weight)} step={weightStep} />
-              )}
-              {panel?.index === i && panel.kind === 'plates' && (
-                <PlateCalculator
-                  id={`set-${i}-plates`}
-                  target={Number(s.weight)}
-                  settings={plateSettings.settings}
-                  onSettings={plateSettings.update}
-                />
-              )}
-              {(['exercise', 'weight', 'reps', 'rpe', 'superset'] as const).map((field) => (
+              {(['exercise', 'weight', 'reps', 'rpe'] as const).map((field) => (
                 <React.Fragment key={field}>{issue(`sets.${i}.${field}`)}</React.Fragment>
               ))}
               <label className={cn(setField, 'md:col-span-2')}>

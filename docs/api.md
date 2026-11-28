@@ -106,8 +106,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
       "reps": 5,
       "notes": "",
       "completed": true,
-      "rpe": 8.5,
-      "superset": null
+      "rpe": 8.5
     }
   ]
 }
@@ -117,7 +116,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 
 - `title` and `exercise` are 1 to 120 characters after trimming spaces, and `notes` is 4000 characters or less. A log has 1 to 200 sets, saved in array order.
 - If `completed` is omitted it is `true` (compatible with existing clients). `rpe` is `null` or 1 to 10 in 0.5 steps. The screen has not asked for RPE since #83, and a stored value is sent back as it is when you edit.
-- `superset` (#481) is `null` (not in a superset) or a group number from 1 to 20 within this log. Sets that share a number are one superset, and each group needs at least two different exercises (names compared without case or surrounding spaces); otherwise the request is 400 with the message on `sets.N.superset`. If omitted it is `null`. The group number has no meaning outside its log. Backups carry it too; a backup made before #481 restores with no groups.
+- `superset` (#481) was removed in #529. A request that still sends it is accepted and the value is ignored; responses and backups no longer carry it, and the old column keeps its stored values unread. Backups made before the removal restore normally.
 - `feedback` (#83) is the feeling of the whole log: `hard`, `medium`, `easy`, or `null` (not entered). If omitted it is saved as `null`. For an automatic double progression routine, even in a session where the goal was achieved, it keeps the goal of the next session if a log that contains that exercise within that session's period is `hard`.
 - `version` is required only in PUT. If it differs from the fetched value it is 409, and on success it increases by 1.
 - If you send an `Idempotency-Key` (UUID) header, the same response is resent for the same request for 7 days from the first successful commit. For the storage format, see [database/README.md](../database/README.md).

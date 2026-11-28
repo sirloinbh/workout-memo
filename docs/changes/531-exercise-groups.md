@@ -21,3 +21,5 @@
 ## Verification
 
 - `npm run check` without `TEST_DATABASE_URL`. Real-browser check at 390x844 and 1440x900 (frontend rule): not run locally (no Docker or test DB, low RAM); CI e2e responsive, touch, axe and visual specs cover the editor at 360, 390, 768 and 1280, and the refreshed `workout-editor-*` baselines were looked at (see the PR).
+- Visual baselines: 3 files updated (workout-editor at 390/768/1280; 360 matched) from the CI artifact. Looked at the 390 and 1280 images: one exercise name and machine, then the sets, the Save bar pinned at the bottom, no horizontal overflow.
+- e2e mobile flow: the 390px entry flow now needs 9 taps and 14 keys (was 11 and 24), because the name is typed once for the three sets; the spec's expectation is updated.

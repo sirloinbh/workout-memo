@@ -124,8 +124,9 @@ test('enters, completes, and saves three sets in a new journal on a 390px touch 
   console.log(`[105-flow] ${JSON.stringify(result)}`);
   test.info().annotations.push({ type: '105-flow', description: JSON.stringify(result) });
   // #268: the set cards fit between the pinned bars again, so the flow takes no more swipes
-  // than before #105 (3), with the same taps and keys.
+  // than before #105 (3). #531: the name is typed once for the three sets, so two taps and ten keys fewer (11 and 24
+  // before).
   // An extra swipe names its control (for example a suggestion list over the weight field).
-  expect(user.count).toMatchObject({ taps: 11, keys: 24 });
+  expect(user.count).toMatchObject({ taps: 9, keys: 14 });
   expect(user.count.scrolls, `scrolled at ${user.scrolledAt.join(', ')}`).toBeLessThanOrEqual(3);
 });

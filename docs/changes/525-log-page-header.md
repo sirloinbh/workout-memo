@@ -11,3 +11,7 @@ Part of epic #524.
 ## Checks
 
 See the PR for the results of `npm run check`. Browser sizes (390x844, 1440x900) are covered by the CI e2e jobs; screenshot baselines are updated in this PR if `e2e-visual` reports a diff.
+
+## Visual baselines
+
+10 files in `e2e/__screenshots__/ui-visual.spec.ts/` were updated from the `visual-baselines` artifact of the CI run: `journal` at 360/390/768/1280, `journal-cardio` at 360/390/768/1280 and `workout-editor` at 768/1280. All are log-page screens whose header text changed; no other screen differs.

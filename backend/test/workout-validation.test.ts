@@ -20,8 +20,8 @@ test('workout validation retains independent notes for each set', () => {
   });
   // Sets without a state are stored as completed with no RPE (#31).
   assert.deepEqual(parsed.sets, [
-    { ...set, notes: 'Check left knee', completed: true, rpe: null, superset: null },
-    { ...set, notes: 'Hold position', completed: true, rpe: null, superset: null },
+    { ...set, notes: 'Check left knee', completed: true, rpe: null },
+    { ...set, notes: 'Hold position', completed: true, rpe: null },
   ]);
 });
 
@@ -81,4 +81,10 @@ test('API rejects invalid workouts on create and update before accessing storage
     }
   }
   assert.equal(storageCalls, 0);
+});
+
+// #529: supersets are gone. A client that still sends the old field is not refused, but the value is dropped.
+test('workout validation drops a superset sent by an older client', () => {
+  const parsed = workoutSchema.parse({ ...workout, sets: [{ ...set, superset: 1 }] });
+  assert.ok(!('superset' in parsed.sets[0]));
 });

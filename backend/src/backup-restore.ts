@@ -66,23 +66,13 @@ const workoutKey = (
     notes: string;
     completed: boolean;
     rpe: number | null;
-    superset?: number | null;
   }[],
 ) =>
   JSON.stringify([
     w.date,
     w.title,
     w.notes,
-    sets.map((s) => [
-      s.exercise,
-      s.machine_id,
-      s.weight,
-      s.reps,
-      s.notes,
-      s.completed,
-      s.rpe,
-      s.superset ?? null,
-    ]),
+    sets.map((s) => [s.exercise, s.machine_id, s.weight, s.reps, s.notes, s.completed, s.rpe]),
   ]);
 
 export async function restore(client: PoolClient, backup: Backup, mode: 'merge' | 'replace') {
@@ -201,7 +191,7 @@ export async function restore(client: PoolClient, backup: Backup, mode: 'merge' 
 
   const seenWorkouts = new Seen();
   const existingWorkouts = await client.query(
-    `SELECT w.id, w.date, w.title, w.notes, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes,'completed',s.completed,'rpe',s.rpe,'superset',s.superset) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id`,
+    `SELECT w.id, w.date, w.title, w.notes, COALESCE(json_agg(json_build_object('exercise',s.exercise,'machine_id',s.machine_id,'weight',s.weight,'reps',s.reps,'notes',s.notes,'completed',s.completed,'rpe',s.rpe) ORDER BY s.position, s.id) FILTER (WHERE s.id IS NOT NULL), '[]') sets FROM workouts w LEFT JOIN sets s ON s.workout_id=w.id GROUP BY w.id`,
   );
   for (const r of existingWorkouts.rows) seenWorkouts.add(workoutKey(r, r.sets), r.id);
   // Backup workout id → the restored or matched existing workout, for cardio links (#114).

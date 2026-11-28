@@ -153,14 +153,6 @@ type UI = ReturnType<typeof mount>;
 // Text is looked up the way a user reads the screen: by the element that shows it.
 const shows = (text: RegExp) => screen.queryAllByText(text);
 const loaded = () => waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
-const stat = (label: string) => {
-  const card = screen
-    .getAllByText(
-      (_, el) => el?.getAttribute('data-slot') === 'stat' && el.textContent.startsWith(label),
-    )
-    .at(0)!;
-  return card.querySelector('[data-slot=stat-value]')!.textContent;
-};
 const dialog = () =>
   screen.getByRole('region', { name: /New workout record|Edit workout journal/ });
 const titleInput = () => dialog().querySelector<HTMLInputElement>('input[maxlength="120"]')!;
@@ -207,7 +199,6 @@ test('refresh offers recovery and restores input without affecting server statis
   await fill(first);
   expect(storageSize(), 'input is persisted before submission').toBeGreaterThan(0);
   expect(shows(/Local|draft/).length).toBeGreaterThan(0);
-  expect(stat('Completed sets')).toBe('0 sets');
   const second = mount();
   await loaded();
   // #222: the page header's main button waits until the draft is restored or discarded.
@@ -415,7 +406,6 @@ test('a conflicting device edit is visible and keeps the local draft', async () 
   await waitFor(() => expect(shows(/edited on another device/).length).toBeGreaterThan(0));
   expect(shows(/Saved/)).toHaveLength(0);
   expect(storageSize(), 'conflict keeps local draft').toBeGreaterThan(0);
-  expect(stat('Completed sets')).toBe('0 sets');
 });
 
 test('a phone on local HTTP can generate a UUID key without randomUUID', async () => {

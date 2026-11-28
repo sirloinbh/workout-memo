@@ -141,3 +141,14 @@ test('log page header shows the date, weekday and routine without slogans', asyn
   expect(screen.queryByText('One more step today')).toBeNull();
   expect(screen.queryByText('Every set holds a better you than yesterday.')).toBeNull();
 });
+
+// #526: the log page has no KPI cards (they stay on the Dashboard).
+test('log page shows no KPI cards', async () => {
+  const { user } = mount(withRoutine(null));
+  await openPage('Day log', user);
+  await screen.findByRole('heading', { level: 1 });
+  await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
+  for (const label of ['Workout days', 'Total volume', 'Completed sets', 'Goal achieved'])
+    expect(screen.queryByText(label)).toBeNull();
+  expect(document.querySelector('[data-slot="stat"]')).toBeNull();
+});

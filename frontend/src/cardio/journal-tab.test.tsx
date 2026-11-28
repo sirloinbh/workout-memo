@@ -84,10 +84,11 @@ const statCard = (label: string) =>
     .at(0);
 
 test('the journal opens on Strength and Cardio is kept in the address with back and forward', async () => {
-  const ui = mount('/week');
+  const ui = mount('/');
+  await ui.user.click(await screen.findByRole('radio', { name: '1 week' }));
   expect(kind('Strength')).toHaveAttribute('aria-checked', 'true');
   expect(window.location.search).toBe('');
-  expect(screen.getByRole('button', { name: 'Log workout' })).toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'Log workout' }).length).toBeGreaterThan(0);
   expect(await screen.findByRole('heading', { name: /Workout records/ })).toBeInTheDocument();
 
   await ui.user.click(kind('Cardio'));

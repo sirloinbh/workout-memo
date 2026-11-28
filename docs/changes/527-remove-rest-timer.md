@@ -18,3 +18,4 @@
 ## Verification
 
 - `npm run check` without `TEST_DATABASE_URL` (DB integration tests skip locally); CI runs them. Results are in the PR.
+- Visual baselines: 8 files updated (settings and workout-editor at 360/390/768/1280) because the Rest timer card and the timer bar are gone; downloaded from the CI run's visual-baselines artifact.

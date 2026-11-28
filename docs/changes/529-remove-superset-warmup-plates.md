@@ -18,3 +18,4 @@
 ## Verification
 
 - `npm run check` without `TEST_DATABASE_URL`; CI runs the DB tests.
+- Visual baselines: 3 files updated (workout-editor at 390/768/1280) because the Superset, Warm-up and Plates buttons are gone; taken from the CI run's visual-baselines artifact.

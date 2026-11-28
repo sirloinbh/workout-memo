@@ -21,3 +21,4 @@
 
 - `npm run check` without `TEST_DATABASE_URL`; e2e and visual run in CI.
 - Visual baselines: 4 files updated (workout-editor at 360/390/768/1280) because the editor is now a page section, not a modal; taken from the CI run's visual-baselines artifact.
+- After merging main (#535), the 768 and 1280 workout-editor baselines were refreshed again from the CI artifact of the merged head (2 files).

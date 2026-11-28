@@ -1,5 +1,5 @@
 {
-  "centralSha": "4cc484a0b0bb8d664cace020217db8bdafd3a1cd",
+  "centralSha": "4af4527703831288bdf052947c29aff01a8126f8",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -1218,7 +1218,7 @@
     },
     "frontend/src/lib/apps.ts": {
       "mode": "full",
-      "sha256": "5480e42b70e5bc9a489b4b736f81c2c726189476a82197c820a5e4b39b3d97de",
+      "sha256": "70f53ef1b700377bc80c3fff6123f9cd9addfa517f54d2267247c6087379be21",
       "source": "design-system/delivery/ui/frontend/src/lib/apps.ts.tmpl"
     },
     "frontend/src/lib/auth-config.ts": {
@@ -1308,7 +1308,7 @@
     },
     "frontend/src/sign-in.tsx": {
       "mode": "full",
-      "sha256": "3e1b2f7cc17dd1932df480e3a8b81f940044009c55e94e261e92cec88b36a7d5",
+      "sha256": "06b7e1665e933cffbe232fe75fe73390d99a8c193ab1c5d8b2b430bb07c311a4",
       "source": "templates/ui/frontend/src/sign-in.tsx"
     },
     "frontend/src/test/contract-api.test.ts": {

@@ -4209,19 +4209,6 @@
                       "type": "null"
                     }
                   ]
-                },
-                "superset": {
-                  "default": null,
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": 1,
-                      "maximum": 20
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
                 }
               },
               "required": [

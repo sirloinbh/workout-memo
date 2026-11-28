@@ -72,29 +72,6 @@ const reps = (label: string) =>
     .int(`Enter ${label} as a whole number from 1 to 1000`)
     .min(1, `Enter ${label} as a whole number from 1 to 1000`)
     .max(1000, `Enter ${label} as a whole number from 1 to 1000`);
-export const maxSupersetGroup = 20;
-const supersetMessage = `The superset group must be a whole number from 1 to ${maxSupersetGroup}`;
-/** #481: a superset pairs at least two different exercises; one exercise alone is not a superset. */
-function checkSupersets(
-  sets: { exercise: string; superset?: number | null }[],
-  ctx: z.RefinementCtx,
-) {
-  const names = new Map<number, Set<string>>();
-  for (const s of sets)
-    if (s.superset != null)
-      names.set(
-        s.superset,
-        (names.get(s.superset) ?? new Set()).add(s.exercise.trim().toLowerCase()),
-      );
-  sets.forEach((s, i) => {
-    if (s.superset != null && (names.get(s.superset)?.size ?? 0) < 2)
-      ctx.addIssue({
-        code: 'custom',
-        path: [i, 'superset'],
-        message: `Superset ${s.superset} needs at least two different exercises`,
-      });
-  });
-}
 const rpeMessage = 'RPE must be entered in 0.5 steps from 1 to 10';
 
 export const feedbackLevels = ['hard', 'medium', 'easy'] as const;
@@ -128,19 +105,10 @@ export const workoutSchema = z.object({
           .refine((v) => Number.isInteger(v * 2), rpeMessage)
           .nullable()
           .default(null),
-        // #481: sets that share a number are one superset (1 to 20, NULL = none).
-        superset: z
-          .number(numberError(supersetMessage, supersetMessage))
-          .int(supersetMessage)
-          .min(1, supersetMessage)
-          .max(maxSupersetGroup, supersetMessage)
-          .nullable()
-          .default(null),
       }),
     )
     .min(1, 'Enter at least 1 set')
-    .max(200, 'Enter at most 200 sets')
-    .superRefine(checkSupersets),
+    .max(200, 'Enter at most 200 sets'),
 });
 export type WorkoutInput = z.input<typeof workoutSchema>;
 

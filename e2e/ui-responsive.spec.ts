@@ -113,32 +113,3 @@ test.describe('390px mobile modal', () => {
     expect(box.y + box.height).toBeCloseTo(844, 0);
   });
 });
-
-// #105: the rest countdown stays at the top while the editor or the page scrolls.
-test.describe('390px rest timer', () => {
-  test.use({ viewport: { width: 390, height: 844 } });
-  test('The rest timer stays on top even when you scroll the edit window and dashboard', async ({
-    page,
-  }) => {
-    const dialog = await openModal(page, modals[0]);
-    await dialog.getByRole('button', { name: 'Start rest' }).click();
-    const bar = (scope: typeof page | typeof dialog) =>
-      scope.locator('[data-slot=rest-timer]').getByRole('timer');
-    await dialog.evaluate((el) => (el.scrollTop = el.scrollHeight));
-    const inEditor = (await bar(dialog).boundingBox())!;
-    expect(inEditor.y, 'Top of the edit window').toBeGreaterThanOrEqual(0);
-    expect(inEditor.y, 'Top of the edit window').toBeLessThan(80);
-    await page.keyboard.press('Escape');
-    await expect(dialog).toBeHidden();
-    // The editor opens from the dashboard; the check needs it to scroll well past the bar.
-    const room = await page.evaluate(
-      () => document.documentElement.scrollHeight - window.innerHeight,
-    );
-    expect(room, 'Dashboard scroll room (px)').toBeGreaterThan(400);
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    const onPage = (await bar(page).boundingBox())!;
-    // Below the 56px app header, near the top of the screen.
-    expect(onPage.y, 'Below the header').toBeGreaterThanOrEqual(56);
-    expect(onPage.y, 'Below the header').toBeLessThan(140);
-  });
-});

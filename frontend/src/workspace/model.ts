@@ -1,13 +1,7 @@
 import type { Feedback } from '../../../shared/contract';
 import { seoulDate } from '../date';
 import type { NoticeValue } from '../lib/use-notice';
-import type { RestKind } from '../rest-timer';
 
-export const restKindLabels: Record<RestKind, string> = {
-  lower: 'Lower body',
-  upper: 'Upper body',
-  single: 'Single-joint',
-};
 export type SetRow = {
   exercise: string;
   machine_id: number | null;

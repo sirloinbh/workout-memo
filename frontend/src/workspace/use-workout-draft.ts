@@ -84,23 +84,17 @@ function readDraft(): { draft: Draft | null; warning: string } {
 /**
  * The workout editor and its local draft: every edit is kept in localStorage, a save is retried with
  * the same idempotency key, and a draft found at load is offered for restore or discard.
- * `onSaved` runs after a successful save; `onSetCompleted` after a set is marked done (it starts the rest).
+ * `onSaved` runs after a successful save;
  */
 export function useWorkoutDraft({
   setSaving,
   onSaved,
-  onSetCompleted,
   onQueued,
 }: {
   /** Runs after an unreachable save was queued on the phone (#476). */
   onQueued?: () => void;
   setSaving: (saving: boolean) => void;
   onSaved: () => Promise<unknown>;
-  onSetCompleted: (
-    set: NonNullable<Workout['sets']>[number],
-    sets: NonNullable<Workout['sets']>,
-    index: number,
-  ) => void;
 }) {
   const [editor, updateEditorRaw] = useState<Partial<Workout> | null>(null);
   const updateEditor = (value: Partial<Workout> | null) => {
@@ -151,7 +145,7 @@ export function useWorkoutDraft({
   const completedAt = useRef(new Map<string, number>());
   function markSet(i: number, completed: boolean) {
     // The synchronously stored draft is newer than this render: a repeated tap from the
-    // same render must not toggle back or restart the rest timer.
+    // same render must not toggle back.
     const latest = draft.current?.editor ?? editor;
     const current = latest?.sets?.[i];
     if (!latest || !current || done(current) === completed) return;
@@ -162,7 +156,6 @@ export function useWorkoutDraft({
     const sets = [...latest.sets!];
     sets[i] = { ...current, completed };
     setEditor({ ...latest, sets });
-    if (completed && !workoutSaving.current) onSetCompleted(current, sets, i);
   }
   async function saveWorkout() {
     if (!editor || workoutSaving.current) return;

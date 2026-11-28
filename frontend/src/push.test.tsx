@@ -4,9 +4,8 @@ import { afterEach, expect, test, vi } from 'vitest';
 
 import pushWorkerSource from '../public/push/sw.js?raw';
 import { App } from './app';
-import { keyToBytes, syncRest } from './push';
-import { defaultTimer, pauseTimer, resumeTimer, startTimer } from './rest-timer';
-import { deferred, deviceNow, fixClock, flushRenders, json, mockApi } from './test/api';
+import { keyToBytes } from './push';
+import { fixClock, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
 // #260: rest-end Web Push. The worker is public/push/sw.js (its own scope, because public/sw.js
@@ -167,65 +166,6 @@ test('the server key is decoded from URL-safe base64', () => {
   expect([...keyToBytes('-_8')]).toEqual([251, 255]);
 });
 
-test('syncRest sends a running end, and clears it for pause, idle and an ended rest', async () => {
-  const api = mockApi(() => ({ ok: true }));
-  const now = Date.parse(deviceNow);
-  const running = startTimer(defaultTimer(), now, 90);
-  await syncRest(running, now);
-  expect(api.requests.at(-1)).toMatchObject({
-    method: 'PUT',
-    path: '/api/push/rest',
-    body: { ends_at: now + 90_000 },
-  });
-  await syncRest(pauseTimer(running, now + 30_000), now + 30_000);
-  expect(api.requests.at(-1)).toMatchObject({ method: 'DELETE', path: '/api/push/rest' });
-  const resumed = resumeTimer(pauseTimer(running, now + 30_000), now + 40_000);
-  await syncRest(resumed, now + 40_000);
-  expect(api.requests.at(-1)).toMatchObject({ method: 'PUT', body: { ends_at: now + 100_000 } });
-  await syncRest(defaultTimer(), now);
-  expect(api.requests.at(-1)).toMatchObject({ method: 'DELETE' });
-  await syncRest(running, now + 91_000);
-  expect(api.requests.at(-1)).toMatchObject({ method: 'DELETE' });
-});
-
-// #370: a start followed at once by a pause must leave no scheduled push, even when the first request is slow.
-test('syncRest sends calls in order: a slow PUT is finished before the later DELETE starts', async () => {
-  const slowPut = deferred();
-  let scheduled: number | null = null;
-  const api = mockApi(async ({ method, body }) => {
-    if (method === 'PUT') {
-      await slowPut.promise;
-      scheduled = (body as { ends_at: number }).ends_at;
-    } else scheduled = null;
-    return { ok: true };
-  });
-  const now = Date.parse(deviceNow);
-  const running = startTimer(defaultTimer(), now, 90);
-  const first = syncRest(running, now);
-  const second = syncRest(pauseTimer(running, now + 1_000), now + 1_000);
-  await flushRenders(api);
-  expect(
-    api.requests.map((r) => r.method),
-    'the DELETE waits for the PUT',
-  ).toEqual(['PUT']);
-  slowPut.resolve();
-  await Promise.all([first, second]);
-  expect(api.requests.map((r) => r.method)).toEqual(['PUT', 'DELETE']);
-  expect(scheduled, 'the pause leaves no scheduled push').toBeNull();
-});
-
-test('syncRest keeps sending after a failed call', async () => {
-  let calls = 0;
-  const api = mockApi(({ method }) =>
-    ++calls === 1 ? json({ error: 'down' }, 500) : { ok: method === 'DELETE' },
-  );
-  const now = Date.parse(deviceNow);
-  const running = startTimer(defaultTimer(), now, 90);
-  await expect(syncRest(running, now)).rejects.toThrow('down');
-  await syncRest(defaultTimer(), now);
-  expect(api.requests.map((r) => r.method)).toEqual(['PUT', 'DELETE']);
-});
-
 // ---- the settings toggle and the schedule calls in the app ----
 const publicKey = 'AQID';
 // The shape PushSubscription.toJSON() returns in browsers, expirationTime included (#501).
@@ -297,11 +237,6 @@ async function openSettings(ui: ReturnType<typeof mount>) {
   await openPage('Settings', ui.user);
   return within(screen.getByRole('main'));
 }
-async function openEditor(ui: ReturnType<typeof mount>) {
-  await openPage('Day log', ui.user);
-  await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
-  return within(screen.getByRole('dialog'));
-}
 const toggleName = 'Notify me when rest ends, even with the screen off';
 
 test('without server keys, or in a browser without Web Push, there is no toggle and nothing is sent', async () => {
@@ -309,8 +244,6 @@ test('without server keys, or in a browser without Web Push, there is no toggle 
   const off = mount({ enabled: false, public_key: null });
   const dialog = await openSettings(off);
   expect(dialog.queryByLabelText(toggleName)).toBeNull();
-  const editor = await openEditor(off);
-  await off.user.click(editor.getByRole('button', { name: 'Start rest' }));
   expect(off.calls()).toEqual([]);
 });
 
@@ -332,32 +265,6 @@ test('turning it on asks for permission, subscribes and saves the subscription',
     path: '/api/push/subscriptions',
     body: subscriptionJson,
   });
-});
-
-test('while on, start, pause, resume and cancel tell the server', async () => {
-  browser('granted', true);
-  const ui = mount();
-  const dialog = await openSettings(ui);
-  expect(await dialog.findByLabelText(toggleName)).toHaveAttribute('aria-checked', 'true');
-  const sent = () =>
-    ui
-      .calls()
-      .map((r) =>
-        `${r.method} ${(r.body as { ends_at?: number } | undefined)?.ends_at ?? ''}`.trim(),
-      );
-  // Opening the app with an idle rest must not cancel a rest running on another device.
-  expect(sent()).toEqual([]);
-  const start = Date.parse(deviceNow);
-  const editor = await openEditor(ui);
-  await ui.user.click(editor.getByRole('button', { name: 'Start rest' }));
-  await waitFor(() => expect(sent().at(-1)).toBe(`PUT ${start + 90_000}`));
-  await ui.user.click(editor.getByRole('button', { name: 'Pause' }));
-  await waitFor(() => expect(sent().at(-1)).toBe('DELETE'));
-  await ui.user.click(editor.getByRole('button', { name: 'Resume' }));
-  await waitFor(() => expect(sent().at(-1)).toBe(`PUT ${start + 90_000}`));
-  await ui.user.click(editor.getByRole('button', { name: 'Cancel rest' }));
-  await waitFor(() => expect(sent().at(-1)).toBe('DELETE'));
-  expect(sent()).toEqual([`PUT ${start + 90_000}`, 'DELETE', `PUT ${start + 90_000}`, 'DELETE']);
 });
 
 test('turning it off removes the subscription on the server and in the browser', async () => {

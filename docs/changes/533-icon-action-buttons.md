@@ -12,3 +12,7 @@ Part of epic #524.
 ## Checks
 
 See the PR for `npm run check` results. Header screenshot baselines are updated from the CI `visual-baselines` artifact; the count is in the PR.
+
+## Visual baselines
+
+22 files in `e2e/__screenshots__/ui-visual.spec.ts/` were updated from the `visual-baselines` artifact of the CI run: `journal`, `dashboard`, `goals` and `machines` at 360/390/768/1280 (the header action is now an icon), plus `goal-editor` at 360/390/768/1280 and `machine-editor` at 768/1280 (the page header shows behind the modal). The failing e2e tests were all screenshot diffs in `ui-visual.spec.ts`; no other spec failed.

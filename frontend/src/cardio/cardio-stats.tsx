@@ -108,7 +108,6 @@ export function CardioStats({
             headingLevel="h3"
             icon={<BarChart3 />}
             title="No cardio records to summarize in the selected period"
-            description="Once you log sessions, weekly and monthly distance, time, count, and running pace trends appear here."
           />
         ) : (
           <div className="flex flex-col gap-6 px-4 pt-4 pb-5 md:px-6 md:pb-6">

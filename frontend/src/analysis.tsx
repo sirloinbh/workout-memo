@@ -176,25 +176,6 @@ export function Analysis() {
       <h2 className="mb-3 text-body font-semibold">
         Exercise Analysis · PRs and weekly volume by body part
       </h2>
-      {/* The long rules fold away so the exercise list fits the first phone screen (#125). */}
-      <details className="mb-4 rounded-md border px-3">
-        <summary className="cursor-pointer py-2 text-body-sm font-medium pointer-coarse:py-3">
-          About the analysis basis
-        </summary>
-        <p className={hint}>
-          Only records saved to the server up to today (Seoul time) are used. Future-dated records
-          and unsaved browser drafts are not included, and editing or deleting a journal is
-          reflected the next time you load. Like goal evaluation, the same exercise is grouped by
-          ignoring leading and trailing spaces and letter case.
-        </p>
-        <p className={cn(hint, 'mt-2 mb-3')}>
-          Est. 1RM = total weight kg × (1 + reps ÷ 30) (Epley formula). It applies only to sets of
-          1-10 reps, and a 1-rep set is that weight. Sets at 0 kg (bodyweight, assisted, or no
-          weight entered) and sets on machines with an unconfirmed base weight are excluded. An
-          estimate is not a weight you actually lifted; the measured 1RM is the highest total weight
-          of a set where you did 1 rep.
-        </p>
-      </details>
       {/* #224's period controls; like the dashboard, the date wraps under the tabs on phones. */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <SegmentedControl
@@ -208,9 +189,7 @@ export function Analysis() {
         />
         <DateStepper label="Analysis reference date" value={anchor} onValueChange={setAnchor} />
       </div>
-      <RangeSummary from={from} to={to}>
-        Monday-start weeks · Period trends and body part stats
-      </RangeSummary>
+      <RangeSummary from={from} to={to} />
       {error && (
         <AlertBanner
           className="mb-5"

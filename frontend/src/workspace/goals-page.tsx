@@ -54,11 +54,6 @@ export function GoalsPage({
                 <p className="mt-3 text-body-sm text-muted-foreground">
                   {cleanDate(g.start_date)} — {cleanDate(g.deadline)}
                 </p>
-                <p className="mt-1 text-body-sm text-muted-foreground">
-                  {g.achieved
-                    ? 'You hit both the weight and reps within the goal period.'
-                    : 'Log it under the same exercise name to check whether you achieved it.'}
-                </p>
                 <Button
                   variant="link"
                   size="sm"

@@ -19,7 +19,6 @@ import { Spinner } from '../components/ui/spinner';
 import { SimilarNameHint } from '../exercise-names';
 import { cn } from '../lib/utils';
 import { api } from './api';
-import { fieldHint } from './form-text';
 import { fmt, today } from './model';
 
 // #64: React Hook Form with the shared goal schema. Messages come from the same
@@ -122,10 +121,6 @@ export function GoalForm({
       {message('target_reps')}
       {message('start_date')}
       {message('deadline')}
-      <p className={fieldHint}>
-        It counts as achieved when you hit the goal weight or more and the goal reps or more in a
-        single set within the period.
-      </p>
       <Button type="submit" className="w-full" disabled={saving}>
         {saving && <Spinner size="sm" aria-hidden />}
         Save goal

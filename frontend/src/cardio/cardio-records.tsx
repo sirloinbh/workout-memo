@@ -98,12 +98,7 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
             </div>
           )
         ) : nothing ? (
-          <EmptyState
-            headingLevel="h4"
-            icon={<Trophy />}
-            title="No personal records yet"
-            description="Once you log cardio with a distance, the longest distance per type and your 5 km and 10 km bests appear here."
-          />
+          <EmptyState headingLevel="h4" icon={<Trophy />} title="No personal records yet" />
         ) : (
           <List aria-label="Personal records">
             {best('5 km best', '4.9~5.1 km', records.best5k)}

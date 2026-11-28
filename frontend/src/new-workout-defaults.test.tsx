@@ -63,7 +63,8 @@ function mount(progress: Progress) {
   render(<App />);
   return { user, requests: api.requests };
 }
-const dialog = () => screen.getByRole('dialog');
+const dialog = () =>
+  screen.getByRole('region', { name: /New workout record|Edit workout journal/ });
 const inputs = (label: string) =>
   within(dialog()).getAllByLabelText<HTMLInputElement | HTMLSelectElement>(label);
 const values = (label: string) => inputs(label).map((e) => e.value);

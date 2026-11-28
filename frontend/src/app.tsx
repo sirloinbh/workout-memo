@@ -315,218 +315,222 @@ function Workspace() {
         footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">
-          <Suspense fallback={ownPage ? pageFallback : null}>
-            <Routes>
-              <Route path={pages.routines} element={<Routines exerciseNames={exerciseNames} />} />
-              <Route
-                path={pages.backup}
-                element={<Backup onRestored={() => void refreshAll()} />}
-              />
-              <Route
-                path={pages.body}
-                element={
-                  <BodyMeasurements
-                    from={from}
-                    to={to}
-                    workouts={workouts}
-                    controls={periodControls}
-                  />
-                }
-              />
-              <Route path={pages.analysis} element={<Analysis />} />
-              <Route path={pages.settings} element={<Settings pushState={pushState} />} />
-              <Route path="*" element={null} />
-            </Routes>
-          </Suspense>
-          {!ownPage && (
-            <PageHeader
-              className="mb-6 md:mb-9"
-              eyebrow="YOUR PROGRESS, IN FOCUS"
-              title={
-                page === 'overview'
-                  ? 'A place to record consistency'
-                  : logPage
-                    ? 'One more step today'
-                    : page === 'goals'
-                      ? 'Toward the next you'
-                      : 'Knowing your machine makes your records accurate'
-              }
-              description={
-                page === 'overview'
-                  ? 'See how your training flows and prepare for your next step.'
-                  : logPage
-                    ? 'Every set holds a better you than yesterday.'
-                    : page === 'goals'
-                      ? 'Set concrete growth goals with weight, reps, and cardio distance and time.'
-                      : 'Save machines and base weights by brand to your own library.'
-              }
-              actions={
-                // #115: on the Cardio tab the panel's own "Add cardio record" is the main action.
-                !cardioTab && (
-                  <Button
-                    // A recoverable local draft must be restored or discarded first (#101).
-                    disabled={!!recovery && (page === 'overview' || logPage)}
-                    onClick={
-                      page === 'goals'
-                        ? () => setGoalEditor(true)
-                        : page === 'machines'
-                          ? () =>
-                              setMachineEditor({
-                                brand_id: brand || brands[0]?.id,
-                                name: '',
-                                base_weight: null,
-                                notes: '',
-                                official_weight_id: null,
-                              })
-                          : newWorkout
-                    }
-                  >
-                    <Plus aria-hidden />
-                    {page === 'goals'
-                      ? 'Add goal'
-                      : page === 'machines'
-                        ? 'Add machine'
-                        : 'Log workout'}
-                  </Button>
-                )
-              }
+          {/* #530: the workout editor opens on the page. The page below stays mounted but hidden, so its state
+              (tab, scroll targets, loaded data) is intact when the editor closes. */}
+          {editor && (
+            <WorkoutEditor
+              draft={draft}
+              saving={saving}
+              machines={machines}
+              exerciseNames={exerciseNames}
+              titles={[...new Set(workouts.map((w) => w.title).filter(Boolean))]}
+              progress={progress}
             />
           )}
-          {error && (
-            <AlertBanner
-              className="mb-5"
-              action={
-                <Button type="button" variant="outline" size="sm" onClick={reconnect}>
-                  Reconnect
-                </Button>
-              }
-            >
-              {error}
-            </AlertBanner>
-          )}
-          {storageWarning && !editor && (
-            <AlertBanner className="mb-5">{storageWarning}</AlertBanner>
-          )}
-          {!editor && <Notice className="mb-5" notice={statusNotice(saveState)} />}
-          <SyncStatus sync={offline} />
-          {!editor && <NewRecords records={draft.newRecords} />}
-          {recovery && !editor && (
-            <Card
-              role="region"
-              aria-label="Local draft"
-              className="mb-6 gap-3 p-4 shadow-none md:flex-row md:items-center md:justify-between md:p-5"
-            >
-              <p className="text-sm text-muted-foreground">
-                This browser has a local draft. It is kept separately from server records. Restore
-                or discard it before entering another record.
-              </p>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    updateEditor(recovery.editor);
-                    setRecovery(null);
-                    setSaveState('Local draft · Before server save');
-                  }}
-                >
-                  Restore draft
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    persist(null);
-                    setRecovery(null);
-                    setSaveState('Draft discarded');
-                  }}
-                >
-                  Discard draft
-                </Button>
-              </div>
-            </Card>
-          )}
-          <Suspense fallback={ownPage ? null : pageFallback}>
-            <Routes>
-              {/* An unknown address falls back to the dashboard instead of an empty screen. */}
-              <Route
-                path={pages.overview}
-                element={
-                  <DashboardPage
-                    periodControls={periodControls}
-                    goals={goals}
-                    cardioSessions={cardioSessions}
-                    recordsProps={recordsProps}
-                    from={from}
-                    to={to}
-                    custom={!!customRange}
-                    setPage={setPage}
-                  />
-                }
-              />
-              {[pages.journal, pages.week, pages.weeks12].map((path) => (
+          <div hidden={!!editor}>
+            <Suspense fallback={ownPage ? pageFallback : null}>
+              <Routes>
+                <Route path={pages.routines} element={<Routines exerciseNames={exerciseNames} />} />
                 <Route
-                  key={path}
-                  path={path}
+                  path={pages.backup}
+                  element={<Backup onRestored={() => void refreshAll()} />}
+                />
+                <Route
+                  path={pages.body}
                   element={
-                    <JournalPage
-                      periodControls={periodControls}
-                      journalTab={journalTab}
-                      setJournalTab={setJournalTab}
+                    <BodyMeasurements
                       from={from}
                       to={to}
-                      goals={goals}
-                      recordsProps={recordsProps}
-                      routine={routine}
-                      quickWorkout={quickWorkout}
-                      cardioPreset={cardioPreset}
-                      setCardioPreset={setCardioPreset}
-                      clearCardioPreset={clearCardioPreset}
+                      workouts={workouts}
+                      controls={periodControls}
                     />
                   }
                 />
-              ))}
-              {/* The old journal address keeps working (#504). */}
-              <Route
-                path="/journal"
-                element={
-                  <Navigate to={{ pathname: pages.journal, search: location.search }} replace />
+                <Route path={pages.analysis} element={<Analysis />} />
+                <Route path={pages.settings} element={<Settings pushState={pushState} />} />
+                <Route path="*" element={null} />
+              </Routes>
+            </Suspense>
+            {!ownPage && (
+              <PageHeader
+                className="mb-6 md:mb-9"
+                eyebrow="YOUR PROGRESS, IN FOCUS"
+                title={
+                  page === 'overview'
+                    ? 'A place to record consistency'
+                    : logPage
+                      ? 'One more step today'
+                      : page === 'goals'
+                        ? 'Toward the next you'
+                        : 'Knowing your machine makes your records accurate'
+                }
+                description={
+                  page === 'overview'
+                    ? 'See how your training flows and prepare for your next step.'
+                    : logPage
+                      ? 'Every set holds a better you than yesterday.'
+                      : page === 'goals'
+                        ? 'Set concrete growth goals with weight, reps, and cardio distance and time.'
+                        : 'Save machines and base weights by brand to your own library.'
+                }
+                actions={
+                  // #115: on the Cardio tab the panel's own "Add cardio record" is the main action.
+                  !cardioTab && (
+                    <Button
+                      // A recoverable local draft must be restored or discarded first (#101).
+                      disabled={!!recovery && (page === 'overview' || logPage)}
+                      onClick={
+                        page === 'goals'
+                          ? () => setGoalEditor(true)
+                          : page === 'machines'
+                            ? () =>
+                                setMachineEditor({
+                                  brand_id: brand || brands[0]?.id,
+                                  name: '',
+                                  base_weight: null,
+                                  notes: '',
+                                  official_weight_id: null,
+                                })
+                            : newWorkout
+                      }
+                    >
+                      <Plus aria-hidden />
+                      {page === 'goals'
+                        ? 'Add goal'
+                        : page === 'machines'
+                          ? 'Add machine'
+                          : 'Log workout'}
+                    </Button>
+                  )
                 }
               />
-              <Route
-                path={pages.goals}
-                element={<GoalsPage goals={goals} saving={saving} action={action} to={to} />}
-              />
-              <Route
-                path={pages.machines}
-                element={
-                  <MachinesPage
-                    machines={machines}
-                    brands={brands}
-                    brand={brand}
-                    setBrand={setBrand}
-                    setMachineEditor={setMachineEditor}
+            )}
+            {error && (
+              <AlertBanner
+                className="mb-5"
+                action={
+                  <Button type="button" variant="outline" size="sm" onClick={reconnect}>
+                    Reconnect
+                  </Button>
+                }
+              >
+                {error}
+              </AlertBanner>
+            )}
+            {storageWarning && !editor && (
+              <AlertBanner className="mb-5">{storageWarning}</AlertBanner>
+            )}
+            {!editor && <Notice className="mb-5" notice={statusNotice(saveState)} />}
+            <SyncStatus sync={offline} />
+            {!editor && <NewRecords records={draft.newRecords} />}
+            {recovery && !editor && (
+              <Card
+                role="region"
+                aria-label="Local draft"
+                className="mb-6 gap-3 p-4 shadow-none md:flex-row md:items-center md:justify-between md:p-5"
+              >
+                <p className="text-sm text-muted-foreground">
+                  This browser has a local draft. It is kept separately from server records. Restore
+                  or discard it before entering another record.
+                </p>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      updateEditor(recovery.editor);
+                      setRecovery(null);
+                      setSaveState('Local draft · Before server save');
+                    }}
+                  >
+                    Restore draft
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      persist(null);
+                      setRecovery(null);
+                      setSaveState('Draft discarded');
+                    }}
+                  >
+                    Discard draft
+                  </Button>
+                </div>
+              </Card>
+            )}
+            <Suspense fallback={ownPage ? null : pageFallback}>
+              <Routes>
+                {/* An unknown address falls back to the dashboard instead of an empty screen. */}
+                <Route
+                  path={pages.overview}
+                  element={
+                    <DashboardPage
+                      periodControls={periodControls}
+                      goals={goals}
+                      cardioSessions={cardioSessions}
+                      recordsProps={recordsProps}
+                      from={from}
+                      to={to}
+                      custom={!!customRange}
+                      setPage={setPage}
+                    />
+                  }
+                />
+                {[pages.journal, pages.week, pages.weeks12].map((path) => (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={
+                      <JournalPage
+                        periodControls={periodControls}
+                        journalTab={journalTab}
+                        setJournalTab={setJournalTab}
+                        from={from}
+                        to={to}
+                        goals={goals}
+                        recordsProps={recordsProps}
+                        routine={routine}
+                        quickWorkout={quickWorkout}
+                        cardioPreset={cardioPreset}
+                        setCardioPreset={setCardioPreset}
+                        clearCardioPreset={clearCardioPreset}
+                      />
+                    }
                   />
-                }
-              />
-              <Route path={pages.routines} element={null} />
-              <Route path={pages.backup} element={null} />
-              <Route path={pages.body} element={null} />
-              <Route path={pages.analysis} element={null} />
-              <Route path={pages.settings} element={null} />
-              <Route path="*" element={<Navigate to={pages.journal} replace />} />
-            </Routes>
-          </Suspense>
+                ))}
+                {/* The old journal address keeps working (#504). */}
+                <Route
+                  path="/journal"
+                  element={
+                    <Navigate to={{ pathname: pages.journal, search: location.search }} replace />
+                  }
+                />
+                <Route
+                  path={pages.goals}
+                  element={<GoalsPage goals={goals} saving={saving} action={action} to={to} />}
+                />
+                <Route
+                  path={pages.machines}
+                  element={
+                    <MachinesPage
+                      machines={machines}
+                      brands={brands}
+                      brand={brand}
+                      setBrand={setBrand}
+                      setMachineEditor={setMachineEditor}
+                    />
+                  }
+                />
+                <Route path={pages.routines} element={null} />
+                <Route path={pages.backup} element={null} />
+                <Route path={pages.body} element={null} />
+                <Route path={pages.analysis} element={null} />
+                <Route path={pages.settings} element={null} />
+                <Route path="*" element={<Navigate to={pages.journal} replace />} />
+              </Routes>
+            </Suspense>
+          </div>
         </div>
       </AppShell>
-      {editor && (
-        <WorkoutEditor
-          draft={draft}
-          saving={saving}
-          machines={machines}
-          exerciseNames={exerciseNames}
-          titles={[...new Set(workouts.map((w) => w.title).filter(Boolean))]}
-          progress={progress}
-        />
-      )}
       {goalEditor && (
         <Modal title="Progressive overload goals" close={() => setGoalEditor(false)}>
           <GoalForm

@@ -72,11 +72,9 @@ test('enters, completes, and saves three sets in a new journal on a 390px touch 
   const started = Date.now();
 
   await user.tap('open journal', page.getByRole('button', { name: 'Log workout' }).first());
-  const editor = page.getByRole('dialog', { name: 'New workout record' });
+  const editor = page.getByRole('region', { name: 'New workout record' });
   const sets = editor.locator('[data-slot=set-row]');
   await expect(sets).toHaveCount(3);
-  // Let the dialog's opening animation settle before checking what is on screen.
-  await expect(editor).toHaveCSS('opacity', '1');
   for (let i = 0; i < 3; i++) {
     const set = sets.nth(i);
     await user.tap(`set ${i + 1} exercise`, set.getByLabel('Exercise name'));

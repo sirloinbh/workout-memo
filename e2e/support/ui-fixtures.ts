@@ -40,11 +40,30 @@ export const pages = [
   { path: '/settings', name: 'settings' },
 ] as const;
 
-// Each modal opens from the page header's primary button.
+// Each editor opens from the page header's primary button. The workout editor opens on the page itself (#530,
+// a region); the others are dialogs.
 export const modals = [
-  { path: '/', button: 'Log workout', dialog: 'New workout record', name: 'workout-editor' },
-  { path: '/goals', button: 'Add goal', dialog: 'Progressive overload goals', name: 'goal-editor' },
-  { path: '/machines', button: 'Add machine', dialog: 'Add machine', name: 'machine-editor' },
+  {
+    path: '/',
+    button: 'Log workout',
+    dialog: 'New workout record',
+    role: 'region',
+    name: 'workout-editor',
+  },
+  {
+    path: '/goals',
+    button: 'Add goal',
+    dialog: 'Progressive overload goals',
+    role: 'dialog',
+    name: 'goal-editor',
+  },
+  {
+    path: '/machines',
+    button: 'Add machine',
+    dialog: 'Add machine',
+    role: 'dialog',
+    name: 'machine-editor',
+  },
 ] as const;
 
 export const widths = [
@@ -483,7 +502,7 @@ export async function openPage(page: Page, path: string) {
 export async function openModal(page: Page, modal: (typeof modals)[number]) {
   await openPage(page, modal.path);
   await page.getByRole('main').getByRole('button', { name: modal.button }).first().click();
-  const dialog = page.getByRole('dialog', { name: modal.dialog });
+  const dialog = page.getByRole(modal.role, { name: modal.dialog });
   await dialog.waitFor();
   await settle(page);
   return dialog;

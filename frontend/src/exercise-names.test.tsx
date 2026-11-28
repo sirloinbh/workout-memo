@@ -144,7 +144,7 @@ test('journal sets suggest earlier names and offer the existing spelling of a si
   render(<App />);
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
   await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
-  const dialog = screen.getByRole('dialog');
+  const dialog = screen.getByRole('region', { name: 'New workout record' });
   const first = within(dialog).getAllByRole('combobox', { name: 'Exercise name' })[0];
 
   await ui.user.type(first, 'Sq');
@@ -214,7 +214,7 @@ test('the similar-name live region exists before its message so the message is a
   render(<App />);
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
   await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
-  const dialog = screen.getByRole('dialog');
+  const dialog = screen.getByRole('region', { name: 'New workout record' });
   const first = within(dialog).getAllByRole('combobox', { name: 'Exercise name' })[0];
   const region = first.closest('div:not([data-slot])')!.querySelector('[aria-live="polite"]')!;
   expect(region).toHaveClass('sr-only');

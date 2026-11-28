@@ -73,27 +73,23 @@ for (const { width, height } of widths) {
   });
 }
 
-// #105: on a phone the workout editor fills the screen, and its save button stays on the
-// bottom edge while the long form scrolls; short forms sit on the bottom edge as a sheet.
+// #105, #530: the workout editor is part of the page; its save button stays on the bottom edge of the screen
+// while the long form scrolls. Short forms still open as a sheet at the bottom of the screen.
 test.describe('390px mobile modal', () => {
   test.use({ viewport: { width: 390, height: 844 } });
-  test('Journal editing is full screen and the save button stays at the bottom of the screen while scrolling', async ({
+  test('Journal editing fits the screen width and the save button stays at the bottom while scrolling', async ({
     page,
   }) => {
-    const dialog = await openModal(page, modals[0]);
-    // Measure after the opening animation has finished (#510).
-    await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-    const box = (await dialog.boundingBox())!;
-    expect(box.x).toBeCloseTo(0, 0);
-    expect(box.y).toBeCloseTo(0, 0);
-    expect(box.width).toBeCloseTo(390, 0);
-    expect(box.height).toBeCloseTo(844, 0);
-    const save = dialog.getByRole('button', { name: 'Save record' });
-    await expect(save).toBeInViewport();
-    for (const position of ['middle', 'top'] as const) {
-      await dialog.evaluate((el, at) => {
-        el.scrollTop = at === 'top' ? 0 : el.scrollHeight / 2;
+    const editor = await openModal(page, modals[0]);
+    const box = (await editor.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    const save = editor.getByRole('button', { name: 'Save record' });
+    for (const position of ['top', 'middle'] as const) {
+      await page.evaluate((at) => {
+        window.scrollTo(0, at === 'top' ? 0 : document.documentElement.scrollHeight / 2);
       }, position);
+      await expect(save).toBeInViewport();
       const r = (await save.boundingBox())!;
       expect(
         r.y + r.height,

@@ -4,8 +4,6 @@ import { expect, test } from '@playwright/test';
 const pages = [
   '/',
   '/journal',
-  '/week',
-  '/12-weeks',
   '/dashboard',
   '/goals',
   '/analysis',
@@ -45,7 +43,7 @@ for (const width of [320, 390])
     // Measure after the sheet has slid in.
     await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     const links = sheet.getByRole('navigation', { name: 'Main menu' }).getByRole('link');
-    await expect(links).toHaveCount(9);
+    await expect(links).toHaveCount(7);
     for (const box of await links.evaluateAll((els) =>
       els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect),
     )) {

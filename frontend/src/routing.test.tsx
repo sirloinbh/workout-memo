@@ -88,16 +88,30 @@ test('a failed load is reported and Reconnect reloads the selected period', asyn
   expect(ui.workoutLoads()).toBe(2);
 });
 
-test('the app opens on the day log; Week and 12 weeks open on their own period (#504)', async () => {
+test('the app opens on the day log; the menu has no Week or 12 weeks item (#535)', async () => {
   const ui = mount('/');
   expect(current()).toBe('Day log');
   expect(await screen.findByRole('radio', { name: '1 day' })).toBeChecked();
-  await openPage('Week', ui.user);
-  expect(window.location.pathname).toBe('/week');
+  const labels = within(menu())
+    .getAllByRole('link')
+    .map((link) => link.textContent);
+  expect(labels).not.toContain('Week');
+  expect(labels).not.toContain('12 weeks');
+  await openPage('Dashboard', ui.user);
+  expect(window.location.pathname).toBe('/dashboard');
   expect(screen.getByRole('radio', { name: '1 week' })).toBeChecked();
-  await openPage('12 weeks', ui.user);
-  expect(window.location.pathname).toBe('/12-weeks');
-  expect(screen.getByRole('radio', { name: '12 weeks' })).toBeChecked();
+});
+
+test('the old Week and 12-week addresses open the dashboard on that period (#535)', async () => {
+  mount('/week');
+  expect(await screen.findByRole('radio', { name: '1 week' })).toBeChecked();
+  expect(window.location.pathname).toBe('/dashboard');
+});
+
+test('the old 12-week address opens the dashboard on 12 weeks (#535)', async () => {
+  mount('/12-weeks');
+  expect(await screen.findByRole('radio', { name: '12 weeks' })).toBeChecked();
+  expect(window.location.pathname).toBe('/dashboard');
 });
 
 test('Settings is the last menu item; Backup & Export and Machine Library are reached from it (#508)', async () => {

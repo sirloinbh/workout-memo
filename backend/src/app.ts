@@ -37,7 +37,6 @@ export function createApp(
     auth?: express.RequestHandler;
     push?: PushService;
     weeklySummary?: WeeklySummary;
-    now?: () => number;
     /** shared-ai's public key (PEM); without it the AI tool routes are off (project-standards#559). */
     toolsPublicKey?: string;
   } = {},
@@ -73,12 +72,7 @@ export function createApp(
   registerCardioGoalRoutes(app, pool, today);
   // #260: without VAPID keys the service is disabled and the routes say so.
   const push = options.push ?? createPushService(pool, { config: null });
-  registerPushRoutes(
-    app,
-    push,
-    options.now,
-    options.weeklySummary ?? createWeeklySummary(pool, push),
-  );
+  registerPushRoutes(app, push, options.weeklySummary ?? createWeeklySummary(pool, push));
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the
   // signed call token, not the session, is the check.
   // #822: shared-ai signs the tool and jti claims (project-standards#670), so the app requires them.

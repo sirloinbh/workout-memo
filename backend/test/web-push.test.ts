@@ -5,15 +5,11 @@ import { createAuthMiddleware } from '@sirloinbh/auth-client';
 import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
-import {
-  createPushService,
-  pushConfigFromEnv,
-  type PushPayload,
-  restOverPayload,
-} from '../src/web-push.js';
+import { createPushService, pushConfigFromEnv, type PushPayload } from '../src/web-push.js';
 import { listenApp } from './listen.js';
 
-// #260: the subscription API and the rest-end schedule, without PostgreSQL or a push service.
+// #260: the subscription API and the one-off pushes (#485), without PostgreSQL or a push service.
+// The rest-end schedule was removed (#528).
 // A fake pool records the queries; web-push.integration.test.ts runs them on a real database.
 type Query = { sql: string; params: unknown[] };
 function fakePool(answer: (sql: string, params: unknown[]) => unknown[] = () => []) {
@@ -61,7 +57,7 @@ async function withApi(
       };
     },
   });
-  const server = await listenApp(createApp(pool, { auth, push, now: () => startedAt }));
+  const server = await listenApp(createApp(pool, { auth, push }));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {
@@ -102,20 +98,28 @@ test('keys are read only from the environment, and push is off without both', ()
   );
 });
 
-test('without keys the config says so, and saving or scheduling answers 503', async () => {
+test('without keys the config says so, and saving answers 503', async () => {
   const { pool, queries } = fakePool();
   await withApi(pool, createPushService(pool, { config: null }), async (call) => {
     assert.deepEqual((await call('/push/config')).body, { enabled: false, public_key: null });
     const saved = await call('/push/subscriptions', 'POST', subscription);
     assert.equal(saved.status, 503);
-    assert.equal((await call('/push/rest', 'PUT', { ends_at: startedAt + 90_000 })).status, 503);
-    // Removing is always allowed, so a user can clean up after keys are removed.
-    assert.equal((await call('/push/rest', 'DELETE')).status, 200);
   });
   assert.equal(
     queries.some((q) => /INSERT/.test(q.sql)),
     false,
   );
+});
+
+// #528: the rest-end routes are gone.
+test('the rest-end push routes no longer exist', async () => {
+  const { pool, queries } = fakePool();
+  const push = createPushService(pool, { config, send: async () => undefined });
+  await withApi(pool, push, async (call) => {
+    assert.equal((await call('/push/rest', 'PUT', { ends_at: startedAt + 90_000 })).status, 404);
+    assert.equal((await call('/push/rest', 'DELETE')).status, 404);
+  });
+  assert.deepEqual(queries, []);
 });
 
 test('a subscription is saved for the signed-in user and validated', async () => {
@@ -173,7 +177,7 @@ test('a subscription is saved for the signed-in user and validated', async () =>
   });
 });
 
-test('deleting a subscription is limited to its owner and drops an orphaned schedule', async () => {
+test('deleting a subscription is limited to its owner', async () => {
   const { pool, queries } = fakePool();
   const push = createPushService(pool, { config, send: async () => undefined });
   await withApi(pool, push, async (call) => {
@@ -183,104 +187,68 @@ test('deleting a subscription is limited to its owner and drops an orphaned sche
       200,
     );
   });
+  assert.equal(queries.length, 1);
   assert.deepEqual(queries[0].params, [subscription.endpoint, 'u1']);
   assert.match(queries[0].sql, /DELETE FROM push_subscriptions WHERE endpoint=\$1 AND user_id=\$2/);
-  assert.match(queries[1].sql, /DELETE FROM rest_pushes WHERE user_id=\$1/);
-});
-
-test('the rest end is scheduled per user, replaced, bounded and cancelled', async () => {
-  const { pool, queries } = fakePool();
-  const push = createPushService(pool, { config, send: async () => undefined });
-  await withApi(pool, push, async (call) => {
-    const end = startedAt + 90_000;
-    assert.equal((await call('/push/rest', 'PUT', { ends_at: end })).status, 200);
-    const upsert = queries.find((q) => /INSERT INTO rest_pushes/.test(q.sql));
-    assert.match(upsert!.sql, /ON CONFLICT \(user_id\) DO UPDATE/);
-    assert.deepEqual(upsert!.params, ['u1', end]);
-    // A little in the past (slow device clock) is still sent at once; a long past end is refused.
-    assert.equal((await call('/push/rest', 'PUT', { ends_at: startedAt - 5_000 })).status, 200);
-    const past = await call('/push/rest', 'PUT', { ends_at: startedAt - 60_000 });
-    assert.deepEqual(past, { status: 400, body: { error: 'The rest has already ended' } });
-    const far = await call('/push/rest', 'PUT', { ends_at: startedAt + 3 * 3600_000 });
-    assert.equal(far.status, 400);
-    for (const bad of [{}, { ends_at: 'soon' }, { ends_at: 1.5 }, { ends_at: end, extra: 1 }])
-      assert.equal((await call('/push/rest', 'PUT', bad)).status, 400, JSON.stringify(bad));
-    assert.equal(queries.filter((q) => /INSERT INTO rest_pushes/.test(q.sql)).length, 2);
-    assert.equal((await call('/push/rest', 'DELETE')).status, 200);
-    const cancel = queries.filter((q) => /DELETE FROM rest_pushes/.test(q.sql)).at(-1);
-    assert.deepEqual(cancel!.params, ['u1']);
-  });
 });
 
 test('without sign-in (local development) there is one user', async () => {
   const { pool, queries } = fakePool();
   const push = createPushService(pool, { config, send: async () => undefined });
-  const server = await listenApp(createApp(pool, { push, now: () => startedAt }));
+  const server = await listenApp(createApp(pool, { push }));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   try {
-    await fetch(`http://127.0.0.1:${address.port}/api/push/rest`, { method: 'DELETE' });
+    await fetch(`http://127.0.0.1:${address.port}/api/push/subscriptions`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: subscription.endpoint }),
+    });
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
-  assert.deepEqual(queries[0].params, ['local']);
+  assert.deepEqual(queries[0].params, [subscription.endpoint, 'local']);
 });
 
-// What sendDue reads: the claimed rows, then the user's subscriptions.
-function dueRows(rows: Record<string, unknown>[], subs: Record<string, unknown>[]) {
-  return (sql: string) =>
-    /DELETE FROM rest_pushes WHERE ends_at <= now\(\) RETURNING/.test(sql)
-      ? rows
-      : /SELECT endpoint/.test(sql)
-        ? subs
-        : [];
-}
 const row = { endpoint: subscription.endpoint, p256dh: 'p256dh-key', auth: 'auth-secret' };
+const payload: PushPayload = { title: 'Hello', body: 'Body', url: '/', tag: 't' };
+// What a push reads: the user's subscriptions.
+const subscriptionsOf = (subs: Record<string, unknown>[]) => (sql: string) =>
+  /SELECT endpoint/.test(sql) ? subs : [];
 
-test('a due rest pushes "Rest over" to every subscription of the user once', async () => {
+test('a one-off push goes to every subscription of the user', async () => {
   const sent: { endpoint: string; payload: PushPayload }[] = [];
   const { pool, queries } = fakePool(
-    dueRows([{ user_id: 'u1' }], [row, { ...row, endpoint: 'https://push.example/send/two' }]),
+    subscriptionsOf([row, { ...row, endpoint: 'https://push.example/send/two' }]),
   );
   const push = createPushService(pool, {
     config,
-    send: async (sub, payload) => {
-      sent.push({ endpoint: sub.endpoint, payload });
+    send: async (sub, p) => {
+      sent.push({ endpoint: sub.endpoint, payload: p });
     },
   });
-  assert.equal(await push.sendDue(), 1);
+  await push.sendToUser('u1', payload);
   assert.deepEqual(
     sent.map((s) => s.endpoint),
     [subscription.endpoint, 'https://push.example/send/two'],
   );
-  assert.deepEqual(sent[0].payload, restOverPayload);
-  assert.equal(restOverPayload.title, 'Rest over');
-  // Stale schedules are dropped before the claim, and the claim deletes the row it returns.
-  assert.match(queries[0].sql, /ends_at < now\(\) - make_interval/);
-  assert.match(
-    queries[1].sql,
-    /DELETE FROM rest_pushes WHERE ends_at <= now\(\) RETURNING user_id/,
-  );
+  assert.deepEqual(sent[0].payload, payload);
+  assert.deepEqual(queries[0].params, ['u1']);
 });
 
-test('a rest that is not due, or a service without keys, sends nothing', async () => {
-  const sent: string[] = [];
-  const { pool } = fakePool(dueRows([], [row]));
-  const push = createPushService(pool, { config, send: async (s) => void sent.push(s.endpoint) });
-  assert.equal(await push.sendDue(), 0);
-  assert.deepEqual(sent, []);
-  const off = createPushService(fakePool(dueRows([{ user_id: 'u1' }], [row])).pool, {
-    config: null,
-  });
-  assert.equal(await off.sendDue(), 0);
+test('a service without keys sends nothing', async () => {
+  const { pool, queries } = fakePool(subscriptionsOf([row]));
+  const off = createPushService(pool, { config: null });
+  await off.sendToUser('u1', payload);
   assert.equal(off.enabled, false);
-  assert.doesNotThrow(() => off.start()());
+  assert.deepEqual(queries, []);
+  await off.stop();
 });
 
 test('a subscription the push service has dropped (410) is removed; other failures are logged', async () => {
   const logged: string[] = [];
   const { pool, queries } = fakePool(
-    dueRows([{ user_id: 'u1' }], [row, { ...row, endpoint: 'https://push.example/send/two' }]),
+    subscriptionsOf([row, { ...row, endpoint: 'https://push.example/send/two' }]),
   );
   const push = createPushService(pool, {
     config,
@@ -291,7 +259,7 @@ test('a subscription the push service has dropped (410) is removed; other failur
       throw Object.assign(new Error('push service down'), { statusCode: 500 });
     },
   });
-  assert.equal(await push.sendDue(), 1);
+  await push.sendToUser('u1', payload);
   const removed = queries.filter((q) =>
     /DELETE FROM push_subscriptions WHERE endpoint=\$1$/.test(q.sql),
   );
@@ -299,24 +267,18 @@ test('a subscription the push service has dropped (410) is removed; other failur
     removed.map((q) => q.params),
     [[row.endpoint]],
   );
-  assert.deepEqual(logged, ['Rest push failed: push service down']);
+  assert.deepEqual(logged, ['Push failed: push service down']);
 });
 
 // #371: a send that never answers is cut off by its deadline, so it cannot hold back other pushes.
-test('a sender that never answers does not block the next due push', async () => {
+test('a sender that never answers does not block the next push', async () => {
   const sent: string[] = [];
   const logged: string[] = [];
-  let due = [{ user_id: 'stuck' }, { user_id: 'fine' }];
-  const { pool } = fakePool((sql, params) => {
-    if (/DELETE FROM rest_pushes WHERE ends_at <= now\(\) RETURNING/.test(sql)) {
-      const rows = due;
-      due = [];
-      return rows;
-    }
-    if (/SELECT endpoint/.test(sql))
-      return [{ ...row, endpoint: `https://push.example/${String(params[0])}` }];
-    return [];
-  });
+  const { pool } = fakePool((sql, params) =>
+    /SELECT endpoint/.test(sql)
+      ? [{ ...row, endpoint: `https://push.example/${String(params[0])}` }]
+      : [],
+  );
   const push = createPushService(pool, {
     config,
     sendTimeoutMs: 30,
@@ -327,46 +289,8 @@ test('a sender that never answers does not block the next due push', async () =>
       return Promise.resolve();
     },
   });
-  assert.equal(await push.sendDue(), 2);
+  await push.sendToUser('stuck', payload);
+  await push.sendToUser('fine', payload);
   assert.deepEqual(sent, ['https://push.example/fine']);
   assert.match(logged.join('\n'), /timed out after 30 ms/);
-  // The next check still sends a later push.
-  due = [{ user_id: 'later' }];
-  assert.equal(await push.sendDue(), 1);
-  assert.deepEqual(sent, ['https://push.example/fine', 'https://push.example/later']);
-});
-
-// #371: one timer for the earliest rest; with no rest pending nothing runs and no query is issued.
-test('with no pending rest the service issues one query and then none', async () => {
-  const { pool, queries } = fakePool((sql) => (sql.includes('min(ends_at)') ? [{ at: null }] : []));
-  const stop = createPushService(pool, { config, send: async () => undefined }).start();
-  await new Promise((resolve) => setTimeout(resolve, 120));
-  await stop();
-  assert.equal(queries.length, 1);
-  assert.match(queries[0].sql, /min\(ends_at\)/);
-});
-
-test('a scheduled rest fires one check at its end time, then the timer rests again', async () => {
-  const sent: string[] = [];
-  let pending = false;
-  const { pool, queries } = fakePool((sql) => {
-    if (sql.includes('min(ends_at)')) return [{ at: pending ? Date.now() + 40 : null }];
-    if (/DELETE FROM rest_pushes WHERE ends_at <= now\(\) RETURNING/.test(sql)) {
-      const rows = pending ? [{ user_id: 'u1' }] : [];
-      pending = false;
-      return rows;
-    }
-    if (/SELECT endpoint/.test(sql)) return [row];
-    return [];
-  });
-  const push = createPushService(pool, { config, send: async (s) => void sent.push(s.endpoint) });
-  const stop = push.start();
-  pending = true;
-  await push.scheduleRest('u1', Date.now() + 40);
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  assert.deepEqual(sent, [subscription.endpoint]);
-  const afterFire = queries.length;
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  assert.equal(queries.length, afterFire, 'no query while nothing is pending');
-  await stop();
 });

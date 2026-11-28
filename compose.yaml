@@ -27,7 +27,7 @@ services:
       TZ: Asia/Seoul
       # #303: the shared sign-in (sirloinbh/shared-auth) checks each /api session on its network.
       AUTH_INTERNAL_URL: ${AUTH_INTERNAL_URL:-http://shared-auth-api:3110}
-      # #260: rest-end Web Push. Empty keys turn it off; the in-screen timer is not affected.
+      # #260: Web Push for the weekly summary (#485). Empty keys turn it off.
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}

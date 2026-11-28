@@ -63,11 +63,9 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 | GET    | `/api/exercise-weight-steps`       | Weight step per exercise (#86). Only the exercises that were set                                                                                 |
 | PUT    | `/api/exercise-weight-steps`       | Save the weight step of one exercise. `null` goes back to the default 5 kg                                                                       |
 | GET    | `/api/goal-suggestion`             | Next goal suggestion for `?exercise=` (not saved)                                                                                                |
-| GET    | `/api/push/config`                 | Whether rest-end Web Push is set up on the server and its public VAPID key (#260)                                                                |
+| GET    | `/api/push/config`                 | Whether Web Push is set up on the server and its public VAPID key (#260)                                                                         |
 | POST   | `/api/push/subscriptions`          | Save this browser's push subscription for the signed-in user → 201. 503 when push is not set up                                                  |
 | DELETE | `/api/push/subscriptions`          | Remove a push subscription (`endpoint` in the body) → `{ ok: true }`                                                                             |
-| PUT    | `/api/push/rest`                   | Tell the server when the running rest ends (`ends_at`, epoch ms); it sends one push then. 503 when push is not set up                            |
-| DELETE | `/api/push/rest`                   | Cancel the pending rest-end push (cancel or pause) → `{ ok: true }`                                                                              |
 | GET    | `/api/push/weekly-summary`         | Whether the weekly summary push is on for the signed-in user → `{ enabled }` (off by default) (#485)                                             |
 | PUT    | `/api/push/weekly-summary`         | Turn the Sunday 21:00 weekly summary push on or off (`{ enabled }`) → `{ enabled }`. 503 when turning it on and push is not set up               |
 | GET    | `/api/cardio-sessions`             | Cardio records in the `?from&to` period (newest first). `kind` optional                                                                          |
@@ -126,7 +124,7 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 `{ "brand_id": 1, "name": "레그 프레스", "base_weight": null, "notes": "", "official_weight_id": 12 }` (`레그 프레스` is "Leg Press")
 
 - `official_weight_id` is the link to an official reference value. It does not change `base_weight`. If omitted in an update request the existing link is kept, and sending `null` removes the link.
-- `single_joint` (#84, boolean) says whether the machine is for a single-joint exercise. If omitted at creation it is `false`, and if omitted in an update the existing value is kept. The rest timer on the screen uses it to pick the single-joint default rest when a set is completed.
+- `single_joint` (#84, boolean) says whether the machine is for a single-joint exercise. If omitted at creation it is `false`, and if omitted in an update the existing value is kept.
 
 ### Goal `POST /api/goals`
 
@@ -151,14 +149,13 @@ Error handling is done by the centrally managed file `backend/src/standard/http.
 - An automatic double progression routine (including routines that were already saved) raises the total weight by this value when the rep upper limit is passed. An exercise at 0 kg (bodyweight) only adds reps.
 - `GET /api/goal-suggestion?exercise=벤치프레스` → `{ exercise, weight_step, custom, base, target_weight }`. `base` is the most recent goal of that exercise (`source: "goal"`), or if there is none, the heaviest completed set of the most recent log (`source: "record"`), and if there is neither it is `null` (`target_weight` is also `null`).
 
-### Rest-end Web Push `/api/push/*` (#260)
+### Web Push subscriptions `/api/push/*` (#260)
 
-`POST /api/push/subscriptions` takes `{ "endpoint": "https://…", "expirationTime": null, "keys": { "p256dh": "…", "auth": "…" } }` (what `PushSubscription.toJSON()` returns; `expirationTime` is optional, a number or `null`, and not stored, #501). `PUT /api/push/rest` takes `{ "ends_at": 1790000000000 }`.
+`POST /api/push/subscriptions` takes `{ "endpoint": "https://…", "expirationTime": null, "keys": { "p256dh": "…", "auth": "…" } }` (what `PushSubscription.toJSON()` returns; `expirationTime` is optional, a number or `null`, and not stored, #501). The rest-end push routes (`PUT` and `DELETE /api/push/rest`) were removed (#528); they now answer the JSON 404 like any unknown `/api` path.
 
-- Push is on only when the server has the `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` environment variables ([deployment](deployment.md)). `GET /api/push/config` → `{ enabled, public_key }` (`public_key` is `null` when off). When off, saving a subscription and scheduling a rest answer 503, and the in-screen timer works as before.
+- Push is on only when the server has the `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` environment variables ([deployment](deployment.md)). `GET /api/push/config` → `{ enabled, public_key }` (`public_key` is `null` when off). When off, saving a subscription answers 503.
 - A subscription belongs to the signed-in user (`req.user.id` from the shared sign-in, #303); without sign-in (local development) there is one user. The same `endpoint` saved again is updated, and a different user cannot remove it.
-- There is one pending push per user. `PUT /api/push/rest` replaces it; the client sends it when a rest starts or resumes, and `DELETE /api/push/rest` when the rest is canceled or paused. `ends_at` more than 10 seconds in the past or more than an hour and a minute ahead is 400.
-- A timer set for the earliest pending rest wakes the server at that time (nothing runs while no rest is pending), and it sends the push to every subscription of the user once the time has come (the pending row is deleted first, so a push is sent at most once). A push more than 2 minutes late (for example the server was restarting) is dropped. Each send has a 10 second deadline, so a stalled push service does not delay other users. A subscription the push service answers 404 or 410 for is removed.
+- The only push the server sends is the weekly summary below. Each send has a 10 second deadline, so a stalled push service does not delay other users. A subscription the push service answers 404 or 410 for is removed.
 
 ### Weekly summary push `/api/push/weekly-summary` (#485)
 

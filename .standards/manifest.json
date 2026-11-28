@@ -1,5 +1,5 @@
 {
-  "centralSha": "6983271085aa4946f75097f1b398e28eba127cc2",
+  "centralSha": "4cc484a0b0bb8d664cace020217db8bdafd3a1cd",
   "profile": "app",
   "project": "workout-memo",
   "files": {
@@ -1353,7 +1353,7 @@
     },
     "knip.json": {
       "mode": "full",
-      "sha256": "24b4699f1cf24f37df1e5d5f6f75914b955b06a2b7a913dad04cd63ad14686e3",
+      "sha256": "a0289b9ca6cfebc0028a3fa5bac36b874d41d737164bac69b86f194804b824e9",
       "source": "templates/app/knip.json"
     },
     "lighthouserc.json": {

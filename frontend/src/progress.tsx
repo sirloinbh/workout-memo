@@ -1,5 +1,5 @@
 import { Button } from './components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { SkeletonText } from './components/ui/skeleton';
 import { Spinner } from './components/ui/spinner';
 import { plural } from './labels';
@@ -66,9 +66,6 @@ export function RoutineProgress({
         <CardTitle asHeading="h2" className="text-body font-semibold">
           Routine goals
         </CardTitle>
-        <CardDescription className="text-caption">
-          A planned goal. Only saved workout journals count as actual records.
-        </CardDescription>
       </CardHeader>
       <CardContent className="px-4 pt-2 pb-5 text-sm md:px-6 md:pb-6">
         {error && (

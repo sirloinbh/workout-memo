@@ -312,7 +312,6 @@ function Workspace() {
             <AccountActions />
           </>
         }
-        footer="Today's record creates tomorrow's change."
       >
         <div className="legacy">
           {/* #530: the workout editor opens on the page. The page below stays mounted but hidden, so its state

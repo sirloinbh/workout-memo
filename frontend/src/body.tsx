@@ -8,7 +8,7 @@ import { List, ListItem } from './components/list';
 import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { EmptyState } from './components/ui/empty-state';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -303,9 +303,6 @@ export function BodyMeasurements({
               {rows.length}
             </Badge>
           </CardTitle>
-          <CardDescription className="text-caption">
-            Measurements for the selected period and same-day workout volume
-          </CardDescription>
         </CardHeader>
         {/* #173: a reload keeps the list on screen; the status line is for screen readers. */}
         {loading && rows.length > 0 && (

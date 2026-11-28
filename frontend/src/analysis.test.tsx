@@ -114,7 +114,6 @@ test('empty analysis shows Monday-start week totals, 미분류 and the 1RM polic
   expect(shows(/Est\. 1RM = total weight kg × \(1 \+ reps ÷ 30\)/).length).toBeGreaterThan(0);
   expect(shows(/applies only to sets of 1-10 reps/).length).toBeGreaterThan(0);
   expect(shows(/measured 1RM/).length).toBeGreaterThan(0);
-  expect(shows(/body part totals can be larger than the weekly total/).length).toBeGreaterThan(0);
   expect(shows(/2026-10-12 — 2026-10-18 · Total 0 sets · 0kg/).length).toBeGreaterThan(0);
   expect(partRow('2026-10-12', '미분류')).toBe('Unclassified0 sets0kg');
   expect(ui.requests.filter((r) => r.method !== 'GET')).toHaveLength(0);

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { List, ListItem } from '../components/list';
 import { AlertBanner } from '../components/ui/alert-banner';
 import { Button } from '../components/ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
 import { SkeletonList } from '../components/ui/skeleton';
 import { type CardioRecord, type CardioRecords as Records, getCardioRecords } from './api';
@@ -69,9 +69,6 @@ export function CardioRecords({ refreshKey = 0 }: { refreshKey?: number }) {
         <CardTitle asHeading="h3" className="flex items-center gap-2 text-body font-semibold">
           Personal records
         </CardTitle>
-        <CardDescription className="text-caption">
-          All time. 5 km and 10 km only compare runs whose distance is within ±2%
-        </CardDescription>
       </CardHeader>
       <div className="px-4 pt-3 pb-5 md:px-6 md:pb-6">
         {error && (

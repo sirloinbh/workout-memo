@@ -7,7 +7,7 @@ import { ToggleChips } from './components/toggle-chips';
 import { AlertBanner } from './components/ui/alert-banner';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { DateStepper, RangeSummary } from './components/ui/date-stepper';
 import { EmptyState } from './components/ui/empty-state';
 import { SegmentedControl } from './components/ui/segmented-control';
@@ -257,10 +257,6 @@ export function Analysis() {
                   {data.exercises.length}
                 </Badge>
               </CardTitle>
-              <CardDescription className="text-caption">
-                Your best values across all records and the date you first reached them. Choose an
-                exercise to see details.
-              </CardDescription>
             </CardHeader>
             <CardContent className={cardContent}>
               {!shown ? (
@@ -439,12 +435,6 @@ export function Analysis() {
               <CardTitle asHeading="h2" className="text-body font-semibold">
                 Weekly volume by body part
               </CardTitle>
-              <CardDescription className="text-caption">
-                Totals use the body parts you set for each exercise. Body parts are not guessed from
-                the exercise name, and exercises you have not set are unclassified. A set from an
-                exercise assigned to several body parts counts fully toward each, so the body part
-                totals can be larger than the weekly total.
-              </CardDescription>
             </CardHeader>
             <CardContent className={cardContent}>
               {data.weeks.map((w) => {

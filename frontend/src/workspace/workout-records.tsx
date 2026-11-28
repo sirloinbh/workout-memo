@@ -3,7 +3,7 @@ import { ArrowRight, NotebookPen, Plus, Trash2 } from 'lucide-react';
 import { List, ListItem } from '../components/list';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardAction, CardHeader, CardTitle } from '../components/ui/card';
 import { EmptyState } from '../components/ui/empty-state';
 import { SkeletonList } from '../components/ui/skeleton';
 import { useConfirmDelete } from '../components/use-confirm-delete';
@@ -60,9 +60,6 @@ export function WorkoutRecords({
             {workouts.length}
           </Badge>
         </CardTitle>
-        <CardDescription className="text-caption">
-          So today&apos;s effort becomes tomorrow&apos;s baseline
-        </CardDescription>
         {onAll && (
           <CardAction>
             <Button variant="ghost" size="sm" onClick={onAll}>

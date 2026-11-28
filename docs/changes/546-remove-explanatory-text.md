@@ -12,6 +12,8 @@ Removed:
 - Body records header: eyebrow "BODY CHANGES, SIDE BY SIDE", title "Track your body changes too" (now "Body records") and its description.
 - Empty-state lines: "Your growth story starts with today's sets.", "e.g. Leg Press total weight ...", "e.g. 3 runs a week ...", "An unconfirmed base weight ...", "Enter values only for the days you measured ...".
 - Intro paragraphs: cardio goals intro, routine builder intro and "A plan is only a goal ...", cardio preview note, split editor note, "Equal values are shown as ties.".
+- Dashboard: the chart caption "Growth that gets clearer as your records build up", the whole "THE NEXT CHAPTER / A little heavier. Do it once more." promo card, the record list caption "So today's effort becomes tomorrow's baseline" and the page footer "Today's record creates tomorrow's change.".
+- Card captions that explained a screen: analysis (records and body part totals), body records, cardio records, goal progress, record board, machines.
 - Placeholders: "Not entered" (body, cardio, InBody import), "0", and the goal exercise name prompt. The backup confirmation placeholder stays: it shows the text to type.
 
 Not touched: `workout-editor.tsx` and `settings.tsx` (workout-memo-36 lanes still change them, #532 and #528); come back to them after epic #524 closes. The "About the analysis basis" details block stays because it states how the numbers are calculated.

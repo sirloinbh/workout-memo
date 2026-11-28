@@ -390,3 +390,11 @@ test('backup validation checks cardio goals with the API rules and unique ids (#
     b.data.cardio_goals.push({ ...b.data.cardio_goals[0] });
   }, /cardio_goals: duplicate id 6/);
 });
+
+// #529: backups made while supersets existed still restore; the old field is ignored.
+test('a backup whose sets carry a superset group still parses, without the field', () => {
+  const backup = validBackup();
+  Object.assign(backup.data.workouts[0].sets[0], { superset: 2 });
+  const set = parseBackup(backup).data.workouts[0].sets[0];
+  assert.ok(!('superset' in set));
+});

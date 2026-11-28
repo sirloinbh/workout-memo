@@ -52,8 +52,7 @@ function readDraft(): { draft: Draft | null; warning: string } {
           (s.weight === undefined || Number.isFinite(s.weight)) &&
           (s.reps === undefined || Number.isFinite(s.reps)) &&
           (s.completed === undefined || typeof s.completed === 'boolean') &&
-          (s.rpe === undefined || s.rpe === null || Number.isFinite(s.rpe)) &&
-          (s.superset === undefined || s.superset === null || Number.isInteger(s.superset)),
+          (s.rpe === undefined || s.rpe === null || Number.isFinite(s.rpe)),
       ) ||
       (d.request &&
         (typeof d.request.key !== 'string' ||

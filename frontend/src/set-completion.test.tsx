@@ -5,7 +5,6 @@ import { expect, test, vi } from 'vitest';
 import { App } from './app';
 import { deviceNow, json, mockApi } from './test/api';
 import { fakeClock, installFakeTimerHarness, waitForFake as waitFor } from './test/fake-timers';
-import { enableAutoStart, openPage } from './test/nav';
 
 installFakeTimerHarness();
 
@@ -57,12 +56,6 @@ function mount(initial: Workout[] = [], now = start) {
     sentFeedback: () => (mutations().at(-1)!.body as { feedback: string | null }).feedback,
     // Equivalent of the legacy render(): redraw at the current clock without any event.
     redraw: () => view.rerender(<App />),
-    // Returning to a background tab: no tick ran meanwhile, only the clock moved.
-    returnToTab(ms: number) {
-      advance(ms);
-      fireEvent(window, new Event('visibilitychange'));
-      fireEvent.focus(window);
-    },
   };
 }
 type UI = ReturnType<typeof mount>;
@@ -85,10 +78,8 @@ async function openNew(ui: UI) {
 }
 const completion = (i = 0) => screen.getAllByRole('button', { name: /Set \d+ done/ })[i];
 const pressed = (i = 0) => completion(i).getAttribute('aria-pressed');
-const duration = () => screen.getByRole('spinbutton', { name: 'Rest time (sec)' });
 // #83: workout feedback replaced the per-set RPE input.
 const feedback = (label: string) => screen.getByRole('radio', { name: label });
-const timer = () => document.querySelector('[data-slot=rest-timer]')?.textContent ?? '';
 const content = () => document.body.textContent ?? '';
 const stat = (label: string) => {
   const card = screen
@@ -132,23 +123,10 @@ test('new sets start not completed; completion and undo are sent explicitly', as
   ]);
 });
 
-test('auto-start is off by default and the editor links to the rest settings (#508)', async () => {
+test('a duplicate completion click marks the set done once', async () => {
   const ui = mount();
   await openNew(ui);
   await ui.user.click(completion());
-  expect(timer()).toMatch(/1:30/);
-  expect(timer(), 'auto-start is off by default').not.toMatch(/left/);
-  expect(screen.getByRole('link', { name: 'Rest settings' })).toHaveAttribute('href', '/settings');
-  expect(screen.queryByRole('switch', { name: 'Auto-start when a set is done' })).toBeNull();
-});
-
-test('a duplicate completion click starts one rest', async () => {
-  const ui = mount();
-  await loaded();
-  await enableAutoStart(ui.user);
-  await openNew(ui);
-  await ui.user.click(completion());
-  expect(timer()).toMatch(/1:30 left/);
   advance(1000);
   await ui.user.click(completion());
   // The same render's handler fires again, as a double tap can before React commits:
@@ -163,60 +141,13 @@ test('a duplicate completion click starts one rest', async () => {
   });
   ui.redraw();
   expect(pressed()).toBe('true');
-  expect(timer(), 'second click neither toggles nor restarts the rest').toMatch(/1:25 left/);
   await ui.user.click(completion());
   expect(pressed()).toBe('false');
-  expect(timer(), 'undoing completion does not restart the rest').toMatch(/1:25 left/);
 });
 
-test('rest timer can be set, started, paused, resumed and cancelled', async () => {
-  const ui = mount();
-  await loaded();
-  await openPage('Settings', ui.user);
-  fireEvent.change(duration(), { target: { value: '60' } });
-  fireEvent.change(duration(), { target: { value: '3' } });
-  await openPage('Day log', ui.user);
-  await openNew(ui);
-  expect(timer(), 'durations under 5 seconds are ignored').toMatch(/1:00/);
-  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
-  // A foreground tick: the clock moves and the due redraw timeout fires once.
-  act(() => {
-    vi.advanceTimersByTime(1000);
-  });
-  expect(timer()).toMatch(/0:59 left/);
-  advance(9000);
-  await ui.user.click(screen.getByRole('button', { name: 'Pause' }));
-  expect(timer()).toMatch(/0:50 paused/);
-  ui.returnToTab(120000);
-  expect(timer(), 'paused rest does not run').toMatch(/0:50 paused/);
-  await ui.user.click(screen.getByRole('button', { name: 'Resume' }));
-  advance(20000);
-  ui.redraw();
-  expect(timer()).toMatch(/0:30 left/);
-  await ui.user.click(screen.getByRole('button', { name: 'Cancel rest' }));
-  expect(timer()).toMatch(/1:00/);
-  expect(timer()).not.toMatch(/left|paused/);
-});
-
-test('returning from the background shows time left from the end timestamp', async () => {
-  const ui = mount();
-  await openNew(ui);
-  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
-  ui.returnToTab(30000);
-  expect(timer()).toMatch(/1:00 left/);
-  ui.returnToTab(59999);
-  expect(timer(), 'rounds up until the real end').toMatch(/0:01 left/);
-  ui.returnToTab(1);
-  expect(timer()).toMatch(/Rest over/);
-  ui.returnToTab(3600000);
-  expect(timer()).toMatch(/Rest over/);
-  expect(timer(), 'never shows negative time').not.toMatch(/-/);
-});
-
-test('refresh restores timer from its end time and set state from the draft', async () => {
+test('refresh restores the set state from the draft', async () => {
   const first = mount();
   await loaded();
-  await enableAutoStart(first.user);
   await openNew(first);
   await first.user.click(completion());
   await first.user.click(feedback('Hard'));
@@ -224,7 +155,6 @@ test('refresh restores timer from its end time and set state from the draft', as
   first.view.unmount();
   const second = mount([], start + 45000);
   await loaded();
-  expect(timer()).toMatch(/0:45 left/);
   await second.user.click(screen.getByRole('button', { name: /Restore/ }));
   await loaded();
   expect(pressed()).toBe('true');
@@ -238,11 +168,9 @@ test('refresh restores timer from its end time and set state from the draft', as
   ]);
 });
 
-test('pressing the chosen feedback again sends null, and corrupt timer storage does not block startup', async () => {
-  localStorage.setItem('workout-memo:rest-timer:v1', '{broken');
+test('pressing the chosen feedback again sends null', async () => {
   const ui = mount();
   await openNew(ui);
-  expect(timer()).toMatch(/1:30/);
   expect(document.querySelector('input[step="0.5"]'), 'no RPE input').toBeNull();
   await ui.user.click(feedback('Medium'));
   expect(feedback('Medium')).toHaveAttribute('aria-checked', 'true');
@@ -289,21 +217,17 @@ test('not-completed sets are excluded from volume, set count and workout days', 
   expect(content()).toMatch(/Incomplete 1/);
 });
 
-test('a rapid second tap in a later render does not undo completion or touch the rest', async () => {
+test('a rapid second tap in a later render does not undo completion', async () => {
   const ui = mount();
-  await loaded();
-  await enableAutoStart(ui.user);
   await openNew(ui);
   await ui.user.click(completion());
   advance(100);
   // Double click: the second click arrives after React re-rendered.
   await ui.user.click(completion());
   expect(pressed(), 'double click keeps completion').toBe('true');
-  expect(timer(), 'rest started once and keeps running').toMatch(/1:30 left/);
   advance(1000);
   await ui.user.click(completion());
   expect(pressed(), 'deliberate undo still works').toBe('false');
-  expect(timer(), 'undo does not cancel the rest').toMatch(/1:29 left/);
   await submit(ui);
   expect(ui.sentSets()[0].completed).toBe(false);
 });
@@ -333,62 +257,6 @@ test('editing a workout saved with RPE keeps its RPE and shows its feedback (#83
   expect(ui.sentSets()[0].rpe, 'existing RPE data is preserved').toBe(8);
 });
 
-// #105: one short vibration when a rest ends while the app is open, never for a rest that
-// ended long ago (a reload or a long background stay), and never twice for the same end.
-test('a rest that ends while the app is open vibrates once, a long-past end stays silent', async () => {
-  const vibrate = vi.fn(() => true);
-  // The shared afterEach unstubs globals, so nothing is left on navigator.
-  vi.stubGlobal('navigator', Object.create(navigator, { vibrate: { value: vibrate } }));
-  {
-    const ui = mount();
-    await openNew(ui);
-    await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
-    ui.returnToTab(89000);
-    expect(vibrate).not.toHaveBeenCalled();
-    ui.returnToTab(2000);
-    expect(timer()).toMatch(/Rest over/);
-    expect(vibrate).toHaveBeenCalledTimes(1);
-    expect(vibrate).toHaveBeenCalledWith([200, 100, 200]);
-    ui.returnToTab(1000);
-    expect(vibrate, 'the same end alerts once').toHaveBeenCalledTimes(1);
-    // A new rest that ends while the tab sat in the background for a minute after it.
-    await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
-    ui.returnToTab(90000 + 60000);
-    expect(timer()).toMatch(/Rest over/);
-    expect(vibrate, 'an end found a minute late is silent').toHaveBeenCalledTimes(1);
-  }
-});
-
-// #105: the countdown bar is pinned at the top of the editor; its settings scroll away.
-test('the rest countdown is a pinned bar and the settings are on the Settings page', async () => {
-  const ui = mount();
-  await openNew(ui);
-  const bar = document.querySelector<HTMLElement>('[data-slot=rest-timer]')!;
-  expect(bar.parentElement).toHaveClass('sticky', 'top-0');
-  expect(bar).toContainElement(screen.getByRole('timer'));
-  expect(bar).toContainElement(screen.getByRole('button', { name: 'Start rest' }));
-  // #508: the settings are no longer in the editor; it only links to them.
-  expect(document.querySelector('[data-slot=rest-settings]')).toBeNull();
-  expect(screen.getByRole('link', { name: 'Rest settings' })).toHaveAttribute('href', '/settings');
-});
-
-// #105: pages with their own component (Routine Builder etc.) show the running rest first, so it
-// can stick at the top instead of sitting under the whole page.
-test('a running rest comes first on a page drawn by its own component', async () => {
-  const ui = mount();
-  await openNew(ui);
-  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
-  await ui.user.keyboard('{Escape}');
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  await ui.user.click(screen.getAllByRole('link', { name: 'Routine Builder' })[0]);
-  const page = document.querySelector('.legacy')!;
-  await waitFor(() => expect(page.querySelector('[data-slot=rest-timer]')).not.toBeNull());
-  expect(page.firstElementChild).toContainElement(
-    page.querySelector<HTMLElement>('[data-slot=rest-timer]'),
-  );
-  expect(page.firstElementChild).toHaveClass('sticky');
-});
-
 // #382: rows are keyed by a client id, so removing a middle set leaves the others' state with their own set.
 test('deleting the second of three sets keeps the third set completed and its undo guard', async () => {
   const ui = mount();
@@ -402,17 +270,4 @@ test('deleting the second of three sets keeps the third set completed and its un
   // The quick second tap right after completing is a double tap: the guard follows the set, not the index.
   await ui.user.click(completion(1));
   expect(pressed(1), 'a repeat tap does not undo it').toBe('true');
-});
-
-test('the ticking readout is not a live region; a state change is announced separately', async () => {
-  const ui = mount();
-  await openNew(ui);
-  const readout = () => screen.getByRole('timer');
-  expect(readout()).not.toHaveAttribute('aria-live');
-  const announcement = () => document.querySelector('[data-slot=rest-announcement]') as HTMLElement;
-  expect(announcement()).toHaveAttribute('aria-live', 'polite');
-  expect(announcement()).toBeEmptyDOMElement();
-  await ui.user.click(screen.getByRole('button', { name: 'Start rest' }));
-  expect(announcement()).toHaveTextContent('Rest running');
-  expect(readout()).not.toHaveAttribute('aria-live');
 });

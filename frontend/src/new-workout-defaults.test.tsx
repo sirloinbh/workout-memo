@@ -124,3 +124,16 @@ test('a rest day starts with three empty sets', async () => {
   expect(values('Exercise name')).toEqual(['', '', '']);
   expect(values('Machine')).toEqual(['', '', '']);
 });
+
+// #525: the log page header shows only the date, the weekday and today's routine.
+test('log page header shows the date, weekday and routine without slogans', async () => {
+  const { user } = mount(withRoutine(null));
+  await openPage('Day log', user);
+  const heading = await screen.findByRole('heading', { level: 1 });
+  expect(heading.textContent).toBe('Thu, Oct 15');
+  const header = heading.closest<HTMLElement>('[data-slot="page-header"]')!;
+  await within(header).findByText('12-week routine');
+  expect(screen.queryByText('YOUR PROGRESS, IN FOCUS')).toBeNull();
+  expect(screen.queryByText('One more step today')).toBeNull();
+  expect(screen.queryByText('Every set holds a better you than yesterday.')).toBeNull();
+});

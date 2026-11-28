@@ -497,104 +497,6 @@
         }
       }
     },
-    "/api/push/rest": {
-      "delete": {
-        "summary": "Cancel the pending rest-end push (cancel or pause) → { ok: true }",
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "401": {
-            "description": "Sign-in required (no session from the shared sign-in)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Tell the server when the running rest ends (ends_at, epoch ms); it sends one push then. 503 when push is not set up",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RestPush"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "400": {
-            "description": "Input validation failed or a referenced item does not exist",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Sign-in required (no session from the shared sign-in)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Request size limit exceeded",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service unavailable: the shared sign-in service could not be reached, or Web Push is not set up",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/push/subscriptions": {
       "delete": {
         "summary": "Remove a push subscription (endpoint in the body) → { ok: true }",
@@ -2250,7 +2152,7 @@
     },
     "/api/push/config": {
       "get": {
-        "summary": "Whether rest-end Web Push is set up on the server and its public VAPID key (#260)",
+        "summary": "Whether Web Push is set up on the server and its public VAPID key (#260)",
         "responses": {
           "200": {
             "description": "Success"
@@ -4282,20 +4184,6 @@
           "exercise",
           "weight_step"
         ]
-      },
-      "RestPush": {
-        "type": "object",
-        "properties": {
-          "ends_at": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "ends_at"
-        ],
-        "additionalProperties": false
       },
       "WeeklySummarySetting": {
         "type": "object",

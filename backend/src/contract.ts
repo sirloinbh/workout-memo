@@ -597,8 +597,8 @@ export function fieldErrors(error: z.ZodError) {
   return errors;
 }
 
-// #260: Web Push for the rest timer. The subscription is what the browser's PushManager returns
-// (`subscription.toJSON()`); the server stores it for the signed-in user and sends the rest-end push.
+// #260: Web Push. The subscription is what the browser's PushManager returns
+// (`subscription.toJSON()`); the server stores it for the signed-in user and sends the weekly summary push.
 // #372: the server POSTs to this address, so only the push services browsers register with are
 // accepted (FCM for Chrome, Mozilla autopush, Apple web push, Windows WNS), never an arbitrary host.
 const pushHosts = ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com'];
@@ -632,14 +632,6 @@ export const pushSubscriptionSchema = z.strictObject({
 });
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;
 export const pushUnsubscribeSchema = z.strictObject({ endpoint: pushEndpoint });
-// The rest ends at this instant (epoch milliseconds). The server also refuses a time that is
-// already past or more than the longest rest (one hour, #84) ahead.
-export const restPushSchema = z.strictObject({
-  ends_at: z
-    .number(whenMissing('Enter when the rest ends'))
-    .int('Enter when the rest ends as epoch milliseconds'),
-});
-export type RestPushInput = z.infer<typeof restPushSchema>;
 // #485: turns the Sunday-night weekly summary push on or off for the signed-in user.
 export const weeklySummarySettingSchema = z.strictObject({
   enabled: z.boolean(whenMissing('Choose whether to turn the weekly summary on')),

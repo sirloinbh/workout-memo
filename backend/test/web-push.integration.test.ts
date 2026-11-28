@@ -7,8 +7,8 @@ import { Pool } from 'pg';
 
 import { createPushService } from '../src/web-push.js';
 
-// #260: the push tables and the due-rest claim against PostgreSQL. Each run uses its own schema in
-// the test DB, like the other integration tests.
+// #260: the push tables against PostgreSQL. Each run uses its own schema in the test DB, like the
+// other integration tests. The rest-end schedule was removed (#528).
 const url = process.env.TEST_DATABASE_URL;
 const migrations = new URL('../../database/migrations/', import.meta.url);
 const config = {
@@ -20,6 +20,7 @@ const sub = (n: number) => ({
   endpoint: `https://push.example/send/${n}`,
   keys: { p256dh: 'p256dh', auth: 'auth' },
 });
+const payload = { title: 'Hello', body: 'Body', url: '/', tag: 't' };
 
 async function isolated(run: (pool: Pool) => Promise<void>) {
   const admin = new Pool({ connectionString: url });
@@ -39,45 +40,42 @@ async function isolated(run: (pool: Pool) => Promise<void>) {
   }
 }
 
-test('PostgreSQL rest push: schedule, replace, cancel and send once', { skip: !url }, async () => {
-  await isolated(async (pool) => {
-    const sent: string[] = [];
-    const push = createPushService(pool, { config, send: async (s) => void sent.push(s.endpoint) });
-    await push.saveSubscription('u1', sub(1));
-    await push.saveSubscription('u1', sub(2));
-    await push.saveSubscription('u2', sub(3));
-    // The same endpoint saved again moves to the new owner without a duplicate row.
-    await push.saveSubscription('u1', sub(1));
-    assert.equal((await pool.query('SELECT 1 FROM push_subscriptions')).rowCount, 3);
+test(
+  'PostgreSQL push: subscriptions move to the new owner and one-off pushes reach them',
+  { skip: !url },
+  async () => {
+    await isolated(async (pool) => {
+      const sent: string[] = [];
+      const push = createPushService(pool, {
+        config,
+        send: async (s) => void sent.push(s.endpoint),
+      });
+      await push.saveSubscription('u1', sub(1));
+      await push.saveSubscription('u1', sub(2));
+      await push.saveSubscription('u2', sub(3));
+      // The same endpoint saved again moves to the new owner without a duplicate row.
+      await push.saveSubscription('u1', sub(1));
+      assert.equal((await pool.query('SELECT 1 FROM push_subscriptions')).rowCount, 3);
+      await push.sendToUser('u1', payload);
+      assert.deepEqual(sent.sort(), [sub(1).endpoint, sub(2).endpoint]);
+    });
+  },
+);
 
-    // Not due yet: nothing is sent and the schedule stays.
-    await push.scheduleRest('u1', Date.now() + 60_000);
-    assert.equal(await push.sendDue(), 0);
-    assert.equal((await pool.query('SELECT 1 FROM rest_pushes')).rowCount, 1);
-
-    // Replacing keeps one row per user; the earlier, cancelled time never fires.
-    await push.scheduleRest('u1', Date.now() - 500);
-    assert.equal((await pool.query('SELECT 1 FROM rest_pushes')).rowCount, 1);
-    await push.scheduleRest('u2', Date.now() + 60_000);
-    await push.cancelRest('u2');
-    assert.equal((await pool.query('SELECT 1 FROM rest_pushes')).rowCount, 1);
-
-    assert.equal(await push.sendDue(), 1);
-    assert.deepEqual(sent.sort(), [sub(1).endpoint, sub(2).endpoint]);
-    // Claimed once: a second check sends nothing.
-    assert.equal(await push.sendDue(), 0);
-    assert.equal(sent.length, 2);
-
-    // A rest that ended long ago (server was down) is dropped, not sent late.
-    await push.scheduleRest('u1', Date.now() - 10 * 60_000);
-    assert.equal(await push.sendDue(), 0);
-    assert.equal(sent.length, 2);
-    assert.equal((await pool.query('SELECT 1 FROM rest_pushes')).rowCount, 0);
-  });
-});
+// The migrations (including the drop in 025, #528) run in isolated(); the subscription table stays.
+test(
+  'PostgreSQL push: the subscription table stays for the weekly summary',
+  { skip: !url },
+  async () => {
+    await isolated(async (pool) => {
+      const found = await pool.query(`SELECT to_regclass('push_subscriptions') AS name`);
+      assert.notEqual(found.rows[0].name, null);
+    });
+  },
+);
 
 test(
-  'PostgreSQL rest push: only the owner removes a subscription, and a dead one is pruned',
+  'PostgreSQL push: only the owner removes a subscription, and a dead one is pruned',
   { skip: !url },
   async () => {
     await isolated(async (pool) => {
@@ -90,15 +88,8 @@ test(
       await push.saveSubscription('u1', sub(1));
       await push.deleteSubscription('u2', sub(1).endpoint);
       assert.equal((await pool.query('SELECT 1 FROM push_subscriptions')).rowCount, 1);
-      await push.scheduleRest('u1', Date.now() - 100);
-      assert.equal(await push.sendDue(), 1);
+      await push.sendToUser('u1', payload);
       assert.equal((await pool.query('SELECT 1 FROM push_subscriptions')).rowCount, 0);
-
-      // Removing the last subscription also drops the pending push.
-      await push.saveSubscription('u1', sub(2));
-      await push.scheduleRest('u1', Date.now() + 60_000);
-      await push.deleteSubscription('u1', sub(2).endpoint);
-      assert.equal((await pool.query('SELECT 1 FROM rest_pushes')).rowCount, 0);
     });
   },
 );

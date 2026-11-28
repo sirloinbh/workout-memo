@@ -8,8 +8,8 @@ import { keyToBytes } from './push';
 import { fixClock, json, mockApi } from './test/api';
 import { openPage } from './test/nav';
 
-// #260: rest-end Web Push. The worker is public/push/sw.js (its own scope, because public/sw.js
-// is centrally managed); the toggle and the schedule calls are in the app.
+// #260: Web Push. The worker is public/push/sw.js (its own scope, because public/sw.js is centrally
+// managed); the only push the app sends now is the weekly summary (#485, #528).
 type Listener = (event: unknown) => void;
 type FakeWindow = {
   url: string;
@@ -40,21 +40,21 @@ function loadWorker(windows: FakeWindow[] = []) {
   return { run, push, showNotification, openWindow, clients, self };
 }
 
-test('a push shows "Rest over" with vibration and the app path to open', async () => {
+test('a push shows the weekly summary with vibration and the app path to open', async () => {
   const worker = loadWorker();
   await worker.push({
-    title: 'Rest over',
-    body: 'Time for your next set.',
-    url: '/journal',
-    tag: 'rest-timer',
+    title: 'Your week in review',
+    body: '3 workout days · 1,000 kg · 1 new record',
+    url: '/',
+    tag: 'weekly-summary',
   });
-  expect(worker.showNotification).toHaveBeenCalledWith('Rest over', {
-    body: 'Time for your next set.',
-    tag: 'rest-timer',
+  expect(worker.showNotification).toHaveBeenCalledWith('Your week in review', {
+    body: '3 workout days · 1,000 kg · 1 new record',
+    tag: 'weekly-summary',
     renotify: true,
     vibrate: [200, 100, 200],
     icon: '/icons/icon-192.png',
-    data: { url: '/journal' },
+    data: { url: '/' },
   });
 });
 
@@ -62,8 +62,8 @@ test('a push without a readable payload, or with a foreign address, falls back t
   const worker = loadWorker();
   await worker.run('push', { data: null });
   expect(worker.showNotification).toHaveBeenLastCalledWith(
-    'Rest over',
-    expect.objectContaining({ body: 'Time for your next set.', data: { url: '/journal' } }),
+    'Your week in review',
+    expect.objectContaining({ tag: 'weekly-summary', data: { url: '/' } }),
   );
   await worker.run('push', {
     data: {
@@ -76,33 +76,18 @@ test('a push without a readable payload, or with a foreign address, falls back t
   await worker.push({ title: 'Hi', url: 'https://evil.example/' });
   expect(worker.showNotification).toHaveBeenLastCalledWith(
     'Hi',
-    expect.objectContaining({ data: { url: '/journal' } }),
+    expect.objectContaining({ data: { url: '/' } }),
   );
 });
 
-test('with the app open and visible the page is told instead of a second alert', async () => {
-  const postMessage = vi.fn();
-  const worker = loadWorker([
-    {
-      url: 'https://form.example/journal',
-      visibilityState: 'visible',
-      focus: vi.fn(),
-      postMessage,
-    },
-  ]);
-  await worker.push({ title: 'Rest over' });
-  expect(postMessage).toHaveBeenCalledWith({ type: 'rest-over' });
-  expect(worker.showNotification).not.toHaveBeenCalled();
-});
-
-test('the weekly summary is shown even while the app is visible (#485)', async () => {
+test('the notification is shown even while the app is visible, and the worker has no rest handling (#528)', async () => {
   const postMessage = vi.fn();
   const worker = loadWorker([
     { url: 'https://form.example/', visibilityState: 'visible', focus: vi.fn(), postMessage },
   ]);
   await worker.push({
     title: 'Your week in review',
-    body: '3 workout days · 1,000 kg · 1 new record',
+    body: '3 workout days',
     url: '/',
     tag: 'weekly-summary',
   });
@@ -111,19 +96,7 @@ test('the weekly summary is shown even while the app is visible (#485)', async (
     'Your week in review',
     expect.objectContaining({ tag: 'weekly-summary', data: { url: '/' } }),
   );
-});
-
-test('a hidden app window still gets the notification', async () => {
-  const worker = loadWorker([
-    {
-      url: 'https://form.example/',
-      visibilityState: 'hidden',
-      focus: vi.fn(),
-      postMessage: vi.fn(),
-    },
-  ]);
-  await worker.push({ title: 'Rest over' });
-  expect(worker.showNotification).toHaveBeenCalledTimes(1);
+  expect(pushWorkerSource).not.toMatch(/rest/i);
 });
 
 test('tapping the notification focuses an open app window, or opens the app', async () => {
@@ -138,18 +111,18 @@ test('tapping the notification focuses an open app window, or opens the app', as
     { url: 'https://form.example/goals', visibilityState: 'hidden', focus, postMessage: vi.fn() },
   ]);
   const close = vi.fn();
-  await open.run('notificationclick', { notification: { close, data: { url: '/journal' } } });
+  await open.run('notificationclick', { notification: { close, data: { url: '/' } } });
   expect(close).toHaveBeenCalled();
   expect(focus).toHaveBeenCalledTimes(1);
   expect(open.openWindow).not.toHaveBeenCalled();
 
   const none = loadWorker([]);
   await none.run('notificationclick', {
-    notification: { close: vi.fn(), data: { url: '/journal' } },
+    notification: { close: vi.fn(), data: { url: '/dashboard' } },
   });
-  expect(none.openWindow).toHaveBeenCalledWith('/journal');
+  expect(none.openWindow).toHaveBeenCalledWith('/dashboard');
   await none.run('notificationclick', { notification: { close: vi.fn() } });
-  expect(none.openWindow).toHaveBeenLastCalledWith('/journal');
+  expect(none.openWindow).toHaveBeenLastCalledWith('/');
 });
 
 test('the worker takes over at once and does not handle fetch', async () => {
@@ -166,7 +139,7 @@ test('the server key is decoded from URL-safe base64', () => {
   expect([...keyToBytes('-_8')]).toEqual([251, 255]);
 });
 
-// ---- the settings toggle and the schedule calls in the app ----
+// ---- the weekly summary switch on the Settings page subscribes this browser ----
 const publicKey = 'AQID';
 // The shape PushSubscription.toJSON() returns in browsers, expirationTime included (#501).
 const subscriptionJson = {
@@ -213,9 +186,9 @@ function mount(
   },
 ) {
   fixClock();
-  vi.stubGlobal('confirm', () => true);
   const api = mockApi(({ method, url }) => {
     if (url.pathname === '/api/push/config') return config;
+    if (url.pathname === '/api/push/weekly-summary') return { enabled: method === 'PUT' };
     if (url.pathname.startsWith('/api/push/'))
       return method === 'POST' ? json({ ok: true }, 201) : { ok: true };
     return [];
@@ -231,27 +204,28 @@ function mount(
     );
   return { user, calls, api };
 }
-// #508: the switch is on the Settings page; the rest buttons stay in the workout editor.
 async function openSettings(ui: ReturnType<typeof mount>) {
   await waitFor(() => expect(screen.queryByText('Loading records…')).toBeNull());
   await openPage('Settings', ui.user);
   return within(screen.getByRole('main'));
 }
-const toggleName = 'Notify me when rest ends, even with the screen off';
+const toggleName = 'Send me a weekly summary on Sunday at 21:00';
 
-test('without server keys, or in a browser without Web Push, there is no toggle and nothing is sent', async () => {
+test('Settings has no rest-over switch and, without server keys, no weekly summary switch', async () => {
   browser('default');
   const off = mount({ enabled: false, public_key: null });
   const dialog = await openSettings(off);
   expect(dialog.queryByLabelText(toggleName)).toBeNull();
+  expect(dialog.queryByLabelText(/when rest ends/)).toBeNull();
   expect(off.calls()).toEqual([]);
 });
 
-test('turning it on asks for permission, subscribes and saves the subscription', async () => {
+test('turning on the weekly summary asks for permission, subscribes and saves the subscription', async () => {
   const b = browser('default');
   const ui = mount();
   const dialog = await openSettings(ui);
   const toggle = await dialog.findByLabelText(toggleName);
+  expect(dialog.queryByLabelText(/when rest ends/)).toBeNull();
   expect(toggle).toHaveAttribute('aria-checked', 'false');
   await ui.user.click(toggle);
   await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
@@ -267,48 +241,12 @@ test('turning it on asks for permission, subscribes and saves the subscription',
   });
 });
 
-test('turning it off removes the subscription on the server and in the browser', async () => {
-  const b = browser('granted', true);
-  const ui = mount();
-  const dialog = await openSettings(ui);
-  const toggle = await dialog.findByLabelText(toggleName);
-  await ui.user.click(toggle);
-  await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'));
-  expect(ui.calls().find((r) => r.path === '/api/push/subscriptions')).toMatchObject({
-    method: 'DELETE',
-    body: { endpoint: subscriptionJson.endpoint },
-  });
-  expect(b.subscription.unsubscribe).toHaveBeenCalled();
-});
-
-test('blocked notifications disable the toggle and explain how to allow them', async () => {
-  const b = browser('denied');
-  const ui = mount();
-  const dialog = await openSettings(ui);
-  const toggle = await dialog.findByLabelText(toggleName);
-  expect(toggle).toBeDisabled();
-  expect(dialog.getAllByText(/Notifications are blocked for this site/).length).toBeGreaterThan(0);
-  expect(b.requestPermission).not.toHaveBeenCalled();
-});
-
-test('a refused permission prompt leaves it off and shows the blocked guidance after a block', async () => {
-  const b = browser('default', false, 'denied');
-  const ui = mount();
-  const dialog = await openSettings(ui);
-  const toggle = await dialog.findByLabelText(toggleName);
-  await ui.user.click(toggle);
-  await waitFor(() => expect(toggle).toBeDisabled());
-  expect(toggle).toHaveAttribute('aria-checked', 'false');
-  expect(dialog.getAllByText(/Notifications are blocked for this site/).length).toBeGreaterThan(0);
-  expect(b.pushManager.subscribe).not.toHaveBeenCalled();
-  expect(ui.calls()).toEqual([]);
-});
-
 test('if the server cannot save the subscription, nothing is left half-enabled', async () => {
   const b = browser('default');
   fixClock();
   mockApi(({ method, url }) => {
     if (url.pathname === '/api/push/config') return { enabled: true, public_key: publicKey };
+    if (url.pathname === '/api/push/weekly-summary') return { enabled: false };
     if (url.pathname === '/api/push/subscriptions' && method === 'POST')
       return json({ error: 'Push notifications are not set up on the server' }, 503);
     return [];

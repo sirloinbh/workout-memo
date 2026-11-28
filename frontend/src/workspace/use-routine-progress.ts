@@ -1,4 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Progress } from '../progress-data';
@@ -7,7 +6,6 @@ import type { Page } from './model';
 
 /** Today's routine card: the progress answer, the rest-day change and its confirmation. */
 export function useRoutineProgress(page: Page) {
-  const queryClient = useQueryClient();
   const [progress, setProgress] = useState<Progress | null>(null);
   const [progressError, setProgressError] = useState('');
   const [restConfirm, setRestConfirm] = useState(false);
@@ -25,9 +23,7 @@ export function useRoutineProgress(page: Page) {
   // user comes back to the journal without a full page refresh.
   useEffect(() => {
     void loadProgress();
-    // Body parts mapped on Exercise Analysis must apply to the rest timer when the user returns.
-    void queryClient.invalidateQueries({ queryKey: ['exercise-body-parts'] });
-  }, [loadProgress, page, queryClient]);
+  }, [loadProgress, page]);
   // Rest changes only the plan. A pending request blocks repeated clicks and the
   // server applies the same day's rest at most once.
   async function changeRest(method: 'POST' | 'DELETE') {

@@ -22,7 +22,8 @@ test('the page shows the notification and data sections', async () => {
   mount();
   expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
   const main = within(screen.getByRole('main'));
-  expect(main.queryByText('Rest timer')).toBeNull();
+  expect(main.queryByText(/^rest\b/i)).toBeNull();
+  expect(main.queryByLabelText(/when rest ends/i)).toBeNull();
   expect(main.getByText('Notifications')).toBeInTheDocument();
   expect(main.getByRole('link', { name: 'Backup & Export' })).toHaveAttribute('href', '/backup');
   expect(main.getByRole('link', { name: 'Machine Library' })).toHaveAttribute('href', '/machines');

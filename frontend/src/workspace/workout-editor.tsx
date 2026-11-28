@@ -39,9 +39,6 @@ export function WorkoutEditor({
   exerciseNames,
   titles,
   progress,
-  timerBar,
-  timerAlert,
-  timerSettings,
 }: {
   draft: WorkoutDraftState;
   saving: boolean;
@@ -50,9 +47,6 @@ export function WorkoutEditor({
   /** Journal titles already used in the loaded period, offered as suggestions (#506). */
   titles: readonly string[];
   progress: Progress | null;
-  timerBar: React.ReactNode;
-  timerAlert: React.ReactNode;
-  timerSettings: React.ReactNode;
 }) {
   const { setIssues, setEditor, saveWorkout, renameSet, markSet, saveState, saveError, issues } =
     draft;
@@ -112,11 +106,6 @@ export function WorkoutEditor({
             {saveError}
           </AlertBanner>
         )}
-        {/* Pinned to the top of the editor while the long form scrolls; it spans the
-                modal's 24px side padding so fields scroll behind it. */}
-        <div className="sticky top-0 z-10 -mx-6 mb-2 bg-background px-6 py-2">{timerBar}</div>
-        {timerAlert}
-        {timerSettings}
         <fieldset disabled={saving} className="workout-fields">
           <div className="form-grid">
             <label>

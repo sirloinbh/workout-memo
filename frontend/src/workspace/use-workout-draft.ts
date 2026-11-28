@@ -135,10 +135,17 @@ export function useWorkoutDraft({
       setSaveState('Local draft · Before server save');
     } else setRecovery(draft.current);
   }
-  // #124: typing, picking a suggestion or accepting a similar name all rename one set.
+  // #124, #531: typing, picking a suggestion or accepting a similar name renames the whole exercise: every set of
+  // the group that set `i` belongs to.
   function renameSet(i: number, exercise: string) {
     if (!editor?.sets) return;
-    setEditor({ ...editor, sets: editor.sets.map((s, j) => (j === i ? { ...s, exercise } : s)) });
+    const group = editor.sets[i]?._group;
+    setEditor({
+      ...editor,
+      sets: editor.sets.map((s, j) =>
+        j === i || (group !== undefined && s._group === group) ? { ...s, exercise } : s,
+      ),
+    });
   }
   // Taps on one set within this window after completing it are treated as a double tap.
   const completedAt = useRef(new Map<string, number>());

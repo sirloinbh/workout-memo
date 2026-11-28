@@ -87,8 +87,9 @@ test('a new journal is dated today with a date title even when another day is br
   await openEditor(ui.user);
   expect(inputs('Workout date')[0]).toHaveValue(today);
   expect(inputs('Journal title')[0]).toHaveValue('Thu, Oct 15');
-  // Without a routine the journal starts with three empty sets as before (#28).
-  expect(values('Exercise name')).toEqual(['', '', '']);
+  // Without a routine the journal starts with three empty sets as before (#28), as one exercise (#531).
+  expect(values('Exercise name')).toEqual(['']);
+  expect(values('Total weight kg')).toHaveLength(3);
   // Defaults stay editable.
   await ui.user.clear(inputs('Journal title')[0]);
   await ui.user.type(inputs('Journal title')[0], 'Lower body day');
@@ -98,8 +99,9 @@ test('a new journal is dated today with a date title even when another day is br
 test("today's routine fills the sets with exercise, machine, total kg and reps", async () => {
   const ui = mount(withRoutine({ date: today, week: 1, rest: false, target }));
   await openEditor(ui.user);
-  expect(values('Exercise name')).toEqual(['Leg Press', 'Leg Press', 'Squat']);
-  expect(values('Machine')).toEqual(['5', '5', '']);
+  // #531: the two Leg Press sets share one name and machine.
+  expect(values('Exercise name')).toEqual(['Leg Press', 'Squat']);
+  expect(values('Machine')).toEqual(['5', '']);
   expect(values('Total weight kg')).toEqual(['150', '150', '100']);
   expect(values('Reps')).toEqual(['10', '10', '10']);
   expect(inputs('Journal title')[0]).toHaveValue('Thu, Oct 15');
@@ -122,8 +124,9 @@ test("today's routine fills the sets with exercise, machine, total kg and reps",
 test('a rest day starts with three empty sets', async () => {
   const ui = mount(withRoutine({ date: today, week: 1, rest: true, target: null }));
   await openEditor(ui.user);
-  expect(values('Exercise name')).toEqual(['', '', '']);
-  expect(values('Machine')).toEqual(['', '', '']);
+  expect(values('Exercise name')).toEqual(['']);
+  expect(values('Machine')).toEqual(['']);
+  expect(values('Total weight kg')).toHaveLength(3);
 });
 
 // #525: the log page header shows only the date, the weekday and today's routine.

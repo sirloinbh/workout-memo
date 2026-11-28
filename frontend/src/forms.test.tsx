@@ -81,7 +81,8 @@ test('the journal form marks the invalid set fields and keeps the input unsent',
   const weights = within(dialog).getAllByLabelText('Total weight kg');
   fireEvent.change(names[0], { target: { value: 'Squat' } });
   fireEvent.change(weights[0], { target: { value: '100000' } });
-  fireEvent.change(names[2], { target: { value: 'Lunge' } });
+  // #531: a second exercise starts with an empty name of its own.
+  await ui.user.click(within(dialog).getByRole('button', { name: 'Add another exercise' }));
   // Bypasses native constraints so the contract itself is what rejects the input.
   fireEvent.submit(dialog.querySelector('form')!);
   expectInvalid(
@@ -108,7 +109,7 @@ test('the journal form marks the invalid set fields and keeps the input unsent',
   });
   fireEvent.submit(dialog.querySelector('form')!);
   await waitFor(() => expect(ui.posts('/api/workouts')).toHaveLength(1));
-  expect((ui.posts('/api/workouts')[0].body as { sets: unknown[] }).sets).toHaveLength(3);
+  expect((ui.posts('/api/workouts')[0].body as { sets: unknown[] }).sets).toHaveLength(4);
 });
 
 test('the machine form requires a brand before registering', async () => {

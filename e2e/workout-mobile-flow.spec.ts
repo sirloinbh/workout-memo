@@ -75,10 +75,11 @@ test('enters, completes, and saves three sets in a new journal on a 390px touch 
   const editor = page.getByRole('region', { name: 'New workout record' });
   const sets = editor.locator('[data-slot=set-row]');
   await expect(sets).toHaveCount(3);
+  // #531: the three starting sets are one exercise; its name is entered once.
+  await user.tap('exercise', editor.getByLabel('Exercise name'));
+  await user.type(exercise);
   for (let i = 0; i < 3; i++) {
     const set = sets.nth(i);
-    await user.tap(`set ${i + 1} exercise`, set.getByLabel('Exercise name'));
-    await user.type(exercise);
     // The weight starts at 0. Tapping the field's right end puts the caret after it in both
     // versions (left-aligned before #105, centred after), so one backspace clears it.
     const field = set.getByLabel('Total weight kg', { exact: true });

@@ -566,8 +566,10 @@ test('a new journal starts with three empty set rows and keeps the draft flow', 
   await loaded();
   await ui.user.click(screen.getAllByRole('button', { name: 'Log workout' })[0]);
   const names = exerciseInputs();
-  expect(names, '#28: the editor starts with 3 sets').toHaveLength(3);
-  expect(names.every((e) => e.value === '')).toBe(true);
+  // #28, #531: the editor starts with 3 sets of one exercise, so one name field.
+  expect(names).toHaveLength(1);
+  expect(names[0].value).toBe('');
+  expect(weightInputs(), '#28: the editor starts with 3 sets').toHaveLength(3);
   expect(weightInputs().every((e) => Number(e.value) === 0)).toBe(true);
   expect(storageSize(), 'the three-row editor is a local draft').toBeGreaterThan(0);
   expect(ui.mutations()).toHaveLength(0);

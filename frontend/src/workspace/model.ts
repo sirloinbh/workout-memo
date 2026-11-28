@@ -15,28 +15,58 @@ export type SetRow = {
   // #382: a client-side id, so a row keeps its own state when another set is removed. It never leaves
   // the browser: saving strips it.
   _key?: string;
+  // #531: sets of one exercise share a group id, so the editor shows the name once. Client-only like `_key`; saving strips
+  // it and the API still carries the exercise on every set.
+  _group?: string;
 };
 let keyCounter = 0;
 const newSetKey = () => `${Date.now().toString(36)}-${(keyCounter++).toString(36)}`;
-/** Gives every set a unique `_key`; a set copied from another one (add set) gets its own. */
+export const newGroupKey = () => `g${newSetKey()}`;
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+/**
+ * Gives every set a unique `_key`; a set copied from another one (add set) gets its own. A set without a `_group`
+ * (an old workout or draft) joins the group of the set before it when both have the same exercise name, else it
+ * starts a new group (#531): consecutive equal names form one exercise, equal names apart stay separate.
+ */
 export function withSetKeys<T extends { sets?: SetRow[] }>(editor: T): T;
 export function withSetKeys<T extends { sets?: SetRow[] }>(editor: T | null): T | null;
 export function withSetKeys<T extends { sets?: SetRow[] }>(editor: T | null): T | null {
   if (!editor?.sets) return editor;
   const seen = new Set<string>();
+  let previous: SetRow | undefined;
   return {
     ...editor,
     sets: editor.sets.map((s) => {
       const key = s._key && !seen.has(s._key) ? s._key : newSetKey();
       seen.add(key);
-      return s._key === key ? s : { ...s, _key: key };
+      const group =
+        s._group ??
+        (previous?._group && sameName(previous.exercise, s.exercise)
+          ? previous._group
+          : newGroupKey());
+      const next = s._key === key && s._group === group ? s : { ...s, _key: key, _group: group };
+      previous = next;
+      return next;
     }),
   };
 }
 /** The editor as the server gets it, without the client ids. */
 export function withoutSetKeys<T extends { sets?: SetRow[] }>(editor: T): T {
   if (!editor.sets) return editor;
-  return { ...editor, sets: editor.sets.map(({ _key: _ignored, ...s }) => s) };
+  return {
+    ...editor,
+    sets: editor.sets.map(({ _key: _ignored, _group: _ignoredGroup, ...s }) => s),
+  };
+}
+/** The runs of consecutive sets that share a group: one exercise each, with the indexes of its sets. */
+export function setGroups(sets: readonly SetRow[]) {
+  const groups: { key: string; indexes: number[] }[] = [];
+  sets.forEach((s, i) => {
+    const last = groups.at(-1);
+    if (last && s._group !== undefined && last.key === s._group) last.indexes.push(i);
+    else groups.push({ key: s._group ?? `set-${i}`, indexes: [i] });
+  });
+  return groups;
 }
 // Only completed sets are actual performance for statistics and goals.
 export const done = (s: SetRow) => s.completed !== false;
